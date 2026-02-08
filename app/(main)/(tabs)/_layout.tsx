@@ -9,10 +9,10 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarInactiveTintColor: colors.gray,
-        tabBarInactiveBackgroundColor: isDark ? colors.blackGray : colors.white,
-        tabBarActiveTintColor: colors.lightPurple,
-        tabBarActiveBackgroundColor: isDark ? colors.blackGray : colors.white,
+        tabBarInactiveTintColor: isDark ? colors.textSecondaryDark : colors.textSecondaryLight,
+        tabBarInactiveBackgroundColor: isDark ? colors.surfaceDark : colors.white,
+        tabBarActiveTintColor: colors.primary,
+        tabBarActiveBackgroundColor: isDark ? colors.surfaceDark : colors.white,
       }}>
       <Tabs.Screen
         name="index"

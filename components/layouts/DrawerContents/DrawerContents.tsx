@@ -17,8 +17,8 @@ export default function DrawerContents() {
   const { isDark } = useColorScheme();
   return (
     <SafeAreaView>
-      <View style={[styles.root, isDark && { backgroundColor: colors.blackGray }]}>
-        <Text style={{ color: isDark ? colors.white : colors.black }}>Side Menu Contents</Text>
+      <View style={[styles.root, isDark && { backgroundColor: colors.surfaceDark }]}>
+        <Text style={{ color: isDark ? colors.textPrimaryDark : colors.textPrimaryLight }}>Side Menu Contents</Text>
       </View>
     </SafeAreaView>
   );

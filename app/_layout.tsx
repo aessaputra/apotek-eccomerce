@@ -39,7 +39,7 @@ function Router() {
       <BottomSheet
         isOpen={isOpen}
         initialOpen
-        backgroundStyle={isDark && { backgroundColor: colors.blackGray }}>
+        backgroundStyle={isDark && { backgroundColor: colors.surfaceDark }}>
         <BottomSheetContents onClose={() => setOpen(false)} />
       </BottomSheet>
     </Fragment>

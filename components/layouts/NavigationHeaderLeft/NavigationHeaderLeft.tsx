@@ -8,7 +8,7 @@ export default function NavigationHeaderLeft({ onPress }: { onPress: () => void 
     <SimpleLineIcons.Button
       name="menu"
       size={24}
-      color={isDark ? colors.gray : colors.white}
+      color={isDark ? colors.textSecondaryDark : colors.white}
       backgroundColor={colors.transparent}
       onPress={onPress}
     />

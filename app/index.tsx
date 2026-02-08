@@ -9,7 +9,7 @@ export default function Index() {
   if (!checked) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.lightPurple} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -26,6 +26,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.lightGrayPurple,
+    backgroundColor: colors.surfaceLight,
   },
 });

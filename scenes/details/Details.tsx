@@ -10,7 +10,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.lightGrayPurple,
+    backgroundColor: colors.surfaceLight,
   },
   title: {
     fontSize: 24,
@@ -35,15 +35,15 @@ export default function Details() {
   const { isDark } = useColorScheme();
   const { from } = useLocalSearchParams();
   return (
-    <View style={[styles.root, isDark && { backgroundColor: colors.blackGray }]}>
+    <View style={[styles.root, isDark && { backgroundColor: colors.surfaceDark }]}>
       <Text
-        style={[styles.title, isDark && { color: colors.gray }]}>{`Details (from ${from})`}</Text>
+        style={[styles.title, isDark && { color: colors.textSecondaryDark }]}>{`Details (from ${from})`}</Text>
       <GradientButton
         title="Go back to Home"
-        titleStyle={[styles.buttonTitle, isDark && { color: colors.blackGray }]}
+        titleStyle={[styles.buttonTitle, isDark && { color: colors.surfaceDark }]}
         style={styles.button}
         gradientBackgroundProps={{
-          colors: [colors.purple, colors.pink],
+          colors: [colors.primary, colors.accent],
           start: { x: 0, y: 1 },
           end: { x: 0.8, y: 0 },
         }}

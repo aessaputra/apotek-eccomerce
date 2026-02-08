@@ -13,7 +13,7 @@ export default function ProfileStackLayout() {
     <Stack
       screenOptions={{
         headerTintColor: colors.white,
-        headerStyle: { backgroundColor: isDark ? colors.blackGray : colors.darkPurple },
+        headerStyle: { backgroundColor: isDark ? colors.surfaceDark : colors.primary },
         headerTitleStyle: { fontSize: 18 },
       }}>
       <Stack.Screen

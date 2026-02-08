@@ -10,7 +10,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.lightGrayPurple,
+    backgroundColor: colors.surfaceLight,
   },
   title: {
     fontSize: 24,
@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 22,
-    backgroundColor: colors.lightPurple,
+    backgroundColor: colors.primary,
     height: 44,
     width: '50%',
   },
@@ -35,11 +35,11 @@ export default function Home() {
   const router = useRouter();
   const { isDark } = useColorScheme();
   return (
-    <View style={[styles.root, isDark && { backgroundColor: colors.blackGray }]}>
-      <Text style={[styles.title, isDark && { color: colors.gray }]}>Home</Text>
+    <View style={[styles.root, isDark && { backgroundColor: colors.surfaceDark }]}>
+      <Text style={[styles.title, isDark && { color: colors.textSecondaryDark }]}>Home</Text>
       <Button
         title="Go to Details"
-        titleStyle={[styles.buttonTitle, isDark && { color: colors.blackGray }]}
+        titleStyle={styles.buttonTitle}
         style={styles.button}
         onPress={() =>
           router.push({ pathname: '(main)/(tabs)/home/details', params: { from: 'Home' } })

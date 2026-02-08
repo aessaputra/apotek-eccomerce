@@ -22,10 +22,10 @@ import type { User } from '@/types';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.lightGrayPurple,
+    backgroundColor: colors.surfaceLight,
   },
   darkContainer: {
-    backgroundColor: colors.blackGray,
+    backgroundColor: colors.surfaceDark,
   },
   scroll: {
     flex: 1,
@@ -39,34 +39,34 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: colors.gray,
+    color: colors.textSecondaryLight,
     marginBottom: 4,
   },
   value: {
     fontSize: 18,
-    color: colors.darkPurple,
+    color: colors.textPrimaryLight,
   },
   darkValue: {
-    color: colors.gray,
+    color: colors.textPrimaryDark,
   },
   input: {
     height: 48,
     borderWidth: 1,
-    borderColor: colors.gray,
+    borderColor: colors.borderLight,
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
     marginBottom: 12,
-    color: colors.black,
-    backgroundColor: colors.white,
+    color: colors.textPrimaryLight,
+    backgroundColor: colors.cardLight,
   },
   darkInput: {
-    borderColor: colors.gray,
-    color: colors.white,
-    backgroundColor: colors.blackGray,
+    borderColor: colors.borderDark,
+    color: colors.textPrimaryDark,
+    backgroundColor: colors.surfaceDark,
   },
   errorText: {
-    color: colors.pink,
+    color: colors.error,
     fontSize: 14,
     marginBottom: 8,
   },
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     height: 48,
-    backgroundColor: colors.lightPurple,
+    backgroundColor: colors.primary,
     marginBottom: 12,
   },
   buttonTitle: {
@@ -84,14 +84,14 @@ const styles = StyleSheet.create({
   buttonOutlined: {
     backgroundColor: colors.transparent,
     borderWidth: 1,
-    borderColor: colors.lightPurple,
+    borderColor: colors.primary,
   },
   buttonOutlinedTitle: {
-    color: colors.lightPurple,
+    color: colors.primary,
   },
   logoutButton: {
     marginTop: 24,
-    backgroundColor: colors.pink,
+    backgroundColor: colors.error,
   },
 });
 
@@ -150,7 +150,7 @@ export default function Profile() {
     return (
       <SafeAreaView style={[styles.container, isDark && styles.darkContainer]} edges={['top']}>
         <View style={styles.inner}>
-          <ActivityIndicator size="large" color={colors.lightPurple} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -163,28 +163,28 @@ export default function Profile() {
         contentContainerStyle={styles.inner}
         showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Email</Text>
           <Text style={[styles.value, isDark && styles.darkValue]}>{user.email}</Text>
         </View>
 
         {editing ? (
           <View style={styles.section}>
-            <Text style={styles.label}>Nama lengkap</Text>
+            <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Nama lengkap</Text>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TextInput
               style={[styles.input, isDark && styles.darkInput]}
               placeholder="Nama lengkap"
-              placeholderTextColor={colors.gray}
+              placeholderTextColor={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
               editable={!saving}
             />
-            <Text style={styles.label}>Nomor telepon</Text>
+            <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Nomor telepon</Text>
             <TextInput
               style={[styles.input, isDark && styles.darkInput]}
               placeholder="Nomor telepon"
-              placeholderTextColor={colors.gray}
+              placeholderTextColor={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
@@ -213,13 +213,13 @@ export default function Profile() {
         ) : (
           <>
             <View style={styles.section}>
-              <Text style={styles.label}>Nama</Text>
+              <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Nama</Text>
               <Text style={[styles.value, isDark && styles.darkValue]}>
                 {user.full_name || user.name || '–'}
               </Text>
             </View>
             <View style={styles.section}>
-              <Text style={styles.label}>Telepon</Text>
+              <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Telepon</Text>
               <Text style={[styles.value, isDark && styles.darkValue]}>
                 {user.phone_number || '–'}
               </Text>
