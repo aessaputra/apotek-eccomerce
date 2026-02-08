@@ -1,15 +1,15 @@
 import { Stack } from 'expo-router';
+import { useTheme } from 'tamagui';
 import HeaderCartIcon from '@/components/layouts/HeaderCartIcon';
-import useColorScheme from '@/hooks/useColorScheme';
-import { colors } from '@/theme';
+import { getThemeColor } from '@/utils/theme';
 
 export default function OrdersStackLayout() {
-  const { isDark } = useColorScheme();
+  const theme = useTheme();
   return (
     <Stack
       screenOptions={{
-        headerTintColor: colors.white,
-        headerStyle: { backgroundColor: isDark ? colors.surfaceDark : colors.primary },
+        headerTintColor: getThemeColor(theme, 'background', '#ffffff'),
+        headerStyle: { backgroundColor: getThemeColor(theme, 'color', '#0D9488') },
         headerTitleStyle: { fontSize: 18 },
       }}>
       <Stack.Screen

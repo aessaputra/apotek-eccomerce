@@ -1,19 +1,24 @@
 import { Fragment, useState, useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
+// Tamagui web CSS - loaded for web platform
+import '@/tamagui-web.css';
 import BottomSheetContents from '@/components/layouts/BottomSheetContents';
 import BottomSheet from '@/components/elements/BottomSheet';
-import useColorScheme from '@/hooks/useColorScheme';
-import { loadImages, loadFonts, colors } from '@/theme';
+import { useTheme, useThemeName } from 'tamagui';
+import { getThemeColor } from '@/utils/theme';
+import { loadFonts } from '@/utils/fonts';
+import { loadImages } from '@/utils/images';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAppSlice } from '@/slices';
-import Provider from '@/providers';
-import { AuthProvider } from '@/providers';
+import Provider, { AuthProvider } from '@/providers';
 
 SplashScreen.preventAutoHideAsync();
 
 function Router() {
-  const { isDark } = useColorScheme();
+  const theme = useTheme();
+  const themeName = useThemeName();
+  const isDark = themeName === 'dark';
   const { checked } = useAppSlice();
   const [assetsReady, setAssetsReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
@@ -35,11 +40,11 @@ function Router() {
   return (
     <Fragment>
       <Slot />
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <BottomSheet
         isOpen={isOpen}
         initialOpen
-        backgroundStyle={isDark && { backgroundColor: colors.surfaceDark }}>
+        backgroundStyle={{ backgroundColor: getThemeColor(theme, 'background', '#0f0f0f') }}>
         <BottomSheetContents onClose={() => setOpen(false)} />
       </BottomSheet>
     </Fragment>

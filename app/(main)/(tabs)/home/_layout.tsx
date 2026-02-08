@@ -1,19 +1,19 @@
-import { View } from 'react-native';
+import { YStack, useTheme } from 'tamagui';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HeaderSearchAndCart from '@/components/layouts/HeaderSearchAndCart';
-import useColorScheme from '@/hooks/useColorScheme';
-import { colors } from '@/theme';
+import { getThemeColor } from '@/utils/theme';
 
 export default function HomeStackLayout() {
-  const { isDark } = useColorScheme();
-  const headerBg = isDark ? colors.surfaceDark : colors.primary;
+  const theme = useTheme();
+  const headerBg = getThemeColor(theme, 'color', '#0D9488');
+  const headerTint = getThemeColor(theme, 'background', '#ffffff');
 
   return (
     <Stack
       screenOptions={{
         headerShown: true,
-        headerTintColor: colors.white,
+        headerTintColor: headerTint,
         headerStyle: { backgroundColor: headerBg },
         headerTitleStyle: { fontSize: 18 },
       }}>
@@ -24,17 +24,15 @@ export default function HomeStackLayout() {
           headerTitle: () => null,
           header: () => (
             <SafeAreaView style={{ backgroundColor: headerBg }} edges={['top']}>
-              <View
-                style={{
-                  paddingHorizontal: 16,
-                  paddingTop: 12,
-                  paddingBottom: 12,
-                  minHeight: 56,
-                  justifyContent: 'center',
-                  width: '100%',
-                }}>
+              <YStack
+                paddingHorizontal={16}
+                paddingTop={12}
+                paddingBottom={12}
+                minHeight={56}
+                justifyContent="center"
+                width="100%">
                 <HeaderSearchAndCart />
-              </View>
+              </YStack>
             </SafeAreaView>
           ),
         }}

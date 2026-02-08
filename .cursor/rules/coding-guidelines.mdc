@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Project Overview
 
-React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit, and modern development practices.
+React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit, Tamagui UI kit, and modern development practices.
 
 ## Built-in Features to Always Use
 
@@ -17,12 +17,13 @@ React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit,
 - **Use `utils/deviceInfo.ts`** for platform detection and device dimensions
 - Never hardcode environment values, always go through config
 
-### Theme System
+### Theme System (Full Tamagui)
 
-- **Always import from `@/theme`** for colors, fonts, and images
-- **Use `@/theme/colors`** instead of hardcoded color values
-- **Use theme system** for consistent dark/light mode support
-- **Load assets through `@/theme/images` and `@/theme/fonts`**
+- **Single styling**: Tamagui only. No StyleSheet.
+- **Colors**: Only in `tamagui.config.ts` (palette + light/dark overrides). Use tokens in components.
+- **Fonts / images**: `@/utils/fonts` (loadFonts), `@/utils/images` (loadImages, images). Call at app init.
+- **Tamagui tokens** (`$primary`, `$background`, `$color`) — use in components; never hardcode
+- **TamaguiProvider**: `config={tamaguiConfig}` `defaultTheme={useColorScheme()!}` at root
 
 ### Custom Hooks
 
@@ -53,10 +54,11 @@ React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit,
 
 ### Component Organization
 
-- **`components/elements`** - Reusable UI components (Button, Image, etc.)
+- **`components/elements`** - Tamagui-based components (`styled(View, {...})` or Tamagui primitives)
 - **`components/layouts`** - Layout-specific components (headers, navigation)
 - **`scenes`** - Screen components (renamed from pages)
 - **`app`** - Expo Router routes only, delegate to scenes
+- **`tamagui.config.ts`** - `createTamagui`; palette + themes (light/dark); `declare module 'tamagui'` for types
 
 ### File Naming
 
@@ -82,12 +84,13 @@ React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit,
 - Use early returns for conditional rendering
 - Export default at the bottom
 
-### Styling Rules
+### Styling Rules (Full Tamagui)
 
-- Always use `StyleSheet.create` for performance
-- Import colors from theme, never hardcode
-- Use platform-specific styles when needed
-- Keep styles at component bottom
+- **All UI**: Tamagui only. No StyleSheet.
+- **Tokens**: `$primary`, `$background`, `$color` — defined in tamagui.config themes
+- **Layout**: YStack, XStack
+- **Custom components**: `styled(View, { ... })` or `styled(Text, { ... })` from `tamagui`
+- **Import**: `from 'tamagui'` per Tamagui docs
 
 ### Testing Requirements
 
@@ -137,11 +140,19 @@ React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit,
 - Configuration is typed and validated
 - Use `utils/config.ts` for all config access
 
-### Theme and Styling
+### Theme and Styling (Full Tamagui)
 
-- Dark/light mode support built-in
-- Theme colors are centralized and typed
-- Responsive design utilities available
+- Single styling system: Tamagui only
+- Colors: palette + themes in tamagui.config.ts only (createTamagui)
+- TamaguiProvider: config, defaultTheme from useColorScheme()
+- Components: Card, Input, Form, ListItem, Button, Avatar, Checkbox, Switch; layout: YStack, XStack
+- Custom: styled(View, {...}); import from 'tamagui'
+
+### Tamagui Setup (per docs)
+
+- tamagui.config.ts: createTamagui, declare module 'tamagui' for types
+- Babel: @tamagui/babel-plugin, config: './tamagui.config.ts'
+- Web: import tamagui-web.css in root layout
 
 ### Data Persistence
 
@@ -166,9 +177,10 @@ React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit,
 
 ### Reusability Focus
 
-- Always check existing components before creating new ones
-- Use built-in utilities instead of reinventing
-- Extend existing components rather than duplicating
+- Check Tamagui components first (Card, Input, Form, ListItem, Button) for forms, cards, lists
+- Always check existing components in components/elements before creating new ones
+- Use built-in utilities (Tamagui, theme, hooks) instead of reinventing
+- Prefer Tamagui or extend existing components rather than duplicating
 - Follow established patterns in the codebase
 
 ### Testing
@@ -187,11 +199,11 @@ React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit,
 
 ## Key Principles
 
-1. **Reuse existing built-in features** before creating new ones
+1. **Reuse existing built-in features** — Check Tamagui, then components/elements, before creating new ones
 2. **Follow established patterns** in the codebase
 3. **Use TypeScript strictly** for better code quality
 4. **Test all components** for reliability
 5. **Keep components focused** and single-purpose
-6. **Use the theme system** for consistent UI
-7. **Leverage built-in hooks** for common functionality
+6. **Single styling** — Tamagui only; tokens from themes; never StyleSheet or hardcode
+7. **Leverage Tamagui** for Card, Input, Form, ListItem, Button and built-in hooks for common functionality
 8. **Follow import/export conventions** for maintainability

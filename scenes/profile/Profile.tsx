@@ -1,103 +1,20 @@
 import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { ScrollView, Alert } from 'react-native';
+import { YStack, Text, Input, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import useColorScheme from '@/hooks/useColorScheme';
 import Button from '@/components/elements/Button';
 import { useAppSlice } from '@/slices';
 import { useDataPersist, DataPersistKeys } from '@/hooks';
-import { colors } from '@/theme';
 import { signOut as authSignOut } from '@/services/auth.service';
 import { updateProfile } from '@/services/profile.service';
 import type { User } from '@/types';
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceLight,
-  },
-  darkContainer: {
-    backgroundColor: colors.surfaceDark,
-  },
-  scroll: {
-    flex: 1,
-  },
-  inner: {
-    padding: 24,
-    paddingBottom: 48,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    color: colors.textSecondaryLight,
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 18,
-    color: colors.textPrimaryLight,
-  },
-  darkValue: {
-    color: colors.textPrimaryDark,
-  },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 12,
-    color: colors.textPrimaryLight,
-    backgroundColor: colors.cardLight,
-  },
-  darkInput: {
-    borderColor: colors.borderDark,
-    color: colors.textPrimaryDark,
-    backgroundColor: colors.surfaceDark,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  button: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    height: 48,
-    backgroundColor: colors.primary,
-    marginBottom: 12,
-  },
-  buttonTitle: {
-    fontSize: 16,
-    color: colors.white,
-  },
-  buttonOutlined: {
-    backgroundColor: colors.transparent,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  buttonOutlinedTitle: {
-    color: colors.primary,
-  },
-  logoutButton: {
-    marginTop: 24,
-    backgroundColor: colors.error,
-  },
-});
+import { Spinner } from 'tamagui';
+import { getThemeColor } from '@/utils/theme';
 
 export default function Profile() {
   const router = useRouter();
-  const { isDark } = useColorScheme();
+  const theme = useTheme();
   const { user, dispatch, setUser } = useAppSlice();
   const { removePersistData } = useDataPersist();
   const [editing, setEditing] = useState(false);
@@ -105,6 +22,17 @@ export default function Profile() {
   const [phoneNumber, setPhoneNumber] = useState(user?.phone_number ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const labelColor = getThemeColor(theme, 'colorPress', '#64748B');
+  const valueColor = getThemeColor(theme, 'color', '#0f172a');
+  const inputBg = getThemeColor(theme, 'background', '#f8fafc');
+  const inputBorder = getThemeColor(theme, 'borderColor', '#e2e8f0');
+  const inputColor = getThemeColor(theme, 'color', '#0f172a');
+  const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
+  const errorColor = getThemeColor(theme, 'red10', '#dc2626');
+  const primaryColor = getThemeColor(theme, 'color', '#0D9488');
+  const whiteColor = getThemeColor(theme, 'background', '#ffffff');
+  const bgColor = getThemeColor(theme, 'background', '#f8fafc');
 
   const handleSave = useCallback(async () => {
     if (!user) return;
@@ -148,47 +76,86 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <SafeAreaView style={[styles.container, isDark && styles.darkContainer]} edges={['top']}>
-        <View style={styles.inner}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: bgColor,
+        }}
+        edges={['top']}>
+        <YStack
+          flex={1}
+          padding={24}
+          paddingBottom={48}
+          alignItems="center"
+          justifyContent="center">
+          <Spinner size="large" color="$primary" />
+        </YStack>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.darkContainer]} edges={['top']}>
+    <SafeAreaView
+      style={{
+        flex: 1,
+        backgroundColor: bgColor,
+      }}
+      edges={['top']}>
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.inner}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 24, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Email</Text>
-          <Text style={[styles.value, isDark && styles.darkValue]}>{user.email}</Text>
-        </View>
+        <YStack marginBottom={24}>
+          <Text fontSize={14} color={labelColor} marginBottom={4}>
+            Email
+          </Text>
+          <Text fontSize={18} color={valueColor}>
+            {user.email}
+          </Text>
+        </YStack>
 
         {editing ? (
-          <View style={styles.section}>
-            <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>
+          <YStack marginBottom={24}>
+            <Text fontSize={14} color={labelColor} marginBottom={4}>
               Nama lengkap
             </Text>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            <TextInput
-              style={[styles.input, isDark && styles.darkInput]}
+            {error ? (
+              <Text fontSize={14} color={errorColor} marginBottom={8}>
+                {error}
+              </Text>
+            ) : null}
+            <Input
+              height={48}
+              borderWidth={1}
+              borderColor={inputBorder}
+              borderRadius={8}
+              paddingHorizontal={16}
+              fontSize={16}
+              marginBottom={12}
+              color={inputColor}
+              backgroundColor={inputBg}
               placeholder="Nama lengkap"
-              placeholderTextColor={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
+              placeholderTextColor={placeholderColor}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
               editable={!saving}
             />
-            <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>
+            <Text fontSize={14} color={labelColor} marginBottom={4}>
               Nomor telepon
             </Text>
-            <TextInput
-              style={[styles.input, isDark && styles.darkInput]}
+            <Input
+              height={48}
+              borderWidth={1}
+              borderColor={inputBorder}
+              borderRadius={8}
+              paddingHorizontal={16}
+              fontSize={16}
+              marginBottom={12}
+              color={inputColor}
+              backgroundColor={inputBg}
               placeholder="Nomor telepon"
-              placeholderTextColor={isDark ? colors.textSecondaryDark : colors.textSecondaryLight}
+              placeholderTextColor={placeholderColor}
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
@@ -196,15 +163,24 @@ export default function Profile() {
             />
             <Button
               title="Simpan"
-              style={styles.button}
-              titleStyle={styles.buttonTitle}
+              paddingVertical={12}
+              borderRadius={8}
+              height={48}
+              backgroundColor="$primary"
+              marginBottom={12}
+              titleStyle={{ color: whiteColor, fontSize: 16 }}
               onPress={handleSave}
               isLoading={saving}
             />
             <Button
               title="Batal"
-              style={[styles.button, styles.buttonOutlined]}
-              titleStyle={[styles.buttonTitle, styles.buttonOutlinedTitle]}
+              paddingVertical={12}
+              borderRadius={8}
+              height={48}
+              backgroundColor="transparent"
+              borderWidth={1}
+              borderColor="$primary"
+              titleStyle={{ color: primaryColor, fontSize: 16 }}
               onPress={() => {
                 setEditing(false);
                 setError(null);
@@ -213,29 +189,33 @@ export default function Profile() {
               }}
               disabled={saving}
             />
-          </View>
+          </YStack>
         ) : (
           <>
-            <View style={styles.section}>
-              <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>
+            <YStack marginBottom={24}>
+              <Text fontSize={14} color={labelColor} marginBottom={4}>
                 Nama
               </Text>
-              <Text style={[styles.value, isDark && styles.darkValue]}>
+              <Text fontSize={18} color={valueColor}>
                 {user.full_name || user.name || '–'}
               </Text>
-            </View>
-            <View style={styles.section}>
-              <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>
+            </YStack>
+            <YStack marginBottom={24}>
+              <Text fontSize={14} color={labelColor} marginBottom={4}>
                 Telepon
               </Text>
-              <Text style={[styles.value, isDark && styles.darkValue]}>
+              <Text fontSize={18} color={valueColor}>
                 {user.phone_number || '–'}
               </Text>
-            </View>
+            </YStack>
             <Button
               title="Edit profil"
-              style={styles.button}
-              titleStyle={styles.buttonTitle}
+              paddingVertical={12}
+              borderRadius={8}
+              height={48}
+              backgroundColor="$primary"
+              marginBottom={12}
+              titleStyle={{ color: whiteColor, fontSize: 16 }}
               onPress={() => {
                 setEditing(true);
                 setFullName(user.full_name ?? user.name ?? '');
@@ -248,8 +228,12 @@ export default function Profile() {
 
         <Button
           title="Keluar"
-          style={[styles.button, styles.logoutButton]}
-          titleStyle={styles.buttonTitle}
+          paddingVertical={12}
+          borderRadius={8}
+          height={48}
+          marginTop={24}
+          backgroundColor="$error"
+          titleStyle={{ color: whiteColor, fontSize: 16 }}
           onPress={handleLogout}
         />
       </ScrollView>

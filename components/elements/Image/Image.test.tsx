@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import Image from './Image';
-import { images } from '@/theme/images';
+import { images } from '@/utils/images';
 
 describe('<Image />', () => {
   it('renders correctly with a local asset', () => {

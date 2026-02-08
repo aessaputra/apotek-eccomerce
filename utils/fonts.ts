@@ -11,7 +11,7 @@ export const fonts = {
   },
 };
 
-// preload fonts
+/** Preload font assets (OpenSans). Panggil saat app init, mis. di root layout. */
 export const loadFonts = () =>
   loadAsync({
     openSans_regular: require('@/assets/fonts/OpenSans-Regular.ttf'),

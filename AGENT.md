@@ -10,6 +10,7 @@ This React Native Expo project follows specific patterns and uses built-in featu
 - TypeScript (strict mode)
 - Expo Router v6 (flat config)
 - Redux Toolkit for state management
+- Tamagui for UI components and styling
 - ESLint 9 with flat config
 - React 19.1 and React Native 0.81.4
 
@@ -22,12 +23,13 @@ This React Native Expo project follows specific patterns and uses built-in featu
 - Never hardcode values that should come from configuration
 - **Supabase**: Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` (Publishable Key) in `.env.dev`; use `supabase` from `@/services` or `@/utils/supabase`
 
-### Theme & Styling
+### Theme & Styling (Full Tamagui)
 
-- **`@/theme/colors`** - For all color values (supports dark/light mode)
-- **`@/theme/fonts`** - For font loading and typography
-- **`@/theme/images`** - For image assets and loading
-- Always use theme system instead of hardcoded styles
+- **Single styling system**: Tamagui only. No StyleSheet or dual styling.
+- **Colors**: Only in `tamagui.config.ts` (palette + theme overrides). Use Tamagui tokens (`$primary`, `$background`, `$color`) in components; never hardcode.
+- **Fonts**: `@/utils/fonts` — `loadFonts()`, `fonts` (OpenSans). Call at app init.
+- **Images**: `@/utils/images` — `loadImages()`, `images` (logo etc.). Call at app init.
+- **Tamagui** - All UI uses Tamagui: components, layout (YStack, XStack), tokens. Import from `tamagui`.
 
 ### Custom Hooks (Reuse These)
 
@@ -60,15 +62,15 @@ This React Native Expo project follows specific patterns and uses built-in featu
 ```
 app/                 # Expo Router routes (keep minimal, delegate to scenes)
 components/
-  elements/          # Reusable UI components (Button, Image, etc.)
+  elements/          # Reusable Tamagui-based components (styled() or Tamagui primitives)
   layouts/           # Layout-specific components (headers, navigation)
 scenes/              # Screen components (main UI logic)
 hooks/               # Custom React hooks
 slices/              # Redux Toolkit slices
 services/            # API and external services
-theme/               # Colors, fonts, styling system
+tamagui.config.ts    # createTamagui; palette + light/dark themes (colors)
 types/               # TypeScript type definitions
-utils/               # Utility functions (config, deviceInfo)
+utils/               # Utility functions (config, deviceInfo, fonts, images)
 ```
 
 ## Component Development Patterns
@@ -79,7 +81,7 @@ utils/               # Utility functions (config, deviceInfo)
 2. Use function declarations (not arrow functions)
 3. Place hooks at the top
 4. Use early returns for conditional rendering
-5. Use `StyleSheet.create` for styles
+5. Use Tamagui for all styling: tokens (`$primary`, `$background`), layout (YStack, XStack), `styled()` for custom components. No StyleSheet.
 6. Export default at bottom
 
 ### Import Order
@@ -100,11 +102,12 @@ utils/               # Utility functions (config, deviceInfo)
 
 ### When Creating Components
 
-1. Check if similar component exists in `components/elements`
-2. Use existing built-in features instead of creating new ones
-3. Import theme colors instead of hardcoding
-4. Use TypeScript interfaces for all props
-5. Write tests for all new components
+1. **Check Tamagui first**: Card, Input, Form, ListItem, Button, Avatar, Checkbox, Switch — use directly or extend with `styled()`
+2. Check `components/elements` for project-specific Tamagui-based wrappers
+3. Use Tamagui tokens (`$primary`, `$background`, `$color`) — never hardcode
+4. Custom components: use Tamagui `styled(View)`, `styled(Text)`, or composition — no StyleSheet
+5. Use TypeScript interfaces for all props
+6. Write tests for all new components
 
 ### State Management Rules
 
@@ -113,12 +116,13 @@ utils/               # Utility functions (config, deviceInfo)
 - Keep component state local only when not shared
 - Use built-in hooks for common functionality
 
-### Styling Rules
+### Styling Rules (Full Tamagui)
 
-- Always import from `@/theme/colors`
-- Use `StyleSheet.create` for performance
-- Use platform-specific styles when needed
-- Support dark/light mode through theme system
+- **Single styling system**: Tamagui only. Do not use StyleSheet.
+- **Color source**: palette in `tamagui.config.ts` → theme overrides
+- **All components**: Use Tamagui tokens (`$primary`, `$background`, `$color`), layout (YStack, XStack), and `styled()` for custom UI
+- **TamaguiProvider** receives `defaultTheme` from `useColorScheme()` for dark/light
+- Use Tamagui's responsive props when needed; support dark/light via Tamagui themes
 
 ### Testing Requirements
 
@@ -144,12 +148,13 @@ utils/               # Utility functions (config, deviceInfo)
 
 ## Key Development Principles
 
-1. **Reuse First** - Always check existing components and utilities before creating new ones
+1. **Reuse First** - Check Tamagui components, then `components/elements`, before creating new ones
 2. **Follow Patterns** - Use established patterns in the codebase
-3. **Use Built-ins** - Leverage project's built-in features (theme, hooks, utils)
-4. **Type Safety** - Use TypeScript strictly for better code quality
-5. **Test Everything** - Write tests for all components
-6. **Stay Consistent** - Follow naming conventions and code structure
+3. **Use Built-ins** - Leverage Tamagui, theme, hooks, and utils
+4. **Single Styling** - Tamagui only; colors in tamagui.config.ts; no StyleSheet or dual systems
+5. **Type Safety** - Use TypeScript strictly for better code quality
+6. **Test Everything** - Write tests for all components
+7. **Stay Consistent** - Follow naming conventions and code structure
 
 ## Common Utilities Available
 
@@ -178,11 +183,23 @@ import { supabase } from '@/services';
 // Storage: supabase.storage.from('bucket').upload(), etc.
 ```
 
-### Theme
+### Fonts & Images (app init)
 
 ```typescript
-// From @/theme
-import { colors, loadFonts, loadImages } from '@/theme';
+import { loadFonts } from '@/utils/fonts';
+import { loadImages } from '@/utils/images';
+import { images } from '@/utils/images'; // logo, logo_sm, logo_lg
+```
+
+### Tamagui (Full UI Styling)
+
+```typescript
+// Import from 'tamagui' (per Tamagui docs)
+import { Card, Input, Button, YStack, XStack, useTheme, styled, View, Text } from 'tamagui';
+
+// Tokens: $primary, $background, $color (defined in tamagui.config themes)
+// Custom: styled(View, { backgroundColor: '$background', ... }) or styled(Text, { ... })
+// Root: TamaguiProvider config={tamaguiConfig} defaultTheme={useColorScheme()!}
 ```
 
 ### Hooks
@@ -193,14 +210,22 @@ import useColorScheme from '@/hooks/useColorScheme';
 import { useDataPersist } from '@/hooks';
 ```
 
+## Tamagui Setup (per official docs)
+
+- **tamagui.config.ts**: `createTamagui({ ...defaultConfig, themes })` — palette + light/dark overrides. Include `declare module 'tamagui' { interface TamaguiCustomConfig extends ... }` for types.
+- **Root layout**: `<TamaguiProvider config={tamaguiConfig} defaultTheme={colorScheme!}>` — `colorScheme` from `useColorScheme()` (react-native).
+- **Web**: `import '../tamagui-web.css'` in root layout for Expo web.
+- **Babel**: `@tamagui/babel-plugin` with `config: './tamagui.config.ts'`, `components: ['tamagui']`.
+
 ## Architecture Notes
 
 - Project upgraded to Expo SDK 54
 - Using React 19.1 with React Native 0.81.4
+- Full Tamagui for all UI styling; colors from tamagui.config.ts; no StyleSheet
 - ESLint 9 with flat config
 - Directory "pages" was renamed to "scenes"
 - TypeScript strict mode enabled (v5.9.2)
-- Custom theme system with dark/light support
+- Custom theme system with dark/light support; Tamagui themes (light/dark) sync with useColorScheme
 - SafeAreaView imported from react-native-safe-area-context (not React Native)
 - Required peer dependencies: @expo/metro-runtime, react-native-worklets
 
@@ -241,8 +266,8 @@ import { useDataPersist } from '@/hooks';
 
 ## When in Doubt
 
-- Check existing components in `components/elements` for similar functionality
-- Use built-in utilities from `utils/`, `@/theme`, and `@/hooks`
-- Follow the established patterns in the codebase
-- Prefer extending existing components over creating new ones
-- Always use the theme system for consistent UI
+- Use Tamagui for all UI — no StyleSheet
+- Check Tamagui components (Card, Input, Form, ListItem, Button, etc.) first
+- Check `components/elements` for project-specific Tamagui wrappers
+- Use Tamagui tokens (`$primary`, `$background`) — never hardcode colors
+- Custom UI: `styled(View, {...})` or Tamagui composition

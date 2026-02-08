@@ -1,36 +1,31 @@
 import { Link, Stack } from 'expo-router';
-import { StyleSheet, View, Text } from 'react-native';
-import { colors } from '@/theme';
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceLight,
-  },
-  link: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 22,
-    backgroundColor: colors.primary,
-    height: 44,
-    width: '50%',
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 20,
-  },
-});
+import { YStack, XStack, Text } from 'tamagui';
 
 export default function NotFoundScreen() {
   return (
-    <View style={styles.root}>
+    <YStack
+      flex={1}
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      backgroundColor="$background">
       <Stack.Screen options={{ title: 'Oops!' }} />
-      <Link href="/" style={styles.link}>
-        <Text style={styles.title}>Go to home screen!</Text>
+      <Link href="/" asChild>
+        <XStack
+          paddingVertical={8}
+          paddingHorizontal={16}
+          borderRadius={22}
+          backgroundColor="$primary"
+          height={44}
+          width="50%"
+          alignItems="center"
+          justifyContent="center"
+          cursor="pointer">
+          <Text fontSize={24} color="$white">
+            Go to home screen!
+          </Text>
+        </XStack>
       </Link>
-    </View>
+    </YStack>
   );
 }

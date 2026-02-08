@@ -1,14 +1,14 @@
 import { Stack } from 'expo-router';
-import useColorScheme from '@/hooks/useColorScheme';
-import { colors } from '@/theme';
+import { useTheme } from 'tamagui';
+import { getThemeColor } from '@/utils/theme';
 
 export default function ProfileStackLayout() {
-  const { isDark } = useColorScheme();
+  const theme = useTheme();
   return (
     <Stack
       screenOptions={{
-        headerTintColor: colors.white,
-        headerStyle: { backgroundColor: isDark ? colors.surfaceDark : colors.primary },
+        headerTintColor: getThemeColor(theme, 'background', '#ffffff'),
+        headerStyle: { backgroundColor: getThemeColor(theme, 'color', '#0D9488') },
         headerTitleStyle: { fontSize: 18 },
       }}>
       <Stack.Screen

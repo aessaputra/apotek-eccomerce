@@ -1,127 +1,74 @@
 import GradientButton from '@/components/elements/GradientButton';
-import { StyleSheet, View, Text } from 'react-native';
-import useColorScheme from '@/hooks/useColorScheme';
+import { YStack, XStack, Text, useTheme } from 'tamagui';
 import { windowWidth } from '@/utils/deviceInfo';
-import { colors, fonts } from '@/theme';
 import config from '@/utils/config';
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 24,
-  },
-  title: {
-    fontSize: 16,
-    fontFamily: fonts.openSan.bold,
-    color: colors.textPrimaryLight,
-    marginTop: 16,
-    marginBottom: 32,
-    width: '100%',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: fonts.openSan.regular,
-    width: '100%',
-  },
-  buttonTitle: {
-    fontSize: 16,
-    color: colors.white,
-    textAlign: 'center',
-  },
-  button: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 22,
-    height: 44,
-    width: windowWidth / 2,
-    backgroundColor: colors.primary,
-    marginBottom: 40,
-  },
-  envContainer: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-  },
-  envTitle: {
-    fontSize: 14,
-    fontFamily: fonts.openSan.bold,
-    color: colors.textPrimaryLight,
-  },
-  envValue: {
-    fontSize: 14,
-    fontFamily: fonts.openSan.regular,
-    color: colors.textPrimaryLight,
-  },
-});
+import { getThemeColor } from '@/utils/theme';
 
 type WelcomeBottomSheetContentsProps = {
   onClose: () => void;
 };
 
 export default function BottomSheetContents({ onClose }: WelcomeBottomSheetContentsProps) {
-  const { isDark } = useColorScheme();
+  const theme = useTheme();
   return (
-    <View style={[styles.root, isDark && { backgroundColor: colors.surfaceDark }]}>
-      <Text style={[styles.title, isDark && { color: colors.textPrimaryDark }]}>
+    <YStack
+      flex={1}
+      justifyContent="center"
+      alignItems="center"
+      width="100%"
+      paddingHorizontal={24}
+      backgroundColor="$background">
+      <Text
+        fontSize={16}
+        fontFamily="$body"
+        fontWeight="700"
+        color="$color"
+        marginTop={16}
+        marginBottom={32}
+        width="100%"
+        textAlign="center">
         🎉 Selamat datang!{' '}
       </Text>
-      <Text
-        style={[
-          styles.subtitle,
-          { marginBottom: 32 },
-          isDark && { color: colors.textSecondaryDark },
-        ]}>
+      <Text fontSize={14} fontFamily="$body" width="100%" color="$color" marginBottom={32}>
         Aplikasi Apotek Eccomerce berjalan di environment
-        <Text style={{ fontFamily: fonts.openSan.bold }}>{` ${config.env} `}</Text>🚀
+        <Text fontWeight="700">{` ${config.env} `}</Text>🚀
       </Text>
-      <Text
-        style={[
-          styles.subtitle,
-          { marginBottom: 8 },
-          isDark && { color: colors.textSecondaryDark },
-        ]}>
+      <Text fontSize={14} fontFamily="$body" width="100%" color="$color" marginBottom={8}>
         Variabel environment yang dimuat:
       </Text>
       {Object.entries(config).map(([key, value]) => (
-        <View key={key} style={styles.envContainer}>
-          <Text
-            style={[
-              styles.envTitle,
-              isDark && { color: colors.textSecondaryDark },
-            ]}>{`✅ ${key}: `}</Text>
-          <Text style={[styles.envValue, isDark && { color: colors.textSecondaryDark }]}>
+        <XStack key={key} alignItems="center" width="100%" gap="$1">
+          <Text fontSize={14} fontWeight="700" color="$color">{`✅ ${key}: `}</Text>
+          <Text fontSize={14} fontFamily="$body" color="$color">
             {value}
           </Text>
-        </View>
+        </XStack>
       ))}
-      <Text
-        style={[
-          styles.subtitle,
-          { marginVertical: 32 },
-          isDark && { color: colors.textSecondaryDark },
-        ]}>
+      <Text fontSize={14} fontFamily="$body" width="100%" color="$color" marginVertical={32}>
         {`Setup selesai. Selamat berbelanja di Apotek Eccomerce.\n\nHappy coding!`}
       </Text>
       <GradientButton
         title="OK"
-        titleStyle={styles.buttonTitle}
-        style={styles.button}
+        titleStyle={{ color: getThemeColor(theme, 'background', '#ffffff'), textAlign: 'center' }}
+        style={{
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderRadius: 22,
+          height: 44,
+          width: windowWidth / 2,
+          backgroundColor: getThemeColor(theme, 'color', '#0D9488'),
+          marginBottom: 40,
+        }}
         gradientBackgroundProps={{
-          colors: [colors.primary, colors.accent],
+          colors: [
+            getThemeColor(theme, 'color', '#0D9488'),
+            getThemeColor(theme, 'color5', '#14B8A6'),
+          ],
           start: { x: 0, y: 1 },
           end: { x: 0.8, y: 0 },
         }}
         onPress={onClose}
       />
-    </View>
+    </YStack>
   );
 }

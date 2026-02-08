@@ -10,7 +10,7 @@ const store = configureStore({
     // add more store ...
   },
   middleware: getDefaultMiddleware =>
-    config.env === Env.dev ? getDefaultMiddleware() : getDefaultMiddleware().concat(logger),
+    config.env === Env.dev ? getDefaultMiddleware().concat(logger) : getDefaultMiddleware(),
   devTools: config.env === Env.dev,
 });
 

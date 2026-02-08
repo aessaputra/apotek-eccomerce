@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen } from '../../../test-utils/renderWithTheme';
 import Button from './Button';
 
 describe('<Button />', () => {

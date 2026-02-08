@@ -8,7 +8,7 @@ type ColorSchemeResult = {
   isLight: boolean;
 };
 
-function useColorSchemaForMobile(): ColorSchemeResult {
+function useColorSchemeForMobile(): ColorSchemeResult {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const isLight = colorScheme === 'light';
@@ -30,4 +30,4 @@ function useColorSchemeForWeb(): ColorSchemeResult {
   return { colorScheme: 'light', isDark: false, isLight: true };
 }
 
-export default isMobile ? useColorSchemaForMobile : useColorSchemeForWeb;
+export default isMobile ? useColorSchemeForMobile : useColorSchemeForWeb;

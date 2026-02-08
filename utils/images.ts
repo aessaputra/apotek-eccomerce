@@ -6,10 +6,10 @@ export const images: { [key: string]: ReturnType<typeof require> } = {
   logo_lg: require('@/assets/images/logo-lg.png'),
 };
 
-// preload images
 const preloadImages = () =>
   Object.keys(images).map(key => {
     return Asset.fromModule(images[key] as number).downloadAsync();
   });
 
+/** Preload image assets. Panggil saat app init, mis. di root layout. */
 export const loadImages = async () => Promise.all(preloadImages());

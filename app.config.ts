@@ -1,4 +1,12 @@
+import path from 'path';
+import { config as loadEnv } from 'dotenv';
 import { ExpoConfig, ConfigContext } from 'expo/config';
+
+// Expo CLI only loads .env by default, not .env.dev. When running `npx expo start`
+// (without npm run dev), load .env.dev so EXPO_PROJECT_ID and other vars are set.
+if (!process.env.EXPO_PROJECT_ID) {
+  loadEnv({ path: path.resolve(process.cwd(), '.env.dev') });
+}
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const expoProjectId = process.env.EXPO_PROJECT_ID;

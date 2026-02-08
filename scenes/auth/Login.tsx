@@ -1,113 +1,21 @@
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { YStack, XStack, Text, Input, useTheme } from 'tamagui';
+import { Platform, ScrollView, KeyboardAvoidingView } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import useColorScheme from '@/hooks/useColorScheme';
 import Button from '@/components/elements/Button';
-import { colors, fonts } from '@/theme';
 import { signInWithPassword } from '@/services/auth.service';
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-  },
-  scroll: {
-    flex: 1,
-  },
-  inner: {
-    paddingTop: 40,
-    paddingBottom: 32,
-  },
-  brandLabel: {
-    fontSize: 12,
-    letterSpacing: 1.2,
-    marginBottom: 8,
-    fontFamily: fonts.openSan.semiBold,
-  },
-  title: {
-    fontSize: 32,
-    marginBottom: 8,
-    fontFamily: fonts.openSan.bold,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 28,
-  },
-  card: {
-    borderRadius: 16,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  input: {
-    height: 52,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 14,
-    fontFamily: fonts.openSan.regular,
-  },
-  inputLast: {
-    marginBottom: 20,
-  },
-  errorText: {
-    fontSize: 14,
-    marginBottom: 12,
-    fontFamily: fonts.openSan.semiBold,
-  },
-  button: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    height: 52,
-    marginBottom: 20,
-  },
-  buttonTitle: {
-    fontSize: 16,
-    fontFamily: fonts.openSan.semiBold,
-  },
-  linkRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  link: {
-    fontSize: 15,
-    fontFamily: fonts.openSan.semiBold,
-  },
-});
+import { getThemeColor } from '@/utils/theme';
 
 export default function Login() {
-  const { isDark } = useColorScheme();
+  const theme = useTheme();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const containerBg = isDark ? colors.surfaceDark : colors.surfaceLight;
-  const cardBg = isDark ? colors.cardDark : colors.cardLight;
-  const titleColor = isDark ? colors.textPrimaryDark : colors.textPrimaryLight;
-  const subtitleColor = isDark ? colors.textSecondaryDark : colors.textSecondaryLight;
-  const brandColor = colors.primary;
-  const inputBg = isDark ? colors.cardDark : colors.cardLight;
-  const inputBorder = isDark ? colors.borderDark : colors.borderLight;
-  const inputColor = isDark ? colors.textPrimaryDark : colors.textPrimaryLight;
+  const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
 
   async function handleSubmit() {
     setError(null);
@@ -135,81 +43,119 @@ export default function Login() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: containerBg }]} edges={['top']}>
-      <KeyboardAvoidingView
-        style={styles.scroll}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
-        <ScrollView
-          contentContainerStyle={styles.inner}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <Text style={[styles.brandLabel, { color: brandColor }]}>APOTEK</Text>
-          <Text style={[styles.title, { color: titleColor }]}>Masuk</Text>
-          <Text style={[styles.subtitle, { color: subtitleColor }]}>
-            Gunakan akun Anda untuk mengakses layanan
-          </Text>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+      <YStack flex={1} backgroundColor="$background">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 32 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <Text
+              fontSize={12}
+              letterSpacing={1.2}
+              marginBottom={8}
+              fontWeight="600"
+              color="$primary">
+              APOTEK
+            </Text>
+            <Text
+              fontSize={32}
+              marginBottom={8}
+              fontWeight="700"
+              letterSpacing={-0.5}
+              color="$color">
+              Masuk
+            </Text>
+            <Text fontSize={16} marginBottom={28} color="$colorPress">
+              Gunakan akun Anda untuk mengakses layanan
+            </Text>
 
-          <View style={[styles.card, { backgroundColor: cardBg }]}>
-            {error ? (
-              <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-            ) : null}
+            <YStack
+              borderRadius={16}
+              paddingVertical={24}
+              paddingHorizontal={20}
+              marginBottom={24}
+              backgroundColor="$backgroundHover"
+              shadowColor="$shadowColor"
+              shadowOffset={{ width: 0, height: 2 }}
+              shadowOpacity={0.06}
+              shadowRadius={8}
+              elevation={3}>
+              {error ? (
+                <Text fontSize={14} marginBottom={12} fontWeight="600" color="$red10">
+                  {error}
+                </Text>
+              ) : null}
 
-            <TextInput
-              style={[
-                styles.input,
-                styles.inputLast,
-                {
-                  backgroundColor: inputBg,
-                  borderColor: inputBorder,
-                  color: inputColor,
-                },
-              ]}
-              placeholder="Email"
-              placeholderTextColor={subtitleColor}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              editable={!loading}
-              accessibilityLabel="Email"
-            />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: inputBg,
-                  borderColor: inputBorder,
-                  color: inputColor,
-                },
-              ]}
-              placeholder="Password"
-              placeholderTextColor={subtitleColor}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!loading}
-              accessibilityLabel="Password"
-            />
+              <Input
+                height={52}
+                borderWidth={1.5}
+                borderRadius={12}
+                paddingHorizontal={16}
+                fontSize={16}
+                marginBottom={20}
+                fontFamily="$body"
+                backgroundColor="$background"
+                borderColor="$borderColor"
+                color="$color"
+                placeholder="Email"
+                placeholderTextColor={placeholderColor}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                editable={!loading}
+                accessibilityLabel="Email"
+              />
+              <Input
+                height={52}
+                borderWidth={1.5}
+                borderRadius={12}
+                paddingHorizontal={16}
+                fontSize={16}
+                marginBottom={20}
+                fontFamily="$body"
+                backgroundColor="$background"
+                borderColor="$borderColor"
+                color="$color"
+                placeholder="Password"
+                placeholderTextColor={placeholderColor}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                editable={!loading}
+                accessibilityLabel="Password"
+              />
 
-            <Button
-              title="Masuk"
-              style={[styles.button, { backgroundColor: colors.primary }]}
-              titleStyle={[styles.buttonTitle, { color: colors.white }]}
-              onPress={handleSubmit}
-              isLoading={loading}
-              loaderColor={colors.white}
-            />
-          </View>
+              <Button
+                title="Masuk"
+                paddingVertical={14}
+                borderRadius={12}
+                height={52}
+                marginBottom={20}
+                backgroundColor="$primary"
+                titleStyle={{ color: '$white', fontSize: 16, fontWeight: '600' }}
+                onPress={handleSubmit}
+                isLoading={loading}
+                loaderColor="$white"
+              />
+            </YStack>
 
-          <View style={styles.linkRow}>
-            <Link href="/(auth)/signup">
-              <Text style={[styles.link, { color: colors.primary }]}>Belum punya akun? Daftar</Text>
-            </Link>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+            <XStack flexDirection="row" justifyContent="center" marginTop={8}>
+              <Link href="/(auth)/signup">
+                <Text fontSize={15} fontWeight="600" color="$primary">
+                  Belum punya akun? Daftar
+                </Text>
+              </Link>
+            </XStack>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </YStack>
     </SafeAreaView>
   );
 }
