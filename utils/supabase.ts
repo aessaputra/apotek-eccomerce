@@ -12,9 +12,7 @@ const noopStorage = {
   removeItem: (_key: string): Promise<void> => Promise.resolve(),
 };
 
-const isNode =
-  typeof process !== 'undefined' &&
-  typeof process.versions?.node === 'string';
+const isNode = typeof process !== 'undefined' && typeof process.versions?.node === 'string';
 
 const authStorage = isNode ? noopStorage : AsyncStorage;
 
