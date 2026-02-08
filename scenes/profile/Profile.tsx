@@ -169,7 +169,9 @@ export default function Profile() {
 
         {editing ? (
           <View style={styles.section}>
-            <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Nama lengkap</Text>
+            <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>
+              Nama lengkap
+            </Text>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TextInput
               style={[styles.input, isDark && styles.darkInput]}
@@ -180,7 +182,9 @@ export default function Profile() {
               autoCapitalize="words"
               editable={!saving}
             />
-            <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Nomor telepon</Text>
+            <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>
+              Nomor telepon
+            </Text>
             <TextInput
               style={[styles.input, isDark && styles.darkInput]}
               placeholder="Nomor telepon"
@@ -213,13 +217,17 @@ export default function Profile() {
         ) : (
           <>
             <View style={styles.section}>
-              <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Nama</Text>
+              <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>
+                Nama
+              </Text>
               <Text style={[styles.value, isDark && styles.darkValue]}>
                 {user.full_name || user.name || '–'}
               </Text>
             </View>
             <View style={styles.section}>
-              <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>Telepon</Text>
+              <Text style={[styles.label, isDark && { color: colors.textSecondaryDark }]}>
+                Telepon
+              </Text>
               <Text style={[styles.value, isDark && styles.darkValue]}>
                 {user.phone_number || '–'}
               </Text>

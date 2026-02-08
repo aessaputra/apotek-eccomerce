@@ -2,21 +2,10 @@ import { useState, useEffect } from 'react';
 import { Keyboard, KeyboardEvent } from 'react-native';
 
 export function useKeyboard() {
-  const [isKeyboardVisible, setKeyboardVisible] = useState<boolean>(false);
-  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
-
-  const dismissKeyboard = () => {
-    Keyboard.dismiss();
-  };
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    const keyboardWillShowListener = Keyboard.addListener('keyboardWillShow', () => {
-      setKeyboardVisible(true);
-    });
-    const keyboardWillHideListener = Keyboard.addListener('keyboardWillHide', () => {
-      setKeyboardVisible(false);
-      setKeyboardHeight(0);
-    });
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e: KeyboardEvent) => {
       setKeyboardVisible(true);
       setKeyboardHeight(e.endCoordinates.height);
@@ -27,12 +16,10 @@ export function useKeyboard() {
     });
 
     return () => {
-      keyboardWillShowListener.remove();
-      keyboardWillHideListener.remove();
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
     };
   }, []);
 
-  return { isKeyboardVisible, keyboardHeight, dismissKeyboard };
+  return { keyboardVisible, keyboardHeight };
 }

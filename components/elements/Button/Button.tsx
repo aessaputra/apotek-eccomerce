@@ -53,6 +53,8 @@ function Button({
     <Pressable
       style={[styles.root, opacityStyle, style]}
       disabled={disabled ?? isLoading}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       {...others}>
       {children}
       {isLoading && <ActivityIndicator size="small" color={loaderColor} />}

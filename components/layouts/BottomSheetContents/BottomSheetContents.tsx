@@ -71,21 +71,44 @@ export default function BottomSheetContents({ onClose }: WelcomeBottomSheetConte
   const { isDark } = useColorScheme();
   return (
     <View style={[styles.root, isDark && { backgroundColor: colors.surfaceDark }]}>
-      <Text style={[styles.title, isDark && { color: colors.textPrimaryDark }]}>🎉 Selamat datang! </Text>
-      <Text style={[styles.subtitle, { marginBottom: 32 }, isDark && { color: colors.textSecondaryDark }]}>
+      <Text style={[styles.title, isDark && { color: colors.textPrimaryDark }]}>
+        🎉 Selamat datang!{' '}
+      </Text>
+      <Text
+        style={[
+          styles.subtitle,
+          { marginBottom: 32 },
+          isDark && { color: colors.textSecondaryDark },
+        ]}>
         Aplikasi Apotek Eccomerce berjalan di environment
         <Text style={{ fontFamily: fonts.openSan.bold }}>{` ${config.env} `}</Text>🚀
       </Text>
-      <Text style={[styles.subtitle, { marginBottom: 8 }, isDark && { color: colors.textSecondaryDark }]}>
+      <Text
+        style={[
+          styles.subtitle,
+          { marginBottom: 8 },
+          isDark && { color: colors.textSecondaryDark },
+        ]}>
         Variabel environment yang dimuat:
       </Text>
       {Object.entries(config).map(([key, value]) => (
         <View key={key} style={styles.envContainer}>
-          <Text style={[styles.envTitle, isDark && { color: colors.textSecondaryDark }]}>{`✅ ${key}: `}</Text>
-          <Text style={[styles.envValue, isDark && { color: colors.textSecondaryDark }]}>{value}</Text>
+          <Text
+            style={[
+              styles.envTitle,
+              isDark && { color: colors.textSecondaryDark },
+            ]}>{`✅ ${key}: `}</Text>
+          <Text style={[styles.envValue, isDark && { color: colors.textSecondaryDark }]}>
+            {value}
+          </Text>
         </View>
       ))}
-      <Text style={[styles.subtitle, { marginVertical: 32 }, isDark && { color: colors.textSecondaryDark }]}>
+      <Text
+        style={[
+          styles.subtitle,
+          { marginVertical: 32 },
+          isDark && { color: colors.textSecondaryDark },
+        ]}>
         {`Setup selesai. Selamat berbelanja di Apotek Eccomerce.\n\nHappy coding!`}
       </Text>
       <GradientButton

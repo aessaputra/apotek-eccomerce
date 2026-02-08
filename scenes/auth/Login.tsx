@@ -117,14 +117,20 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    const { data, error: err } = await signInWithPassword({ email: trimmedEmail, password });
-    setLoading(false);
-    if (err) {
-      setError(err.message ?? 'Login gagal. Periksa email dan password.');
-      return;
-    }
-    if (data?.session) {
-      router.replace('/(main)/(tabs)');
+    try {
+      const { data, error: err } = await signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+      if (err) {
+        setError(err.message ?? 'Login gagal. Periksa email dan password.');
+        return;
+      }
+      if (data?.session) {
+        router.replace('/(main)/(tabs)');
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -167,6 +173,7 @@ export default function Login() {
               autoCorrect={false}
               keyboardType="email-address"
               editable={!loading}
+              accessibilityLabel="Email"
             />
             <TextInput
               style={[
@@ -183,6 +190,7 @@ export default function Login() {
               onChangeText={setPassword}
               secureTextEntry
               editable={!loading}
+              accessibilityLabel="Password"
             />
 
             <Button

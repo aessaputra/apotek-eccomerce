@@ -2,10 +2,9 @@ import { useEffect } from 'react';
 import { Alert, AppState, Platform, AppStateStatus } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { supabase } from '@/utils/supabase';
-import { getProfile } from '@/services/profile.service';
+import { getCurrentUser } from '@/services/user.service';
 import { signOut as authSignOut } from '@/services/auth.service';
 import { useAppSlice } from '@/slices';
-import { profileToUser } from '@/types/user';
 import type { Dispatch } from '@/utils/store';
 
 const ADMIN_REJECT_MESSAGE =
@@ -24,28 +23,17 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     let mounted = true;
 
     async function init() {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-
+      const result = await getCurrentUser();
       if (!mounted) return;
 
-      if (!session?.user) {
+      if (!result) {
         dispatch(setUser(undefined));
         dispatch(setLoggedIn(false));
         dispatch(setChecked(true));
         return;
       }
 
-      const profile = await getProfile(session.user.id);
-      if (!mounted) return;
-
-      if (!profile) {
-        dispatch(setUser(undefined));
-        dispatch(setLoggedIn(false));
-        dispatch(setChecked(true));
-        return;
-      }
-
+      const { user, profile } = result;
       if (profile.role === 'admin') {
         await authSignOut();
         if (mounted) {
@@ -66,7 +54,6 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      const user = profileToUser(profile, session.user.email ?? '');
       dispatch(setUser(user));
       dispatch(setLoggedIn(true));
       dispatch(setChecked(true));
@@ -80,42 +67,53 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   // onAuthStateChange
   useEffect(() => {
+    let mounted = true;
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || !session?.user) {
-        dispatch(setUser(undefined));
-        dispatch(setLoggedIn(false));
+        if (mounted) {
+          dispatch(setUser(undefined));
+          dispatch(setLoggedIn(false));
+        }
         return;
       }
 
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        const profile = await getProfile(session.user.id);
-        if (!profile) {
+        const result = await getCurrentUser();
+        if (!mounted) return;
+        if (!result) {
           dispatch(setUser(undefined));
           dispatch(setLoggedIn(false));
           return;
         }
+        const { user, profile } = result;
         if (profile.role === 'admin') {
           await authSignOut();
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          Alert.alert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+          if (mounted) {
+            dispatch(setUser(undefined));
+            dispatch(setLoggedIn(false));
+            Alert.alert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+          }
           return;
         }
         if (profile.is_banned) {
           await authSignOut();
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
+          if (mounted) {
+            dispatch(setUser(undefined));
+            dispatch(setLoggedIn(false));
+          }
           return;
         }
-        const user = profileToUser(profile, session.user.email ?? '');
-        dispatch(setUser(user));
-        dispatch(setLoggedIn(true));
+        if (mounted) {
+          dispatch(setUser(user));
+          dispatch(setLoggedIn(true));
+        }
       }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [dispatch, setUser, setLoggedIn]);

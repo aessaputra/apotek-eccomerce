@@ -122,20 +122,23 @@ export default function SignUp() {
       return;
     }
     setLoading(true);
-    const { data, error: err } = await signUp({
-      email: trimmedEmail,
-      password,
-      options: { data: { full_name: fullName.trim() || undefined } },
-    });
-    setLoading(false);
-    if (err) {
-      setError(err.message ?? 'Pendaftaran gagal. Coba lagi.');
-      return;
-    }
-    if (data?.session) {
-      router.replace('/(main)/(tabs)');
-    } else if (data?.user && !data.session) {
-      setError('Periksa email Anda untuk tautan konfirmasi.');
+    try {
+      const { data, error: err } = await signUp({
+        email: trimmedEmail,
+        password,
+        options: { data: { full_name: fullName.trim() || undefined } },
+      });
+      if (err) {
+        setError(err.message ?? 'Pendaftaran gagal. Coba lagi.');
+        return;
+      }
+      if (data?.session) {
+        router.replace('/(main)/(tabs)');
+      } else if (data?.user && !data.session) {
+        setError('Periksa email Anda untuk tautan konfirmasi.');
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -175,6 +178,7 @@ export default function SignUp() {
               onChangeText={setFullName}
               autoCapitalize="words"
               editable={!loading}
+              accessibilityLabel="Nama lengkap"
             />
             <TextInput
               style={[
@@ -193,6 +197,7 @@ export default function SignUp() {
               autoCorrect={false}
               keyboardType="email-address"
               editable={!loading}
+              accessibilityLabel="Email"
             />
             <TextInput
               style={[
@@ -210,6 +215,7 @@ export default function SignUp() {
               onChangeText={setPassword}
               secureTextEntry
               editable={!loading}
+              accessibilityLabel="Password"
             />
 
             <Button
