@@ -1,7 +1,12 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const expoProjectId = process.env.EXPO_PROJECT_ID ?? '18adc0d0-eb1d-11e9-8009-d524ed5cc4a7';
+  const expoProjectId = process.env.EXPO_PROJECT_ID;
+  if (!expoProjectId) {
+    throw new Error(
+      'EXPO_PROJECT_ID is required. Set it in .env.dev / .env.prod (or .env.*.example for CI).'
+    );
+  }
   const expoConfig: ExpoConfig = {
     ...config,
     slug: process.env.EXPO_SLUG ?? 'react-native-boilerplate',
