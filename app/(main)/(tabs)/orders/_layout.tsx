@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
+import HeaderCartIcon from '@/components/layouts/HeaderCartIcon';
 import useColorScheme from '@/hooks/useColorScheme';
 import { colors } from '@/theme';
 
-export default function ProfileStackLayout() {
+export default function OrdersStackLayout() {
   const { isDark } = useColorScheme();
   return (
     <Stack
@@ -14,11 +15,11 @@ export default function ProfileStackLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: 'Akun',
+          title: 'Pesanan',
           headerTitleAlign: 'center',
+          headerRight: () => <HeaderCartIcon forHeaderRight />,
         }}
       />
-      <Stack.Screen name="details" options={{ title: 'Details' }} />
     </Stack>
   );
 }

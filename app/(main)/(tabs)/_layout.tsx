@@ -23,15 +23,28 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: 'Beranda',
           tabBarIcon: ({ color }) => <AntDesign name="home" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Pesanan',
+          tabBarIcon: ({ color }) => <AntDesign name="solution" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <AntDesign name="profile" size={24} color={color} />,
+          title: 'Akun',
+          tabBarIcon: ({ color }) => <AntDesign name="user" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="cart"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import useColorScheme from '@/hooks/useColorScheme';
 import { colors } from '@/theme';
 
-export default function ProfileStackLayout() {
+export default function CartStackLayout() {
   const { isDark } = useColorScheme();
   return (
     <Stack
@@ -14,11 +14,10 @@ export default function ProfileStackLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: 'Akun',
+          title: 'Keranjang',
           headerTitleAlign: 'center',
         }}
       />
-      <Stack.Screen name="details" options={{ title: 'Details' }} />
     </Stack>
   );
 }
