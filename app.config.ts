@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const expoProjectId = process.env.EXPO_PROJECT_ID;
   if (!expoProjectId) {
     throw new Error(
-      'EXPO_PROJECT_ID is required. Set it in .env.dev / .env.prod (or .env.*.example for CI).'
+      'EXPO_PROJECT_ID is required. Set it in .env.dev / .env.prod (or .env.*.example for CI).',
     );
   }
   const expoConfig: ExpoConfig = {
@@ -13,8 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: process.env.EXPO_NAME ?? 'React Native Boilerplate',
     ios: {
       ...config.ios,
-      bundleIdentifier:
-        process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekeccomerce',
+      bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekeccomerce',
     },
     android: {
       ...config.android,

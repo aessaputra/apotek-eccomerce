@@ -158,7 +158,10 @@ export default function Profile() {
 
   return (
     <SafeAreaView style={[styles.container, isDark && styles.darkContainer]} edges={['top']}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.inner}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text style={styles.label}>Email</Text>
           <Text style={[styles.value, isDark && styles.darkValue]}>{user.email}</Text>

@@ -3,11 +3,11 @@ import { Env } from '@/types';
 
 const extra = Constants.expoConfig?.extra as
   | {
-    env?: Env;
-    apiUrl?: string;
-    supabaseUrl?: string;
-    supabasePublishableKey?: string;
-  }
+      env?: Env;
+      apiUrl?: string;
+      supabaseUrl?: string;
+      supabasePublishableKey?: string;
+    }
   | undefined;
 
 const config = {
