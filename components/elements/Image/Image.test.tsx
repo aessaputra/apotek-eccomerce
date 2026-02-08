@@ -1,10 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import Image from './Image';
+import { images } from '@/theme/images';
 
 describe('<Image />', () => {
-  it('renders correctly with a title', () => {
-    render(<Image testID="image" source={{ uri: 'https://via.placeholder.com/150' }} />);
+  it('renders correctly with a local asset', () => {
+    render(<Image testID="image" source={images.logo_sm} />);
     const image = screen.getByTestId(/image/i);
     expect(image).not.toBeNull();
   });

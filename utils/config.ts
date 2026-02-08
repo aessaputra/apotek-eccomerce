@@ -12,7 +12,7 @@ const extra = Constants.expoConfig?.extra as
 
 const config = {
   env: extra?.env ?? ('development' as Env),
-  apiUrl: extra?.apiUrl ?? 'https://example.com',
+  apiUrl: extra?.apiUrl ?? '',
   supabaseUrl: extra?.supabaseUrl ?? '',
   supabasePublishableKey: extra?.supabasePublishableKey ?? '',
 } as const satisfies {

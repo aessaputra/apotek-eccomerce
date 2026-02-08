@@ -71,13 +71,13 @@ export default function BottomSheetContents({ onClose }: WelcomeBottomSheetConte
   const { isDark } = useColorScheme();
   return (
     <View style={[styles.root, isDark && { backgroundColor: colors.blackGray }]}>
-      <Text style={[styles.title, isDark && { color: colors.gray }]}>🎉 Congratulations! </Text>
+      <Text style={[styles.title, isDark && { color: colors.gray }]}>🎉 Selamat datang! </Text>
       <Text style={[styles.subtitle, { marginBottom: 32 }, isDark && { color: colors.gray }]}>
-        You have successfully spin up the React Native Boilerplate project in the
-        <Text style={{ fontFamily: fonts.openSan.bold }}>{` ${config.env} `}</Text>environment 🚀
+        Aplikasi Apotek Eccomerce berjalan di environment
+        <Text style={{ fontFamily: fonts.openSan.bold }}>{` ${config.env} `}</Text>🚀
       </Text>
       <Text style={[styles.subtitle, { marginBottom: 8 }, isDark && { color: colors.gray }]}>
-        Injected Environmental Variables:
+        Variabel environment yang dimuat:
       </Text>
       {Object.entries(config).map(([key, value]) => (
         <View key={key} style={styles.envContainer}>
@@ -86,7 +86,7 @@ export default function BottomSheetContents({ onClose }: WelcomeBottomSheetConte
         </View>
       ))}
       <Text style={[styles.subtitle, { marginVertical: 32 }, isDark && { color: colors.gray }]}>
-        {`Your foundational setup is now complete, paving the way for seamless development and innovation. \n\nHappy coding!`}
+        {`Setup selesai. Selamat berbelanja di Apotek Eccomerce.\n\nHappy coding!`}
       </Text>
       <GradientButton
         title="OK"

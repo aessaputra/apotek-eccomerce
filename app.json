@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "react-native-boilerplate",
-    "slug": "react-native-boilerplate",
-    "scheme": "react-native-boilerplate",
+    "name": "apotek-eccomerce",
+    "slug": "apotek-eccomerce",
+    "scheme": "apotek-eccomerce",
     "version": "3.0.0",
     "owner": "i-have-no-company",
     "newArchEnabled": true,

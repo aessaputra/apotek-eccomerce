@@ -9,8 +9,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   }
   const expoConfig: ExpoConfig = {
     ...config,
-    slug: process.env.EXPO_SLUG ?? 'react-native-boilerplate',
-    name: process.env.EXPO_NAME ?? 'React Native Boilerplate',
+    slug: process.env.EXPO_SLUG ?? 'apotek-eccomerce',
+    name: process.env.EXPO_NAME ?? 'Apotek Eccomerce',
     ios: {
       ...config.ios,
       bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekeccomerce',
@@ -32,7 +32,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.extra,
       eas: { projectId: expoProjectId },
       env: process.env.ENV ?? 'development',
-      apiUrl: process.env.API_URL ?? 'https://example.com',
+      apiUrl: process.env.API_URL ?? '',
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '',
     },
