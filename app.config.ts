@@ -9,11 +9,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...config.ios,
       bundleIdentifier:
-        process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.watarumaeda.react-native-boilerplate',
+        process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekeccomerce',
     },
     android: {
       ...config.android,
-      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.watarumaeda.react_native_boilerplate',
+      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekeccomerce',
     },
     web: {
       ...config.web,
@@ -29,7 +29,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       eas: { projectId: expoProjectId },
       env: process.env.ENV ?? 'development',
       apiUrl: process.env.API_URL ?? 'https://example.com',
-      // add more env variables here...
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
+      supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '',
     },
     plugins: [
       'expo-router',

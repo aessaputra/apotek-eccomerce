@@ -39,9 +39,11 @@ Say goodbye to time-consuming setup tasks like restructuring files, installing l
 
 ## 🚀 Quick Start
 
-1. Download zip or click "Use this template"
-2. Install packages with `npm install` or `yarn install`
-3. Spin up dev environment with `npm run dev` or `yarn run dev`
+**Pertama kali?** → Baca **[GETTING_STARTED.md](./GETTING_STARTED.md)** (env, Supabase, jalankan app).
+
+1. Install packages: `npm install`
+2. Copy `.env.dev.example` to `.env.dev` and fill in Expo Project ID + Supabase URL & Key
+3. Run: `npm run dev` then press `i` (iOS), `a` (Android), or `w` (Web)
 
 ## 🤖 What's included
 

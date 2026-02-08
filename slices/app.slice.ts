@@ -19,6 +19,9 @@ const slice = createSlice({
   name: 'app',
   initialState,
   reducers: {
+    setChecked: (state: AppState, { payload }: PayloadAction<boolean>) => {
+      state.checked = payload;
+    },
     setLoggedIn: (state: AppState, { payload }: PayloadAction<boolean>) => {
       state.checked = true;
       state.loggedIn = payload;
