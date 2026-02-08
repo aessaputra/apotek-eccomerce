@@ -55,16 +55,20 @@ jobs:
         id: branch-name
         uses: tj-actions/branch-names@v8
 
-      # eas update (PR)
+      # eas update (PR) - sanitize in shell so double quotes in message don't break eas
       - name: EAS update
         if: github.event_name == 'pull_request'
         env:
-          UPDATE_MSG: ${{ format('{0}', replace(github.event.pull_request.title, '"', "'")) }}
-        run: eas update --branch ${{ steps.branch-name.outputs.current_branch }} --message "$UPDATE_MSG"
+          UPDATE_MSG: ${{ github.event.pull_request.title }}
+        run: |
+          SAFE_MSG="${UPDATE_MSG//\"/\'}"
+          eas update --branch ${{ steps.branch-name.outputs.current_branch }} --message "$SAFE_MSG"
 
-      # eas update (PUSH)
+      # eas update (PUSH) - sanitize in shell so double quotes in message don't break eas
       - name: EAS update
         if: github.event_name == 'push'
         env:
-          UPDATE_MSG: ${{ format('{0}', replace(github.event.head_commit.message, '"', "'")) }}
-        run: eas update --branch ${{ steps.branch-name.outputs.current_branch }} --message "$UPDATE_MSG"
+          UPDATE_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          SAFE_MSG="${UPDATE_MSG//\"/\'}"
+          eas update --branch ${{ steps.branch-name.outputs.current_branch }} --message "$SAFE_MSG"
