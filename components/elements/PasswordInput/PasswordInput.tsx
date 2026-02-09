@@ -1,0 +1,105 @@
+import { useState } from 'react';
+import { Pressable, TextInput } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { XStack, useTheme } from 'tamagui';
+import { getThemeColor } from '@/utils/theme';
+
+export interface PasswordInputProps {
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+  error?: boolean;
+  disabled?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
+}
+
+/**
+ * Password input dengan toggle visibility dan enhanced styling.
+ * Mengikuti design system apotek dengan focus states yang jelas.
+ * Menggunakan Tamagui XStack untuk layout dan styling, TextInput native untuk input functionality.
+ * Konsisten dengan EmailInput component dan project guidelines (Tamagui only, no StyleSheet).
+ */
+function PasswordInput({
+  value,
+  onChangeText,
+  placeholder,
+  error,
+  disabled,
+  onFocus,
+  onBlur,
+}: PasswordInputProps) {
+  const theme = useTheme();
+  const [isVisible, setIsVisible] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
+  const textColor = getThemeColor(theme, 'color', '#111827');
+  const surfaceColor = getThemeColor(theme, 'surface', '#FFFFFF');
+  const borderColorValue = error
+    ? getThemeColor(theme, 'danger', '#DC2626')
+    : isFocused
+      ? getThemeColor(theme, 'primary', '#16A34A')
+      : getThemeColor(theme, 'surfaceBorder', '#E5E7EB');
+
+  return (
+    <XStack
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 18,
+        overflow: 'hidden',
+        backgroundColor: surfaceColor,
+        borderWidth: isFocused ? 2 : 1.5,
+        borderRadius: 14,
+        borderColor: borderColorValue,
+        height: 56,
+        opacity: disabled ? 0.6 : 1,
+      }}>
+      <TextInput
+        style={{
+          flex: 1,
+          height: '100%',
+          padding: 0,
+          margin: 0,
+          fontSize: 16,
+          fontFamily: theme.bodyFont?.val || 'System',
+          color: textColor,
+        }}
+        placeholder={placeholder}
+        placeholderTextColor={placeholderColor}
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={!isVisible}
+        autoCapitalize="none"
+        autoCorrect={false}
+        editable={!disabled}
+        underlineColorAndroid="transparent"
+        textAlignVertical="center"
+        onFocus={() => {
+          setIsFocused(true);
+          onFocus?.();
+        }}
+        onBlur={() => {
+          setIsFocused(false);
+          onBlur?.();
+        }}
+        accessibilityLabel={placeholder || 'Password'}
+        testID="password-input"
+      />
+      <Pressable
+        onPress={() => setIsVisible(!isVisible)}
+        style={{ padding: 4, marginLeft: 8 }}
+        disabled={disabled}
+        accessibilityLabel={isVisible ? 'Sembunyikan password' : 'Tampilkan password'}
+        accessibilityRole="button">
+        <FontAwesome5
+          name={isVisible ? 'eye-slash' : 'eye'}
+          size={18}
+          color={getThemeColor(theme, 'colorPress', '#6B7280')}
+        />
+      </Pressable>
+    </XStack>
+  );
+}
+
+export default PasswordInput;

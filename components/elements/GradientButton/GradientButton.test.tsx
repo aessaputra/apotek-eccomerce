@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '../../../test-utils/renderWithTheme';
+import { render, screen, waitFor } from '../../../test-utils/renderWithTheme';
 import GradientButton from './GradientButton';
 
 describe('<GradientButton />', () => {
@@ -14,7 +14,10 @@ describe('<GradientButton />', () => {
         }}
       />,
     );
-    const button = screen.getByText(/Click Me/i);
-    expect(button).not.toBeNull();
+
+    await waitFor(() => {
+      const button = screen.getByText(/Click Me/i);
+      expect(button).not.toBeNull();
+    });
   });
 });

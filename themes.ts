@@ -2,35 +2,40 @@ import { createThemes } from '@tamagui/config/v5';
 import { defaultComponentThemes } from '@tamagui/theme-builder';
 import { yellow, yellowDark, red, redDark, green, greenDark } from '@tamagui/colors';
 
-// base.extra: semantic keys (white, red10, shadowColor) so useTheme() returns theme.white.val etc. per Tamagui docs.
+// base.extra: semantic keys (white, primary, shadowColor, dll)
+// sehingga useTheme() mengembalikan theme.white.val, theme.primary.val, dst. (sesuai docs Tamagui).
+// Palet disesuaikan untuk brand Apotek (neutral klinis + aksen hijau/amber).
 
-const darkPalette = [
-  'hsla(0, 0%, 15%, 1)',
-  'hsla(0, 0%, 19%, 1)',
-  'hsla(0, 0%, 23%, 1)',
-  'hsla(0, 0%, 27%, 1)',
-  'hsla(0, 0%, 31%, 1)',
-  'hsla(0, 0%, 34%, 1)',
-  'hsla(0, 0%, 38%, 1)',
-  'hsla(0, 0%, 42%, 1)',
-  'hsla(0, 0%, 46%, 1)',
-  'hsla(0, 0%, 50%, 1)',
-  'hsla(0, 15%, 93%, 1)',
-  'hsla(0, 15%, 99%, 1)',
-];
+// 12-step palette: background -> foreground (light)
 const lightPalette = [
-  'hsla(0, 0%, 99%, 1)',
-  'hsla(0, 0%, 94%, 1)',
-  'hsla(0, 0%, 88%, 1)',
-  'hsla(0, 0%, 83%, 1)',
-  'hsla(0, 0%, 77%, 1)',
-  'hsla(0, 0%, 72%, 1)',
-  'hsla(0, 0%, 66%, 1)',
-  'hsla(0, 0%, 61%, 1)',
-  'hsla(0, 0%, 55%, 1)',
-  'hsla(0, 0%, 50%, 1)',
-  'hsla(0, 15%, 15%, 1)',
-  'hsla(0, 15%, 1%, 1)',
+  '#FFFFFF', // 0  - card / surface putih klinis
+  '#F9FAFB', // 1  - hover lembut
+  '#F3F4F6', // 2
+  '#E5E7EB', // 3  - border default
+  '#D1D5DB', // 4
+  '#9CA3AF', // 5
+  '#6B7280', // 6
+  '#4B5563', // 7
+  '#374151', // 8
+  '#111827', // 9
+  '#052E16', // 10 - aksen teks hijau gelap
+  '#022C22', // 11 - kontras tertinggi
+];
+
+// 12-step palette: background -> foreground (dark)
+const darkPalette = [
+  '#020617', // 0 - background utama (hampir hitam kebiruan)
+  '#030712', // 1
+  '#0B1120', // 2
+  '#0F172A', // 3
+  '#111827', // 4
+  '#1F2937', // 5
+  '#374151', // 6
+  '#4B5563', // 7
+  '#6B7280', // 8
+  '#9CA3AF', // 9
+  '#E5E7EB', // 10
+  '#F9FAFB', // 11
 ];
 
 const accentLight = {
@@ -66,17 +71,32 @@ const accentDark = {
 const builtThemes = createThemes({
   base: {
     palette: {
-      light: lightPalette,
       dark: darkPalette,
+      light: lightPalette,
     },
     extra: {
       light: {
         white: lightPalette[0],
         red10: red.red10,
         shadowColor: 'rgba(0,0,0,0.06)',
-        primary: accentLight.accent9,
-        accent: accentLight.accent9,
+        // Gunakan hijau yang lebih gelap untuk teks/link & tombol agar kontras di atas putih lebih kuat.
+        primary: accentLight.accent4,
+        accent: accentLight.accent4,
         error: red.red10,
+        brandPrimary: accentLight.accent4,
+        brandPrimarySoft: accentLight.accent3,
+        brandAccent: yellow.yellow9,
+        brandAccentSoft: yellow.yellow3,
+        surface: lightPalette[0],
+        surfaceSubtle: lightPalette[1],
+        surfaceElevated: lightPalette[0],
+        surfaceBorder: lightPalette[3],
+        success: green.green9,
+        successSoft: green.green3,
+        warning: yellow.yellow9,
+        warningSoft: yellow.yellow3,
+        danger: red.red10,
+        dangerSoft: red.red3,
         // Override template-derived values so login/cards match Theme Builder (white card, dark text)
         background: lightPalette[0],
         backgroundHover: lightPalette[1],
@@ -91,6 +111,20 @@ const builtThemes = createThemes({
         primary: accentDark.accent9,
         accent: accentDark.accent9,
         error: redDark.red10,
+        brandPrimary: accentDark.accent9,
+        brandPrimarySoft: accentDark.accent3,
+        brandAccent: yellowDark.yellow9,
+        brandAccentSoft: yellowDark.yellow3,
+        surface: darkPalette[0],
+        surfaceSubtle: darkPalette[1],
+        surfaceElevated: darkPalette[2],
+        surfaceBorder: darkPalette[3],
+        success: greenDark.green9,
+        successSoft: greenDark.green3,
+        warning: yellowDark.yellow9,
+        warningSoft: yellowDark.yellow3,
+        danger: redDark.red9,
+        dangerSoft: redDark.red3,
         background: darkPalette[0],
         backgroundHover: darkPalette[1],
         color: darkPalette[11],

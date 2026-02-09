@@ -19,6 +19,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     slug: process.env.EXPO_SLUG ?? 'apotek-eccomerce',
     name: process.env.EXPO_NAME ?? 'Apotek Eccomerce',
+    scheme: 'apotek-eccomerce', // Deep linking scheme untuk OAuth redirect
+    icon: './assets/images/logo.png', // App icon untuk semua platform
     ios: {
       ...config.ios,
       bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekeccomerce',
@@ -26,12 +28,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...config.android,
       package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekeccomerce',
+      adaptiveIcon: {
+        foregroundImage: './assets/images/logo.png',
+        backgroundColor: '#ffffff',
+      },
     },
     web: {
       ...config.web,
       bundler: 'metro',
       output: 'static',
-      favicon: './assets/images/logo-sm.png',
+      favicon: './assets/images/logo.png',
     },
     updates: {
       url: `https://u.expo.dev/${expoProjectId}`,
@@ -54,7 +60,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           dark: {
             backgroundColor: '#101212',
           },
-          image: './assets/images/logo-lg.png',
+          image: './assets/images/logo.png',
           imageWidth: 200,
           resizeMode: 'contain',
         },

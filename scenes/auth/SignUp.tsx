@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { YStack, XStack, Text, Input, useTheme } from 'tamagui';
-import { Platform, ScrollView, KeyboardAvoidingView } from 'react-native';
+import { YStack, XStack, Text, useTheme, Image, AnimatePresence } from 'tamagui';
+import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FontAwesome5 } from '@expo/vector-icons';
 import Button from '@/components/elements/Button';
+import EmailInput from '@/components/elements/EmailInput';
+import PasswordInput from '@/components/elements/PasswordInput';
 import { signUp } from '@/services/auth.service';
 import { getThemeColor } from '@/utils/theme';
+import { images } from '@/utils/images';
 
 export default function SignUp() {
   const theme = useTheme();
@@ -15,20 +19,41 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
 
   const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
 
+  function validateEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
   async function handleSubmit() {
     setError(null);
+    setEmailError(false);
+    setPasswordError(false);
     const trimmedEmail = email.trim();
+
     if (!trimmedEmail || !password) {
       setError('Email dan password wajib diisi.');
+      if (!trimmedEmail) setEmailError(true);
+      if (!password) setPasswordError(true);
       return;
     }
+
+    if (!validateEmail(trimmedEmail)) {
+      setEmailError(true);
+      setError('Format email tidak valid.');
+      return;
+    }
+
     if (password.length < 6) {
+      setPasswordError(true);
       setError('Password minimal 6 karakter.');
       return;
     }
+
     setLoading(true);
     try {
       const { data, error: err } = await signUp({
@@ -38,6 +63,7 @@ export default function SignUp() {
       });
       if (err) {
         setError(err.message ?? 'Pendaftaran gagal. Coba lagi.');
+        setEmailError(true);
         return;
       }
       if (data?.session) {
@@ -52,134 +78,244 @@ export default function SignUp() {
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-      <YStack flex={1} backgroundColor="$background">
+      <YStack
+        flex={1}
+        backgroundColor="$background"
+        alignItems="center"
+        justifyContent="center"
+        padding="$4">
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={{ flex: 1, alignSelf: 'stretch' }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 32 }}
+            contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
-            <Text
-              fontSize={12}
-              letterSpacing={1.2}
-              marginBottom={8}
-              fontWeight="600"
-              color="$primary">
-              APOTEK
-            </Text>
-            <Text
-              fontSize={32}
-              marginBottom={8}
-              fontWeight="700"
-              letterSpacing={-0.5}
-              color="$color">
-              Daftar
-            </Text>
-            <Text fontSize={16} marginBottom={28} color="$colorPress">
-              Buat akun untuk belanja obat dan layanan kesehatan
-            </Text>
-
             <YStack
-              borderRadius={16}
-              paddingVertical={24}
-              paddingHorizontal={20}
-              marginBottom={24}
-              backgroundColor="$backgroundHover"
-              shadowColor="$shadowColor"
-              shadowOffset={{ width: 0, height: 2 }}
-              shadowOpacity={0.06}
-              shadowRadius={8}
-              elevation={3}>
-              {error ? (
-                <Text fontSize={14} marginBottom={12} fontWeight="600" color="$red10">
-                  {error}
+              width="100%"
+              maxWidth={400}
+              $gtSm={{
+                maxWidth: 450,
+              }}
+              $gtMd={{
+                maxWidth: 500,
+              }}
+              space="$5"
+              $gtSm={{
+                space: '$6',
+              }}>
+              {/* Logo dengan subtle animation dan responsive sizing */}
+              <YStack
+                alignItems="center"
+                space="$3"
+                $gtSm={{
+                  space: '$4',
+                }}
+                animation="quick"
+                enterStyle={{ opacity: 0, y: -20, scale: 0.95 }}
+                opacity={1}
+                y={0}
+                scale={1}>
+                <Image
+                  source={images.logo}
+                  width="100%"
+                  maxWidth={120}
+                  height={120}
+                  $gtSm={{
+                    maxWidth: 160,
+                    height: 160,
+                  }}
+                  $gtMd={{
+                    maxWidth: 180,
+                    height: 180,
+                  }}
+                  resizeMode="contain"
+                />
+              </YStack>
+
+              {/* Header dengan enhanced typography */}
+              <YStack
+                space="$2"
+                animation="quick"
+                enterStyle={{ opacity: 0, y: -10 }}
+                opacity={1}
+                y={0}>
+                <Text
+                  fontSize={32}
+                  fontWeight="800"
+                  letterSpacing={-0.8}
+                  color="$color"
+                  lineHeight={38}>
+                  Daftar
                 </Text>
-              ) : null}
+                <Text fontSize={15} color="$colorPress" lineHeight={22}>
+                  Buat akun baru untuk belanja obat dan layanan kesehatan dengan lebih cepat.
+                </Text>
+              </YStack>
 
-              <Input
-                height={52}
-                borderWidth={1.5}
-                borderRadius={12}
-                paddingHorizontal={16}
-                fontSize={16}
-                marginBottom={14}
-                fontFamily="$body"
-                backgroundColor="$background"
-                borderColor="$borderColor"
-                color="$color"
-                placeholder="Nama lengkap (opsional)"
-                placeholderTextColor={placeholderColor}
-                value={fullName}
-                onChangeText={setFullName}
-                autoCapitalize="words"
-                editable={!loading}
-                accessibilityLabel="Nama lengkap"
-              />
-              <Input
-                height={52}
-                borderWidth={1.5}
-                borderRadius={12}
-                paddingHorizontal={16}
-                fontSize={16}
-                marginBottom={14}
-                fontFamily="$body"
-                backgroundColor="$background"
-                borderColor="$borderColor"
-                color="$color"
-                placeholder="Email"
-                placeholderTextColor={placeholderColor}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                editable={!loading}
-                accessibilityLabel="Email"
-              />
-              <Input
-                height={52}
-                borderWidth={1.5}
-                borderRadius={12}
-                paddingHorizontal={16}
-                fontSize={16}
-                marginBottom={20}
-                fontFamily="$body"
-                backgroundColor="$background"
-                borderColor="$borderColor"
-                color="$color"
-                placeholder="Password (min. 6 karakter)"
-                placeholderTextColor={placeholderColor}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                editable={!loading}
-                accessibilityLabel="Password"
-              />
+              {/* Form Card dengan enhanced styling dan responsive padding */}
+              <YStack
+                borderRadius={20}
+                paddingVertical={28}
+                paddingHorizontal={24}
+                $gtSm={{
+                  paddingVertical: 32,
+                  paddingHorizontal: 32,
+                }}
+                $gtMd={{
+                  paddingVertical: 36,
+                  paddingHorizontal: 40,
+                }}
+                backgroundColor="$surface"
+                borderWidth={1}
+                borderColor="$surfaceBorder"
+                shadowColor="$shadowColor"
+                shadowOffset={{ width: 0, height: 4 }}
+                shadowOpacity={0.08}
+                shadowRadius={12}
+                elevation={4}
+                space="$4"
+                animation="quick"
+                enterStyle={{ opacity: 0, y: 20 }}
+                opacity={1}
+                y={0}>
+                {/* Error Message dengan animation */}
+                <AnimatePresence>
+                  {error && (
+                    <XStack
+                      key="error"
+                      alignItems="center"
+                      space="$2"
+                      paddingVertical={12}
+                      paddingHorizontal={16}
+                      backgroundColor="$dangerSoft"
+                      borderRadius={12}
+                      borderWidth={1}
+                      borderColor="$danger"
+                      animation="quick"
+                      enterStyle={{ opacity: 0, x: -10, scale: 0.95 }}
+                      exitStyle={{ opacity: 0, x: -10, scale: 0.95 }}
+                      opacity={1}
+                      x={0}
+                      scale={1}>
+                      <FontAwesome5
+                        name="exclamation-circle"
+                        size={16}
+                        color={getThemeColor(theme, 'danger', '#DC2626')}
+                      />
+                      <Text flex={1} fontSize={14} fontWeight="600" color="$danger" lineHeight={20}>
+                        {error}
+                      </Text>
+                      <Pressable onPress={() => setError(null)} style={{ padding: 4 }}>
+                        <FontAwesome5
+                          name="times"
+                          size={14}
+                          color={getThemeColor(theme, 'danger', '#DC2626')}
+                        />
+                      </Pressable>
+                    </XStack>
+                  )}
+                </AnimatePresence>
 
-              <Button
-                title="Daftar"
-                paddingVertical={14}
-                borderRadius={12}
-                height={52}
-                marginBottom={20}
-                backgroundColor="$primary"
-                titleStyle={{ color: '$white', fontSize: 16, fontWeight: '600' }}
-                onPress={handleSubmit}
-                isLoading={loading}
-                loaderColor="$white"
-              />
+                <YStack space="$4">
+                  {/* Full Name Input */}
+                  <YStack space="$1.5">
+                    <EmailInput
+                      value={fullName}
+                      onChangeText={setFullName}
+                      placeholder="Nama lengkap (opsional)"
+                      disabled={loading}
+                      keyboardType="default"
+                      autoCapitalize="words"
+                      accessibilityLabel="Nama lengkap"
+                    />
+                  </YStack>
+
+                  {/* Email Input dengan enhanced focus states */}
+                  <YStack space="$1.5">
+                    <EmailInput
+                      value={email}
+                      onChangeText={text => {
+                        setEmail(text);
+                        setEmailError(false);
+                        setError(null);
+                      }}
+                      placeholder="Email"
+                      error={emailError}
+                      disabled={loading}
+                      keyboardType="email-address"
+                      accessibilityLabel="Email"
+                    />
+                  </YStack>
+
+                  {/* Password Input dengan visibility toggle */}
+                  <YStack space="$1.5">
+                    <PasswordInput
+                      value={password}
+                      onChangeText={text => {
+                        setPassword(text);
+                        setPasswordError(false);
+                        setError(null);
+                      }}
+                      placeholder="Password (min. 6 karakter)"
+                      error={passwordError}
+                      disabled={loading}
+                    />
+                  </YStack>
+
+                  {/* Submit Button dengan enhanced styling */}
+                  <Button
+                    title="Daftar"
+                    paddingVertical={16}
+                    borderRadius={14}
+                    height={56}
+                    backgroundColor="$primary"
+                    titleStyle={{
+                      color: '$white',
+                      fontSize: 17,
+                      fontWeight: '700',
+                      letterSpacing: 0.3,
+                    }}
+                    onPress={handleSubmit}
+                    isLoading={loading}
+                    loaderColor="$white"
+                    animation="quick"
+                    hoverStyle={{
+                      backgroundColor: '$primary',
+                      scale: 1.02,
+                    }}
+                    pressStyle={{
+                      scale: 0.98,
+                    }}
+                  />
+
+                  {/* Login Link di dalam card dengan enhanced styling */}
+                  <XStack
+                    justifyContent="center"
+                    paddingTop="$3"
+                    animation="quick"
+                    enterStyle={{ opacity: 0 }}
+                    opacity={1}>
+                    <Link href="/(auth)/login" asChild>
+                      <Pressable>
+                        <Text
+                          fontSize={15}
+                          fontWeight="600"
+                          color="$colorPress"
+                          letterSpacing={0.2}>
+                          Sudah punya akun?{' '}
+                          <Text fontWeight="800" color="$primary" textDecorationLine="underline">
+                            Masuk
+                          </Text>
+                        </Text>
+                      </Pressable>
+                    </Link>
+                  </XStack>
+                </YStack>
+              </YStack>
             </YStack>
-
-            <XStack flexDirection="row" justifyContent="center" marginTop={8}>
-              <Link href="/(auth)/login">
-                <Text fontSize={15} fontWeight="600" color="$primary">
-                  Sudah punya akun? Masuk
-                </Text>
-              </Link>
-            </XStack>
           </ScrollView>
         </KeyboardAvoidingView>
       </YStack>
