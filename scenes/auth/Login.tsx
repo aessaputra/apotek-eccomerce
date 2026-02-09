@@ -323,8 +323,8 @@ export default function Login() {
                 <XStack flex={1} height={1.5} backgroundColor="$surfaceBorder" borderRadius={1} />
               </XStack>
 
-              {/* OAuth Buttons dengan enhanced spacing dan responsive width */}
-              <YStack
+              {/* OAuth Buttons side-by-side dengan enhanced spacing dan responsive width */}
+              <XStack
                 width="100%"
                 maxWidth={400}
                 $gtSm={{
@@ -333,9 +333,9 @@ export default function Login() {
                 $gtMd={{
                   maxWidth: 500,
                 }}
-                space="$3"
+                gap="$3"
                 $gtSm={{
-                  space: '$4',
+                  gap: '$4',
                 }}
                 animation="quick"
                 enterStyle={{ opacity: 0, y: 10 }}
@@ -351,7 +351,7 @@ export default function Login() {
                   onPress={() => handleOAuth('apple')}
                   isLoading={oauthLoading === 'apple'}
                 />
-              </YStack>
+              </XStack>
             </YStack>
           </ScrollView>
         </KeyboardAvoidingView>

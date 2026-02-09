@@ -25,7 +25,7 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
   const themeName = useThemeName();
   const isDark = themeName === 'dark';
   const isApple = provider === 'apple';
-  const label = isApple ? 'Masuk dengan Apple' : 'Masuk dengan Google';
+  const label = isApple ? 'Apple' : 'Google';
 
   /**
    * Apple Sign In Guidelines:
@@ -65,7 +65,7 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
       accessibilityState={{ disabled: isLoading }}
       style={({ pressed }) => ({
         opacity: pressed || isLoading ? 0.7 : 1,
-        width: '100%',
+        flex: 1,
       })}>
       <XStack
         width="100%"
@@ -77,18 +77,18 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
         borderRadius={12}
         height={52}
         paddingHorizontal={16}
-        space="$3"
+        gap="$2"
         $gtSm={{
           height: 56,
           borderRadius: 14,
           paddingHorizontal: 20,
-          space: '$4',
+          gap: '$3',
         }}
         $gtMd={{
           height: 60,
           borderRadius: 16,
           paddingHorizontal: 24,
-          space: '$4.5',
+          gap: '$4',
         }}
         opacity={isLoading ? 0.6 : 1}
         animation="quick"

@@ -5,13 +5,13 @@ import OAuthButton from './OAuthButton';
 describe('<OAuthButton />', () => {
   test('renders correctly with Google provider', async () => {
     render(<OAuthButton provider="google" />);
-    const button = screen.getByText(/Masuk dengan Google/i);
+    const button = screen.getByText(/Google/i);
     expect(button).not.toBeNull();
   });
 
   test('renders correctly with Apple provider', async () => {
     render(<OAuthButton provider="apple" />);
-    const button = screen.getByText(/Masuk dengan Apple/i);
+    const button = screen.getByText(/Apple/i);
     expect(button).not.toBeNull();
   });
 
@@ -63,12 +63,12 @@ describe('<OAuthButton />', () => {
   test('has correct accessibility label', async () => {
     render(<OAuthButton provider="google" />);
     const button = screen.getByRole('button');
-    expect(button.props.accessibilityLabel).toBe('Masuk dengan Google');
+    expect(button.props.accessibilityLabel).toBe('Google');
   });
 
   test('has correct accessibility label for Apple', async () => {
     render(<OAuthButton provider="apple" />);
     const button = screen.getByRole('button');
-    expect(button.props.accessibilityLabel).toBe('Masuk dengan Apple');
+    expect(button.props.accessibilityLabel).toBe('Apple');
   });
 });
