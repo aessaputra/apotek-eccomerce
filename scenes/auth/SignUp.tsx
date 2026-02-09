@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { YStack, XStack, Text, useTheme, Image, AnimatePresence } from 'tamagui';
+import { YStack, XStack, Text, useTheme, Image } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
 import Button from '@/components/elements/Button';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
+import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signUp } from '@/services/auth.service';
 import { getThemeColor } from '@/utils/theme';
 import { images } from '@/utils/images';
@@ -211,43 +211,8 @@ export default function SignUp() {
                 enterStyle={{ opacity: 0, y: 20 }}
                 opacity={1}
                 y={0}>
-                {/* Error Message dengan enhanced animation */}
-                <AnimatePresence>
-                  {error && (
-                    <XStack
-                      key="error"
-                      alignItems="center"
-                      space="$2"
-                      paddingVertical={12}
-                      paddingHorizontal={16}
-                      backgroundColor="$dangerSoft"
-                      borderRadius={12}
-                      borderWidth={1}
-                      borderColor="$danger"
-                      animation="quick"
-                      enterStyle={{ opacity: 0, x: -10, scale: 0.95 }}
-                      exitStyle={{ opacity: 0, x: -10, scale: 0.95 }}
-                      opacity={1}
-                      x={0}
-                      scale={1}>
-                      <FontAwesome5
-                        name="exclamation-circle"
-                        size={16}
-                        color={getThemeColor(theme, 'danger', '#DC2626')}
-                      />
-                      <Text flex={1} fontSize={14} fontWeight="600" color="$danger" lineHeight={20}>
-                        {error}
-                      </Text>
-                      <Pressable onPress={() => setError(null)} style={{ padding: 4 }}>
-                        <FontAwesome5
-                          name="times"
-                          size={14}
-                          color={getThemeColor(theme, 'danger', '#DC2626')}
-                        />
-                      </Pressable>
-                    </XStack>
-                  )}
-                </AnimatePresence>
+                {/* Error Message dengan height collapse animation (best practice) */}
+                <ErrorMessage message={error} onDismiss={() => setError(null)} dismissible={true} />
 
                 <YStack space="$4">
                   {/* Email Input dengan label dan enhanced focus states */}
