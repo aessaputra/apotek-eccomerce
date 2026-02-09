@@ -11,6 +11,7 @@ import PasswordInput from '@/components/elements/PasswordInput';
 import { signInWithPassword, signInWithOAuth } from '@/services/auth.service';
 import { getThemeColor } from '@/utils/theme';
 import { images } from '@/utils/images';
+import { validateEmail } from '@/utils/validation';
 
 export default function Login() {
   const theme = useTheme();
@@ -22,13 +23,10 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
 
-  const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
-
-  function validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
+  /**
+   * Handles form submission with validation
+   * Validates email before calling signInWithPassword service
+   */
   async function handleSubmit() {
     setError(null);
     setEmailError(false);
@@ -53,7 +51,15 @@ export default function Login() {
       });
       if (err) {
         setError(err.message ?? 'Login gagal. Periksa email dan password.');
-        setEmailError(true);
+        // Only set emailError if error is email-related
+        const errorMessage = err.message?.toLowerCase() ?? '';
+        if (
+          errorMessage.includes('email') ||
+          errorMessage.includes('invalid login credentials') ||
+          errorMessage.includes('user not found')
+        ) {
+          setEmailError(true);
+        }
         return;
       }
       if (data?.session) {

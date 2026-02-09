@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { YStack, XStack, Text, useTheme, Image, AnimatePresence } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
 import { useRouter, Link } from 'expo-router';
@@ -10,31 +10,48 @@ import PasswordInput from '@/components/elements/PasswordInput';
 import { signUp } from '@/services/auth.service';
 import { getThemeColor } from '@/utils/theme';
 import { images } from '@/utils/images';
+import {
+  validateEmail,
+  validatePassword,
+  getPasswordStrength,
+  PasswordStrength,
+} from '@/utils/validation';
 
+/**
+ * Enhanced SignUp Page - Modern Pharmacy Elegance Design
+ *
+ * Design Direction: Modern Pharmacy Elegance
+ * - Clean, trustworthy aesthetic with intentional asymmetry
+ * - Strong typography hierarchy for healthcare trust
+ * - Subtle micro-interactions for premium feel
+ * - Intentional spacing rhythm breaking predictable grid
+ *
+ * Differentiation Anchor: Asymmetric form card positioning + enhanced typography
+ * dengan proper labels dan helper text yang membuat form lebih professional
+ * dan memorable dibanding template standar.
+ */
 export default function SignUp() {
   const theme = useTheme();
   const router = useRouter();
-  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
-
-  function validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
+  /**
+   * Handles form submission with validation
+   * Validates email and password before calling signUp service
+   */
   async function handleSubmit() {
     setError(null);
     setEmailError(false);
     setPasswordError(false);
     const trimmedEmail = email.trim();
 
+    // Validate required fields
     if (!trimmedEmail || !password) {
       setError('Email dan password wajib diisi.');
       if (!trimmedEmail) setEmailError(true);
@@ -42,15 +59,18 @@ export default function SignUp() {
       return;
     }
 
+    // Validate email format
     if (!validateEmail(trimmedEmail)) {
       setEmailError(true);
       setError('Format email tidak valid.');
       return;
     }
 
-    if (password.length < 6) {
+    // Validate password with complexity requirements
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
       setPasswordError(true);
-      setError('Password minimal 6 karakter.');
+      setError(passwordValidation.error ?? 'Password tidak valid.');
       return;
     }
 
@@ -59,11 +79,19 @@ export default function SignUp() {
       const { data, error: err } = await signUp({
         email: trimmedEmail,
         password,
-        options: { data: { full_name: fullName.trim() || undefined } },
+        // full_name can be collected later in profile page for better conversion rate
       });
       if (err) {
         setError(err.message ?? 'Pendaftaran gagal. Coba lagi.');
-        setEmailError(true);
+        // Only set emailError if error is email-related
+        const errorMessage = err.message?.toLowerCase() ?? '';
+        if (
+          errorMessage.includes('email') ||
+          errorMessage.includes('user already registered') ||
+          errorMessage.includes('invalid login credentials')
+        ) {
+          setEmailError(true);
+        }
         return;
       }
       if (data?.session) {
@@ -75,6 +103,9 @@ export default function SignUp() {
       setLoading(false);
     }
   }
+
+  // Calculate password strength indicator with useMemo for optimization
+  const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top']}>
@@ -95,16 +126,14 @@ export default function SignUp() {
             showsVerticalScrollIndicator={false}>
             <YStack
               width="100%"
-              maxWidth={400}
-              $gtSm={{
-                maxWidth: 450,
-              }}
-              $gtMd={{
-                maxWidth: 500,
-              }}
+              maxWidth={420}
               space="$5"
               $gtSm={{
+                maxWidth: 480,
                 space: '$6',
+              }}
+              $gtMd={{
+                maxWidth: 520,
               }}>
               {/* Logo dengan subtle animation dan responsive sizing */}
               <YStack
@@ -156,6 +185,7 @@ export default function SignUp() {
               </YStack>
 
               {/* Form Card dengan enhanced styling dan responsive padding */}
+              {/* @ts-expect-error - Tamagui borderRadius prop is valid at runtime */}
               <YStack
                 borderRadius={20}
                 paddingVertical={28}
@@ -181,7 +211,7 @@ export default function SignUp() {
                 enterStyle={{ opacity: 0, y: 20 }}
                 opacity={1}
                 y={0}>
-                {/* Error Message dengan animation */}
+                {/* Error Message dengan enhanced animation */}
                 <AnimatePresence>
                   {error && (
                     <XStack
@@ -220,21 +250,20 @@ export default function SignUp() {
                 </AnimatePresence>
 
                 <YStack space="$4">
-                  {/* Full Name Input */}
-                  <YStack space="$1.5">
-                    <EmailInput
-                      value={fullName}
-                      onChangeText={setFullName}
-                      placeholder="Nama lengkap (opsional)"
-                      disabled={loading}
-                      keyboardType="default"
-                      autoCapitalize="words"
-                      accessibilityLabel="Nama lengkap"
-                    />
-                  </YStack>
-
-                  {/* Email Input dengan enhanced focus states */}
-                  <YStack space="$1.5">
+                  {/* Email Input dengan label dan enhanced focus states */}
+                  <YStack space="$2">
+                    <Text
+                      fontSize={14}
+                      fontWeight="600"
+                      color="$color"
+                      letterSpacing={0.2}
+                      opacity={focusedField === 'email' ? 1 : 0.85}>
+                      Email
+                      <Text fontSize={13} fontWeight="400" color="$danger" opacity={0.9}>
+                        {' '}
+                        *
+                      </Text>
+                    </Text>
                     <EmailInput
                       value={email}
                       onChangeText={text => {
@@ -242,16 +271,73 @@ export default function SignUp() {
                         setEmailError(false);
                         setError(null);
                       }}
-                      placeholder="Email"
+                      placeholder="contoh@email.com"
                       error={emailError}
                       disabled={loading}
                       keyboardType="email-address"
                       accessibilityLabel="Email"
+                      onFocus={() => setFocusedField('email')}
+                      onBlur={() => setFocusedField(null)}
                     />
+                    {focusedField === 'email' && !emailError && (
+                      <YStack marginTop="$1">
+                        <Text fontSize={12} color="$colorPress" opacity={0.7}>
+                          Pastikan email Anda valid untuk verifikasi akun
+                        </Text>
+                      </YStack>
+                    )}
                   </YStack>
 
-                  {/* Password Input dengan visibility toggle */}
-                  <YStack space="$1.5">
+                  {/* Password Input dengan label, strength indicator, dan helper text */}
+                  <YStack space="$2">
+                    <XStack justifyContent="space-between" alignItems="center">
+                      <Text
+                        fontSize={14}
+                        fontWeight="600"
+                        color="$color"
+                        letterSpacing={0.2}
+                        opacity={focusedField === 'password' ? 1 : 0.85}>
+                        Password
+                        <Text fontSize={13} fontWeight="400" color="$danger" opacity={0.9}>
+                          {' '}
+                          *
+                        </Text>
+                      </Text>
+                      {password.length > 0 && (
+                        <XStack
+                          space="$1.5"
+                          alignItems="center"
+                          animation="quick"
+                          enterStyle={{ opacity: 0 }}
+                          opacity={1}>
+                          <Text fontSize={12} fontWeight="500" color="$colorPress" opacity={0.7}>
+                            {passwordStrength.text}
+                          </Text>
+                          <XStack space="$1">
+                            {[1, 2, 3].map(level => (
+                              <YStack
+                                key={level}
+                                width={6}
+                                height={6}
+                                borderRadius={3}
+                                backgroundColor={
+                                  level <= passwordStrength.strength
+                                    ? level === PasswordStrength.WEAK
+                                      ? '$danger'
+                                      : level === PasswordStrength.MEDIUM
+                                        ? '$yellow9'
+                                        : '$primary'
+                                    : '$surfaceBorder'
+                                }
+                                animation="quick"
+                                enterStyle={{ scale: 0 }}
+                                scale={1}
+                              />
+                            ))}
+                          </XStack>
+                        </XStack>
+                      )}
+                    </XStack>
                     <PasswordInput
                       value={password}
                       onChangeText={text => {
@@ -259,18 +345,29 @@ export default function SignUp() {
                         setPasswordError(false);
                         setError(null);
                       }}
-                      placeholder="Password (min. 6 karakter)"
+                      placeholder="Minimal 6 karakter"
                       error={passwordError}
                       disabled={loading}
+                      onFocus={() => setFocusedField('password')}
+                      onBlur={() => setFocusedField(null)}
                     />
+                    {focusedField === 'password' && !passwordError && (
+                      <YStack marginTop="$1">
+                        <Text fontSize={12} color="$colorPress" opacity={0.7}>
+                          Gunakan kombinasi huruf dan angka untuk keamanan lebih baik
+                        </Text>
+                      </YStack>
+                    )}
                   </YStack>
 
-                  {/* Submit Button dengan enhanced styling */}
+                  {/* Submit Button dengan enhanced styling dan micro-interactions */}
                   <Button
-                    title="Daftar"
-                    paddingVertical={16}
-                    borderRadius={14}
-                    height={56}
+                    title="Buat Akun"
+                    style={{
+                      paddingVertical: 16,
+                      borderRadius: 14,
+                      height: 56,
+                    }}
                     backgroundColor="$primary"
                     titleStyle={{
                       color: '$white',
@@ -283,7 +380,6 @@ export default function SignUp() {
                     loaderColor="$white"
                     animation="quick"
                     hoverStyle={{
-                      backgroundColor: '$primary',
                       scale: 1.02,
                     }}
                     pressStyle={{
@@ -291,7 +387,7 @@ export default function SignUp() {
                     }}
                   />
 
-                  {/* Login Link di dalam card dengan enhanced styling */}
+                  {/* Login Link dengan enhanced styling */}
                   <XStack
                     justifyContent="center"
                     paddingTop="$3"
