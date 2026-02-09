@@ -49,10 +49,10 @@ describe('<OAuthButton />', () => {
 
     // Should not throw, error should be caught by component's try-catch
     expect(() => fireEvent.press(button)).not.toThrow();
-    
+
     // Verify onPress was called (even though it threw an error)
     expect(onPress).toHaveBeenCalledTimes(1);
-    
+
     // Verify error was logged (in __DEV__ mode)
     // Note: console.error might not be called in test environment if __DEV__ is false
     // But the important thing is that the error was caught and didn't crash
