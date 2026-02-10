@@ -2,6 +2,8 @@ import type { Tables } from './supabase';
 
 export type ProfileRow = Tables<'profiles'>;
 
+export type UserRole = 'admin' | 'customer';
+
 export interface User {
   id: string;
   email: string;
@@ -10,7 +12,8 @@ export interface User {
   full_name: string | null;
   phone_number: string | null;
   avatar_url: string | null;
-  role: string | null;
+  role: UserRole | null;
+  created_at?: string;
 }
 
 /**
@@ -26,5 +29,6 @@ export function profileToUser(profile: ProfileRow, email: string): User {
     phone_number: profile.phone_number,
     avatar_url: profile.avatar_url,
     role: profile.role,
+    created_at: profile.created_at,
   };
 }

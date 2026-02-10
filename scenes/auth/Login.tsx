@@ -8,7 +8,8 @@ import OAuthButton from '@/components/elements/OAuthButton';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
-import { signInWithPassword, signInWithOAuth } from '@/services/auth.service';
+import { signInWithPassword, signInWithOAuth, signOut } from '@/services/auth.service';
+import { getCurrentUser } from '@/services/user.service';
 import { getThemeColor } from '@/utils/theme';
 import { images } from '@/utils/images';
 import { validateEmail } from '@/utils/validation';
@@ -63,6 +64,18 @@ export default function Login() {
         return;
       }
       if (data?.session) {
+        // CRITICAL: Check role BEFORE redirect to prevent admin from getting session token
+        const result = await getCurrentUser();
+        if (result?.profile.role === 'admin') {
+          await signOut();
+          setError('Hanya customer yang boleh login di app ini. Admin gunakan panel Refine.');
+          return;
+        }
+        if (result?.profile.is_banned) {
+          await signOut();
+          setError('Akun Anda telah dinonaktifkan.');
+          return;
+        }
         router.replace('/(main)/(tabs)');
       }
     } finally {

@@ -18,6 +18,24 @@ export default function ProfileStackLayout() {
           headerTitleAlign: 'center',
         }}
       />
+      <Stack.Screen
+        name="addresses"
+        options={{
+          title: 'Alamat Pengiriman',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
+        name="address-form"
+        options={({ route }) => {
+          const params = route.params as { id?: string } | undefined;
+          const isEdit = !!params?.id;
+          return {
+            title: isEdit ? 'Edit Alamat' : 'Tambah Alamat',
+            headerTitleAlign: 'center',
+          };
+        }}
+      />
       <Stack.Screen name="details" options={{ title: 'Details' }} />
     </Stack>
   );

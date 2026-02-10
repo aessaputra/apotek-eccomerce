@@ -55,7 +55,10 @@ function Button({
       {isLoading && <Spinner size="small" color={loaderColor} />}
       {!isLoading && image && <Image source={image} style={imageStyle} />}
       {!isLoading && title && (
-        <Text fontSize={16} fontFamily="$body" {...(titleStyle as object)}>
+        <Text
+          fontSize={titleStyle?.fontSize || 16}
+          fontFamily={titleStyle?.fontFamily || '$body'}
+          {...(titleStyle as object)}>
           {title}
         </Text>
       )}
