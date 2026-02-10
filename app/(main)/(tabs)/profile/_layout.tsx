@@ -36,6 +36,20 @@ export default function ProfileStackLayout() {
           };
         }}
       />
+      <Stack.Screen
+        name="support"
+        options={{
+          title: 'Dukungan',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
+        name="edit-profile"
+        options={{
+          title: 'Edit Profile',
+          headerTitleAlign: 'center',
+        }}
+      />
       <Stack.Screen name="details" options={{ title: 'Details' }} />
     </Stack>
   );

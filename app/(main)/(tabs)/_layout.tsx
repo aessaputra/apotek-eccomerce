@@ -1,13 +1,18 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useSegments } from 'expo-router';
 import { useTheme } from 'tamagui';
 import { AntDesign } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
 
 export default function TabLayout() {
   const theme = useTheme();
+  const segments = useSegments();
   const tabBarBg = getThemeColor(theme, 'background', '#f5f5f5');
   const tabBarInactive = getThemeColor(theme, 'colorPress', '#888');
   const tabBarActive = getThemeColor(theme, 'color', '#0D9488');
+
+  // Hide tab bar on edit-profile screen
+  const hideTabBar = segments.includes('edit-profile');
+
   return (
     <Tabs
       screenOptions={{
@@ -16,6 +21,9 @@ export default function TabLayout() {
         tabBarInactiveBackgroundColor: tabBarBg,
         tabBarActiveTintColor: tabBarActive,
         tabBarActiveBackgroundColor: tabBarBg,
+        tabBarStyle: {
+          display: hideTabBar ? 'none' : 'flex',
+        },
       }}>
       <Tabs.Screen
         name="index"

@@ -1,0 +1,351 @@
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { ScrollView, Alert, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import { YStack, XStack, Text, useTheme, Card } from 'tamagui';
+import { useRouter } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Button from '@/components/elements/Button';
+import FormInput from '@/components/elements/FormInput';
+import Avatar from '@/components/elements/Avatar';
+import { useAppSlice } from '@/slices';
+import { updateProfile, uploadAvatar } from '@/services/profile.service';
+import { Spinner } from 'tamagui';
+import { getThemeColor } from '@/utils/theme';
+import { windowWidth } from '@/utils/deviceInfo';
+import { useKeyboard } from '@/hooks';
+
+const MIN_TOUCH_TARGET = 44;
+const BOTTOM_BAR_HEIGHT = 80;
+
+export default function EditProfile() {
+  const router = useRouter();
+  const theme = useTheme();
+  const { user, dispatch, setUser } = useAppSlice();
+  const [fullName, setFullName] = useState(user?.full_name ?? user?.name ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone_number ?? '');
+  const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  // Sync form state with user changes
+  useEffect(() => {
+    if (user) {
+      setFullName(user.full_name ?? user.name ?? '');
+      setPhoneNumber(user.phone_number ?? '');
+    }
+  }, [user]);
+
+  const nameInputRef = useRef<TextInput>(null);
+  const phoneInputRef = useRef<TextInput>(null);
+  const editingRef = useRef(true);
+
+  const insets = useSafeAreaInsets();
+  const { keyboardVisible, keyboardHeight } = useKeyboard();
+  const avatarSize = windowWidth < 375 ? 100 : 120;
+  const bgColor = getThemeColor(theme, 'background', '#f8fafc');
+  const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
+  // Scroll padding: bottom bar height + extra spacing (no tab bar since it's hidden)
+  const scrollPaddingBottom = bottomBarHeight + 16;
+
+  const validateName = useCallback((value: string): boolean => {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      setNameError(null);
+      return true;
+    }
+    if (trimmed.length < 2) {
+      setNameError('Nama harus minimal 2 karakter');
+      return false;
+    }
+    if (trimmed.length > 100) {
+      setNameError('Nama maksimal 100 karakter');
+      return false;
+    }
+    setNameError(null);
+    return true;
+  }, []);
+
+  const validatePhone = useCallback((value: string): boolean => {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      setPhoneError(null);
+      return true;
+    }
+    const phoneRegex = /^[\d\s\+\-\(\)]+$/;
+    if (!phoneRegex.test(trimmed)) {
+      setPhoneError('Format nomor telepon tidak valid');
+      return false;
+    }
+    const digitsOnly = trimmed.replace(/\D/g, '');
+    if (digitsOnly.length < 8) {
+      setPhoneError('Nomor telepon harus minimal 8 digit');
+      return false;
+    }
+    if (digitsOnly.length > 15) {
+      setPhoneError('Nomor telepon maksimal 15 digit');
+      return false;
+    }
+    setPhoneError(null);
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (nameInputRef.current) {
+      const timer = setTimeout(() => nameInputRef.current?.focus(), 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleAvatarUpload = useCallback(
+    async (uri: string) => {
+      if (!user) return;
+      setUploadingAvatar(true);
+      setError(null);
+      try {
+        const { url, error: uploadError } = await uploadAvatar(user.id, uri);
+        if (uploadError || !url) {
+          throw uploadError || new Error('Gagal mengupload avatar');
+        }
+
+        const { data, error: updateError } = await updateProfile(user.id, { avatar_url: url });
+        if (updateError || !data) {
+          throw updateError || new Error('Gagal memperbarui profil');
+        }
+
+        dispatch(setUser({ ...user, avatar_url: data.avatar_url }));
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Gagal mengupload avatar';
+        setError(errorMessage);
+      } finally {
+        setUploadingAvatar(false);
+      }
+    },
+    [user, dispatch, setUser],
+  );
+
+  const handleSave = useCallback(async () => {
+    if (!user) return;
+    if (!validateName(fullName) || !validatePhone(phoneNumber)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError('Mohon perbaiki kesalahan pada form');
+      return;
+    }
+
+    setError(null);
+    setNameError(null);
+    setPhoneError(null);
+    setSaving(true);
+
+    const { data, error: err } = await updateProfile(user.id, {
+      full_name: fullName.trim() || null,
+      phone_number: phoneNumber.trim() || null,
+    });
+
+    setSaving(false);
+
+    const stillEditing = editingRef.current;
+
+    if (err) {
+      if (stillEditing) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setError(err.message ?? 'Gagal menyimpan profil.');
+      }
+      return;
+    }
+
+    if (data) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      dispatch(
+        setUser({
+          ...user,
+          full_name: data.full_name,
+          name: data.full_name ?? user.email,
+          phone_number: data.phone_number,
+        }),
+      );
+      if (stillEditing) {
+        Alert.alert('Berhasil', 'Profil berhasil diperbarui', [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]);
+      }
+    }
+  }, [user, fullName, phoneNumber, dispatch, setUser, router, validateName, validatePhone]);
+
+  if (!user) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+        <YStack
+          flex={1}
+          padding="$5"
+          paddingBottom="$10"
+          alignItems="center"
+          justifyContent="center"
+          accessibilityLabel="Memuat profil"
+          accessibilityLiveRegion="polite">
+          <Spinner size="large" color="$primary" />
+        </YStack>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+      <YStack flex={1} position="relative">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              padding: 16,
+              paddingBottom: scrollPaddingBottom,
+              flexGrow: 1,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag">
+            {/* Avatar */}
+            <YStack
+              alignItems="center"
+              marginBottom="$5"
+              space="$3"
+              accessibilityLabel="Foto profil"
+              accessibilityHint="Ketuk untuk mengubah foto profil">
+              <Avatar
+                avatarUrl={user.avatar_url}
+                name={user.full_name || user.name || user.email}
+                size={avatarSize}
+                editable={true}
+                onUpload={handleAvatarUpload}
+                uploading={uploadingAvatar}
+              />
+            </YStack>
+
+            {/* Form Edit Profile */}
+            <Card
+              padding="$4"
+              marginBottom="$5"
+              backgroundColor="$surface"
+              borderWidth={1}
+              borderColor="$surfaceBorder"
+              borderRadius="$4"
+              elevation={1}
+              accessibilityLabel="Form edit profil">
+              <YStack space="$4">
+                {error && (
+                  <YStack
+                    padding="$3"
+                    borderRadius="$3"
+                    backgroundColor="$dangerSoft"
+                    borderWidth={1.5}
+                    borderColor="$danger"
+                    space="$1.5"
+                    accessibilityRole="alert"
+                    accessibilityLiveRegion="polite">
+                    <XStack alignItems="center" space="$2">
+                      <Ionicons
+                        name="alert-circle"
+                        size={18}
+                        color={getThemeColor(theme, 'danger', '#DC2626')}
+                      />
+                      <Text fontSize="$3" color="$danger" fontWeight="600" flex={1}>
+                        {error}
+                      </Text>
+                    </XStack>
+                  </YStack>
+                )}
+
+                <YStack space="$3">
+                  <FormInput
+                    ref={nameInputRef}
+                    label="Nama lengkap"
+                    value={fullName}
+                    onChangeText={t => {
+                      setFullName(t);
+                      if (nameError) validateName(t);
+                    }}
+                    onBlur={() => validateName(fullName)}
+                    error={nameError}
+                    autoCapitalize="words"
+                    editable={!saving}
+                    returnKeyType="next"
+                    onSubmitEditing={() => phoneInputRef.current?.focus()}
+                    accessibilityLabel="Nama lengkap"
+                    accessibilityHint="Masukkan nama lengkap Anda"
+                  />
+
+                  <FormInput
+                    ref={phoneInputRef}
+                    label="Nomor telepon"
+                    value={phoneNumber}
+                    onChangeText={t => {
+                      setPhoneNumber(t);
+                      if (phoneError) validatePhone(t);
+                    }}
+                    onBlur={() => validatePhone(phoneNumber)}
+                    error={phoneError}
+                    placeholder="08xx xxxx xxxx"
+                    keyboardType="phone-pad"
+                    editable={!saving}
+                    returnKeyType="done"
+                    accessibilityLabel="Nomor telepon"
+                    accessibilityHint="Masukkan nomor telepon Anda"
+                  />
+                </YStack>
+              </YStack>
+            </Card>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Bottom Bar dengan Button Simpan - Fixed di bawah, naik ke atas keyboard */}
+        <YStack
+          position="absolute"
+          bottom={insets.bottom}
+          left={0}
+          right={0}
+          backgroundColor="$background"
+          borderTopWidth={1}
+          borderColor="$borderColor"
+          paddingHorizontal="$4"
+          paddingTop="$3"
+          paddingBottom={insets.bottom}
+          elevation={8}
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            transform: [{ translateY: keyboardVisible ? -keyboardHeight : 0 }],
+          }}>
+          <Button
+            title="Simpan"
+            width="100%"
+            paddingVertical="$4"
+            borderRadius="$3"
+            height={MIN_TOUCH_TARGET}
+            minHeight={MIN_TOUCH_TARGET}
+            backgroundColor="$primary"
+            titleStyle={{
+              color: '$white',
+              fontSize: 16,
+              fontWeight: '600',
+            }}
+            onPress={handleSave}
+            isLoading={saving}
+            disabled={saving}
+            accessibilityLabel="Simpan perubahan profil"
+            accessibilityHint="Menyimpan perubahan informasi profil"
+            accessibilityState={{ disabled: saving }}
+          />
+        </YStack>
+      </YStack>
+    </SafeAreaView>
+  );
+}
