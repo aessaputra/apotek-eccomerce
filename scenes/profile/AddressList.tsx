@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FlatList, Alert, RefreshControl } from 'react-native';
-import { YStack, XStack, Text, Card, Spinner } from 'tamagui';
+import { YStack, Text, Spinner } from 'tamagui';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AntDesign, Ionicons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Button from '@/components/elements/Button';
 import AddressCard from '@/components/elements/AddressCard/AddressCard';
@@ -13,9 +13,15 @@ import type { Address } from '@/types/address';
 import { getThemeColor } from '@/utils/theme';
 import { useTheme } from 'tamagui';
 
+/** Min touch target: 48px (mobile-design). Bottom bar same pattern as Edit Profile / Address Form. */
+const MIN_TOUCH_TARGET = 48;
+/** Bottom bar: paddingTop $2 + button 48px + paddingBottom (8 + insets). */
+const BOTTOM_BAR_HEIGHT = 64;
+
 export default function AddressList() {
   const router = useRouter();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { user } = useAppSlice();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +29,8 @@ export default function AddressList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const bgColor = getThemeColor(theme, 'background', '#f8fafc');
+  const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
+  const scrollPaddingBottom = bottomBarHeight + 16;
 
   const loadAddresses = useCallback(async () => {
     if (!user?.id) return;
@@ -146,11 +154,11 @@ export default function AddressList() {
         </Text>
         <Button
           title="Tambah Alamat"
-          paddingVertical="$3"
-          borderRadius="$2"
-          height={48}
+          paddingVertical="$2"
+          borderRadius="$3"
+          minHeight={MIN_TOUCH_TARGET}
           backgroundColor="$primary"
-          titleStyle={{ color: '$white', fontSize: 16 }}
+          titleStyle={{ color: '$white', fontSize: 16, fontWeight: '600' }}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             router.push('/(main)/(tabs)/profile/address-form');
@@ -182,7 +190,7 @@ export default function AddressList() {
           getItemLayout={getItemLayout}
           contentContainerStyle={{
             padding: 20,
-            paddingBottom: 100,
+            paddingBottom: addresses.length > 0 ? scrollPaddingBottom : 100,
             flexGrow: 1,
           }}
           ListEmptyComponent={renderEmpty}
@@ -192,16 +200,34 @@ export default function AddressList() {
           accessibilityRole="list"
         />
 
-        {/* Floating Add Button */}
+        {/* Sticky bottom bar: Tambah Alamat (same pattern as Edit Profile / Address Form) */}
         {addresses.length > 0 && (
-          <XStack position="absolute" bottom={20} left={20} right={20} justifyContent="center">
+          <YStack
+            position="absolute"
+            bottom={insets.bottom}
+            left={0}
+            right={0}
+            backgroundColor="$background"
+            borderTopWidth={1}
+            borderColor="$borderColor"
+            paddingHorizontal="$4"
+            paddingTop="$2"
+            paddingBottom={8 + insets.bottom}
+            elevation={8}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+            }}>
             <Button
               title="Tambah Alamat"
-              paddingVertical="$3"
-              borderRadius="$2"
-              height={48}
+              width="100%"
+              paddingVertical="$2"
+              borderRadius="$3"
+              minHeight={MIN_TOUCH_TARGET}
               backgroundColor="$primary"
-              titleStyle={{ color: '$white', fontSize: 16 }}
+              titleStyle={{ color: '$white', fontSize: 16, fontWeight: '600' }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 router.push('/(main)/(tabs)/profile/address-form');
@@ -209,7 +235,7 @@ export default function AddressList() {
               accessibilityLabel="Tambah alamat pengiriman baru"
               accessibilityHint="Membuka form untuk menambahkan alamat pengiriman baru"
             />
-          </XStack>
+          </YStack>
         )}
       </YStack>
     </SafeAreaView>

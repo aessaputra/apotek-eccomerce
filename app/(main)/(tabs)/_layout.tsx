@@ -10,8 +10,11 @@ export default function TabLayout() {
   const tabBarInactive = getThemeColor(theme, 'colorPress', '#888');
   const tabBarActive = getThemeColor(theme, 'color', '#0D9488');
 
-  // Hide tab bar on edit-profile screen
-  const hideTabBar = segments.includes('edit-profile');
+  // Hide tab bar on edit-profile, address-form, and addresses (sticky bottom bar used instead)
+  const hideTabBar =
+    segments.includes('edit-profile') ||
+    segments.includes('address-form') ||
+    segments.includes('addresses');
 
   return (
     <Tabs

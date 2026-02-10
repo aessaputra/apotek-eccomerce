@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ScrollView, Alert, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
-import { YStack, XStack, Text, useTheme, Card } from 'tamagui';
+import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,13 +10,13 @@ import FormInput from '@/components/elements/FormInput';
 import Avatar from '@/components/elements/Avatar';
 import { useAppSlice } from '@/slices';
 import { updateProfile, uploadAvatar } from '@/services/profile.service';
-import { Spinner } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 import { windowWidth } from '@/utils/deviceInfo';
-import { useKeyboard } from '@/hooks';
 
-const MIN_TOUCH_TARGET = 44;
-const BOTTOM_BAR_HEIGHT = 80;
+/** Min touch target: 48px for both iOS and Android (mobile-design: thumb zone, Fitts' Law). */
+const MIN_TOUCH_TARGET = 48;
+/** Bottom bar: paddingTop $2 + button 48px + paddingBottom (8 + insets). Same as AddressForm. */
+const BOTTOM_BAR_HEIGHT = 64;
 
 export default function EditProfile() {
   const router = useRouter();
@@ -43,7 +43,6 @@ export default function EditProfile() {
   const editingRef = useRef(true);
 
   const insets = useSafeAreaInsets();
-  const { keyboardVisible, keyboardHeight } = useKeyboard();
   const avatarSize = windowWidth < 375 ? 100 : 120;
   const bgColor = getThemeColor(theme, 'background', '#f8fafc');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
@@ -196,11 +195,11 @@ export default function EditProfile() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
-      <YStack flex={1} position="relative">
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+        <YStack flex={1} position="relative">
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
@@ -302,50 +301,48 @@ export default function EditProfile() {
               </YStack>
             </Card>
           </ScrollView>
-        </KeyboardAvoidingView>
 
-        {/* Bottom Bar dengan Button Simpan - Fixed di bawah, naik ke atas keyboard */}
-        <YStack
-          position="absolute"
-          bottom={insets.bottom}
-          left={0}
-          right={0}
-          backgroundColor="$background"
-          borderTopWidth={1}
-          borderColor="$borderColor"
-          paddingHorizontal="$4"
-          paddingTop="$3"
-          paddingBottom={insets.bottom}
-          elevation={8}
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            transform: [{ translateY: keyboardVisible ? -keyboardHeight : 0 }],
-          }}>
-          <Button
-            title="Simpan"
-            width="100%"
-            paddingVertical="$4"
-            borderRadius="$3"
-            height={MIN_TOUCH_TARGET}
-            minHeight={MIN_TOUCH_TARGET}
-            backgroundColor="$primary"
-            titleStyle={{
-              color: '$white',
-              fontSize: 16,
-              fontWeight: '600',
-            }}
-            onPress={handleSave}
-            isLoading={saving}
-            disabled={saving}
-            accessibilityLabel="Simpan perubahan profil"
-            accessibilityHint="Menyimpan perubahan informasi profil"
-            accessibilityState={{ disabled: saving }}
-          />
+          {/* Bottom bar: di dalam KeyboardAvoidingView agar tetap di atas keyboard, tanpa transform manual */}
+          <YStack
+            position="absolute"
+            bottom={insets.bottom}
+            left={0}
+            right={0}
+            backgroundColor="$background"
+            borderTopWidth={1}
+            borderColor="$borderColor"
+            paddingHorizontal="$4"
+            paddingTop="$2"
+            paddingBottom={8 + insets.bottom}
+            elevation={8}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+            }}>
+            <Button
+              title="Simpan"
+              width="100%"
+              paddingVertical="$2"
+              borderRadius="$3"
+              minHeight={MIN_TOUCH_TARGET}
+              backgroundColor="$primary"
+              titleStyle={{
+                color: '$white',
+                fontSize: 16,
+                fontWeight: '600',
+              }}
+              onPress={handleSave}
+              isLoading={saving}
+              disabled={saving}
+              accessibilityLabel="Simpan perubahan profil"
+              accessibilityHint="Menyimpan perubahan informasi profil"
+              accessibilityState={{ disabled: saving, busy: saving }}
+            />
+          </YStack>
         </YStack>
-      </YStack>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
