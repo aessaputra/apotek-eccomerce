@@ -4,6 +4,7 @@ import { getThemeColor } from '@/utils/theme';
 import { AntDesign } from '@expo/vector-icons';
 
 const CART_ICON_SIZE = 24;
+const MIN_TOUCH_TARGET = 44;
 
 export interface HeaderCartIconProps {
   /** Warna ikon (hex atau token). Default: tema white */
@@ -17,16 +18,20 @@ export default function HeaderCartIcon({
   forHeaderRight = false,
 }: HeaderCartIconProps) {
   const theme = useTheme();
-  const color = colorProp ?? getThemeColor(theme, 'background', '#ffffff');
+  const defaultColor = forHeaderRight
+    ? getThemeColor(theme, 'white', '#ffffff')
+    : getThemeColor(theme, 'background', '#ffffff');
+  const color = colorProp ?? defaultColor;
   const router = useRouter();
   return (
     <XStack
-      minWidth={44}
+      minWidth={MIN_TOUCH_TARGET}
+      minHeight={MIN_TOUCH_TARGET}
       alignItems="center"
       justifyContent="center"
       paddingRight={forHeaderRight ? 16 : 0}>
       <XStack
-        padding={8}
+        padding={12}
         alignItems="center"
         justifyContent="center"
         onPress={() => router.push('/(main)/(tabs)/cart')}

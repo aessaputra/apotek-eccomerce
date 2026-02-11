@@ -28,7 +28,8 @@ export default function AddressList() {
   const [refreshing, setRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const bgColor = getThemeColor(theme, 'background', '#f8fafc');
+  // Use theme-aware background with light mode default fallback (#FFFFFF)
+  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   const scrollPaddingBottom = bottomBarHeight + 16;
 

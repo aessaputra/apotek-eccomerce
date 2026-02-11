@@ -1,12 +1,26 @@
-import { XStack, Text, useTheme } from 'tamagui';
+import { XStack, Text, useTheme, useThemeName } from 'tamagui';
 import { AntDesign } from '@expo/vector-icons';
 import HeaderCartIcon from '@/components/layouts/HeaderCartIcon';
 import { getThemeColor } from '@/utils/theme';
 
 export default function HeaderSearchAndCart() {
   const theme = useTheme();
-  const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
-  const searchBg = getThemeColor(theme, 'background', '#f1f5f9');
+  const themeName = useThemeName();
+  const isDark = themeName === 'dark';
+
+  // Use theme-aware colors for search bar text/icon
+  // Light mode: dark text (colorPress - hijau gelap #052E16) on white background
+  // Dark mode: light text (color - putih #F9FAFB) on dark surface background for maximum contrast
+  const placeholderColor = isDark
+    ? getThemeColor(theme, 'color', '#F9FAFB') // White text in dark mode
+    : getThemeColor(theme, 'colorPress', '#052E16'); // Dark green text in light mode
+  // Use surface/surfaceElevated for dark mode (dark background) instead of white
+  // This ensures proper contrast and consistency with dark mode design
+  const searchBg = getThemeColor(
+    theme,
+    'surfaceElevated',
+    getThemeColor(theme, 'surface', getThemeColor(theme, 'white', '#ffffff')),
+  );
 
   function onSearchPress() {
     // TODO: navigate to search screen when implemented
@@ -33,7 +47,7 @@ export default function HeaderSearchAndCart() {
           Cari produk...
         </Text>
       </XStack>
-      <HeaderCartIcon />
+      <HeaderCartIcon color={getThemeColor(theme, 'white', '#ffffff')} />
     </XStack>
   );
 }

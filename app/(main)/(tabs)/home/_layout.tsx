@@ -2,20 +2,24 @@ import { YStack, useTheme } from 'tamagui';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HeaderSearchAndCart from '@/components/layouts/HeaderSearchAndCart';
-import { getThemeColor } from '@/utils/theme';
+import { getStackHeaderOptions, getThemeColor } from '@/utils/theme';
+import { DEFAULT_THEME_VALUES } from '@/themes';
 
 export default function HomeStackLayout() {
   const theme = useTheme();
-  const headerBg = getThemeColor(theme, 'color', '#0D9488');
-  const headerTint = getThemeColor(theme, 'background', '#ffffff');
+  // Use headerBackground for theme-aware header color (darker teal in dark mode for better contrast)
+  // Use DEFAULT_THEME_VALUES for fallback to ensure consistency with theme definitions
+  const headerBg = getThemeColor(
+    theme,
+    'headerBackground',
+    getThemeColor(theme, 'brandPrimary', DEFAULT_THEME_VALUES.brandPrimary),
+  );
 
   return (
     <Stack
       screenOptions={{
         headerShown: true,
-        headerTintColor: headerTint,
-        headerStyle: { backgroundColor: headerBg },
-        headerTitleStyle: { fontSize: 18 },
+        ...getStackHeaderOptions(theme),
       }}>
       <Stack.Screen
         name="index"
@@ -26,9 +30,8 @@ export default function HomeStackLayout() {
             <SafeAreaView style={{ backgroundColor: headerBg }} edges={['top']}>
               <YStack
                 paddingHorizontal={16}
-                paddingTop={12}
-                paddingBottom={12}
-                minHeight={56}
+                paddingVertical={6}
+                minHeight={44}
                 justifyContent="center"
                 width="100%">
                 <HeaderSearchAndCart />

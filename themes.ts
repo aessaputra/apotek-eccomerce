@@ -23,19 +23,20 @@ const lightPalette = [
 ];
 
 // 12-step palette: background -> foreground (dark)
+// Smooth gradation from dark gray background (#2D2D2D) to light foreground (#F9FAFB)
 const darkPalette = [
-  '#020617', // 0 - background utama (hampir hitam kebiruan)
-  '#030712', // 1
-  '#0B1120', // 2
-  '#0F172A', // 3
-  '#111827', // 4
-  '#1F2937', // 5
-  '#374151', // 6
-  '#4B5563', // 7
-  '#6B7280', // 8
+  '#2D2D2D', // 0 - background utama (abu-abu gelap)
+  '#353535', // 1 - hover lembut
+  '#3D3D3D', // 2 - surface elevated
+  '#454545', // 3 - border default
+  '#4D4D4D', // 4
+  '#565656', // 5 - adjusted for smoother gradation
+  '#6B7280', // 6 - medium gray (consistent with light mode for colorSubtle)
+  '#7A7A7A', // 7
+  '#8A8A8A', // 8
   '#9CA3AF', // 9
   '#E5E7EB', // 10
-  '#F9FAFB', // 11
+  '#F9FAFB', // 11 - foreground (text color)
 ];
 
 const accentLight = {
@@ -97,6 +98,11 @@ const builtThemes = createThemes({
         warningSoft: yellow.yellow3,
         danger: red.red10,
         dangerSoft: red.red3,
+        // Header background: use brandPrimary for light mode (good contrast with white text)
+        headerBackground: accentLight.accent4,
+        // Color for subtle/inactive elements (e.g., inactive tab bar items)
+        // Light mode: medium gray for subtle inactive state
+        colorSubtle: lightPalette[6], // #6B7280
         // Override template-derived values so login/cards match Theme Builder (white card, dark text)
         background: lightPalette[0],
         backgroundHover: lightPalette[1],
@@ -125,6 +131,13 @@ const builtThemes = createThemes({
         warningSoft: yellowDark.yellow3,
         danger: redDark.red9,
         dangerSoft: redDark.red3,
+        // Header background: use darker teal (accent4) for better contrast with white text in dark mode
+        // accent4 (36% lightness) provides better contrast than accent9 (56% lightness)
+        headerBackground: accentDark.accent4,
+        // Color for subtle/inactive elements (e.g., inactive tab bar items)
+        // Dark mode: medium gray (#6B7280) for subtle inactive state - consistent with light mode
+        // Provides good contrast with dark background (#3D3D3D) while remaining subtle compared to active state (white)
+        colorSubtle: darkPalette[6], // #6B7280 - medium gray for optimal subtle inactive state
         background: darkPalette[0],
         backgroundHover: darkPalette[1],
         color: darkPalette[11],
@@ -165,3 +178,31 @@ const builtThemes = createThemes({
 export type Themes = typeof builtThemes;
 
 export const themes: Themes = builtThemes;
+
+/**
+ * Default theme values for fallback purposes.
+ * Use these constants as fallback values in getThemeColor() calls to ensure
+ * single source of truth and maintainability.
+ * These values match the light theme defaults (light mode is typically the default).
+ */
+export const DEFAULT_THEME_VALUES = {
+  // Light mode defaults (used as fallbacks)
+  background: lightPalette[0], // #FFFFFF
+  surface: lightPalette[0], // #FFFFFF
+  surfaceElevated: lightPalette[0], // #FFFFFF
+  borderColor: lightPalette[3], // #E5E7EB
+  color: lightPalette[11], // #022C22 (darkest for contrast)
+  colorPress: lightPalette[10], // #052E16
+  colorSubtle: lightPalette[6], // #6B7280
+  primary: accentLight.accent4, // Teal brand color
+  brandPrimary: accentLight.accent4, // Teal brand color
+  shadowColor: 'rgba(0,0,0,0.06)', // Light mode shadow
+  white: lightPalette[0], // #FFFFFF
+
+  // Dark mode defaults (for dark mode specific fallbacks)
+  dark: {
+    background: darkPalette[0], // #2D2D2D
+    color: darkPalette[11], // #F9FAFB (white for dark mode)
+    shadowColor: 'rgba(0,0,0,0.3)', // Dark mode shadow
+  },
+} as const;

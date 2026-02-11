@@ -68,7 +68,8 @@ export default function Profile() {
 
   const insets = useSafeAreaInsets();
   const avatarSize = windowWidth < 375 ? 100 : 120;
-  const bgColor = getThemeColor(theme, 'background', '#f8fafc');
+  // Use theme-aware background with light mode default fallback (#FFFFFF)
+  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
   const scrollPaddingBottom = 80 + insets.bottom;
 
   const formatMemberSince = useCallback((dateString?: string): string => {

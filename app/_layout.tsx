@@ -44,7 +44,8 @@ function Router() {
       <BottomSheet
         isOpen={isOpen}
         initialOpen
-        backgroundStyle={{ backgroundColor: getThemeColor(theme, 'background', '#0f0f0f') }}>
+        // Use theme-aware background with light mode default fallback (#FFFFFF)
+        backgroundStyle={{ backgroundColor: getThemeColor(theme, 'background', '#FFFFFF') }}>
         <BottomSheetContents onClose={() => setOpen(false)} />
       </BottomSheet>
     </Fragment>

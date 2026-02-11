@@ -16,3 +16,28 @@ export function getThemeColor(theme: unknown, key: string, fallback: string): st
   }
   return (typeof v === 'string' ? v : variable?.val) ?? fallback;
 }
+
+/**
+ * Shared Stack header options for Apotek Ecommerce branding.
+ * Uses headerBackground (theme-aware) for header background and white for tint (text/icons).
+ * Light mode: brandPrimary (teal) for brand consistency.
+ * Dark mode: darker teal (accent4) for better contrast with white text (WCAG compliant).
+ * Per Tamagui docs: getThemeColor extracts resolved values for non-Tamagui APIs.
+ *
+ * @see https://tamagui.dev/docs/core/use-theme
+ */
+export function getStackHeaderOptions(theme: unknown) {
+  return {
+    headerTintColor: getThemeColor(theme, 'white', '#ffffff'),
+    // Use headerBackground which is theme-aware (lighter teal for light, darker teal for dark)
+    headerStyle: {
+      backgroundColor: getThemeColor(
+        theme,
+        'headerBackground',
+        getThemeColor(theme, 'brandPrimary', '#0D9488'),
+      ),
+    },
+    headerTitleStyle: { fontSize: 18, fontWeight: '600' as const },
+    headerShadowVisible: false,
+  };
+}

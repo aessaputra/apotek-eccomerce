@@ -1,16 +1,11 @@
 import { Stack } from 'expo-router';
 import { useTheme } from 'tamagui';
-import { getThemeColor } from '@/utils/theme';
+import { getStackHeaderOptions } from '@/utils/theme';
 
 export default function ProfileStackLayout() {
   const theme = useTheme();
   return (
-    <Stack
-      screenOptions={{
-        headerTintColor: getThemeColor(theme, 'background', '#ffffff'),
-        headerStyle: { backgroundColor: getThemeColor(theme, 'color', '#0D9488') },
-        headerTitleStyle: { fontSize: 18 },
-      }}>
+    <Stack screenOptions={getStackHeaderOptions(theme)}>
       <Stack.Screen
         name="index"
         options={{

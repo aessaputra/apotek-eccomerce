@@ -60,7 +60,8 @@ export default function AddressForm() {
   const provinceRef = useRef<RNTextInput>(null);
 
   const insets = useSafeAreaInsets();
-  const bgColor = getThemeColor(theme, 'background', '#f8fafc');
+  // Use theme-aware background with light mode default fallback (#FFFFFF)
+  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   /** Extra gap so "Jadikan alamat default" card stays above the sticky Simpan button. */
   const scrollPaddingBottom = bottomBarHeight + 24;
