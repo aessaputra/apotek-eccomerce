@@ -12,13 +12,12 @@ import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { useKeyboard } from '@/hooks';
 import Button from '@/components/elements/Button';
 import FormInput from '@/components/elements/FormInput';
 import { useAppSlice } from '@/slices';
 import { getAddress, createAddress, updateAddress } from '@/services/address.service';
 import type { Address, AddressInsert } from '@/types/address';
-import { windowWidth, windowHeight } from '@/utils/deviceInfo';
+import { windowWidth } from '@/utils/deviceInfo';
 import { getThemeColor } from '@/utils/theme';
 
 /** Min touch target: 48px for both iOS and Android (mobile-design: thumb zone, Fitts' Law). */
@@ -61,7 +60,6 @@ export default function AddressForm() {
   const provinceRef = useRef<RNTextInput>(null);
 
   const insets = useSafeAreaInsets();
-  const { keyboardVisible, keyboardHeight } = useKeyboard();
   const bgColor = getThemeColor(theme, 'background', '#f8fafc');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   /** Extra gap so "Jadikan alamat default" card stays above the sticky Simpan button. */
@@ -286,8 +284,6 @@ export default function AddressForm() {
               padding: 20,
               paddingBottom: scrollPaddingBottom,
               flexGrow: 1,
-              // Ensure short content (Tambah Alamat) still leaves checkbox above bar; same as Edit.
-              minHeight: windowHeight + scrollPaddingBottom,
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -559,12 +555,10 @@ export default function AddressForm() {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Bottom bar: posisi bottom dinamis — tepat di atas keyboard saat terbuka (sama seperti Edit Profile). Tanpa transform agar tidak "terbang" ke atas. */}
+        {/* Bottom bar: di dalam KeyboardAvoidingView agar tetap di atas keyboard, tanpa transform manual */}
         <YStack
           position="absolute"
-          bottom={
-            keyboardVisible && keyboardHeight > 0 ? keyboardHeight + insets.bottom : insets.bottom
-          }
+          bottom={insets.bottom}
           left={0}
           right={0}
           backgroundColor="$background"
