@@ -2,6 +2,7 @@ import { YStack, Text, useTheme } from 'tamagui';
 import GradientButton from '@/components/elements/GradientButton';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getThemeColor } from '@/utils/theme';
+import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 export default function Details() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function Details() {
       <Text fontSize={24} marginBottom={20} color="$color">{`Details (from ${from})`}</Text>
       <GradientButton
         title="Go back to Home"
-        titleStyle={{ color: '$background', textAlign: 'center' }}
+        titleStyle={{ ...PRIMARY_BUTTON_TITLE_STYLE, color: '$background', textAlign: 'center' }}
         paddingVertical={8}
         paddingHorizontal={16}
         borderRadius={22}

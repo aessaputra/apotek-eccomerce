@@ -1,29 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  ScrollView,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  TextInput as RNTextInput,
-} from 'react-native';
+import { ScrollView, Alert, Pressable, TextInput as RNTextInput } from 'react-native';
 import { YStack, XStack, Text, Card, Spinner, Checkbox, useTheme } from 'tamagui';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import Button from '@/components/elements/Button';
 import FormInput from '@/components/elements/FormInput';
+import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { getAddress, createAddress, updateAddress } from '@/services/address.service';
 import type { Address, AddressInsert } from '@/types/address';
 import { windowWidth } from '@/utils/deviceInfo';
 import { getThemeColor } from '@/utils/theme';
-
-/** Min touch target: 48px for both iOS and Android (mobile-design: thumb zone, Fitts' Law). */
-const MIN_TOUCH_TARGET = 48;
-/** Bottom bar: paddingTop $2 + button 48px + paddingBottom (8 + insets). */
-const BOTTOM_BAR_HEIGHT = 64;
+import { MIN_TOUCH_TARGET, BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 
 export default function AddressForm() {
   const router = useRouter();
@@ -63,8 +52,9 @@ export default function AddressForm() {
   // Use theme-aware background with light mode default fallback (#FFFFFF)
   const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
-  /** Extra gap so "Jadikan alamat default" card stays above the sticky Simpan button. */
-  const scrollPaddingBottom = bottomBarHeight + 24;
+  // Extra gap so "Jadikan alamat default" card stays above the sticky Simpan button
+  // Using SPACIOUS spacing (24px) as checkbox/interactive element is near bottom
+  const scrollPaddingBottom = bottomBarHeight + FORM_SCROLL_PADDING.SPACIOUS;
 
   // Validation functions
   const validateReceiverName = useCallback((value: string): boolean => {
@@ -275,326 +265,291 @@ export default function AddressForm() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
       <YStack flex={1} position="relative">
-        <KeyboardAvoidingView
+        <ScrollView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              padding: 20,
-              paddingBottom: scrollPaddingBottom,
-              flexGrow: 1,
-            }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag">
-            {/* Header Section */}
-            <YStack space="$4" marginBottom="$4">
-              <Text fontSize="$7" fontWeight="700" color="$color" fontFamily="$heading">
-                {isEdit ? 'Edit Alamat' : 'Tambah Alamat'}
-              </Text>
-              <Text fontSize="$3" color="$colorPress">
-                {isEdit
-                  ? 'Perbarui informasi alamat pengiriman Anda'
-                  : 'Lengkapi informasi alamat pengiriman untuk memudahkan proses checkout'}
-              </Text>
+          contentContainerStyle={{
+            padding: 20,
+            paddingBottom: scrollPaddingBottom,
+            flexGrow: 1,
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag">
+          {/* Header Section */}
+          <YStack space="$4" marginBottom="$4">
+            <Text fontSize="$7" fontWeight="700" color="$color" fontFamily="$heading">
+              {isEdit ? 'Edit Alamat' : 'Tambah Alamat'}
+            </Text>
+            <Text fontSize="$3" color="$colorPress">
+              {isEdit
+                ? 'Perbarui informasi alamat pengiriman Anda'
+                : 'Lengkapi informasi alamat pengiriman untuk memudahkan proses checkout'}
+            </Text>
+          </YStack>
+
+          {/* General Error Message */}
+          {error && (
+            <Card
+              padding="$3"
+              marginBottom="$4"
+              backgroundColor="$dangerSoft"
+              borderWidth={1}
+              borderColor="$danger"
+              borderRadius="$3">
+              <XStack space="$2" alignItems="center">
+                <Ionicons
+                  name="alert-circle"
+                  size={20}
+                  color={getThemeColor(theme, 'danger', '#DC2626')}
+                />
+                <Text fontSize="$3" color="$danger" flex={1}>
+                  {error}
+                </Text>
+              </XStack>
+            </Card>
+          )}
+
+          {/* Informasi Penerima Section */}
+          <Card
+            padding="$4"
+            marginBottom="$4"
+            backgroundColor="$surface"
+            borderWidth={1}
+            borderColor="$surfaceBorder"
+            borderRadius="$4"
+            elevation={0}>
+            <YStack space="$4">
+              <XStack space="$2" alignItems="center" marginBottom="$2">
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color={getThemeColor(theme, 'primary', '#0D9488')}
+                />
+                <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
+                  Informasi Penerima
+                </Text>
+              </XStack>
+
+              <YStack space="$3">
+                <FormInput
+                  ref={receiverNameRef}
+                  label="Nama Penerima"
+                  required
+                  value={receiverName}
+                  onChangeText={text => {
+                    setReceiverName(text);
+                    if (receiverNameError) {
+                      validateReceiverName(text);
+                    }
+                  }}
+                  onBlur={() => validateReceiverName(receiverName)}
+                  error={receiverNameError}
+                  autoCapitalize="words"
+                  editable={!saving}
+                  returnKeyType="next"
+                  onSubmitEditing={() => phoneNumberRef.current?.focus()}
+                  accessibilityLabel="Nama penerima"
+                  accessibilityHint="Masukkan nama lengkap penerima paket"
+                />
+
+                <FormInput
+                  ref={phoneNumberRef}
+                  label="Nomor Telepon"
+                  required
+                  value={phoneNumber}
+                  onChangeText={text => {
+                    setPhoneNumber(text);
+                    if (phoneNumberError) {
+                      validatePhoneNumber(text);
+                    }
+                  }}
+                  onBlur={() => validatePhoneNumber(phoneNumber)}
+                  error={phoneNumberError}
+                  placeholder="08xx xxxx xxxx"
+                  keyboardType="phone-pad"
+                  editable={!saving}
+                  returnKeyType="next"
+                  onSubmitEditing={() => streetAddressRef.current?.focus()}
+                  accessibilityLabel="Nomor telepon"
+                  accessibilityHint="Masukkan nomor telepon penerima"
+                />
+              </YStack>
             </YStack>
+          </Card>
 
-            {/* General Error Message */}
-            {error && (
-              <Card
-                padding="$3"
-                marginBottom="$4"
-                backgroundColor="$dangerSoft"
-                borderWidth={1}
-                borderColor="$danger"
-                borderRadius="$3">
-                <XStack space="$2" alignItems="center">
-                  <Ionicons
-                    name="alert-circle"
-                    size={20}
-                    color={getThemeColor(theme, 'danger', '#DC2626')}
-                  />
-                  <Text fontSize="$3" color="$danger" flex={1}>
-                    {error}
-                  </Text>
-                </XStack>
-              </Card>
-            )}
+          {/* Alamat Pengiriman Section */}
+          <Card
+            padding="$4"
+            marginBottom="$4"
+            backgroundColor="$surface"
+            borderWidth={1}
+            borderColor="$surfaceBorder"
+            borderRadius="$4"
+            elevation={0}>
+            <YStack space="$4">
+              <XStack space="$2" alignItems="center" marginBottom="$2">
+                <Ionicons
+                  name="location-outline"
+                  size={20}
+                  color={getThemeColor(theme, 'primary', '#0D9488')}
+                />
+                <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
+                  Alamat Pengiriman
+                </Text>
+              </XStack>
 
-            {/* Informasi Penerima Section */}
-            <Card
-              padding="$4"
-              marginBottom="$4"
-              backgroundColor="$surface"
-              borderWidth={1}
-              borderColor="$surfaceBorder"
-              borderRadius="$4"
-              elevation={0}>
-              <YStack space="$4">
-                <XStack space="$2" alignItems="center" marginBottom="$2">
-                  <Ionicons
-                    name="person-outline"
-                    size={20}
-                    color={getThemeColor(theme, 'primary', '#0D9488')}
-                  />
-                  <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
-                    Informasi Penerima
-                  </Text>
-                </XStack>
+              <YStack space="$3">
+                <FormInput
+                  ref={streetAddressRef}
+                  label="Alamat Lengkap"
+                  required
+                  value={streetAddress}
+                  onChangeText={text => {
+                    setStreetAddress(text);
+                    if (streetAddressError) {
+                      validateStreetAddress(text);
+                    }
+                  }}
+                  onBlur={() => validateStreetAddress(streetAddress)}
+                  error={streetAddressError}
+                  placeholder="Jalan, RT/RW, Nomor rumah"
+                  autoCapitalize="words"
+                  editable={!saving}
+                  multiline
+                  numberOfLines={3}
+                  minHeight={100}
+                  returnKeyType="next"
+                  onSubmitEditing={() => cityRef.current?.focus()}
+                  accessibilityLabel="Alamat lengkap"
+                  accessibilityHint="Masukkan alamat lengkap termasuk jalan, RT/RW, dan nomor rumah"
+                />
 
-                <YStack space="$3">
-                  <FormInput
-                    ref={receiverNameRef}
-                    label="Nama Penerima"
-                    required
-                    value={receiverName}
-                    onChangeText={text => {
-                      setReceiverName(text);
-                      if (receiverNameError) {
-                        validateReceiverName(text);
-                      }
-                    }}
-                    onBlur={() => validateReceiverName(receiverName)}
-                    error={receiverNameError}
-                    autoCapitalize="words"
-                    editable={!saving}
-                    returnKeyType="next"
-                    onSubmitEditing={() => phoneNumberRef.current?.focus()}
-                    accessibilityLabel="Nama penerima"
-                    accessibilityHint="Masukkan nama lengkap penerima paket"
-                  />
+                <XStack space="$3">
+                  <YStack flex={1}>
+                    <FormInput
+                      ref={cityRef}
+                      label="Kota"
+                      required
+                      value={city}
+                      onChangeText={text => {
+                        setCity(text);
+                        if (cityError) {
+                          validateCity(text);
+                        }
+                      }}
+                      onBlur={() => validateCity(city)}
+                      error={cityError}
+                      autoCapitalize="words"
+                      editable={!saving}
+                      returnKeyType="next"
+                      onSubmitEditing={() => postalCodeRef.current?.focus()}
+                      accessibilityLabel="Kota"
+                      accessibilityHint="Masukkan nama kota"
+                    />
+                  </YStack>
 
-                  <FormInput
-                    ref={phoneNumberRef}
-                    label="Nomor Telepon"
-                    required
-                    value={phoneNumber}
-                    onChangeText={text => {
-                      setPhoneNumber(text);
-                      if (phoneNumberError) {
-                        validatePhoneNumber(text);
-                      }
-                    }}
-                    onBlur={() => validatePhoneNumber(phoneNumber)}
-                    error={phoneNumberError}
-                    placeholder="08xx xxxx xxxx"
-                    keyboardType="phone-pad"
-                    editable={!saving}
-                    returnKeyType="next"
-                    onSubmitEditing={() => streetAddressRef.current?.focus()}
-                    accessibilityLabel="Nomor telepon"
-                    accessibilityHint="Masukkan nomor telepon penerima"
-                  />
-                </YStack>
-              </YStack>
-            </Card>
-
-            {/* Alamat Pengiriman Section */}
-            <Card
-              padding="$4"
-              marginBottom="$4"
-              backgroundColor="$surface"
-              borderWidth={1}
-              borderColor="$surfaceBorder"
-              borderRadius="$4"
-              elevation={0}>
-              <YStack space="$4">
-                <XStack space="$2" alignItems="center" marginBottom="$2">
-                  <Ionicons
-                    name="location-outline"
-                    size={20}
-                    color={getThemeColor(theme, 'primary', '#0D9488')}
-                  />
-                  <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
-                    Alamat Pengiriman
-                  </Text>
-                </XStack>
-
-                <YStack space="$3">
-                  <FormInput
-                    ref={streetAddressRef}
-                    label="Alamat Lengkap"
-                    required
-                    value={streetAddress}
-                    onChangeText={text => {
-                      setStreetAddress(text);
-                      if (streetAddressError) {
-                        validateStreetAddress(text);
-                      }
-                    }}
-                    onBlur={() => validateStreetAddress(streetAddress)}
-                    error={streetAddressError}
-                    placeholder="Jalan, RT/RW, Nomor rumah"
-                    autoCapitalize="words"
-                    editable={!saving}
-                    multiline
-                    numberOfLines={3}
-                    minHeight={100}
-                    returnKeyType="next"
-                    onSubmitEditing={() => cityRef.current?.focus()}
-                    accessibilityLabel="Alamat lengkap"
-                    accessibilityHint="Masukkan alamat lengkap termasuk jalan, RT/RW, dan nomor rumah"
-                  />
-
-                  <XStack space="$3">
-                    <YStack flex={1}>
-                      <FormInput
-                        ref={cityRef}
-                        label="Kota"
-                        required
-                        value={city}
-                        onChangeText={text => {
-                          setCity(text);
-                          if (cityError) {
-                            validateCity(text);
-                          }
-                        }}
-                        onBlur={() => validateCity(city)}
-                        error={cityError}
-                        autoCapitalize="words"
-                        editable={!saving}
-                        returnKeyType="next"
-                        onSubmitEditing={() => postalCodeRef.current?.focus()}
-                        accessibilityLabel="Kota"
-                        accessibilityHint="Masukkan nama kota"
-                      />
-                    </YStack>
-
-                    <YStack flex={1}>
-                      <FormInput
-                        ref={postalCodeRef}
-                        label="Kode Pos"
-                        required
-                        value={postalCode}
-                        onChangeText={text => {
-                          setPostalCode(text);
-                          if (postalCodeError) {
-                            validatePostalCode(text);
-                          }
-                        }}
-                        onBlur={() => validatePostalCode(postalCode)}
-                        error={postalCodeError}
-                        placeholder="5 digit"
-                        keyboardType="numeric"
-                        editable={!saving}
-                        returnKeyType="next"
-                        onSubmitEditing={() => provinceRef.current?.focus()}
-                        accessibilityLabel="Kode pos"
-                        accessibilityHint="Masukkan kode pos 5 digit"
-                      />
-                    </YStack>
-                  </XStack>
-
-                  <FormInput
-                    ref={provinceRef}
-                    label="Provinsi"
-                    value={province}
-                    onChangeText={setProvince}
-                    autoCapitalize="words"
-                    editable={!saving}
-                    returnKeyType="done"
-                    accessibilityLabel="Provinsi"
-                    accessibilityHint="Masukkan nama provinsi (opsional)"
-                  />
-                </YStack>
-              </YStack>
-            </Card>
-
-            {/* Set as Default Section */}
-            <Card
-              padding="$4"
-              marginBottom="$4"
-              backgroundColor="$surface"
-              borderWidth={1}
-              borderColor={isDefault ? '$primary' : '$surfaceBorder'}
-              borderRadius="$4"
-              elevation={0}>
-              <Pressable
-                onPress={() => {
-                  if (!saving) {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setIsDefault(!isDefault);
-                  }
-                }}
-                disabled={saving}
-                style={{ minHeight: MIN_TOUCH_TARGET }}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: isDefault }}
-                accessibilityLabel="Jadikan alamat default"
-                accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default yang akan digunakan otomatis saat checkout">
-                <XStack space="$3" alignItems="center">
-                  <Checkbox
-                    checked={isDefault}
-                    onCheckedChange={checked => setIsDefault(checked as boolean)}
-                    size="$5"
-                    disabled={saving}
-                    borderColor={isDefault ? '$primary' : '$borderColor'}
-                    backgroundColor={isDefault ? '$primary' : '$background'}
-                    borderWidth={isDefault ? 2 : 1.5}
-                    accessibilityLabel="Jadikan alamat default">
-                    <Checkbox.Indicator>
-                      <AntDesign
-                        name="check"
-                        size={16}
-                        color={getThemeColor(theme, 'white', '#ffffff')}
-                      />
-                    </Checkbox.Indicator>
-                  </Checkbox>
-                  <YStack flex={1} space="$1">
-                    <Text fontSize="$4" color="$color" fontWeight="600">
-                      Jadikan alamat default
-                    </Text>
-                    <Text fontSize="$3" color="$colorPress">
-                      Alamat ini akan digunakan secara otomatis saat checkout
-                    </Text>
+                  <YStack flex={1}>
+                    <FormInput
+                      ref={postalCodeRef}
+                      label="Kode Pos"
+                      required
+                      value={postalCode}
+                      onChangeText={text => {
+                        setPostalCode(text);
+                        if (postalCodeError) {
+                          validatePostalCode(text);
+                        }
+                      }}
+                      onBlur={() => validatePostalCode(postalCode)}
+                      error={postalCodeError}
+                      placeholder="5 digit"
+                      keyboardType="numeric"
+                      editable={!saving}
+                      returnKeyType="next"
+                      onSubmitEditing={() => provinceRef.current?.focus()}
+                      accessibilityLabel="Kode pos"
+                      accessibilityHint="Masukkan kode pos 5 digit"
+                    />
                   </YStack>
                 </XStack>
-              </Pressable>
-            </Card>
-          </ScrollView>
-        </KeyboardAvoidingView>
 
-        {/* Bottom bar: di dalam KeyboardAvoidingView agar tetap di atas keyboard, tanpa transform manual */}
-        <YStack
-          position="absolute"
-          bottom={insets.bottom}
-          left={0}
-          right={0}
-          backgroundColor="$background"
-          borderTopWidth={1}
-          borderColor="$borderColor"
-          paddingHorizontal="$4"
-          paddingTop="$2"
-          paddingBottom={8 + insets.bottom}
-          elevation={8}
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-          }}>
-          <Button
-            title={isEdit ? 'Simpan Perubahan' : 'Simpan Alamat'}
-            width="100%"
-            paddingVertical="$2"
-            borderRadius="$3"
-            minHeight={MIN_TOUCH_TARGET}
-            backgroundColor="$primary"
-            titleStyle={{
-              color: '$white',
-              fontSize: 16,
-              fontWeight: '600',
-            }}
-            onPress={handleSave}
-            isLoading={saving}
-            disabled={saving}
-            accessibilityLabel={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
-            accessibilityHint="Menyimpan data alamat pengiriman"
-            accessibilityState={{ disabled: saving, busy: saving }}
-          />
-        </YStack>
+                <FormInput
+                  ref={provinceRef}
+                  label="Provinsi"
+                  value={province}
+                  onChangeText={setProvince}
+                  autoCapitalize="words"
+                  editable={!saving}
+                  returnKeyType="done"
+                  accessibilityLabel="Provinsi"
+                  accessibilityHint="Masukkan nama provinsi (opsional)"
+                />
+              </YStack>
+            </YStack>
+          </Card>
+
+          {/* Set as Default Section */}
+          <Card
+            padding="$4"
+            marginBottom="$4"
+            backgroundColor="$surface"
+            borderWidth={1}
+            borderColor={isDefault ? '$primary' : '$surfaceBorder'}
+            borderRadius="$4"
+            elevation={0}>
+            <Pressable
+              onPress={() => {
+                if (!saving) {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setIsDefault(!isDefault);
+                }
+              }}
+              disabled={saving}
+              style={{ minHeight: MIN_TOUCH_TARGET }}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isDefault }}
+              accessibilityLabel="Jadikan alamat default"
+              accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default yang akan digunakan otomatis saat checkout">
+              <XStack space="$3" alignItems="center">
+                <Checkbox
+                  checked={isDefault}
+                  onCheckedChange={checked => setIsDefault(checked as boolean)}
+                  size="$5"
+                  disabled={saving}
+                  borderColor={isDefault ? '$primary' : '$borderColor'}
+                  backgroundColor={isDefault ? '$primary' : '$background'}
+                  borderWidth={isDefault ? 2 : 1.5}
+                  accessibilityLabel="Jadikan alamat default">
+                  <Checkbox.Indicator>
+                    <AntDesign
+                      name="check"
+                      size={16}
+                      color={getThemeColor(theme, 'white', '#ffffff')}
+                    />
+                  </Checkbox.Indicator>
+                </Checkbox>
+                <YStack flex={1} space="$1">
+                  <Text fontSize="$4" color="$color" fontWeight="600">
+                    Jadikan alamat default
+                  </Text>
+                  <Text fontSize="$3" color="$colorPress">
+                    Alamat ini akan digunakan secara otomatis saat checkout
+                  </Text>
+                </YStack>
+              </XStack>
+            </Pressable>
+          </Card>
+        </ScrollView>
+
+        {/* Bottom action bar with save button (automatically lifts above keyboard) */}
+        <BottomActionBar
+          buttonTitle={isEdit ? 'Simpan Perubahan' : 'Simpan Alamat'}
+          onPress={handleSave}
+          isLoading={saving}
+          disabled={saving}
+          accessibilityLabel={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
+          accessibilityHint="Menyimpan data alamat pengiriman"
+        />
       </YStack>
     </SafeAreaView>
   );

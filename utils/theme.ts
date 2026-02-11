@@ -1,3 +1,5 @@
+import { THEME_FALLBACKS } from '@/constants/ui';
+
 /**
  * Safe theme color access for non-Tamagui APIs (e.g. React Native StyleSheet,
  * headerStyle, backgroundStyle). Per Tamagui docs, theme values are Variable
@@ -6,15 +8,20 @@
  *
  * @see https://tamagui.dev/docs/core/use-theme
  */
-export function getThemeColor(theme: unknown, key: string, fallback: string): string {
+export function getThemeColor(theme: unknown, key: string, fallback?: string): string {
   const v = (theme as Record<string, unknown>)?.[key];
-  if (v == null) return fallback;
+  if (v == null) {
+    // Use THEME_FALLBACKS if available, otherwise use provided fallback
+    return (
+      (THEME_FALLBACKS[key as keyof typeof THEME_FALLBACKS] as string) ?? fallback ?? '#000000'
+    );
+  }
   const variable = v as { get?: () => string; val?: string };
   if (typeof variable.get === 'function') {
     const got = variable.get();
     if (typeof got === 'string') return got;
   }
-  return (typeof v === 'string' ? v : variable?.val) ?? fallback;
+  return (typeof v === 'string' ? v : variable?.val) ?? fallback ?? '#000000';
 }
 
 /**
@@ -28,13 +35,13 @@ export function getThemeColor(theme: unknown, key: string, fallback: string): st
  */
 export function getStackHeaderOptions(theme: unknown) {
   return {
-    headerTintColor: getThemeColor(theme, 'white', '#ffffff'),
+    headerTintColor: getThemeColor(theme, 'white'),
     // Use headerBackground which is theme-aware (lighter teal for light, darker teal for dark)
     headerStyle: {
       backgroundColor: getThemeColor(
         theme,
         'headerBackground',
-        getThemeColor(theme, 'brandPrimary', '#0D9488'),
+        getThemeColor(theme, 'brandPrimary'),
       ),
     },
     headerTitleStyle: { fontSize: 18, fontWeight: '600' as const },

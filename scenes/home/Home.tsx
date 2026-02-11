@@ -1,6 +1,7 @@
 import { YStack, Text } from 'tamagui';
 import { useRouter } from 'expo-router';
 import Button from '@/components/elements/Button';
+import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 export default function Home() {
   const router = useRouter();
@@ -12,7 +13,7 @@ export default function Home() {
         </Text>
         <Button
           title="Go to Details"
-          titleStyle={{ color: '$white', textAlign: 'center' }}
+          titleStyle={{ ...PRIMARY_BUTTON_TITLE_STYLE, textAlign: 'center' }}
           paddingVertical={8}
           paddingHorizontal={16}
           borderRadius={22}

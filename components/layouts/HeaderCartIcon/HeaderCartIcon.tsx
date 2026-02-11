@@ -2,9 +2,7 @@ import { XStack, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { getThemeColor } from '@/utils/theme';
 import { AntDesign } from '@expo/vector-icons';
-
-const CART_ICON_SIZE = 24;
-const MIN_TOUCH_TARGET = 44;
+import { ICON_SIZES, MIN_TOUCH_TARGET, THEME_FALLBACKS } from '@/constants/ui';
 
 export interface HeaderCartIconProps {
   /** Warna ikon (hex atau token). Default: tema white */
@@ -19,8 +17,8 @@ export default function HeaderCartIcon({
 }: HeaderCartIconProps) {
   const theme = useTheme();
   const defaultColor = forHeaderRight
-    ? getThemeColor(theme, 'white', '#ffffff')
-    : getThemeColor(theme, 'background', '#ffffff');
+    ? getThemeColor(theme, 'white', THEME_FALLBACKS.white)
+    : getThemeColor(theme, 'background', THEME_FALLBACKS.background);
   const color = colorProp ?? defaultColor;
   const router = useRouter();
   return (
@@ -39,7 +37,7 @@ export default function HeaderCartIcon({
         cursor="pointer"
         accessibilityRole="button"
         accessibilityLabel="Keranjang">
-        <AntDesign name="shopping-cart" size={CART_ICON_SIZE} color={color} />
+        <AntDesign name="shopping-cart" size={ICON_SIZES.BUTTON} color={color} />
       </XStack>
     </XStack>
   );

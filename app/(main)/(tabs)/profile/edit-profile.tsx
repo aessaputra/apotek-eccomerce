@@ -1,22 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { ScrollView, Alert, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import { ScrollView, Alert, TextInput } from 'react-native';
 import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Button from '@/components/elements/Button';
 import FormInput from '@/components/elements/FormInput';
 import Avatar from '@/components/elements/Avatar';
+import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { updateProfile, uploadAvatar } from '@/services/profile.service';
 import { getThemeColor } from '@/utils/theme';
 import { windowWidth } from '@/utils/deviceInfo';
-
-/** Min touch target: 48px for both iOS and Android (mobile-design: thumb zone, Fitts' Law). */
-const MIN_TOUCH_TARGET = 48;
-/** Bottom bar: paddingTop $2 + button 48px + paddingBottom (8 + insets). Same as AddressForm. */
-const BOTTOM_BAR_HEIGHT = 64;
+import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -47,8 +43,9 @@ export default function EditProfile() {
   // Use theme-aware background with light mode default fallback (#FFFFFF)
   const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
-  // Scroll padding: bottom bar height + extra spacing (no tab bar since it's hidden)
-  const scrollPaddingBottom = bottomBarHeight + 16;
+  // Scroll padding: bottom bar height + compact spacing (no tab bar since it's hidden)
+  // Using COMPACT spacing (16px) as last input is far from bottom bar
+  const scrollPaddingBottom = bottomBarHeight + FORM_SCROLL_PADDING.COMPACT;
 
   const validateName = useCallback((value: string): boolean => {
     const trimmed = value.trim();
@@ -196,154 +193,119 @@ export default function EditProfile() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
-        <YStack flex={1} position="relative">
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              padding: 16,
-              paddingBottom: scrollPaddingBottom,
-              flexGrow: 1,
-            }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag">
-            {/* Avatar */}
-            <YStack
-              alignItems="center"
-              marginBottom="$5"
-              space="$3"
-              accessibilityLabel="Foto profil"
-              accessibilityHint="Ketuk untuk mengubah foto profil">
-              <Avatar
-                avatarUrl={user.avatar_url}
-                name={user.full_name || user.name || user.email}
-                size={avatarSize}
-                editable={true}
-                onUpload={handleAvatarUpload}
-                uploading={uploadingAvatar}
-              />
-            </YStack>
-
-            {/* Form Edit Profile */}
-            <Card
-              padding="$4"
-              marginBottom="$5"
-              backgroundColor="$surface"
-              borderWidth={1}
-              borderColor="$surfaceBorder"
-              borderRadius="$4"
-              elevation={1}
-              accessibilityLabel="Form edit profil">
-              <YStack space="$4">
-                {error && (
-                  <YStack
-                    padding="$3"
-                    borderRadius="$3"
-                    backgroundColor="$dangerSoft"
-                    borderWidth={1.5}
-                    borderColor="$danger"
-                    space="$1.5"
-                    accessibilityRole="alert"
-                    accessibilityLiveRegion="polite">
-                    <XStack alignItems="center" space="$2">
-                      <Ionicons
-                        name="alert-circle"
-                        size={18}
-                        color={getThemeColor(theme, 'danger', '#DC2626')}
-                      />
-                      <Text fontSize="$3" color="$danger" fontWeight="600" flex={1}>
-                        {error}
-                      </Text>
-                    </XStack>
-                  </YStack>
-                )}
-
-                <YStack space="$3">
-                  <FormInput
-                    ref={nameInputRef}
-                    label="Nama lengkap"
-                    value={fullName}
-                    onChangeText={t => {
-                      setFullName(t);
-                      if (nameError) validateName(t);
-                    }}
-                    onBlur={() => validateName(fullName)}
-                    error={nameError}
-                    autoCapitalize="words"
-                    editable={!saving}
-                    returnKeyType="next"
-                    onSubmitEditing={() => phoneInputRef.current?.focus()}
-                    accessibilityLabel="Nama lengkap"
-                    accessibilityHint="Masukkan nama lengkap Anda"
-                  />
-
-                  <FormInput
-                    ref={phoneInputRef}
-                    label="Nomor telepon"
-                    value={phoneNumber}
-                    onChangeText={t => {
-                      setPhoneNumber(t);
-                      if (phoneError) validatePhone(t);
-                    }}
-                    onBlur={() => validatePhone(phoneNumber)}
-                    error={phoneError}
-                    placeholder="08xx xxxx xxxx"
-                    keyboardType="phone-pad"
-                    editable={!saving}
-                    returnKeyType="done"
-                    accessibilityLabel="Nomor telepon"
-                    accessibilityHint="Masukkan nomor telepon Anda"
-                  />
-                </YStack>
-              </YStack>
-            </Card>
-          </ScrollView>
-
-          {/* Bottom bar: di dalam KeyboardAvoidingView agar tetap di atas keyboard, tanpa transform manual */}
+      <YStack flex={1} position="relative">
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: scrollPaddingBottom,
+            flexGrow: 1,
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag">
+          {/* Avatar */}
           <YStack
-            position="absolute"
-            bottom={insets.bottom}
-            left={0}
-            right={0}
-            backgroundColor="$background"
-            borderTopWidth={1}
-            borderColor="$borderColor"
-            paddingHorizontal="$4"
-            paddingTop="$2"
-            paddingBottom={8 + insets.bottom}
-            elevation={8}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-            }}>
-            <Button
-              title="Simpan"
-              width="100%"
-              paddingVertical="$2"
-              borderRadius="$3"
-              minHeight={MIN_TOUCH_TARGET}
-              backgroundColor="$primary"
-              titleStyle={{
-                color: '$white',
-                fontSize: 16,
-                fontWeight: '600',
-              }}
-              onPress={handleSave}
-              isLoading={saving}
-              disabled={saving}
-              accessibilityLabel="Simpan perubahan profil"
-              accessibilityHint="Menyimpan perubahan informasi profil"
-              accessibilityState={{ disabled: saving, busy: saving }}
+            alignItems="center"
+            marginBottom="$5"
+            space="$3"
+            accessibilityLabel="Foto profil"
+            accessibilityHint="Ketuk untuk mengubah foto profil">
+            <Avatar
+              avatarUrl={user.avatar_url}
+              name={user.full_name || user.name || user.email}
+              size={avatarSize}
+              editable={true}
+              onUpload={handleAvatarUpload}
+              uploading={uploadingAvatar}
             />
           </YStack>
-        </YStack>
-      </KeyboardAvoidingView>
+
+          {/* Form Edit Profile */}
+          <Card
+            padding="$4"
+            marginBottom="$5"
+            backgroundColor="$surface"
+            borderWidth={1}
+            borderColor="$surfaceBorder"
+            borderRadius="$4"
+            elevation={1}
+            accessibilityLabel="Form edit profil">
+            <YStack space="$4">
+              {error && (
+                <YStack
+                  padding="$3"
+                  borderRadius="$3"
+                  backgroundColor="$dangerSoft"
+                  borderWidth={1.5}
+                  borderColor="$danger"
+                  space="$1.5"
+                  accessibilityRole="alert"
+                  accessibilityLiveRegion="polite">
+                  <XStack alignItems="center" space="$2">
+                    <Ionicons
+                      name="alert-circle"
+                      size={18}
+                      color={getThemeColor(theme, 'danger', '#DC2626')}
+                    />
+                    <Text fontSize="$3" color="$danger" fontWeight="600" flex={1}>
+                      {error}
+                    </Text>
+                  </XStack>
+                </YStack>
+              )}
+
+              <YStack space="$3">
+                <FormInput
+                  ref={nameInputRef}
+                  label="Nama lengkap"
+                  value={fullName}
+                  onChangeText={t => {
+                    setFullName(t);
+                    if (nameError) validateName(t);
+                  }}
+                  onBlur={() => validateName(fullName)}
+                  error={nameError}
+                  autoCapitalize="words"
+                  editable={!saving}
+                  returnKeyType="next"
+                  onSubmitEditing={() => phoneInputRef.current?.focus()}
+                  accessibilityLabel="Nama lengkap"
+                  accessibilityHint="Masukkan nama lengkap Anda"
+                />
+
+                <FormInput
+                  ref={phoneInputRef}
+                  label="Nomor telepon"
+                  value={phoneNumber}
+                  onChangeText={t => {
+                    setPhoneNumber(t);
+                    if (phoneError) validatePhone(t);
+                  }}
+                  onBlur={() => validatePhone(phoneNumber)}
+                  error={phoneError}
+                  placeholder="08xx xxxx xxxx"
+                  keyboardType="phone-pad"
+                  editable={!saving}
+                  returnKeyType="done"
+                  accessibilityLabel="Nomor telepon"
+                  accessibilityHint="Masukkan nomor telepon Anda"
+                />
+              </YStack>
+            </YStack>
+          </Card>
+        </ScrollView>
+
+        {/* Bottom action bar with save button (automatically lifts above keyboard) */}
+        <BottomActionBar
+          buttonTitle="Simpan"
+          onPress={handleSave}
+          isLoading={saving}
+          disabled={saving}
+          accessibilityLabel="Simpan perubahan profil"
+          accessibilityHint="Menyimpan perubahan informasi profil"
+        />
+      </YStack>
     </SafeAreaView>
   );
 }

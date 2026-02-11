@@ -3,6 +3,7 @@ import { Pressable } from 'react-native';
 import { XStack, Text, GetProps, Spinner, useMedia, useTheme, useThemeName } from 'tamagui';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
+import { ICON_SIZES, THEME_FALLBACKS } from '@/constants/ui';
 
 export interface OAuthButtonProps extends Omit<GetProps<typeof XStack>, 'onPress'> {
   provider: 'google' | 'apple';
@@ -35,12 +36,18 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
    * - Untuk custom button, gunakan logo Apple dengan styling sesuai HIG
    * - Menggunakan theme tokens untuk konsistensi dengan design system
    */
-  // Menggunakan theme tokens daripada hardcoded colors
-  const appleIconColor = getThemeColor(theme, isDark ? 'white' : 'color', '#000000');
+  // Menggunakan theme tokens dengan fallback dari THEME_FALLBACKS untuk konsistensi
+  // Apple icon: white in dark mode, color (dark text) in light mode
+  const appleIconColor = getThemeColor(
+    theme,
+    isDark ? 'white' : 'color',
+    isDark ? THEME_FALLBACKS.white : THEME_FALLBACKS.color,
+  );
 
   // Responsive sizing berdasarkan breakpoint dengan proporsionalitas yang lebih baik
   // Icon size proporsional dengan button height (sekitar 38-42% dari height)
-  const iconSize = media.gtMd ? 24 : media.gtSm ? 22 : 20;
+  // Uses ICON_SIZES constants for consistency, with responsive variations
+  const iconSize = media.gtMd ? ICON_SIZES.BUTTON : media.gtSm ? 22 : ICON_SIZES.SMALL;
   const fontSize = media.gtMd ? 18 : media.gtSm ? 17 : 16;
 
   // Error handling wrapper untuk onPress dengan graceful error handling

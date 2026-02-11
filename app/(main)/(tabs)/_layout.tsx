@@ -3,6 +3,7 @@ import { useTheme, useThemeName } from 'tamagui';
 import { AntDesign } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
 import { DEFAULT_THEME_VALUES } from '@/themes';
+import { ICON_SIZES } from '@/constants/ui';
 
 export default function TabLayout() {
   const theme = useTheme();
@@ -94,21 +95,27 @@ export default function TabLayout() {
         name="home"
         options={{
           title: 'Beranda',
-          tabBarIcon: ({ color }) => <AntDesign name="home" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <AntDesign name="home" size={ICON_SIZES.BUTTON} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
           title: 'Pesanan',
-          tabBarIcon: ({ color }) => <AntDesign name="solution" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <AntDesign name="solution" size={ICON_SIZES.BUTTON} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Akun',
-          tabBarIcon: ({ color }) => <AntDesign name="user" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <AntDesign name="user" size={ICON_SIZES.BUTTON} color={color} />
+          ),
         }}
       />
       <Tabs.Screen

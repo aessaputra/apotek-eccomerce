@@ -1,6 +1,7 @@
 import { XStack, Text, Spinner, GetProps } from 'tamagui';
 import { GestureResponderEvent, ImageSourcePropType, StyleProp, ImageStyle } from 'react-native';
 import Image from '../Image';
+import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 export interface ButtonProps extends Omit<GetProps<typeof XStack>, 'style'> {
   title?: string;
@@ -19,8 +20,11 @@ export interface ButtonProps extends Omit<GetProps<typeof XStack>, 'style'> {
 
 /**
  * Tombol yang memakai tema dari themes.ts.
- * Default: backgroundColor $primary (teal), teks mengikuti titleStyle (biasanya $white).
+ * Default: backgroundColor $primary (teal), teks mengikuti PRIMARY_BUTTON_TITLE_STYLE.
  * Override lewat props: backgroundColor="$error", backgroundColor="transparent", dll.
+ *
+ * titleStyle akan di-merge dengan PRIMARY_BUTTON_TITLE_STYLE sebagai base,
+ * sehingga konsisten dengan design system apotek.
  */
 function Button({
   title,
@@ -35,6 +39,12 @@ function Button({
   backgroundColor = '$primary',
   ...others
 }: ButtonProps) {
+  // Merge PRIMARY_BUTTON_TITLE_STYLE dengan custom titleStyle (custom takes precedence)
+  const mergedTitleStyle = {
+    ...PRIMARY_BUTTON_TITLE_STYLE,
+    ...titleStyle,
+  };
+
   const stackProps = {
     flexDirection: 'row' as const,
     justifyContent: 'center' as const,
@@ -56,8 +66,10 @@ function Button({
       {!isLoading && image && <Image source={image} style={imageStyle} />}
       {!isLoading && title && (
         <Text
-          fontSize={titleStyle?.fontSize || 16}
-          fontFamily={titleStyle?.fontFamily || '$body'}
+          fontSize={mergedTitleStyle.fontSize}
+          fontFamily={mergedTitleStyle.fontFamily || '$body'}
+          fontWeight={mergedTitleStyle.fontWeight}
+          color={mergedTitleStyle.color}
           {...(titleStyle as object)}>
           {title}
         </Text>

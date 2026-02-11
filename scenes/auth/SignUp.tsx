@@ -10,6 +10,7 @@ import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signUp } from '@/services/auth.service';
 import { getThemeColor } from '@/utils/theme';
 import { images } from '@/utils/images';
+import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 import {
   validateEmail,
   validatePassword,
@@ -335,7 +336,7 @@ export default function SignUp() {
                     }}
                     backgroundColor="$primary"
                     titleStyle={{
-                      color: '$white',
+                      ...PRIMARY_BUTTON_TITLE_STYLE,
                       fontSize: 17,
                       fontWeight: '700',
                       letterSpacing: 0.3,

@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider } from 'react-redux';
 import { TamaguiProvider, Theme } from 'tamagui';
 import useColorScheme from '@/hooks/useColorScheme';
@@ -13,9 +13,10 @@ export default function Provider({ children }: Readonly<{ children: React.ReactN
   const themeName = colorScheme ?? 'light';
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ReduxProvider store={store}>
-          <TamaguiProvider config={config} defaultTheme={themeName}>
+          {/* Key prop forces re-mount on theme change to ensure all consumers get fresh theme values */}
+          <TamaguiProvider key={themeName} config={config} defaultTheme={themeName}>
             <Theme name={themeName}>
               <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>{children}</ThemeProvider>
             </Theme>

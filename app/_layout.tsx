@@ -37,10 +37,17 @@ function Router() {
     }
   }, [assetsReady, checked]);
 
+  // Get header background color for StatusBar consistency
+  const headerBg = getThemeColor(
+    theme,
+    'headerBackground',
+    getThemeColor(theme, 'brandPrimary', '#0D9488'),
+  );
+
   return (
     <Fragment>
       <Slot />
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={headerBg} translucent={false} />
       <BottomSheet
         isOpen={isOpen}
         initialOpen

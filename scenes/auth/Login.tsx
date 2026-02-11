@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/services/user.service';
 import { getThemeColor } from '@/utils/theme';
 import { images } from '@/utils/images';
 import { validateEmail } from '@/utils/validation';
+import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 export default function Login() {
   const theme = useTheme();
@@ -249,7 +250,7 @@ export default function Login() {
                     height={56}
                     backgroundColor="$primary"
                     titleStyle={{
-                      color: '$white',
+                      ...PRIMARY_BUTTON_TITLE_STYLE,
                       fontSize: 17,
                       fontWeight: '700',
                       letterSpacing: 0.3,

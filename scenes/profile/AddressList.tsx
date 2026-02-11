@@ -12,6 +12,7 @@ import { getAddresses, deleteAddress, setDefaultAddress } from '@/services/addre
 import type { Address } from '@/types/address';
 import { getThemeColor } from '@/utils/theme';
 import { useTheme } from 'tamagui';
+import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 /** Min touch target: 48px (mobile-design). Bottom bar same pattern as Edit Profile / Address Form. */
 const MIN_TOUCH_TARGET = 48;
@@ -159,7 +160,7 @@ export default function AddressList() {
           borderRadius="$3"
           minHeight={MIN_TOUCH_TARGET}
           backgroundColor="$primary"
-          titleStyle={{ color: '$white', fontSize: 16, fontWeight: '600' }}
+          titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             router.push('/(main)/(tabs)/profile/address-form');
@@ -228,7 +229,7 @@ export default function AddressList() {
               borderRadius="$3"
               minHeight={MIN_TOUCH_TARGET}
               backgroundColor="$primary"
-              titleStyle={{ color: '$white', fontSize: 16, fontWeight: '600' }}
+              titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 router.push('/(main)/(tabs)/profile/address-form');
