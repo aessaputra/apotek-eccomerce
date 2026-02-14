@@ -22,6 +22,18 @@ export interface SignUpInput {
   };
 }
 
+/** Error shape for Google OAuth — compatible with Supabase AuthError.message */
+export interface GoogleAuthError {
+  message: string;
+  name: string;
+}
+
+/** Consistent return type for signInWithGoogle() */
+export interface GoogleAuthResult {
+  data: unknown;
+  error: GoogleAuthError | null;
+}
+
 export async function signInWithPassword(input: SignInInput) {
   return supabase.auth.signInWithPassword({
     email: input.email,
@@ -42,31 +54,53 @@ export async function signOut() {
 }
 
 /**
- * Sign in dengan OAuth provider (Google, Apple, dll).
+ * Ekstrak token dari URL redirect OAuth.
+ * Supabase mengirim token di hash fragment URL: #access_token=xxx&refresh_token=yyy
  *
- * Implementasi sesuai dokumentasi Supabase untuk React Native/Expo:
- * - Menggunakan expo-web-browser untuk mobile (iOS/Android)
- * - Menggunakan browser redirect biasa untuk web
- * - Deep linking akan otomatis dihandle oleh Supabase melalui redirectTo
- *
- * @param provider - OAuth provider ('google' | 'apple')
- * @returns Promise dengan hasil OAuth sign-in
+ * @param url - URL redirect dari WebBrowser setelah OAuth selesai
+ * @returns Object berisi access_token dan refresh_token
  */
-export async function signInWithOAuth(provider: 'google' | 'apple') {
-  // Buat redirect URL menggunakan expo-linking
-  // Expo akan otomatis generate URL seperti:
-  // - Development: exp://localhost:8081/--/(auth)/login
-  // - Production: your-app-scheme:///(auth)/login
+function extractTokensFromUrl(url: string) {
+  const parsedUrl = new URL(url);
+  const hash = parsedUrl.hash.substring(1); // Hapus '#' di awal
+  const params = new URLSearchParams(hash);
+
+  return {
+    access_token: params.get('access_token'),
+    refresh_token: params.get('refresh_token'),
+  };
+}
+
+/**
+ * Sign in dengan Google OAuth.
+ *
+ * Flow untuk React Native (sesuai dokumentasi Supabase):
+ * 1. Minta OAuth URL dari Supabase dengan skipBrowserRedirect: true
+ * 2. Buka URL di WebBrowser (expo-web-browser)
+ * 3. Setelah user login di Google, WebBrowser redirect kembali ke app
+ * 4. Ekstrak access_token & refresh_token dari URL redirect
+ * 5. Panggil supabase.auth.setSession() untuk menetapkan session
+ *
+ * AuthProvider.onAuthStateChange akan otomatis mendeteksi session baru
+ * dan mengupdate Redux store.
+ *
+ * @returns Promise dengan session data atau error
+ */
+export async function signInWithGoogle(): Promise<GoogleAuthResult> {
   const redirectTo = Linking.createURL('/(auth)/login');
 
   // Untuk React Native (iOS/Android), gunakan WebBrowser
   if (Platform.OS !== 'web') {
-    // Dapatkan OAuth URL dari Supabase
+    // 1. Dapatkan OAuth URL dari Supabase
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
+      provider: 'google',
       options: {
         redirectTo,
-        skipBrowserRedirect: true, // Kita handle browser sendiri dengan WebBrowser
+        skipBrowserRedirect: true,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       },
     });
 
@@ -81,30 +115,56 @@ export async function signInWithOAuth(provider: 'google' | 'apple') {
       };
     }
 
-    // Buka OAuth URL di WebBrowser
-    // WebBrowser akan otomatis redirect kembali ke app melalui redirectTo
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    // 2. Buka OAuth URL di WebBrowser
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
+      showInRecents: true,
+    });
 
-    // Supabase akan otomatis handle callback melalui deep linking
-    // dan onAuthStateChange di AuthProvider akan mendeteksi session baru
-    if (result.type === 'cancel') {
+    // 3. Handle cancel
+    if (result.type !== 'success') {
       return {
         data: null,
-        error: { message: 'OAuth login dibatalkan', name: 'AuthCancelError' },
+        error: { message: 'Login Google dibatalkan', name: 'AuthCancelError' },
       };
     }
 
-    // Untuk success, Supabase sudah handle session melalui deep linking
-    // Kita return success, session akan diupdate oleh AuthProvider
-    return { data: { url: result.url }, error: null };
+    // 4. Ekstrak token dari URL redirect
+    const tokens = extractTokensFromUrl(result.url);
+
+    if (!tokens.access_token || !tokens.refresh_token) {
+      return {
+        data: null,
+        error: {
+          message: 'Token tidak ditemukan di redirect URL',
+          name: 'AuthTokenError',
+        },
+      };
+    }
+
+    // 5. Set session di Supabase client
+    // Ini akan trigger onAuthStateChange di AuthProvider
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+    });
+
+    if (sessionError) {
+      return { data: null, error: sessionError };
+    }
+
+    return { data: sessionData, error: null };
   }
 
   // Untuk web, gunakan browser redirect biasa
   return supabase.auth.signInWithOAuth({
-    provider,
+    provider: 'google',
     options: {
       redirectTo,
       skipBrowserRedirect: false,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
     },
   });
 }

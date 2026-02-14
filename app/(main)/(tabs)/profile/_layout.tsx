@@ -41,11 +41,11 @@ export default function ProfileStackLayout() {
       <Stack.Screen
         name="edit-profile"
         options={{
-          title: 'Edit Profile',
+          title: 'Edit Profil',
           headerTitleAlign: 'center',
         }}
       />
-      <Stack.Screen name="details" options={{ title: 'Details' }} />
+      <Stack.Screen name="details" options={{ title: 'Detail' }} />
     </Stack>
   );
 }

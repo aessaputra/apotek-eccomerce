@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ScrollView, Alert, TextInput } from 'react-native';
-import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
+import { YStack, useTheme, Card, Spinner } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import FormInput from '@/components/elements/FormInput';
+import ErrorMessage from '@/components/elements/ErrorMessage';
 import Avatar from '@/components/elements/Avatar';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
@@ -231,28 +231,7 @@ export default function EditProfile() {
             elevation={1}
             accessibilityLabel="Form edit profil">
             <YStack space="$4">
-              {error && (
-                <YStack
-                  padding="$3"
-                  borderRadius="$3"
-                  backgroundColor="$dangerSoft"
-                  borderWidth={1.5}
-                  borderColor="$danger"
-                  space="$1.5"
-                  accessibilityRole="alert"
-                  accessibilityLiveRegion="polite">
-                  <XStack alignItems="center" space="$2">
-                    <Ionicons
-                      name="alert-circle"
-                      size={18}
-                      color={getThemeColor(theme, 'danger', '#DC2626')}
-                    />
-                    <Text fontSize="$3" color="$danger" fontWeight="600" flex={1}>
-                      {error}
-                    </Text>
-                  </XStack>
-                </YStack>
-              )}
+              <ErrorMessage message={error} onDismiss={() => setError(null)} />
 
               <YStack space="$3">
                 <FormInput

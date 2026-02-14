@@ -6,6 +6,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import FormInput from '@/components/elements/FormInput';
+import ErrorMessage from '@/components/elements/ErrorMessage';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { getAddress, createAddress, updateAddress } from '@/services/address.service';
@@ -287,26 +288,7 @@ export default function AddressForm() {
           </YStack>
 
           {/* General Error Message */}
-          {error && (
-            <Card
-              padding="$3"
-              marginBottom="$4"
-              backgroundColor="$dangerSoft"
-              borderWidth={1}
-              borderColor="$danger"
-              borderRadius="$3">
-              <XStack space="$2" alignItems="center">
-                <Ionicons
-                  name="alert-circle"
-                  size={20}
-                  color={getThemeColor(theme, 'danger', '#DC2626')}
-                />
-                <Text fontSize="$3" color="$danger" flex={1}>
-                  {error}
-                </Text>
-              </XStack>
-            </Card>
-          )}
+          <ErrorMessage message={error} onDismiss={() => setError(null)} marginBottom="$4" />
 
           {/* Informasi Penerima Section */}
           <Card

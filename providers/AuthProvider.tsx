@@ -6,9 +6,7 @@ import { getCurrentUser } from '@/services/user.service';
 import { signOut as authSignOut } from '@/services/auth.service';
 import { useAppSlice } from '@/slices';
 import type { Dispatch } from '@/utils/store';
-
-const ADMIN_REJECT_MESSAGE =
-  'Hanya customer yang boleh login di app ini. Admin gunakan panel Refine.';
+import { ADMIN_REJECT_MESSAGE } from '@/constants/auth';
 
 export interface AuthProviderProps {
   children: React.ReactNode;

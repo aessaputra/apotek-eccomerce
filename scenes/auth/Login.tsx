@@ -1,27 +1,29 @@
 import { useState } from 'react';
-import { YStack, XStack, Text, useTheme, Image } from 'tamagui';
+import { YStack, XStack, Text, Image } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import OAuthButton from '@/components/elements/OAuthButton';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
-import { signInWithPassword, signInWithOAuth, signOut } from '@/services/auth.service';
+import { signInWithPassword, signInWithGoogle, signOut } from '@/services/auth.service';
 import { getCurrentUser } from '@/services/user.service';
-import { getThemeColor } from '@/utils/theme';
 import { images } from '@/utils/images';
 import { validateEmail } from '@/utils/validation';
 import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
+import {
+  ADMIN_REJECT_MESSAGE,
+  BANNED_USER_MESSAGE,
+  VERIFY_ACCOUNT_ERROR_MESSAGE,
+} from '@/constants/auth';
 
 export default function Login() {
-  const theme = useTheme();
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
+  const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
 
@@ -65,40 +67,70 @@ export default function Login() {
         return;
       }
       if (data?.session) {
-        // CRITICAL: Check role BEFORE redirect to prevent admin from getting session token
-        const result = await getCurrentUser();
-        if (result?.profile.role === 'admin') {
+        // CRITICAL: Check role & ban BEFORE allowing session to persist
+        // Navigation is handled SOLELY by AuthProvider via Redux loggedIn state
+        try {
+          const result = await getCurrentUser();
+          if (result?.profile.role === 'admin') {
+            await signOut();
+            setError(ADMIN_REJECT_MESSAGE);
+            return;
+          }
+          if (result?.profile.is_banned) {
+            await signOut();
+            setError(BANNED_USER_MESSAGE);
+            return;
+          }
+        } catch {
+          // Jika getCurrentUser gagal, sign out untuk keamanan
           await signOut();
-          setError('Hanya customer yang boleh login di app ini. Admin gunakan panel Refine.');
+          setError(VERIFY_ACCOUNT_ERROR_MESSAGE);
           return;
         }
-        if (result?.profile.is_banned) {
-          await signOut();
-          setError('Akun Anda telah dinonaktifkan.');
-          return;
-        }
-        router.replace('/(main)/(tabs)');
+        // Jangan navigate manual — AuthProvider.onAuthStateChange
+        // akan set loggedIn=true → app/index.tsx redirect ke Home
       }
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleOAuth(provider: 'google' | 'apple') {
+  async function handleGoogleLogin() {
     setError(null);
-    setOauthLoading(provider);
+    setOauthLoading(true);
     try {
-      const { error: err } = await signInWithOAuth(provider);
+      const { error: err } = await signInWithGoogle();
       if (err) {
-        setError(
-          err.message ?? `Login dengan ${provider === 'google' ? 'Google' : 'Apple'} gagal.`,
-        );
-        setOauthLoading(null);
+        setError(err.message ?? 'Login dengan Google gagal.');
+        return;
       }
-      // OAuth akan redirect ke browser, jadi tidak perlu handle success di sini
+
+      // CRITICAL: Check role & ban AFTER Google OAuth success (same as email/password login)
+      try {
+        const result = await getCurrentUser();
+        if (result?.profile.role === 'admin') {
+          await signOut();
+          setError(ADMIN_REJECT_MESSAGE);
+          return;
+        }
+        if (result?.profile.is_banned) {
+          await signOut();
+          setError(BANNED_USER_MESSAGE);
+          return;
+        }
+      } catch {
+        // Jika getCurrentUser gagal, sign out untuk keamanan
+        await signOut();
+        setError(VERIFY_ACCOUNT_ERROR_MESSAGE);
+        return;
+      }
+
+      // Setelah setSession berhasil, AuthProvider.onAuthStateChange
+      // akan otomatis update Redux store dan redirect ke Home
     } catch (err) {
-      setError('Terjadi kesalahan saat login.');
-      setOauthLoading(null);
+      setError('Terjadi kesalahan saat login dengan Google.');
+    } finally {
+      setOauthLoading(false);
     }
   }
 
@@ -122,15 +154,13 @@ export default function Login() {
             <YStack
               width="100%"
               maxWidth={420}
+              space="$5"
               $gtSm={{
                 maxWidth: 480,
+                space: '$6',
               }}
               $gtMd={{
                 maxWidth: 520,
-              }}
-              space="$5"
-              $gtSm={{
-                space: '$6',
               }}>
               {/* Logo dengan subtle animation dan responsive sizing */}
               <YStack
@@ -308,8 +338,8 @@ export default function Login() {
                 <XStack flex={1} height={1.5} backgroundColor="$surfaceBorder" borderRadius={1} />
               </XStack>
 
-              {/* OAuth Buttons side-by-side dengan enhanced spacing dan responsive width */}
-              <XStack
+              {/* Google OAuth Button dengan enhanced spacing dan responsive width */}
+              <YStack
                 width="100%"
                 maxWidth={420}
                 $gtSm={{
@@ -318,25 +348,16 @@ export default function Login() {
                 $gtMd={{
                   maxWidth: 520,
                 }}
-                gap="$3"
-                $gtSm={{
-                  gap: '$4',
-                }}
                 animation="quick"
                 enterStyle={{ opacity: 0, y: 10 }}
                 opacity={1}
                 y={0}>
                 <OAuthButton
                   provider="google"
-                  onPress={() => handleOAuth('google')}
-                  isLoading={oauthLoading === 'google'}
+                  onPress={handleGoogleLogin}
+                  isLoading={oauthLoading}
                 />
-                <OAuthButton
-                  provider="apple"
-                  onPress={() => handleOAuth('apple')}
-                  isLoading={oauthLoading === 'apple'}
-                />
-              </XStack>
+              </YStack>
             </YStack>
           </ScrollView>
         </KeyboardAvoidingView>

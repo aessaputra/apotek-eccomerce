@@ -12,12 +12,12 @@ import { getAddresses, deleteAddress, setDefaultAddress } from '@/services/addre
 import type { Address } from '@/types/address';
 import { getThemeColor } from '@/utils/theme';
 import { useTheme } from 'tamagui';
-import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
-
-/** Min touch target: 48px (mobile-design). Bottom bar same pattern as Edit Profile / Address Form. */
-const MIN_TOUCH_TARGET = 48;
-/** Bottom bar: paddingTop $2 + button 48px + paddingBottom (8 + insets). */
-const BOTTOM_BAR_HEIGHT = 64;
+import {
+  MIN_TOUCH_TARGET,
+  BOTTOM_BAR_HEIGHT,
+  BOTTOM_BAR_SHADOW,
+  PRIMARY_BUTTON_TITLE_STYLE,
+} from '@/constants/ui';
 
 export default function AddressList() {
   const router = useRouter();
@@ -216,12 +216,7 @@ export default function AddressList() {
             paddingTop="$2"
             paddingBottom={8 + insets.bottom}
             elevation={8}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-            }}>
+            style={BOTTOM_BAR_SHADOW}>
             <Button
               title="Tambah Alamat"
               width="100%"
