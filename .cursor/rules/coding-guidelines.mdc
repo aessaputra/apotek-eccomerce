@@ -207,3 +207,23 @@ React Native Expo SDK 54 project with TypeScript, Expo Router v6, Redux Toolkit,
 6. **Single styling** — Tamagui only; tokens from themes; never StyleSheet or hardcode
 7. **Leverage Tamagui** for Card, Input, Form, ListItem, Button and built-in hooks for common functionality
 8. **Follow import/export conventions** for maintainability
+
+## Active Agent Skills
+
+### Essentials (Core)
+- `concise-planning`: Always start with a plan
+- `lint-and-validate`: Keep code clean automatically
+- `git-pushing`: Save work safely
+- `kaizen`: Continuous improvement mindset
+- `systematic-debugging`: Debug like a pro
+
+### Mobile Development Bundle
+- `mobile-developer`: Cross-platform mobile development best practices
+- `react-native-architecture`: React Native with Expo project structure
+- `app-store-optimization`: Preparation for store release
+
+### Integrations
+- `supabase-automation`: Supabase backend management
+- `payment-integration`: Payment gateway integration (e.g., Midtrans)
+- `api-design-principles`: API communication standards
+

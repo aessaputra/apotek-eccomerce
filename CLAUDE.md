@@ -259,3 +259,22 @@ import { useDataPersist } from '@/hooks';
 - Check `components/elements` for project-specific Tamagui wrappers
 - Use Tamagui tokens (`$primary`, `$background`) — never hardcode colors
 - Custom UI: `styled(View, {...})` or Tamagui composition
+
+## Active Agent Skills
+
+### Essentials (Core)
+- `concise-planning`: Always start with a plan
+- `lint-and-validate`: Keep code clean automatically
+- `git-pushing`: Save work safely
+- `kaizen`: Continuous improvement mindset
+- `systematic-debugging`: Debug like a pro
+
+### Mobile Development Bundle
+- `mobile-developer`: Cross-platform mobile development best practices
+- `react-native-architecture`: React Native with Expo project structure
+- `app-store-optimization`: Preparation for store release
+
+### Integrations
+- `supabase-automation`: Supabase backend management
+- `payment-integration`: Payment gateway integration (e.g., Midtrans)
+- `api-design-principles`: API communication standards

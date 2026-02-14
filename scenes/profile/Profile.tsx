@@ -152,7 +152,7 @@ export default function Profile() {
               paddingHorizontal="$3"
               paddingVertical="$1.5"
               borderRadius="$10"
-              backgroundColor="$primarySoft"
+              backgroundColor="$backgroundHover"
               borderWidth={1}
               borderColor="$primary">
               <Text fontSize="$3" fontWeight="600" color="$primary">

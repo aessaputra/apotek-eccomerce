@@ -121,12 +121,12 @@ export default function Login() {
             showsVerticalScrollIndicator={false}>
             <YStack
               width="100%"
-              maxWidth={400}
+              maxWidth={420}
               $gtSm={{
-                maxWidth: 450,
+                maxWidth: 480,
               }}
               $gtMd={{
-                maxWidth: 500,
+                maxWidth: 520,
               }}
               space="$5"
               $gtSm={{
@@ -311,12 +311,12 @@ export default function Login() {
               {/* OAuth Buttons side-by-side dengan enhanced spacing dan responsive width */}
               <XStack
                 width="100%"
-                maxWidth={400}
+                maxWidth={420}
                 $gtSm={{
-                  maxWidth: 450,
+                  maxWidth: 480,
                 }}
                 $gtMd={{
-                  maxWidth: 500,
+                  maxWidth: 520,
                 }}
                 gap="$3"
                 $gtSm={{

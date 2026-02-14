@@ -186,7 +186,6 @@ export default function SignUp() {
               </YStack>
 
               {/* Form Card dengan enhanced styling dan responsive padding */}
-              {/* @ts-expect-error - Tamagui borderRadius prop is valid at runtime */}
               <YStack
                 borderRadius={20}
                 paddingVertical={28}
