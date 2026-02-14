@@ -1,4 +1,4 @@
-import { YStack, useTheme } from 'tamagui';
+import { useTheme, YStack } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import { useKeyboard } from '@/hooks/useKeyboard';
@@ -7,12 +7,6 @@ import { getThemeColor } from '@/utils/theme';
 
 /**
  * Standard vertical padding for the action bar (8px).
- * Uses Tamagui token `$2` for consistency with design system.
- *
- * Follows Material Design and iOS HIG best practices:
- * - Material Design: 8-16px vertical padding (using minimal 8px for compact design)
- * - iOS HIG: Minimal padding for toolbars to maximize content density
- * - Consistent with button padding patterns in the project
  */
 const VERTICAL_PADDING = 8;
 
@@ -44,20 +38,15 @@ export interface BottomActionBarProps {
 /**
  * BottomActionBar Component
  *
- * A fixed-position action bar that appears at the bottom of the screen.
- * Automatically adjusts position when keyboard is visible to remain accessible.
- * Uses Tamagui tokens for consistent theming and follows mobile design guidelines.
+ * A fixed-position action bar at the bottom of the screen.
  *
- * @example
- * ```tsx
- * <BottomActionBar
- *   buttonTitle="Save"
- *   onPress={handleSave}
- *   isLoading={isSaving}
- *   accessibilityLabel="Save changes"
- *   accessibilityHint="Saves your profile changes"
- * />
- * ```
+ * **Keyboard strategy:**
+ * Relies on `softwareKeyboardLayoutMode: 'pan'` in app.config.ts (Android).
+ * With 'pan' mode, Android never resizes the window for the keyboard,
+ * so `keyboardHeight` is always the exact offset needed — no measurement,
+ * no adjustResize detection, and no theme-switch timing issues.
+ *
+ * On iOS, the same `keyboardHeight` offset works out of the box.
  */
 export default function BottomActionBar({
   buttonTitle,
@@ -71,37 +60,27 @@ export default function BottomActionBar({
   const { keyboardHeight, keyboardVisible } = useKeyboard();
   const theme = useTheme();
 
-  // Calculate bottom inset for safe area handling
-  // Use actual safe area inset (no minimum) to match tab bar behavior
   const bottomInset = insets.bottom;
-
-  // Position bar flush with bottom edge (like tab bar) when keyboard is hidden
-  // When keyboard is visible, position bar directly above keyboard
-  // When keyboard is hidden, position at bottom: 0 (flush with edge, safe area handled via padding)
-  // Validate keyboardHeight to prevent negative or invalid values
   const safeKeyboardHeight = Math.max(0, keyboardHeight || 0);
+
+  // With 'pan' mode on Android and default iOS behaviour,
+  // keyboardHeight is always the correct offset. No detection needed.
   const bottomPosition = keyboardVisible ? safeKeyboardHeight : 0;
 
-  // Calculate balanced padding based on keyboard state
-  // When keyboard is visible: use balanced padding (same top and bottom)
-  // When keyboard is hidden: use balanced top padding, add safe area inset only to bottom padding
-  // This ensures consistent spacing while respecting safe area
+  // Skip safe area bottom inset when keyboard is visible (keyboard covers it)
   const innerPaddingBottom = keyboardVisible
     ? VERTICAL_PADDING
     : VERTICAL_PADDING + Math.max(0, bottomInset);
 
-  // Get theme color for style prop (Tamagui tokens don't work in style objects)
   const backgroundColor = getThemeColor(theme, 'background', '#FFFFFF');
 
   return (
     <YStack
       position="absolute"
-      style={{
-        bottom: bottomPosition,
-        left: 0,
-        right: 0,
-        zIndex: BOTTOM_BAR_Z_INDEX,
-      }}>
+      bottom={bottomPosition}
+      left={0}
+      right={0}
+      zIndex={BOTTOM_BAR_Z_INDEX}>
       <YStack
         borderTopWidth={1}
         borderColor="$borderColor"

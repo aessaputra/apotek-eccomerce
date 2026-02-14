@@ -23,6 +23,7 @@ import { Keyboard, KeyboardEvent } from 'react-native';
 export function useKeyboard() {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardScreenY, setKeyboardScreenY] = useState(0);
 
   useEffect(() => {
     // Check initial keyboard state on mount
@@ -35,11 +36,13 @@ export function useKeyboard() {
           if (metrics && typeof metrics.height === 'number') {
             setKeyboardVisible(true);
             setKeyboardHeight(metrics.height);
+            setKeyboardScreenY(metrics.screenY ?? 0);
           }
         } else {
           // Ensure state is reset if keyboard is not visible
           setKeyboardVisible(false);
           setKeyboardHeight(0);
+          setKeyboardScreenY(0);
         }
       } catch (error) {
         // Gracefully handle any errors from Keyboard API
@@ -55,10 +58,12 @@ export function useKeyboard() {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e: KeyboardEvent) => {
       setKeyboardVisible(true);
       setKeyboardHeight(e.endCoordinates.height);
+      setKeyboardScreenY(e.endCoordinates.screenY);
     });
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardVisible(false);
       setKeyboardHeight(0);
+      setKeyboardScreenY(0);
     });
 
     // Check initial state AFTER listeners are registered
@@ -86,5 +91,5 @@ export function useKeyboard() {
     };
   }, []); // Empty deps: only run on mount/unmount
 
-  return { keyboardVisible, keyboardHeight };
+  return { keyboardVisible, keyboardHeight, keyboardScreenY };
 }

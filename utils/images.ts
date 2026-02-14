@@ -2,8 +2,6 @@ import { Asset } from 'expo-asset';
 
 export const images: { [key: string]: ReturnType<typeof require> } = {
   logo: require('@/assets/images/logo.png'),
-  logo_sm: require('@/assets/images/logo.png'),
-  logo_lg: require('@/assets/images/logo.png'),
 };
 
 const preloadImages = () =>

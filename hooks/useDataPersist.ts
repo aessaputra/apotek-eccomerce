@@ -13,12 +13,9 @@ export function useDataPersist() {
    * @returns
    */
   async function setPersistData<T>(key: DataPersistKeys, data: T): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      const jsonData = JSON.stringify(data);
-      AsyncStorage.setItem(key, jsonData)
-        .then(() => resolve(true))
-        .catch(err => reject(err));
-    });
+    const jsonData = JSON.stringify(data);
+    await AsyncStorage.setItem(key, jsonData);
+    return true;
   }
 
   /**
@@ -26,12 +23,9 @@ export function useDataPersist() {
    * @param key
    * @returns
    */
-  async function getPersistData<T>(key: DataPersistKeys): Promise<T> {
-    return new Promise((resolve, reject) => {
-      AsyncStorage.getItem(key)
-        .then(res => resolve(res ? JSON.parse(res) : undefined))
-        .catch(err => reject(err));
-    });
+  async function getPersistData<T>(key: DataPersistKeys): Promise<T | undefined> {
+    const res = await AsyncStorage.getItem(key);
+    return res ? JSON.parse(res) : undefined;
   }
 
   /**
@@ -39,12 +33,9 @@ export function useDataPersist() {
    * @param key
    * @returns
    */
-  function removePersistData(key: DataPersistKeys): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      AsyncStorage.removeItem(key)
-        .then(() => resolve(true))
-        .catch(err => reject(err));
-    });
+  async function removePersistData(key: DataPersistKeys): Promise<boolean> {
+    await AsyncStorage.removeItem(key);
+    return true;
   }
 
   /**

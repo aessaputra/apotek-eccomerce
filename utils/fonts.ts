@@ -1,7 +1,7 @@
 import { loadAsync } from 'expo-font';
 
 export const fonts = {
-  openSan: {
+  openSans: {
     regular: 'openSans_regular',
     regularItalic: 'openSans_regular_italic',
     semiBold: 'openSans_semiBold',

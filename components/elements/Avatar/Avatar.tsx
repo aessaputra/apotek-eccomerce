@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TouchableOpacity, Platform, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { YStack, XStack, Text, useTheme } from 'tamagui';
+import { YStack, Text, useTheme } from 'tamagui';
 import { LinearGradient } from 'expo-linear-gradient';
 import Image from '../Image';
 import { getThemeColor } from '@/utils/theme';
@@ -83,7 +83,7 @@ export default function Avatar({
         try {
           await onUpload(uri);
           setLocalUri(null);
-        } catch (error) {
+        } catch {
           setLocalUri(null);
           Alert.alert('Error', 'Gagal mengupload foto profil. Silakan coba lagi.');
         }

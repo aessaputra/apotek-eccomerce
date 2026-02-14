@@ -53,7 +53,6 @@ export default function AddressForm() {
   const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   // Extra gap so "Jadikan alamat default" card stays above the sticky Simpan button
-  // Using SPACIOUS spacing (24px) as checkbox/interactive element is near bottom
   const scrollPaddingBottom = bottomBarHeight + FORM_SCROLL_PADDING.SPACIOUS;
 
   // Validation functions
@@ -541,7 +540,7 @@ export default function AddressForm() {
           </Card>
         </ScrollView>
 
-        {/* Bottom action bar with save button (automatically lifts above keyboard) */}
+        {/* Bottom action bar — uses measureInWindow for adjustResize-agnostic positioning */}
         <BottomActionBar
           buttonTitle={isEdit ? 'Simpan Perubahan' : 'Simpan Alamat'}
           onPress={handleSave}

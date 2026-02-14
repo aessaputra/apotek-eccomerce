@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { render, screen, fireEvent, waitFor } from '../../../test-utils/renderWithTheme';
+import { render, screen, fireEvent } from '../../../test-utils/renderWithTheme';
 import ErrorMessage from './ErrorMessage';
 
 describe('<ErrorMessage />', () => {

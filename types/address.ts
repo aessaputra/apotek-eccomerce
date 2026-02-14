@@ -2,7 +2,7 @@ import type { Tables } from './supabase';
 
 export type AddressRow = Tables<'addresses'>;
 
-export interface Address extends AddressRow {}
+export type Address = AddressRow;
 
 export type AddressInsert = {
   receiver_name: string;

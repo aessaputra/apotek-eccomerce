@@ -33,7 +33,6 @@
       "channel": "production",
       "environment": "production",
       "ios": {
-        "simulator": true,
         "buildConfiguration": "Release"
       },
       "android": {

@@ -5,7 +5,7 @@ import { images } from '@/utils/images';
 
 describe('<Image />', () => {
   it('renders correctly with a local asset', () => {
-    render(<Image testID="image" source={images.logo_sm} />);
+    render(<Image testID="image" source={images.logo} />);
     const image = screen.getByTestId(/image/i);
     expect(image).not.toBeNull();
   });

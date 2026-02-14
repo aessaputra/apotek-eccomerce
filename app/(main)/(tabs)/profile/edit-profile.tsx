@@ -44,7 +44,6 @@ export default function EditProfile() {
   const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   // Scroll padding: bottom bar height + compact spacing (no tab bar since it's hidden)
-  // Using COMPACT spacing (16px) as last input is far from bottom bar
   const scrollPaddingBottom = bottomBarHeight + FORM_SCROLL_PADDING.COMPACT;
 
   const validateName = useCallback((value: string): boolean => {
@@ -296,7 +295,7 @@ export default function EditProfile() {
           </Card>
         </ScrollView>
 
-        {/* Bottom action bar with save button (automatically lifts above keyboard) */}
+        {/* Bottom action bar — uses measureInWindow for adjustResize-agnostic positioning */}
         <BottomActionBar
           buttonTitle="Simpan"
           onPress={handleSave}

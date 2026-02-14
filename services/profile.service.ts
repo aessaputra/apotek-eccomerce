@@ -66,7 +66,7 @@ export async function uploadAvatar(
 
     // Baca file sebagai base64 (recommended untuk React Native)
     const base64 = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     // Convert base64 ke ArrayBuffer (required untuk Supabase Storage di React Native)
@@ -88,7 +88,7 @@ export async function uploadAvatar(
     const contentType = contentTypeMap[fileExt] || 'image/jpeg';
 
     // Upload ke Supabase Storage bucket 'avatars'
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { data: _uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, arrayBuffer, {
         contentType,
@@ -115,11 +115,12 @@ export async function updateProfile(
   payload: ProfileUpdatePayload,
 ): Promise<{ data: ProfileRow | null; error: Error | null }> {
   const updatePayload: TablesUpdate<'profiles'> = {
-    ...(payload.full_name !== undefined && { full_name: payload.full_name }),
-    ...(payload.phone_number !== undefined && { phone_number: payload.phone_number }),
-    ...(payload.avatar_url !== undefined && { avatar_url: payload.avatar_url }),
     updated_at: new Date().toISOString(),
   };
+
+  if (payload.full_name !== undefined) updatePayload.full_name = payload.full_name;
+  if (payload.phone_number !== undefined) updatePayload.phone_number = payload.phone_number;
+  if (payload.avatar_url !== undefined) updatePayload.avatar_url = payload.avatar_url;
 
   const { data, error } = await supabase
     .from('profiles')

@@ -1,6 +1,5 @@
-import { YStack, Text } from 'tamagui';
+import { YStack, Text, useTheme } from 'tamagui';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 
 export default function SupportScreen() {
