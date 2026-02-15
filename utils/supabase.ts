@@ -21,6 +21,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabasePublishableK
     storage: authStorage,
     autoRefreshToken: true,
     persistSession: true,
+    // OAuth tokens are extracted manually via WebBrowser + setSession (all platforms)
+    // Per Supabase docs: https://supabase.com/docs/guides/auth/quickstarts/react-native
     detectSessionInUrl: false,
   },
 });

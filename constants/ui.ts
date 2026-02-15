@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 /**
  * UI Constants for Apotek E-commerce App
  *
@@ -40,21 +42,34 @@ export const FORM_SCROLL_PADDING = {
 } as const;
 
 /**
- * Shadow configuration for elevated bottom bars (iOS-style elevation).
- * Creates subtle top shadow for visual separation from content.
- * Compatible with Android elevation prop (both work together).
- *
- * - shadowColor: Pure black for natural shadow
- * - shadowOffset: Negative Y for top shadow
- * - shadowOpacity: Subtle (0.1) to avoid heavy appearance
- * - shadowRadius: Medium blur (4px) for soft edges
+ * Platform-aware shadow configuration for elevated bottom bars.
+ * - Web: uses CSS boxShadow (shadow* props are deprecated in react-native-web)
+ * - Native: uses iOS shadow* props for natural elevation
  */
-export const BOTTOM_BAR_SHADOW = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: -2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-} as const;
+export const BOTTOM_BAR_SHADOW =
+  Platform.OS === 'web'
+    ? ({ boxShadow: '0px -2px 4px rgba(0,0,0,0.1)' } as const)
+    : ({
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      } as const);
+
+/**
+ * Platform-aware shadow configuration for elevated cards (auth forms, dialogs).
+ * - Web: uses CSS boxShadow (shadow* props are deprecated in react-native-web)
+ * - Native: uses iOS shadow* props for natural card elevation
+ */
+export const CARD_SHADOW =
+  Platform.OS === 'web'
+    ? ({ boxShadow: '0px 4px 12px rgba(0,0,0,0.08)' } as const)
+    : ({
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      } as const);
 
 /**
  * Primary button title styling for action buttons.

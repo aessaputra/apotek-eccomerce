@@ -10,8 +10,7 @@ import ErrorMessage from '@/components/elements/ErrorMessage';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { getAddress, createAddress, updateAddress } from '@/services/address.service';
-import type { Address, AddressInsert } from '@/types/address';
-import { windowWidth } from '@/utils/deviceInfo';
+import type { AddressInsert } from '@/types/address';
 import { getThemeColor } from '@/utils/theme';
 import { MIN_TOUCH_TARGET, BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 

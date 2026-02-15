@@ -1,26 +1,47 @@
-import { useEffect } from 'react';
-import { Alert, AppState, Platform, AppStateStatus } from 'react-native';
-import { useDispatch } from 'react-redux';
+import { useState, useEffect, useCallback } from 'react';
+import { AppState, Platform, AppStateStatus } from 'react-native';
 import { supabase } from '@/utils/supabase';
 import { getCurrentUser } from '@/services/user.service';
-import { signOut as authSignOut } from '@/services/auth.service';
+import { signOut as authSignOut, handleOAuthHashTokens } from '@/services/auth.service';
 import { useAppSlice } from '@/slices';
-import type { Dispatch } from '@/utils/store';
-import { ADMIN_REJECT_MESSAGE } from '@/constants/auth';
+import { ADMIN_REJECT_MESSAGE, BANNED_USER_MESSAGE } from '@/constants/auth';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 
 export interface AuthProviderProps {
   children: React.ReactNode;
 }
 
 export default function AuthProvider({ children }: AuthProviderProps) {
-  const dispatch = useDispatch<Dispatch>();
-  const { setUser, setLoggedIn, setChecked, reset } = useAppSlice();
+  const { dispatch, setUser, setLoggedIn, setChecked, reset } = useAppSlice();
+
+  // State untuk AlertDialog (menggantikan Alert.alert dari react-native)
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertDescription, setAlertDescription] = useState('');
+
+  const showAlert = useCallback((title: string, description: string) => {
+    setAlertTitle(title);
+    setAlertDescription(description);
+    setAlertOpen(true);
+  }, []);
 
   // Initial session load; set checked when done
   useEffect(() => {
     let mounted = true;
 
     async function init() {
+      // On web: check if URL hash contains OAuth tokens from redirect
+      // This happens when Google OAuth redirects back to our origin with #access_token=...
+      // We must process these BEFORE calling getCurrentUser to avoid a race condition
+      // where init() sets loggedIn=false and triggers a redirect that strips the hash.
+      const hashResult = await handleOAuthHashTokens();
+      if (hashResult) {
+        // Token found and setSession() called.
+        // onAuthStateChange will fire SIGNED_IN and set checked/loggedIn.
+        // If setSession failed, let onAuthStateChange handle the error state.
+        return;
+      }
+
       const result = await getCurrentUser();
       if (!mounted) return;
 
@@ -37,7 +58,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         if (mounted) {
           dispatch(reset());
           dispatch(setChecked(true));
-          Alert.alert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+          showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
         }
         return;
       }
@@ -48,6 +69,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           dispatch(setUser(undefined));
           dispatch(setLoggedIn(false));
           dispatch(setChecked(true));
+          showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
         }
         return;
       }
@@ -61,7 +83,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       mounted = false;
     };
-  }, [dispatch, setUser, setLoggedIn, setChecked, reset]);
+  }, [dispatch, setUser, setLoggedIn, setChecked, reset, showAlert]);
 
   // onAuthStateChange
   useEffect(() => {
@@ -73,6 +95,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         if (mounted) {
           dispatch(setUser(undefined));
           dispatch(setLoggedIn(false));
+          dispatch(setChecked(true));
         }
         return;
       }
@@ -83,6 +106,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         if (!result) {
           dispatch(setUser(undefined));
           dispatch(setLoggedIn(false));
+          dispatch(setChecked(true));
           return;
         }
         const { user, profile } = result;
@@ -91,7 +115,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           if (mounted) {
             dispatch(setUser(undefined));
             dispatch(setLoggedIn(false));
-            Alert.alert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+            dispatch(setChecked(true));
+            showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
           }
           return;
         }
@@ -100,12 +125,15 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           if (mounted) {
             dispatch(setUser(undefined));
             dispatch(setLoggedIn(false));
+            dispatch(setChecked(true));
+            showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
           }
           return;
         }
         if (mounted) {
           dispatch(setUser(user));
           dispatch(setLoggedIn(true));
+          dispatch(setChecked(true));
         }
       }
     });
@@ -114,7 +142,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [dispatch, setUser, setLoggedIn]);
+  }, [dispatch, setUser, setLoggedIn, setChecked, showAlert]);
 
   // AppState: startAutoRefresh / stopAutoRefresh (React Native only)
   useEffect(() => {
@@ -133,5 +161,15 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <AppAlertDialog
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        title={alertTitle}
+        description={alertDescription}
+      />
+    </>
+  );
 }

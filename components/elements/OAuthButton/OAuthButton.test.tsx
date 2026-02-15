@@ -35,8 +35,16 @@ describe('<OAuthButton />', () => {
   test('applies correct opacity when loading', async () => {
     render(<OAuthButton provider="google" isLoading />);
     const button = screen.getByLabelText('Masuk dengan Google');
-    // check opacity is reduced when loading
-    expect(button.props.style).toBeDefined();
+    // Verify opacity is reduced when loading (should be < 1)
+    const flatStyle = Array.isArray(button.props.style)
+      ? Object.assign({}, ...button.props.style)
+      : button.props.style;
+    if (flatStyle?.opacity !== undefined) {
+      expect(flatStyle.opacity).toBeLessThan(1);
+    } else {
+      // Tamagui may not expose opacity directly in test env — verify style exists
+      expect(flatStyle).toBeDefined();
+    }
   });
 
   test('handles onPress error gracefully', async () => {

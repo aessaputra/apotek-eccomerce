@@ -1,8 +1,7 @@
 import { supabase } from '@/utils/supabase';
 import { getProfile } from '@/services/profile.service';
 import { profileToUser } from '@/types/user';
-import type { User } from '@/types/user';
-import type { ProfileRow } from '@/types/user';
+import type { User, ProfileRow } from '@/types/user';
 
 export type CurrentUserResult = {
   user: User;

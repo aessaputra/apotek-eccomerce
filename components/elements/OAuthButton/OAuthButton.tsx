@@ -1,5 +1,5 @@
 import { memo, useCallback } from 'react';
-import { XStack, Text, GetProps, Spinner } from 'tamagui';
+import { XStack, Text, GetProps, Spinner, useMedia } from 'tamagui';
 import { FontAwesome5 } from '@expo/vector-icons';
 
 export interface OAuthButtonProps extends Omit<GetProps<typeof XStack>, 'onPress'> {
@@ -17,6 +17,7 @@ const GOOGLE_BLUE = '#4285F4';
  * Optimized dengan React.memo untuk mengurangi re-render yang tidak perlu.
  */
 function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonProps) {
+  const media = useMedia();
   const label = 'Masuk dengan Google';
 
   // Error handling wrapper untuk onPress dengan graceful error handling
@@ -40,22 +41,10 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
       backgroundColor="$surface"
       borderWidth={1.5}
       borderColor="$surfaceBorder"
-      borderRadius={12}
-      height={52}
-      paddingHorizontal={16}
-      gap="$2"
-      $gtSm={{
-        height: 56,
-        borderRadius: 14,
-        paddingHorizontal: 20,
-        gap: '$3',
-      }}
-      $gtMd={{
-        height: 60,
-        borderRadius: 16,
-        paddingHorizontal: 24,
-        gap: '$4',
-      }}
+      borderRadius={media.gtMd ? 16 : media.gtSm ? 14 : 12}
+      height={media.gtMd ? 60 : media.gtSm ? 56 : 52}
+      paddingHorizontal={media.gtMd ? 24 : media.gtSm ? 20 : 16}
+      gap={media.gtMd ? '$4' : media.gtSm ? '$3' : '$2'}
       opacity={isLoading ? 0.6 : 1}
       animation="quick"
       hoverStyle={{

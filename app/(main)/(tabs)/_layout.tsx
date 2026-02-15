@@ -1,4 +1,5 @@
 import { Tabs, useSegments } from 'expo-router';
+import { Platform } from 'react-native';
 import { useTheme, useThemeName } from 'tamagui';
 import { AntDesign } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
@@ -70,19 +71,20 @@ export default function TabLayout() {
           // Follows Material Design and iOS conventions for bottom navigation
           borderTopWidth: 1,
           borderTopColor: tabBarBorderColor,
-          // Elevation shadow for depth (Android) - subtle shadow for visual separation
-          elevation: 8,
-          // Shadow for iOS (subtle top shadow) - use theme-aware shadowColor
-          // Light mode: rgba(0,0,0,0.06), Dark mode: rgba(0,0,0,0.3)
-          // Use DEFAULT_THEME_VALUES for fallback to ensure consistency
-          shadowColor: getThemeColor(
-            theme,
-            'shadowColor',
-            isDark ? DEFAULT_THEME_VALUES.dark.shadowColor : DEFAULT_THEME_VALUES.shadowColor,
-          ),
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
+          // Platform-aware shadow: boxShadow on web (shadow* deprecated), shadow* on native
+          ...(Platform.OS === 'web'
+            ? { boxShadow: '0px -2px 4px rgba(0,0,0,0.1)' }
+            : {
+                elevation: 8,
+                shadowColor: getThemeColor(
+                  theme,
+                  'shadowColor',
+                  isDark ? DEFAULT_THEME_VALUES.dark.shadowColor : DEFAULT_THEME_VALUES.shadowColor,
+                ),
+                shadowOffset: { width: 0, height: -2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+              }),
         },
       }}>
       <Tabs.Screen

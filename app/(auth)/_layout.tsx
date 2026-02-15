@@ -1,6 +1,8 @@
-import { Stack } from 'expo-router';
+import { Stack, ErrorBoundary } from 'expo-router';
 import { Theme } from 'tamagui';
 import useColorScheme from '@/hooks/useColorScheme';
+
+export { ErrorBoundary };
 
 export default function AuthLayout() {
   const { colorScheme } = useColorScheme();

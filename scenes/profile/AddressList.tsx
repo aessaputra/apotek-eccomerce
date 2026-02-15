@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { FlatList, Alert, RefreshControl } from 'react-native';
-import { YStack, Text, Spinner } from 'tamagui';
+import { YStack, Text, Spinner, useTheme } from 'tamagui';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ import { useAppSlice } from '@/slices';
 import { getAddresses, deleteAddress, setDefaultAddress } from '@/services/address.service';
 import type { Address } from '@/types/address';
 import { getThemeColor } from '@/utils/theme';
-import { useTheme } from 'tamagui';
 import {
   MIN_TOUCH_TARGET,
   BOTTOM_BAR_HEIGHT,
@@ -27,7 +26,6 @@ export default function AddressList() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Use theme-aware background with light mode default fallback (#FFFFFF)
   const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
@@ -46,11 +44,7 @@ export default function AddressList() {
     setRefreshing(false);
   }, [user?.id]);
 
-  useEffect(() => {
-    loadAddresses();
-  }, [loadAddresses]);
-
-  // Refresh addresses when screen comes into focus (e.g., after adding/editing address)
+  // Refresh addresses when screen comes into focus (including initial mount)
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
@@ -75,9 +69,7 @@ export default function AddressList() {
           style: 'destructive',
           onPress: async () => {
             if (!user?.id) return;
-            setDeletingId(address.id);
             const { error } = await deleteAddress(address.id, user.id);
-            setDeletingId(null);
             if (error) {
               Alert.alert('Error', 'Gagal menghapus alamat: ' + error.message);
             } else {
@@ -121,7 +113,7 @@ export default function AddressList() {
   const ITEM_HEIGHT = 132;
 
   const getItemLayout = useCallback(
-    (_data: any, index: number) => ({
+    (_data: ArrayLike<Address> | null | undefined, index: number) => ({
       length: ITEM_HEIGHT,
       offset: ITEM_HEIGHT * index,
       index,

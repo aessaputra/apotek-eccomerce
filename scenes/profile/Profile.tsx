@@ -1,17 +1,16 @@
-import { useCallback, memo } from 'react';
-import { ScrollView, Alert } from 'react-native';
-import { YStack, XStack, Text, useTheme, Card } from 'tamagui';
+import { useCallback, memo, useState } from 'react';
+import { ScrollView, Platform, Dimensions } from 'react-native';
+import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Avatar from '@/components/elements/Avatar';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { useAppSlice } from '@/slices';
 import { useDataPersist, DataPersistKeys } from '@/hooks';
 import { signOut as authSignOut } from '@/services/auth.service';
-import { Spinner } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
-import { windowWidth } from '@/utils/deviceInfo';
 
 interface MenuItemProps {
   label: string;
@@ -42,11 +41,13 @@ const MenuItem = memo(function MenuItem({
       elevation={1}
       pressStyle={{ opacity: 0.85, backgroundColor: '$backgroundHover' }}
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}>
+      {...(Platform.OS === 'web'
+        ? { 'aria-description': accessibilityHint }
+        : { accessibilityHint })}>
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" space="$3" flex={1}>
           <Ionicons name={icon} size={22} color={iconColor} />
@@ -65,9 +66,10 @@ export default function Profile() {
   const theme = useTheme();
   const { user } = useAppSlice();
   const { removePersistData } = useDataPersist();
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const insets = useSafeAreaInsets();
-  const avatarSize = windowWidth < 375 ? 100 : 120;
+  const avatarSize = Dimensions.get('window').width < 375 ? 100 : 120;
   // Use theme-aware background with light mode default fallback (#FFFFFF)
   const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
   const scrollPaddingBottom = 80 + insets.bottom;
@@ -82,24 +84,20 @@ export default function Profile() {
         month: 'long',
         day: 'numeric',
       });
-    } catch (err) {
+    } catch {
       return '–';
     }
   }, []);
 
-  const handleLogout = useCallback(() => {
-    Alert.alert('Keluar', 'Anda yakin ingin keluar?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Keluar',
-        style: 'destructive',
-        onPress: async () => {
-          await removePersistData(DataPersistKeys.USER);
-          await authSignOut();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
+  const handleLogout = useCallback(async () => {
+    try {
+      await removePersistData(DataPersistKeys.USER);
+      await authSignOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      router.replace('/(auth)/login');
+    }
   }, [removePersistData, router]);
 
   if (!user) {
@@ -191,19 +189,36 @@ export default function Profile() {
           marginBottom="$2"
           padding="$4"
           backgroundColor="transparent"
-          borderWidth={0}
+          borderWidth={1}
+          borderColor="$danger"
+          borderRadius="$4"
           elevation={0}
           pressStyle={{ opacity: 0.85 }}
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            handleLogout();
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setLogoutDialogOpen(true);
           }}
+          {...(Platform.OS === 'web' ? { style: { cursor: 'pointer' } } : {})}
           accessibilityLabel="Keluar dari akun"
-          accessibilityHint="Keluar dari aplikasi dan kembali ke halaman login">
+          {...(Platform.OS === 'web'
+            ? { 'aria-description': 'Keluar dari aplikasi dan kembali ke halaman login' }
+            : { accessibilityHint: 'Keluar dari aplikasi dan kembali ke halaman login' })}>
           <Text fontSize="$5" color="$danger" fontWeight="600" textAlign="center">
             Keluar
           </Text>
         </Card>
+
+        {/* Logout confirmation dialog */}
+        <AppAlertDialog
+          open={logoutDialogOpen}
+          onOpenChange={setLogoutDialogOpen}
+          title="Keluar"
+          description="Anda yakin ingin keluar?"
+          cancelText="Batal"
+          confirmText="Keluar"
+          confirmColor="$danger"
+          onConfirm={handleLogout}
+        />
       </ScrollView>
     </SafeAreaView>
   );

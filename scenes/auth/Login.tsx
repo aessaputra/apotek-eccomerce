@@ -1,31 +1,37 @@
-import { useState } from 'react';
-import { YStack, XStack, Text, Image } from 'tamagui';
+import { useState, useEffect } from 'react';
+import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import OAuthButton from '@/components/elements/OAuthButton';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
-import { signInWithPassword, signInWithGoogle, signOut } from '@/services/auth.service';
-import { getCurrentUser } from '@/services/user.service';
+import { signInWithPassword, signInWithGoogle } from '@/services/auth.service';
+import { useAppSlice } from '@/slices';
 import { images } from '@/utils/images';
 import { validateEmail } from '@/utils/validation';
-import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
-import {
-  ADMIN_REJECT_MESSAGE,
-  BANNED_USER_MESSAGE,
-  VERIFY_ACCOUNT_ERROR_MESSAGE,
-} from '@/constants/auth';
+import { PRIMARY_BUTTON_TITLE_STYLE, CARD_SHADOW } from '@/constants/ui';
 
 export default function Login() {
+  const router = useRouter();
+  const media = useMedia();
+  const { loggedIn } = useAppSlice();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
+
+  // Navigate to index when AuthProvider sets loggedIn=true
+  // app/index.tsx will then redirect to /(main)/(tabs)
+  useEffect(() => {
+    if (loggedIn) {
+      router.replace('/');
+    }
+  }, [loggedIn, router]);
 
   /**
    * Handles form submission with validation
@@ -49,13 +55,12 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const { data, error: err } = await signInWithPassword({
+      const { error: err } = await signInWithPassword({
         email: trimmedEmail,
         password,
       });
       if (err) {
         setError(err.message ?? 'Login gagal. Periksa email dan password.');
-        // Only set emailError if error is email-related
         const errorMessage = err.message?.toLowerCase() ?? '';
         if (
           errorMessage.includes('email') ||
@@ -66,30 +71,8 @@ export default function Login() {
         }
         return;
       }
-      if (data?.session) {
-        // CRITICAL: Check role & ban BEFORE allowing session to persist
-        // Navigation is handled SOLELY by AuthProvider via Redux loggedIn state
-        try {
-          const result = await getCurrentUser();
-          if (result?.profile.role === 'admin') {
-            await signOut();
-            setError(ADMIN_REJECT_MESSAGE);
-            return;
-          }
-          if (result?.profile.is_banned) {
-            await signOut();
-            setError(BANNED_USER_MESSAGE);
-            return;
-          }
-        } catch {
-          // Jika getCurrentUser gagal, sign out untuk keamanan
-          await signOut();
-          setError(VERIFY_ACCOUNT_ERROR_MESSAGE);
-          return;
-        }
-        // Jangan navigate manual — AuthProvider.onAuthStateChange
-        // akan set loggedIn=true → app/index.tsx redirect ke Home
-      }
+      // Setelah login berhasil, AuthProvider.onAuthStateChange
+      // akan menangani role/ban check dan set Redux state.
     } finally {
       setLoading(false);
     }
@@ -104,30 +87,9 @@ export default function Login() {
         setError(err.message ?? 'Login dengan Google gagal.');
         return;
       }
-
-      // CRITICAL: Check role & ban AFTER Google OAuth success (same as email/password login)
-      try {
-        const result = await getCurrentUser();
-        if (result?.profile.role === 'admin') {
-          await signOut();
-          setError(ADMIN_REJECT_MESSAGE);
-          return;
-        }
-        if (result?.profile.is_banned) {
-          await signOut();
-          setError(BANNED_USER_MESSAGE);
-          return;
-        }
-      } catch {
-        // Jika getCurrentUser gagal, sign out untuk keamanan
-        await signOut();
-        setError(VERIFY_ACCOUNT_ERROR_MESSAGE);
-        return;
-      }
-
       // Setelah setSession berhasil, AuthProvider.onAuthStateChange
-      // akan otomatis update Redux store dan redirect ke Home
-    } catch (err) {
+      // akan menangani role/ban check dan update Redux state.
+    } catch {
       setError('Terjadi kesalahan saat login dengan Google.');
     } finally {
       setOauthLoading(false);
@@ -153,22 +115,12 @@ export default function Login() {
             showsVerticalScrollIndicator={false}>
             <YStack
               width="100%"
-              maxWidth={420}
-              space="$5"
-              $gtSm={{
-                maxWidth: 480,
-                space: '$6',
-              }}
-              $gtMd={{
-                maxWidth: 520,
-              }}>
+              maxWidth={media.gtMd ? 520 : media.gtSm ? 480 : 420}
+              space={media.gtSm ? '$6' : '$5'}>
               {/* Logo dengan subtle animation dan responsive sizing */}
               <YStack
                 alignItems="center"
-                space="$3"
-                $gtSm={{
-                  space: '$4',
-                }}
+                space={media.gtSm ? '$4' : '$3'}
                 animation="quick"
                 enterStyle={{ opacity: 0, y: -20, scale: 0.95 }}
                 opacity={1}
@@ -177,16 +129,8 @@ export default function Login() {
                 <Image
                   source={images.logo}
                   width="100%"
-                  maxWidth={120}
-                  height={120}
-                  $gtSm={{
-                    maxWidth: 160,
-                    height: 160,
-                  }}
-                  $gtMd={{
-                    maxWidth: 180,
-                    height: 180,
-                  }}
+                  maxWidth={media.gtMd ? 180 : media.gtSm ? 160 : 120}
+                  height={media.gtMd ? 180 : media.gtSm ? 160 : 120}
                   resizeMode="contain"
                 />
               </YStack>
@@ -214,24 +158,13 @@ export default function Login() {
               {/* Form Card dengan enhanced styling dan responsive padding */}
               <YStack
                 borderRadius={20}
-                paddingVertical={28}
-                paddingHorizontal={24}
-                $gtSm={{
-                  paddingVertical: 32,
-                  paddingHorizontal: 32,
-                }}
-                $gtMd={{
-                  paddingVertical: 36,
-                  paddingHorizontal: 40,
-                }}
+                paddingVertical={media.gtMd ? 36 : media.gtSm ? 32 : 28}
+                paddingHorizontal={media.gtMd ? 40 : media.gtSm ? 32 : 24}
                 backgroundColor="$surface"
                 borderWidth={1}
                 borderColor="$surfaceBorder"
-                shadowColor="$shadowColor"
-                shadowOffset={{ width: 0, height: 4 }}
-                shadowOpacity={0.08}
-                shadowRadius={12}
                 elevation={4}
+                {...CARD_SHADOW}
                 space="$4"
                 animation="quick"
                 enterStyle={{ opacity: 0, y: 20 }}
@@ -341,13 +274,7 @@ export default function Login() {
               {/* Google OAuth Button dengan enhanced spacing dan responsive width */}
               <YStack
                 width="100%"
-                maxWidth={420}
-                $gtSm={{
-                  maxWidth: 480,
-                }}
-                $gtMd={{
-                  maxWidth: 520,
-                }}
+                maxWidth={media.gtMd ? 520 : media.gtSm ? 480 : 420}
                 animation="quick"
                 enterStyle={{ opacity: 0, y: 10 }}
                 opacity={1}

@@ -1,16 +1,16 @@
-import { useState, useMemo } from 'react';
-import { YStack, XStack, Text, useTheme, Image } from 'tamagui';
+import { useState, useMemo, useEffect } from 'react';
+import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signUp } from '@/services/auth.service';
-import { getThemeColor } from '@/utils/theme';
+import { useAppSlice } from '@/slices';
 import { images } from '@/utils/images';
-import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
+import { PRIMARY_BUTTON_TITLE_STYLE, CARD_SHADOW } from '@/constants/ui';
 import {
   validateEmail,
   validatePassword,
@@ -32,8 +32,9 @@ import {
  * dan memorable dibanding template standar.
  */
 export default function SignUp() {
-  const theme = useTheme();
   const router = useRouter();
+  const media = useMedia();
+  const { loggedIn } = useAppSlice();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,14 @@ export default function SignUp() {
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Navigate to index when AuthProvider sets loggedIn=true
+  // app/index.tsx will then redirect to /(main)/(tabs)
+  useEffect(() => {
+    if (loggedIn) {
+      router.replace('/');
+    }
+  }, [loggedIn, router]);
 
   /**
    * Handles form submission with validation
@@ -96,7 +105,7 @@ export default function SignUp() {
         return;
       }
       if (data?.session) {
-        router.replace('/(main)/(tabs)');
+        // AuthProvider.onAuthStateChange akan handle navigation via Redux
       } else if (data?.user && !data.session) {
         setError('Periksa email Anda untuk tautan konfirmasi.');
       }
@@ -127,22 +136,12 @@ export default function SignUp() {
             showsVerticalScrollIndicator={false}>
             <YStack
               width="100%"
-              maxWidth={420}
-              space="$5"
-              $gtSm={{
-                maxWidth: 480,
-                space: '$6',
-              }}
-              $gtMd={{
-                maxWidth: 520,
-              }}>
+              maxWidth={media.gtMd ? 520 : media.gtSm ? 480 : 420}
+              space={media.gtSm ? '$6' : '$5'}>
               {/* Logo dengan subtle animation dan responsive sizing */}
               <YStack
                 alignItems="center"
-                space="$3"
-                $gtSm={{
-                  space: '$4',
-                }}
+                space={media.gtSm ? '$4' : '$3'}
                 animation="quick"
                 enterStyle={{ opacity: 0, y: -20, scale: 0.95 }}
                 opacity={1}
@@ -151,16 +150,8 @@ export default function SignUp() {
                 <Image
                   source={images.logo}
                   width="100%"
-                  maxWidth={120}
-                  height={120}
-                  $gtSm={{
-                    maxWidth: 160,
-                    height: 160,
-                  }}
-                  $gtMd={{
-                    maxWidth: 180,
-                    height: 180,
-                  }}
+                  maxWidth={media.gtMd ? 180 : media.gtSm ? 160 : 120}
+                  height={media.gtMd ? 180 : media.gtSm ? 160 : 120}
                   resizeMode="contain"
                 />
               </YStack>
@@ -188,24 +179,13 @@ export default function SignUp() {
               {/* Form Card dengan enhanced styling dan responsive padding */}
               <YStack
                 borderRadius={20}
-                paddingVertical={28}
-                paddingHorizontal={24}
-                $gtSm={{
-                  paddingVertical: 32,
-                  paddingHorizontal: 32,
-                }}
-                $gtMd={{
-                  paddingVertical: 36,
-                  paddingHorizontal: 40,
-                }}
+                paddingVertical={media.gtMd ? 36 : media.gtSm ? 32 : 28}
+                paddingHorizontal={media.gtMd ? 40 : media.gtSm ? 32 : 24}
                 backgroundColor="$surface"
                 borderWidth={1}
                 borderColor="$surfaceBorder"
-                shadowColor="$shadowColor"
-                shadowOffset={{ width: 0, height: 4 }}
-                shadowOpacity={0.08}
-                shadowRadius={12}
                 elevation={4}
+                {...CARD_SHADOW}
                 space="$4"
                 animation="quick"
                 enterStyle={{ opacity: 0, y: 20 }}

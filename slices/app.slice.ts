@@ -22,6 +22,7 @@ const slice = createSlice({
     setChecked: (state: AppState, { payload }: PayloadAction<boolean>) => {
       state.checked = payload;
     },
+    /** Also sets checked=true so callers don't need to dispatch setChecked separately. */
     setLoggedIn: (state: AppState, { payload }: PayloadAction<boolean>) => {
       state.checked = true;
       state.loggedIn = payload;

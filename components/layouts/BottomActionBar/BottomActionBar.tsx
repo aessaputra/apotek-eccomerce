@@ -88,10 +88,7 @@ export default function BottomActionBar({
         pt="$2"
         pb={innerPaddingBottom}
         elevation={8}
-        shadowColor={BOTTOM_BAR_SHADOW.shadowColor}
-        shadowOffset={BOTTOM_BAR_SHADOW.shadowOffset}
-        shadowOpacity={BOTTOM_BAR_SHADOW.shadowOpacity}
-        shadowRadius={BOTTOM_BAR_SHADOW.shadowRadius}
+        {...BOTTOM_BAR_SHADOW}
         accessibilityRole="toolbar"
         accessibilityLabel="Bottom action bar"
         accessibilityHint="Action bar with primary action button"

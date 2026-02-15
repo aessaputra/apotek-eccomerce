@@ -5,7 +5,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import { TamaguiProvider, Theme } from 'tamagui';
 import useColorScheme from '@/hooks/useColorScheme';
 import store from '@/utils/store';
-import config from '@/tamagui.config';
+import tamaguiConfig from '@/tamagui.config';
 import 'react-native-reanimated';
 
 export default function Provider({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -16,7 +16,7 @@ export default function Provider({ children }: Readonly<{ children: React.ReactN
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ReduxProvider store={store}>
           {/* Key prop forces re-mount on theme change to ensure all consumers get fresh theme values */}
-          <TamaguiProvider key={themeName} config={config} defaultTheme={themeName}>
+          <TamaguiProvider key={themeName} config={tamaguiConfig} defaultTheme={themeName}>
             <Theme name={themeName}>
               <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>{children}</ThemeProvider>
             </Theme>
