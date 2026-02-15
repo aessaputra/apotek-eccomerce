@@ -153,6 +153,7 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
   // === WEB: full-page redirect (avoids COOP popup issue) ===
   if (Platform.OS === 'web') {
     const webRedirectTo = typeof window !== 'undefined' ? window.location.origin : '';
+
     const webResult = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -174,7 +175,9 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
   }
 
   // === NATIVE: in-app browser via WebBrowser ===
-  const redirectTo = makeRedirectUri();
+  const redirectTo = makeRedirectUri({
+    path: 'google-auth',
+  });
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
