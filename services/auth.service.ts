@@ -1,6 +1,5 @@
 import { supabase } from '@/utils/supabase';
 import { makeRedirectUri } from 'expo-auth-session';
-import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
@@ -55,14 +54,23 @@ export async function signOut() {
 
 /**
  * Buat session dari URL redirect OAuth (digunakan oleh native flow).
- * Mengekstrak access_token & refresh_token dari URL menggunakan QueryParams
- * dari expo-auth-session, lalu panggil setSession().
+ *
+ * Mendukung dua flow:
+ * - **PKCE** (primary, supabase-js v2.39+): URL berisi ?code=XXX → exchangeCodeForSession()
+ *   Code verifier disimpan otomatis di storage adapter (LargeSecureStore) saat signInWithOAuth().
+ * - **Implicit** (legacy fallback): URL berisi #access_token=...&refresh_token=... → setSession()
+ *   Deprecated oleh Supabase — hanya dipertahankan untuk backward compatibility.
  *
  * @param url - URL redirect dari WebBrowser setelah OAuth selesai
- * @returns Session data atau null jika gagal
+ * @returns Session data atau error
  */
 async function createSessionFromUrl(url: string) {
-  const { params, errorCode } = QueryParams.getQueryParams(url);
+  // Parse redirect URL — supports both query params (?code=) and hash fragments (#access_token=)
+  const parsed = new URL(url);
+  const errorCode =
+    parsed.searchParams.get('error_code') ??
+    parsed.searchParams.get('error') ??
+    null;
 
   if (errorCode) {
     return {
@@ -71,7 +79,24 @@ async function createSessionFromUrl(url: string) {
     };
   }
 
-  const { access_token, refresh_token } = params;
+  // PKCE flow (supabase-js v2.39+): redirect contains ?code=XXX
+  const code = parsed.searchParams.get('code');
+
+  if (code) {
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.exchangeCodeForSession(code);
+
+    if (sessionError) {
+      return { data: null, error: sessionError };
+    }
+
+    return { data: sessionData, error: null };
+  }
+
+  // Implicit flow fallback: redirect contains #access_token=...&refresh_token=...
+  const hashParams = new URLSearchParams(parsed.hash.substring(1));
+  const access_token = hashParams.get('access_token');
+  const refresh_token = hashParams.get('refresh_token');
 
   if (!access_token) {
     return {
@@ -85,7 +110,7 @@ async function createSessionFromUrl(url: string) {
 
   const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
     access_token,
-    refresh_token,
+    refresh_token: refresh_token ?? '',
   });
 
   if (sessionError) {
@@ -96,11 +121,14 @@ async function createSessionFromUrl(url: string) {
 }
 
 /**
- * Ekstrak token OAuth dari URL hash di web.
+ * Proses token/code OAuth dari URL di web.
  * Dipanggil oleh AuthProvider.init() saat halaman pertama kali di-load
  * setelah redirect dari Google OAuth.
  *
- * @returns Session data atau null jika tidak ada token / gagal
+ * Mendukung PKCE flow (?code= di query params) dan implicit flow fallback
+ * (#access_token= di hash fragment).
+ *
+ * @returns Session data atau null jika tidak ada token/code
  */
 export async function handleOAuthHashTokens(): Promise<{
   data: unknown;
@@ -108,6 +136,25 @@ export async function handleOAuthHashTokens(): Promise<{
 } | null> {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
 
+  // PKCE flow (supabase-js v2.39+): redirect contains ?code=XXX in query params
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+
+  if (code) {
+    // Clean URL before processing to prevent re-processing on refresh
+    window.history.replaceState(null, '', window.location.pathname);
+
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.exchangeCodeForSession(code);
+
+    if (sessionError) {
+      return { data: null, error: sessionError };
+    }
+
+    return { data: sessionData, error: null };
+  }
+
+  // Implicit flow fallback: redirect contains #access_token=... in hash
   const hash = window.location.hash;
   if (!hash || !hash.includes('access_token=')) return null;
 
@@ -139,7 +186,7 @@ export async function handleOAuthHashTokens(): Promise<{
  * Platform-specific flows:
  *
  * **Web:** Full-page redirect (skipBrowserRedirect: false)
- * - Browser navigates ke Google, lalu redirect kembali ke origin dengan #access_token=...
+ * - Browser navigates ke Google, lalu redirect kembali ke origin dengan ?code=... (PKCE)
  * - Token diproses oleh AuthProvider.init() via handleOAuthHashTokens()
  * - Alasan: WebBrowser popup di-block oleh Google COOP headers
  *

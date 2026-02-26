@@ -30,53 +30,63 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     let mounted = true;
 
     async function init() {
-      // On web: check if URL hash contains OAuth tokens from redirect
-      // This happens when Google OAuth redirects back to our origin with #access_token=...
-      // We must process these BEFORE calling getCurrentUser to avoid a race condition
-      // where init() sets loggedIn=false and triggers a redirect that strips the hash.
-      const hashResult = await handleOAuthHashTokens();
-      if (hashResult) {
-        // Token found and setSession() called.
-        // onAuthStateChange will fire SIGNED_IN and set checked/loggedIn.
-        // If setSession failed, let onAuthStateChange handle the error state.
-        return;
-      }
-
-      const result = await getCurrentUser();
-      if (!mounted) return;
-
-      if (!result) {
-        dispatch(setUser(undefined));
-        dispatch(setLoggedIn(false));
-        dispatch(setChecked(true));
-        return;
-      }
-
-      const { user, profile } = result;
-      if (profile.role === 'admin') {
-        await authSignOut();
-        if (mounted) {
-          dispatch(reset());
-          dispatch(setChecked(true));
-          showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+      try {
+        // On web: check if URL hash contains OAuth tokens from redirect
+        // This happens when Google OAuth redirects back to our origin with #access_token=...
+        // We must process these BEFORE calling getCurrentUser to avoid a race condition
+        // where init() sets loggedIn=false and triggers a redirect that strips the hash.
+        const hashResult = await handleOAuthHashTokens();
+        if (hashResult) {
+          // Token found and setSession() called.
+          // onAuthStateChange will fire SIGNED_IN and set checked/loggedIn.
+          // If setSession failed, let onAuthStateChange handle the error state.
+          return;
         }
-        return;
-      }
 
-      if (profile.is_banned) {
-        await authSignOut();
+        const result = await getCurrentUser();
+        if (!mounted) return;
+
+        if (!result) {
+          dispatch(setUser(undefined));
+          dispatch(setLoggedIn(false));
+          dispatch(setChecked(true));
+          return;
+        }
+
+        const { user, profile } = result;
+        if (profile.role === 'admin') {
+          await authSignOut();
+          if (mounted) {
+            dispatch(reset());
+            dispatch(setChecked(true));
+            showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+          }
+          return;
+        }
+
+        if (profile.is_banned) {
+          await authSignOut();
+          if (mounted) {
+            dispatch(setUser(undefined));
+            dispatch(setLoggedIn(false));
+            dispatch(setChecked(true));
+            showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
+          }
+          return;
+        }
+
+        dispatch(setUser(user));
+        dispatch(setLoggedIn(true));
+        dispatch(setChecked(true));
+      } catch (error) {
+        // Ensure splash screen is dismissed even on network/auth errors
+        console.warn('[AuthProvider] init error:', error);
         if (mounted) {
           dispatch(setUser(undefined));
           dispatch(setLoggedIn(false));
           dispatch(setChecked(true));
-          showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
         }
-        return;
       }
-
-      dispatch(setUser(user));
-      dispatch(setLoggedIn(true));
-      dispatch(setChecked(true));
     }
 
     init();
