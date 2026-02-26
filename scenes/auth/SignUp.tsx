@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
+import { YStack, XStack, Text, Image } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,7 +38,6 @@ export default function SignUp() {
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-
 
   /**
    * Handles form submission with validation

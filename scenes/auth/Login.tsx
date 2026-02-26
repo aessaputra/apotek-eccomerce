@@ -9,7 +9,6 @@ import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signInWithPassword, signInWithGoogle } from '@/services/auth.service';
-import { useAppSlice } from '@/slices';
 import { images } from '@/utils/images';
 import { validateEmail } from '@/utils/validation';
 import { PRIMARY_BUTTON_TITLE_STYLE, CARD_SHADOW } from '@/constants/ui';
