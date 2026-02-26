@@ -55,4 +55,15 @@ if (Platform.OS !== 'web') {
       configurable: true,
     });
   }
+
+  // Diagnostic: Supabase also requires TextEncoder alongside crypto.subtle.
+  // React Native 0.74+ (Hermes) includes TextEncoder natively.
+  // If missing, PKCE silently falls back to 'plain' even with crypto.subtle polyfilled.
+  if (__DEV__ && typeof globalThis.TextEncoder === 'undefined') {
+    console.warn(
+      '[cryptoPolyfill] TextEncoder is not available. ' +
+        'Supabase PKCE will fall back to plain code challenge. ' +
+        'Install text-encoding-polyfill if on RN < 0.74.',
+    );
+  }
 }

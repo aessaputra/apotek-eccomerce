@@ -65,6 +65,8 @@ export async function signOut() {
  * @returns Session data atau error
  */
 async function createSessionFromUrl(url: string) {
+  if (__DEV__) console.log('[OAuth] createSessionFromUrl:', url);
+
   // Parse redirect URL — supports both query params (?code=) and hash fragments (#access_token=)
   const parsed = new URL(url);
   const errorCode =
@@ -73,6 +75,7 @@ async function createSessionFromUrl(url: string) {
     null;
 
   if (errorCode) {
+    if (__DEV__) console.warn('[OAuth] OAuth callback error:', errorCode);
     return {
       data: null,
       error: { message: errorCode, name: 'OAuthCallbackError' },
@@ -81,15 +84,18 @@ async function createSessionFromUrl(url: string) {
 
   // PKCE flow (supabase-js v2.39+): redirect contains ?code=XXX
   const code = parsed.searchParams.get('code');
+  if (__DEV__) console.log('[OAuth] code from URL:', code ? `${code.substring(0, 8)}...` : 'null');
 
   if (code) {
     const { data: sessionData, error: sessionError } =
       await supabase.auth.exchangeCodeForSession(code);
 
     if (sessionError) {
+      if (__DEV__) console.error('[OAuth] exchangeCodeForSession error:', sessionError.message);
       return { data: null, error: sessionError };
     }
 
+    if (__DEV__) console.log('[OAuth] PKCE session created successfully');
     return { data: sessionData, error: null };
   }
 
@@ -225,6 +231,7 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
   const redirectTo = makeRedirectUri({
     path: 'google-auth',
   });
+  if (__DEV__) console.log('[OAuth] Native redirectTo:', redirectTo);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -239,6 +246,7 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
   });
 
   if (error) {
+    if (__DEV__) console.error('[OAuth] signInWithOAuth error:', error.message);
     return { data: null, error };
   }
 
@@ -249,9 +257,11 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
     };
   }
 
+  if (__DEV__) console.log('[OAuth] Opening browser...');
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
     showInRecents: true,
   });
+  if (__DEV__) console.log('[OAuth] Browser result type:', result.type);
 
   if (result.type !== 'success') {
     return {
