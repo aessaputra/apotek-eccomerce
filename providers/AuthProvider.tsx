@@ -43,7 +43,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        const result = await getCurrentUser();
+        const result = await getCurrentUser({ createIfMissing: true });
         if (!mounted) return;
 
         if (!result) {
@@ -95,13 +95,17 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [dispatch, setUser, setLoggedIn, setChecked, reset, showAlert]);
 
-  // onAuthStateChange
+  // onAuthStateChange — with __DEV__ diagnostic logging for OAuth debugging
   useEffect(() => {
     let mounted = true;
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (__DEV__)
+        console.log('[AuthProvider] onAuthStateChange:', event, session?.user?.email ?? 'no-user');
+
       if (event === 'SIGNED_OUT' || !session?.user) {
+        if (__DEV__) console.log('[AuthProvider] Signed out or no session');
         if (mounted) {
           dispatch(setUser(undefined));
           dispatch(setLoggedIn(false));
@@ -111,14 +115,27 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        const result = await getCurrentUser();
+        if (__DEV__) console.log('[AuthProvider] Processing event:', event);
+        const result = await getCurrentUser({
+          createIfMissing: event === 'SIGNED_IN',
+          session,
+        });
         if (!mounted) return;
         if (!result) {
+          if (__DEV__)
+            console.warn('[AuthProvider] getCurrentUser returned null for event:', event);
           dispatch(setUser(undefined));
           dispatch(setLoggedIn(false));
           dispatch(setChecked(true));
           return;
         }
+        if (__DEV__)
+          console.log(
+            '[AuthProvider] getCurrentUser success:',
+            result.user.email,
+            'role:',
+            result.profile.role,
+          );
         const { user, profile } = result;
         if (profile.role === 'admin') {
           await authSignOut();

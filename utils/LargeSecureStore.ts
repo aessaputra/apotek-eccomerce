@@ -59,7 +59,14 @@ export default class LargeSecureStore {
     try {
       // PKCE code_verifier: read directly from SecureStore (no AES needed)
       if (this._isSmallKey(key)) {
-        return await SecureStore.getItemAsync(key);
+        const value = await SecureStore.getItemAsync(key);
+        if (__DEV__)
+          console.log(
+            '[LargeSecureStore] getItem (direct):',
+            key,
+            value ? `${value.substring(0, 8)}...` : 'null',
+          );
+        return value;
       }
 
       const encrypted = await AsyncStorage.getItem(key);
@@ -78,6 +85,8 @@ export default class LargeSecureStore {
     try {
       // PKCE code_verifier: write directly to SecureStore (no AES needed)
       if (this._isSmallKey(key)) {
+        if (__DEV__)
+          console.log('[LargeSecureStore] setItem (direct):', key, `${value.substring(0, 8)}...`);
         await SecureStore.setItemAsync(key, value);
         return;
       }

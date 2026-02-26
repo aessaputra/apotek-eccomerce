@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Redirect, useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { Redirect } from 'expo-router';
 import { YStack, Spinner, Text } from 'tamagui';
 import { useAppSlice } from '@/slices';
 
 /**
- * Google OAuth deep-link callback handler.
+ * Google OAuth deep-link callback handler (landing pad).
  *
  * When native Google OAuth completes, the browser redirects to
  * `apotek-eccomerce://google-auth?code=...` (PKCE flow).
@@ -13,27 +13,15 @@ import { useAppSlice } from '@/slices';
  * Token extraction is handled by WebBrowser.openAuthSessionAsync
  * + createSessionFromUrl in auth.service.ts (runs in parallel).
  *
- * IMPORTANT: We do NOT redirect immediately to `/` because that triggers
- * index.tsx to check `loggedIn` while exchangeCodeForSession() is still
- * in flight — causing a premature redirect back to the login screen.
- *
- * Instead, we show a spinner and wait for AuthProvider to set loggedIn=true
- * (via onAuthStateChange → getCurrentUser), then redirect. A timeout
- * ensures we don't wait forever if auth fails.
+ * Navigation is handled by the centralized auth guard in _layout.tsx.
+ * This component just shows a spinner while the token exchange happens.
+ * A safety timeout redirects to index if auth doesn't complete.
  */
 const AUTH_TIMEOUT_MS = 15_000;
 
 export default function GoogleAuthCallback() {
-  const router = useRouter();
-  const { loggedIn, checked } = useAppSlice();
+  const { loggedIn } = useAppSlice();
   const [timedOut, setTimedOut] = useState(false);
-
-  // Redirect to home when AuthProvider confirms login
-  useEffect(() => {
-    if (checked && loggedIn) {
-      router.replace('/(main)/(tabs)');
-    }
-  }, [checked, loggedIn, router]);
 
   // Safety timeout: redirect to index if auth doesn't complete
   useEffect(() => {
@@ -48,6 +36,7 @@ export default function GoogleAuthCallback() {
     return <Redirect href="/" />;
   }
 
+  // Centralized auth guard in _layout.tsx will handle redirect when loggedIn=true
   return (
     <YStack flex={1} justifyContent="center" alignItems="center" backgroundColor="$background">
       <Spinner size="large" color="$primary" />

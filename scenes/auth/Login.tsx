@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import OAuthButton from '@/components/elements/OAuthButton';
@@ -15,24 +15,8 @@ import { validateEmail } from '@/utils/validation';
 import { PRIMARY_BUTTON_TITLE_STYLE, CARD_SHADOW } from '@/constants/ui';
 
 export default function Login() {
-  const router = useRouter();
   const media = useMedia();
-  const { loggedIn } = useAppSlice();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState(false);
-
-  // Navigate to index when AuthProvider sets loggedIn=true
-  // app/index.tsx will then redirect to /(main)/(tabs)
-  useEffect(() => {
-    if (loggedIn) {
-      router.replace('/');
-    }
-  }, [loggedIn, router]);
-
   /**
    * Handles form submission with validation
    * Validates email before calling signInWithPassword service

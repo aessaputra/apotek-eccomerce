@@ -11,6 +11,53 @@ export async function getProfile(userId: string): Promise<ProfileRow | null> {
   return data as ProfileRow;
 }
 
+/**
+ * Ensure a profile row exists for the given auth user.
+ * If the profile doesn't exist (e.g. new Google OAuth user where the DB trigger
+ * hasn't fired or is missing), create one with sensible defaults from the auth session.
+ *
+ * @param userId - The auth.users UUID
+ * @param email - The user's email (from session)
+ * @param fullName - Optional display name (from Google OAuth metadata)
+ * @param avatarUrl - Optional avatar URL (from Google OAuth metadata)
+ * @returns The profile row (existing or newly created), or null on failure
+ */
+export async function ensureProfile(
+  userId: string,
+  email: string,
+  fullName?: string | null,
+  avatarUrl?: string | null,
+): Promise<ProfileRow | null> {
+  // Try fetching existing profile first
+  const existing = await getProfile(userId);
+  if (existing) return existing;
+
+  if (__DEV__) console.log('[Profile] No profile found, creating for:', email);
+
+  // Profile doesn't exist — create one
+  const { data, error } = await supabase
+    .from('profiles')
+    .insert({
+      id: userId,
+      full_name: fullName ?? email.split('@')[0] ?? null,
+      avatar_url: avatarUrl ?? null,
+      role: 'customer',
+      is_banned: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    if (__DEV__) console.error('[Profile] ensureProfile insert error:', error.message);
+    // Could be a race condition where trigger already created the profile
+    // Retry fetching
+    return await getProfile(userId);
+  }
+
+  if (__DEV__) console.log('[Profile] Created new profile for:', email);
+  return data as ProfileRow;
+}
+
 export type ProfileUpdatePayload = {
   full_name?: string | null;
   phone_number?: string | null;

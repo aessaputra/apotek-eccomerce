@@ -1,14 +1,13 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signUp } from '@/services/auth.service';
-import { useAppSlice } from '@/slices';
 import { images } from '@/utils/images';
 import { PRIMARY_BUTTON_TITLE_STYLE, CARD_SHADOW } from '@/constants/ui';
 import {
@@ -32,9 +31,6 @@ import {
  * dan memorable dibanding template standar.
  */
 export default function SignUp() {
-  const router = useRouter();
-  const media = useMedia();
-  const { loggedIn } = useAppSlice();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,13 +39,6 @@ export default function SignUp() {
   const [passwordError, setPasswordError] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  // Navigate to index when AuthProvider sets loggedIn=true
-  // app/index.tsx will then redirect to /(main)/(tabs)
-  useEffect(() => {
-    if (loggedIn) {
-      router.replace('/');
-    }
-  }, [loggedIn, router]);
 
   /**
    * Handles form submission with validation

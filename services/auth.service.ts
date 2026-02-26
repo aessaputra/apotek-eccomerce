@@ -70,9 +70,7 @@ async function createSessionFromUrl(url: string) {
   // Parse redirect URL — supports both query params (?code=) and hash fragments (#access_token=)
   const parsed = new URL(url);
   const errorCode =
-    parsed.searchParams.get('error_code') ??
-    parsed.searchParams.get('error') ??
-    null;
+    parsed.searchParams.get('error_code') ?? parsed.searchParams.get('error') ?? null;
 
   if (errorCode) {
     if (__DEV__) console.warn('[OAuth] OAuth callback error:', errorCode);
@@ -87,16 +85,29 @@ async function createSessionFromUrl(url: string) {
   if (__DEV__) console.log('[OAuth] code from URL:', code ? `${code.substring(0, 8)}...` : 'null');
 
   if (code) {
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.exchangeCodeForSession(code);
+    try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.exchangeCodeForSession(code);
 
-    if (sessionError) {
-      if (__DEV__) console.error('[OAuth] exchangeCodeForSession error:', sessionError.message);
-      return { data: null, error: sessionError };
+      if (sessionError) {
+        if (__DEV__) console.error('[OAuth] exchangeCodeForSession error:', sessionError.message);
+        return { data: null, error: sessionError };
+      }
+
+      if (__DEV__) console.log('[OAuth] PKCE session created successfully');
+      return { data: sessionData, error: null };
+    } catch (thrown: unknown) {
+      // GoTrueClient._exchangeCodeForSession re-throws non-AuthError exceptions
+      // (e.g. storage failures, network errors) at line 1172 of GoTrueClient.ts.
+      // These bypass the SDK's own catch block — we MUST catch them here.
+      const message = thrown instanceof Error ? thrown.message : String(thrown);
+      const stack = thrown instanceof Error ? thrown.stack : undefined;
+      if (__DEV__) {
+        console.error('[OAuth] exchangeCodeForSession THREW:', message);
+        if (stack) console.error('[OAuth] Stack:', stack);
+      }
+      return { data: null, error: { message, name: 'ExchangeCodeError' } };
     }
-
-    if (__DEV__) console.log('[OAuth] PKCE session created successfully');
-    return { data: sessionData, error: null };
   }
 
   // Implicit flow fallback: redirect contains #access_token=...&refresh_token=...
@@ -150,14 +161,20 @@ export async function handleOAuthHashTokens(): Promise<{
     // Clean URL before processing to prevent re-processing on refresh
     window.history.replaceState(null, '', window.location.pathname);
 
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.exchangeCodeForSession(code);
+    try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.exchangeCodeForSession(code);
 
-    if (sessionError) {
-      return { data: null, error: sessionError };
+      if (sessionError) {
+        return { data: null, error: sessionError };
+      }
+
+      return { data: sessionData, error: null };
+    } catch (thrown: unknown) {
+      const message = thrown instanceof Error ? thrown.message : String(thrown);
+      if (__DEV__) console.error('[OAuth][Web] exchangeCodeForSession THREW:', message);
+      return { data: null, error: { message, name: 'ExchangeCodeError' } };
     }
-
-    return { data: sessionData, error: null };
   }
 
   // Implicit flow fallback: redirect contains #access_token=... in hash
