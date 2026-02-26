@@ -1,3 +1,5 @@
+// Polyfill crypto.subtle.digest for PKCE S256 (must be before @supabase/supabase-js)
+import '@/utils/cryptoPolyfill';
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
