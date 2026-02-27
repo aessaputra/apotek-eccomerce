@@ -1,14 +1,3 @@
-const glob = require('glob');
-
-// find all source files that have tests
-const findSourceFilesWithTests = () => {
-  const testFiles = glob.sync('**/*.test.{js,jsx,ts,tsx}');
-  const sourceFiles = testFiles.map(testFile => {
-    return testFile.replace('.test', '').replace(/__tests__\//, '');
-  });
-  return sourceFiles;
-};
-
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-expo',
@@ -19,11 +8,16 @@ module.exports = {
   ],
   collectCoverage: true,
   collectCoverageFrom: [
-    ...findSourceFilesWithTests(),
+    'components/**/*.{ts,tsx}',
+    'hooks/**/*.{ts,tsx}',
+    'scenes/**/*.{ts,tsx}',
+    'services/**/*.{ts,tsx}',
+    'slices/**/*.{ts,tsx}',
+    'utils/**/*.{ts,tsx}',
+    'providers/**/*.{ts,tsx}',
+    '!**/*.test.{ts,tsx}',
+    '!**/__tests__/**',
     '!**/coverage/**',
     '!**/node_modules/**',
-    '!**/babel.config.js',
-    '!**/expo-env.d.ts',
-    '!**/.expo/**',
   ],
 };

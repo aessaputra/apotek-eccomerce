@@ -53,8 +53,31 @@ export async function signOut() {
 }
 
 /**
+ * Exchange PKCE authorization code for session.
+ * Shared by native (createSessionFromUrl) and web (handleOAuthHashTokens) flows.
+ */
+async function exchangeCode(
+  code: string,
+): Promise<{ data: unknown; error: GoogleAuthError | null }> {
+  try {
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.exchangeCodeForSession(code);
+
+    if (sessionError) {
+      return { data: null, error: sessionError };
+    }
+
+    return { data: sessionData, error: null };
+  } catch (thrown: unknown) {
+    // GoTrueClient re-throws non-AuthError exceptions (storage/network failures)
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return { data: null, error: { message, name: 'ExchangeCodeError' } };
+  }
+}
+
+/**
  * Create session from OAuth redirect URL (native PKCE flow).
- * Extracts ?code= param and exchanges it via exchangeCodeForSession().
+ * Extracts ?code= param and exchanges it via exchangeCode().
  */
 async function createSessionFromUrl(url: string) {
   const parsed = new URL(url);
@@ -80,20 +103,7 @@ async function createSessionFromUrl(url: string) {
     };
   }
 
-  try {
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.exchangeCodeForSession(code);
-
-    if (sessionError) {
-      return { data: null, error: sessionError };
-    }
-
-    return { data: sessionData, error: null };
-  } catch (thrown: unknown) {
-    // GoTrueClient re-throws non-AuthError exceptions (storage/network failures)
-    const message = thrown instanceof Error ? thrown.message : String(thrown);
-    return { data: null, error: { message, name: 'ExchangeCodeError' } };
-  }
+  return exchangeCode(code);
 }
 
 /**
@@ -114,19 +124,7 @@ export async function handleOAuthHashTokens(): Promise<{
   // Clean URL before processing to prevent re-processing on refresh
   window.history.replaceState(null, '', window.location.pathname);
 
-  try {
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.exchangeCodeForSession(code);
-
-    if (sessionError) {
-      return { data: null, error: sessionError };
-    }
-
-    return { data: sessionData, error: null };
-  } catch (thrown: unknown) {
-    const message = thrown instanceof Error ? thrown.message : String(thrown);
-    return { data: null, error: { message, name: 'ExchangeCodeError' } };
-  }
+  return exchangeCode(code);
 }
 
 /**

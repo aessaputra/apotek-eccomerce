@@ -60,7 +60,7 @@ export default class LargeSecureStore {
 
       return await this._decrypt(key, encrypted);
     } catch (error) {
-      console.warn('[LargeSecureStore] getItem error:', key, error);
+      if (__DEV__) console.warn('[LargeSecureStore] getItem error:', key, error);
       return null;
     }
   }
@@ -75,7 +75,7 @@ export default class LargeSecureStore {
       const encrypted = await this._encrypt(key, value);
       await AsyncStorage.setItem(key, encrypted);
     } catch (error) {
-      console.warn('[LargeSecureStore] setItem error:', key, error);
+      if (__DEV__) console.warn('[LargeSecureStore] setItem error:', key, error);
     }
   }
 
@@ -89,7 +89,7 @@ export default class LargeSecureStore {
       await AsyncStorage.removeItem(key);
       await SecureStore.deleteItemAsync(key);
     } catch (error) {
-      console.warn('[LargeSecureStore] removeItem error:', key, error);
+      if (__DEV__) console.warn('[LargeSecureStore] removeItem error:', key, error);
     }
   }
 }

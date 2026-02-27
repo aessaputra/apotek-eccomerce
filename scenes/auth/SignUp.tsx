@@ -98,6 +98,8 @@ export default function SignUp() {
       } else if (data?.user && !data.session) {
         setError('Periksa email Anda untuk tautan konfirmasi.');
       }
+    } catch {
+      setError('Terjadi kesalahan saat mendaftar. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }

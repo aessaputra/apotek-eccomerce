@@ -161,20 +161,26 @@ export default function AddressForm() {
   const loadAddress = useCallback(async () => {
     if (!id) return;
     setLoading(true);
-    const { data, error: err } = await getAddress(id);
-    setLoading(false);
-    if (err || !data) {
+    try {
+      const { data, error: err } = await getAddress(id);
+      setLoading(false);
+      if (err || !data) {
+        Alert.alert('Error', 'Gagal memuat alamat');
+        router.back();
+        return;
+      }
+      setReceiverName(data.receiver_name);
+      setPhoneNumber(data.phone_number);
+      setStreetAddress(data.street_address);
+      setCity(data.city);
+      setPostalCode(data.postal_code);
+      setProvince(data.province || '');
+      setIsDefault(data.is_default ?? false);
+    } catch {
+      setLoading(false);
       Alert.alert('Error', 'Gagal memuat alamat');
       router.back();
-      return;
     }
-    setReceiverName(data.receiver_name);
-    setPhoneNumber(data.phone_number);
-    setStreetAddress(data.street_address);
-    setCity(data.city);
-    setPostalCode(data.postal_code);
-    setProvince(data.province || '');
-    setIsDefault(data.is_default ?? false);
   }, [id, router]);
 
   useEffect(() => {

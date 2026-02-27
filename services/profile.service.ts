@@ -5,10 +5,15 @@ import type { ProfileRow } from '@/types/user';
 import type { TablesUpdate } from '@/types/supabase';
 
 export async function getProfile(userId: string): Promise<ProfileRow | null> {
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  try {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
 
-  if (error || !data) return null;
-  return data as ProfileRow;
+    if (error || !data) return null;
+    return data as ProfileRow;
+  } catch (error) {
+    if (__DEV__) console.warn('[ProfileService] getProfile error:', error);
+    return null;
+  }
 }
 
 /**
@@ -161,21 +166,25 @@ export async function updateProfile(
   userId: string,
   payload: ProfileUpdatePayload,
 ): Promise<{ data: ProfileRow | null; error: Error | null }> {
-  const updatePayload: TablesUpdate<'profiles'> = {
-    updated_at: new Date().toISOString(),
-  };
+  try {
+    const updatePayload: TablesUpdate<'profiles'> = {
+      updated_at: new Date().toISOString(),
+    };
 
-  if (payload.full_name !== undefined) updatePayload.full_name = payload.full_name;
-  if (payload.phone_number !== undefined) updatePayload.phone_number = payload.phone_number;
-  if (payload.avatar_url !== undefined) updatePayload.avatar_url = payload.avatar_url;
+    if (payload.full_name !== undefined) updatePayload.full_name = payload.full_name;
+    if (payload.phone_number !== undefined) updatePayload.phone_number = payload.phone_number;
+    if (payload.avatar_url !== undefined) updatePayload.avatar_url = payload.avatar_url;
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(updatePayload)
-    .eq('id', userId)
-    .select()
-    .single();
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updatePayload)
+      .eq('id', userId)
+      .select()
+      .single();
 
-  if (error) return { data: null, error: error as unknown as Error };
-  return { data: data as ProfileRow, error: null };
+    if (error) return { data: null, error: error as unknown as Error };
+    return { data: data as ProfileRow, error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
+  }
 }

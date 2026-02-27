@@ -20,7 +20,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState(false);
 
   /**
@@ -63,6 +62,8 @@ export default function Login() {
       }
       // Setelah login berhasil, AuthProvider.onAuthStateChange
       // akan menangani role/ban check dan set Redux state.
+    } catch {
+      setError('Terjadi kesalahan saat login. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }

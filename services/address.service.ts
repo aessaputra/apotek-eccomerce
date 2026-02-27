@@ -7,15 +7,19 @@ import type { Address, AddressInsert, AddressUpdate } from '@/types/address';
 export async function getAddresses(
   profileId: string,
 ): Promise<{ data: Address[] | null; error: Error | null }> {
-  const { data, error } = await supabase
-    .from('addresses')
-    .select('*')
-    .eq('profile_id', profileId)
-    .order('is_default', { ascending: false })
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('profile_id', profileId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false });
 
-  if (error) return { data: null, error: error as unknown as Error };
-  return { data: data as Address[], error: null };
+    if (error) return { data: null, error: error as unknown as Error };
+    return { data: data as Address[], error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
+  }
 }
 
 /**
@@ -24,10 +28,18 @@ export async function getAddresses(
 export async function getAddress(
   addressId: string,
 ): Promise<{ data: Address | null; error: Error | null }> {
-  const { data, error } = await supabase.from('addresses').select('*').eq('id', addressId).single();
+  try {
+    const { data, error } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('id', addressId)
+      .single();
 
-  if (error) return { data: null, error: error as unknown as Error };
-  return { data: data as Address, error: null };
+    if (error) return { data: null, error: error as unknown as Error };
+    return { data: data as Address, error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
+  }
 }
 
 /**
@@ -106,14 +118,18 @@ export async function deleteAddress(
   addressId: string,
   profileId: string,
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
-    .from('addresses')
-    .delete()
-    .eq('id', addressId)
-    .eq('profile_id', profileId);
+  try {
+    const { error } = await supabase
+      .from('addresses')
+      .delete()
+      .eq('id', addressId)
+      .eq('profile_id', profileId);
 
-  if (error) return { error: error as unknown as Error };
-  return { error: null };
+    if (error) return { error: error as unknown as Error };
+    return { error: null };
+  } catch (error) {
+    return { error: error as Error };
+  }
 }
 
 /**

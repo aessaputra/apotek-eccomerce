@@ -27,8 +27,13 @@ function Router() {
 
   useEffect(() => {
     (async () => {
-      await Promise.all([loadImages(), loadFonts()]);
-      setAssetsReady(true);
+      try {
+        await Promise.all([loadImages(), loadFonts()]);
+      } catch (error) {
+        if (__DEV__) console.warn('[RootLayout] Failed to load assets:', error);
+      } finally {
+        setAssetsReady(true);
+      }
     })();
   }, []);
 

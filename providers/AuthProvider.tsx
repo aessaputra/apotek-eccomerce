@@ -102,7 +102,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
         await validateAndDispatch(result.user, result.profile, mounted);
       } catch (error) {
-        console.warn('[AuthProvider] init error:', error);
+        if (__DEV__) console.warn('[AuthProvider] init error:', error);
         if (mounted) dispatchAuth(undefined, false);
       }
     }
