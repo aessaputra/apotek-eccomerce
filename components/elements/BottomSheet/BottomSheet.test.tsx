@@ -4,13 +4,17 @@ import BottomSheet from './BottomSheet';
 import { Text } from 'tamagui';
 
 jest.mock('@gorhom/bottom-sheet', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View, ScrollView } = require('react-native');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { forwardRef } = require('react');
+  const MockBottomSheet = forwardRef(
+    ({ children }: { children: React.ReactNode }, _ref: unknown) => <View>{children}</View>,
+  );
+  MockBottomSheet.displayName = 'MockBottomSheet';
   return {
     __esModule: true,
-    default: forwardRef(({ children }: { children: React.ReactNode }, _ref: unknown) => (
-      <View>{children}</View>
-    )),
+    default: MockBottomSheet,
     BottomSheetBackdrop: View,
     BottomSheetScrollView: ScrollView,
   };

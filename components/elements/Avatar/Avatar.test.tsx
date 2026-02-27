@@ -13,6 +13,7 @@ jest.mock('expo-haptics', () => ({
 }));
 
 jest.mock('expo-linear-gradient', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   return { LinearGradient: View };
 });
