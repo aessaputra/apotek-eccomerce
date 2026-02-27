@@ -100,7 +100,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     let mounted = true;
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (__DEV__)
         console.log('[AuthProvider] onAuthStateChange:', event, session?.user?.email ?? 'no-user');
 
@@ -116,60 +116,67 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (__DEV__) console.log('[AuthProvider] Processing event:', event);
-        try {
-          const result = await getCurrentUser({
-            createIfMissing: event === 'SIGNED_IN' || event === 'INITIAL_SESSION',
-            session,
-          });
-          if (!mounted) return;
-          if (!result) {
+        // CRITICAL: Defer processing with setTimeout(0) to avoid deadlock.
+        // exchangeCodeForSession holds GoTrueClient's processLock while firing
+        // SIGNED_IN. If we call supabase.from('profiles').select() synchronously,
+        // PostgREST internally calls getSession() → tries to acquire the SAME lock
+        // → deadlock. setTimeout(0) lets the lock release first.
+        setTimeout(async () => {
+          try {
+            const result = await getCurrentUser({
+              createIfMissing: event === 'SIGNED_IN' || event === 'INITIAL_SESSION',
+              session,
+            });
+            if (!mounted) return;
+            if (!result) {
+              if (__DEV__)
+                console.warn('[AuthProvider] getCurrentUser returned null for event:', event);
+              dispatch(setUser(undefined));
+              dispatch(setLoggedIn(false));
+              dispatch(setChecked(true));
+              return;
+            }
             if (__DEV__)
-              console.warn('[AuthProvider] getCurrentUser returned null for event:', event);
-            dispatch(setUser(undefined));
-            dispatch(setLoggedIn(false));
-            dispatch(setChecked(true));
-            return;
-          }
-          if (__DEV__)
-            console.log(
-              '[AuthProvider] getCurrentUser success:',
-              result.user.email,
-              'role:',
-              result.profile.role,
-            );
-          const { user, profile } = result;
-          if (profile.role === 'admin') {
-            await authSignOut();
-            if (mounted) {
-              dispatch(setUser(undefined));
-              dispatch(setLoggedIn(false));
-              dispatch(setChecked(true));
-              showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+              console.log(
+                '[AuthProvider] getCurrentUser success:',
+                result.user.email,
+                'role:',
+                result.profile.role,
+              );
+            const { user, profile } = result;
+            if (profile.role === 'admin') {
+              await authSignOut();
+              if (mounted) {
+                dispatch(setUser(undefined));
+                dispatch(setLoggedIn(false));
+                dispatch(setChecked(true));
+                showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+              }
+              return;
             }
-            return;
-          }
-          if (profile.is_banned) {
-            await authSignOut();
-            if (mounted) {
-              dispatch(setUser(undefined));
-              dispatch(setLoggedIn(false));
-              dispatch(setChecked(true));
-              showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
+            if (profile.is_banned) {
+              await authSignOut();
+              if (mounted) {
+                dispatch(setUser(undefined));
+                dispatch(setLoggedIn(false));
+                dispatch(setChecked(true));
+                showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
+              }
+              return;
             }
-            return;
+            if (mounted) {
+              dispatch(setUser(user));
+              dispatch(setLoggedIn(true));
+              dispatch(setChecked(true));
+            }
+          } catch (error) {
+            if (__DEV__) console.error('[AuthProvider] onAuthStateChange error:', error);
+            // Don't reset login state on error — session exists, retry on next event
+            if (mounted) {
+              dispatch(setChecked(true));
+            }
           }
-          if (mounted) {
-            dispatch(setUser(user));
-            dispatch(setLoggedIn(true));
-            dispatch(setChecked(true));
-          }
-        } catch (error) {
-          if (__DEV__) console.error('[AuthProvider] onAuthStateChange error:', error);
-          // Don't reset login state on error — session exists, retry on next event
-          if (mounted) {
-            dispatch(setChecked(true));
-          }
-        }
+        }, 0);
       }
     });
 
