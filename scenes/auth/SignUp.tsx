@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { YStack, XStack, Text, Image } from 'tamagui';
+import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +31,7 @@ import {
  * dan memorable dibanding template standar.
  */
 export default function SignUp() {
+  const media = useMedia();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
