@@ -21,6 +21,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [oauthLoading, setOauthLoading] = useState(false);
 
   /**
    * Handles form submission with validation
