@@ -4,18 +4,9 @@ import { YStack, Spinner, Text } from 'tamagui';
 import { useAppSlice } from '@/slices';
 
 /**
- * Google OAuth deep-link callback handler (landing pad).
- *
- * When native Google OAuth completes, the browser redirects to
- * `apotek-eccomerce://google-auth?code=...` (PKCE flow).
- * Expo Router resolves this to `/google-auth` — this route.
- *
- * Token extraction is handled by WebBrowser.openAuthSessionAsync
- * + createSessionFromUrl in auth.service.ts (runs in parallel).
- *
- * Navigation is handled by the centralized auth guard in _layout.tsx.
- * This component just shows a spinner while the token exchange happens.
- * A safety timeout redirects to index if auth doesn't complete.
+ * Google OAuth deep-link callback handler.
+ * Shows a spinner while token exchange happens; auth guard in _layout.tsx handles navigation.
+ * Safety timeout redirects to index if auth doesn't complete within AUTH_TIMEOUT_MS.
  */
 const AUTH_TIMEOUT_MS = 15_000;
 

@@ -7,24 +7,16 @@ import 'react-native-get-random-values';
  * Secure storage adapter for Supabase auth that handles values larger than
  * expo-secure-store's 2048-byte limit.
  *
- * Strategy: AES-256 encryption key (64 hex chars) stored in SecureStore,
- * encrypted data stored in AsyncStorage (no size limit).
+ * Strategy: AES-256 key in SecureStore, encrypted data in AsyncStorage.
+ * PKCE code_verifier bypasses AES — stored directly in SecureStore.
  *
- * PKCE code_verifier (~60-100 bytes) bypasses AES and goes directly to
- * SecureStore — avoids decrypt failures that silently break exchangeCodeForSession().
+ * All methods are wrapped in try/catch because GoTrueClient calls getItem
+ * outside its own try/catch — thrown errors cause unhandled rejections.
  *
- * All methods are wrapped in try/catch because GoTrueClient's _exchangeCodeForSession
- * calls getItem OUTSIDE its own try/catch — any thrown error causes an unhandled
- * promise rejection that React Native silently swallows.
- *
- * Recommended by Supabase official docs:
  * @see https://supabase.com/docs/guides/getting-started/tutorials/with-expo-react-native
  */
 export default class LargeSecureStore {
-  /**
-   * Keys that are small enough to fit directly in SecureStore (< 2048 bytes).
-   * These bypass AES encryption to avoid decrypt failures on app resume.
-   */
+  /** Keys small enough for direct SecureStore storage (< 2048 bytes). */
   private _isSmallKey(key: string): boolean {
     return key.endsWith('-code-verifier');
   }
@@ -57,16 +49,8 @@ export default class LargeSecureStore {
 
   async getItem(key: string) {
     try {
-      // PKCE code_verifier: read directly from SecureStore (no AES needed)
       if (this._isSmallKey(key)) {
-        const value = await SecureStore.getItemAsync(key);
-        if (__DEV__)
-          console.log(
-            '[LargeSecureStore] getItem (direct):',
-            key,
-            value ? `${value.substring(0, 8)}...` : 'null',
-          );
-        return value;
+        return await SecureStore.getItemAsync(key);
       }
 
       const encrypted = await AsyncStorage.getItem(key);
@@ -83,10 +67,7 @@ export default class LargeSecureStore {
 
   async setItem(key: string, value: string) {
     try {
-      // PKCE code_verifier: write directly to SecureStore (no AES needed)
       if (this._isSmallKey(key)) {
-        if (__DEV__)
-          console.log('[LargeSecureStore] setItem (direct):', key, `${value.substring(0, 8)}...`);
         await SecureStore.setItemAsync(key, value);
         return;
       }
@@ -100,7 +81,6 @@ export default class LargeSecureStore {
 
   async removeItem(key: string) {
     try {
-      // PKCE code_verifier: only in SecureStore
       if (this._isSmallKey(key)) {
         await SecureStore.deleteItemAsync(key);
         return;

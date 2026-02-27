@@ -39,16 +39,8 @@ function Router() {
     }
   }, [assetsReady, checked]);
 
-  // ─── Centralized Auth Guard ───────────────────────────────────────────
-  // Handles ALL auth-based redirects in one place. Replaces individual
-  // useEffect redirects in Login.tsx, google-auth.tsx, and index.tsx.
-  //
-  // Uses setTimeout(0) to push navigation to the next event loop tick,
-  // preventing it from being swallowed during deep link transitions
-  // (the "Android Bundled" re-mount that occurs on OAuth callback).
-  //
-  // Pattern: https://github.com/expo/router — official auth example
-  // ─────────────────────────────────────────────────────────────────────
+  // Centralized auth guard: handles all auth-based redirects.
+  // Uses setTimeout(0) to avoid navigation being swallowed during deep link re-mounts.
   useEffect(() => {
     // Wait until AuthProvider has finished initial session check
     if (!checked) return;
@@ -60,8 +52,6 @@ function Router() {
     if (loggedIn) {
       // Authenticated user on auth/callback screens → redirect to main app
       if (inAuthGroup || isCallback) {
-        if (__DEV__)
-          console.log('[AuthGuard] Logged in on auth/callback screen, redirecting to main');
         setTimeout(() => router.replace('/(main)/(tabs)'), 0);
       }
     } else {
@@ -70,7 +60,6 @@ function Router() {
       // Skip: index (handles its own declarative <Redirect>)
       const inMainGroup = currentGroup === '(main)';
       if (inMainGroup) {
-        if (__DEV__) console.log('[AuthGuard] Not logged in on main screen, redirecting to login');
         setTimeout(() => router.replace('/(auth)/login'), 0);
       }
     }

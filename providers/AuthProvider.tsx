@@ -6,6 +6,7 @@ import { signOut as authSignOut, handleOAuthHashTokens } from '@/services/auth.s
 import { useAppSlice } from '@/slices';
 import { ADMIN_REJECT_MESSAGE, BANNED_USER_MESSAGE } from '@/constants/auth';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
+import type { User } from '@/types/user';
 
 export interface AuthProviderProps {
   children: React.ReactNode;
@@ -14,7 +15,6 @@ export interface AuthProviderProps {
 export default function AuthProvider({ children }: AuthProviderProps) {
   const { dispatch, setUser, setLoggedIn, setChecked, reset } = useAppSlice();
 
-  // State untuk AlertDialog (menggantikan Alert.alert dari react-native)
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertDescription, setAlertDescription] = useState('');
@@ -25,36 +25,72 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     setAlertOpen(true);
   }, []);
 
-  // Initial session load; set checked when done
+  /** Dispatch auth state to Redux in one call. */
+  const dispatchAuth = useCallback(
+    (user: User | undefined, loggedIn: boolean) => {
+      dispatch(setUser(user));
+      dispatch(setLoggedIn(loggedIn));
+      dispatch(setChecked(true));
+    },
+    [dispatch, setUser, setLoggedIn, setChecked],
+  );
+
+  /**
+   * Validate user result — reject admins and banned users.
+   * Returns true if user is allowed, false if rejected.
+   */
+  const validateAndDispatch = useCallback(
+    async (
+      user: User,
+      profile: { role: string | null; is_banned: boolean },
+      mounted: boolean,
+    ): Promise<boolean> => {
+      if (profile.role === 'admin') {
+        await authSignOut();
+        if (mounted) {
+          dispatchAuth(undefined, false);
+          showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+        }
+        return false;
+      }
+
+      if (profile.is_banned) {
+        await authSignOut();
+        if (mounted) {
+          dispatchAuth(undefined, false);
+          showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
+        }
+        return false;
+      }
+
+      if (mounted) {
+        dispatchAuth(user, true);
+      }
+      return true;
+    },
+    [dispatchAuth, showAlert],
+  );
+
+  // Initial session load
   useEffect(() => {
     let mounted = true;
 
     async function init() {
       try {
-        // On web: check if URL hash contains OAuth tokens from redirect
-        // This happens when Google OAuth redirects back to our origin with #access_token=...
-        // We must process these BEFORE calling getCurrentUser to avoid a race condition
-        // where init() sets loggedIn=false and triggers a redirect that strips the hash.
+        // Web: process OAuth redirect tokens before getCurrentUser
         const hashResult = await handleOAuthHashTokens();
-        if (hashResult) {
-          // Token found and setSession() called.
-          // onAuthStateChange will fire SIGNED_IN and set checked/loggedIn.
-          // If setSession failed, let onAuthStateChange handle the error state.
-          return;
-        }
+        if (hashResult) return; // onAuthStateChange will handle state
 
         const result = await getCurrentUser({ createIfMissing: true });
         if (!mounted) return;
 
         if (!result) {
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          dispatch(setChecked(true));
+          dispatchAuth(undefined, false);
           return;
         }
 
-        const { user, profile } = result;
-        if (profile.role === 'admin') {
+        // Admin check uses reset() instead of dispatchAuth for init
+        if (result.profile.role === 'admin') {
           await authSignOut();
           if (mounted) {
             dispatch(reset());
@@ -64,28 +100,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        if (profile.is_banned) {
-          await authSignOut();
-          if (mounted) {
-            dispatch(setUser(undefined));
-            dispatch(setLoggedIn(false));
-            dispatch(setChecked(true));
-            showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
-          }
-          return;
-        }
-
-        dispatch(setUser(user));
-        dispatch(setLoggedIn(true));
-        dispatch(setChecked(true));
+        await validateAndDispatch(result.user, result.profile, mounted);
       } catch (error) {
-        // Ensure splash screen is dismissed even on network/auth errors
         console.warn('[AuthProvider] init error:', error);
-        if (mounted) {
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          dispatch(setChecked(true));
-        }
+        if (mounted) dispatchAuth(undefined, false);
       }
     }
 
@@ -93,34 +111,23 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       mounted = false;
     };
-  }, [dispatch, setUser, setLoggedIn, setChecked, reset, showAlert]);
+  }, [dispatch, setChecked, reset, showAlert, dispatchAuth, validateAndDispatch]);
 
-  // onAuthStateChange — with __DEV__ diagnostic logging for OAuth debugging
+  // Auth state change listener
   useEffect(() => {
     let mounted = true;
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (__DEV__)
-        console.log('[AuthProvider] onAuthStateChange:', event, session?.user?.email ?? 'no-user');
-
       if (event === 'SIGNED_OUT' || !session?.user) {
-        if (__DEV__) console.log('[AuthProvider] Signed out or no session');
-        if (mounted) {
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          dispatch(setChecked(true));
-        }
+        if (mounted) dispatchAuth(undefined, false);
         return;
       }
 
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (__DEV__) console.log('[AuthProvider] Processing event:', event);
-        // CRITICAL: Defer processing with setTimeout(0) to avoid deadlock.
-        // exchangeCodeForSession holds GoTrueClient's processLock while firing
-        // SIGNED_IN. If we call supabase.from('profiles').select() synchronously,
-        // PostgREST internally calls getSession() → tries to acquire the SAME lock
-        // → deadlock. setTimeout(0) lets the lock release first.
+        // Defer with setTimeout(0) to avoid deadlock: exchangeCodeForSession
+        // holds processLock while firing SIGNED_IN. PostgREST queries internally
+        // call getSession() which tries to acquire the same lock → deadlock.
         setTimeout(async () => {
           try {
             const result = await getCurrentUser({
@@ -128,53 +135,16 @@ export default function AuthProvider({ children }: AuthProviderProps) {
               session,
             });
             if (!mounted) return;
+
             if (!result) {
-              if (__DEV__)
-                console.warn('[AuthProvider] getCurrentUser returned null for event:', event);
-              dispatch(setUser(undefined));
-              dispatch(setLoggedIn(false));
-              dispatch(setChecked(true));
+              dispatchAuth(undefined, false);
               return;
             }
-            if (__DEV__)
-              console.log(
-                '[AuthProvider] getCurrentUser success:',
-                result.user.email,
-                'role:',
-                result.profile.role,
-              );
-            const { user, profile } = result;
-            if (profile.role === 'admin') {
-              await authSignOut();
-              if (mounted) {
-                dispatch(setUser(undefined));
-                dispatch(setLoggedIn(false));
-                dispatch(setChecked(true));
-                showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
-              }
-              return;
-            }
-            if (profile.is_banned) {
-              await authSignOut();
-              if (mounted) {
-                dispatch(setUser(undefined));
-                dispatch(setLoggedIn(false));
-                dispatch(setChecked(true));
-                showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
-              }
-              return;
-            }
-            if (mounted) {
-              dispatch(setUser(user));
-              dispatch(setLoggedIn(true));
-              dispatch(setChecked(true));
-            }
+
+            await validateAndDispatch(result.user, result.profile, mounted);
           } catch (error) {
             if (__DEV__) console.error('[AuthProvider] onAuthStateChange error:', error);
-            // Don't reset login state on error — session exists, retry on next event
-            if (mounted) {
-              dispatch(setChecked(true));
-            }
+            if (mounted) dispatch(setChecked(true));
           }
         }, 0);
       }
@@ -184,9 +154,9 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [dispatch, setUser, setLoggedIn, setChecked, showAlert]);
+  }, [dispatch, setChecked, dispatchAuth, validateAndDispatch]);
 
-  // AppState: startAutoRefresh / stopAutoRefresh (React Native only)
+  // Auto-refresh tokens when app becomes active (React Native only)
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
