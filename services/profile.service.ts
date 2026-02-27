@@ -140,7 +140,7 @@ export async function uploadAvatar(
     const contentType = contentTypeMap[fileExt] || 'image/jpeg';
 
     // Upload ke Supabase Storage bucket 'avatars'
-    const { data: _uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, arrayBuffer, {
         contentType,

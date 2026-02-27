@@ -6,6 +6,17 @@ module.exports = defineConfig([
   expoConfig,
   eslintPluginPrettierRecommended,
   {
-    ignores: ['dist/*'],
+    ignores: ['dist/*', '.agents/**'],
+  },
+  {
+    files: ['jest.setup.js'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        beforeAll: 'readonly',
+        afterEach: 'readonly',
+        afterAll: 'readonly',
+      },
+    },
   },
 ]);

@@ -16,15 +16,15 @@ const originalError = console.error;
 beforeAll(() => {
   // Use fake timers untuk kontrol animasi timing
   jest.useFakeTimers();
-  
+
   console.error = (...args) => {
     // Suppress act() warnings untuk Animated components dan Icon components
     // karena mereka berasal dari library internal (Tamagui, Expo Icons)
     // yang menggunakan animasi async yang tidak bisa dibungkus dengan act()
-    
+
     // Convert all arguments to string untuk pattern matching
     const fullMessage = args
-      .map((arg) => {
+      .map(arg => {
         if (typeof arg === 'string') {
           return arg;
         }
@@ -41,15 +41,14 @@ beforeAll(() => {
         return String(arg);
       })
       .join(' ');
-    
+
     // Pattern matching untuk act() warnings terkait Animated components
-    const isActWarning = 
-      fullMessage.includes('not wrapped in act') ||
-      fullMessage.includes('was not wrapped in act');
-    
+    const isActWarning =
+      fullMessage.includes('not wrapped in act') || fullMessage.includes('was not wrapped in act');
+
     // Check for various Animated-related patterns
     // Pattern yang lebih lengkap untuk menangkap semua variasi pesan error
-    const hasAnimatedPattern = 
+    const hasAnimatedPattern =
       fullMessage.includes('An update to Animated') ||
       fullMessage.includes('Animated(View)') ||
       fullMessage.includes('Animated(Text)') ||
@@ -59,21 +58,21 @@ beforeAll(() => {
       fullMessage.includes('Animated.Value') ||
       fullMessage.includes('createAnimatedPropsHook') ||
       (fullMessage.includes('An update to') && fullMessage.includes('Animated'));
-    
+
     // Check for Icon-related patterns (Expo Icons, vector-icons, etc.)
     // Pesan error bisa dalam format: "An update to Icon inside a test was not wrapped in act(...)"
-    const hasIconPattern = 
+    const hasIconPattern =
       (fullMessage.includes('An update to') && fullMessage.includes('Icon')) ||
       fullMessage.includes('Icon(') ||
       fullMessage.includes('Icon inside a test') ||
       fullMessage.includes('Icon.setState') ||
       fullMessage.includes('createIconSet');
-    
+
     // Suppress jika ini adalah act() warning untuk Animated atau Icon components
     if (isActWarning && (hasAnimatedPattern || hasIconPattern)) {
       return; // Suppress warning
     }
-    
+
     // Log semua error lainnya
     originalError.call(console, ...args);
   };
