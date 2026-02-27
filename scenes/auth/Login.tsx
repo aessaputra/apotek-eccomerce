@@ -16,6 +16,12 @@ import { PRIMARY_BUTTON_TITLE_STYLE, CARD_SHADOW } from '@/constants/ui';
 export default function Login() {
   const media = useMedia();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
   /**
    * Handles form submission with validation
    * Validates email before calling signInWithPassword service
