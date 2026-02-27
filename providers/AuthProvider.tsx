@@ -116,51 +116,59 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (__DEV__) console.log('[AuthProvider] Processing event:', event);
-        const result = await getCurrentUser({
-          createIfMissing: event === 'SIGNED_IN',
-          session,
-        });
-        if (!mounted) return;
-        if (!result) {
+        try {
+          const result = await getCurrentUser({
+            createIfMissing: event === 'SIGNED_IN' || event === 'INITIAL_SESSION',
+            session,
+          });
+          if (!mounted) return;
+          if (!result) {
+            if (__DEV__)
+              console.warn('[AuthProvider] getCurrentUser returned null for event:', event);
+            dispatch(setUser(undefined));
+            dispatch(setLoggedIn(false));
+            dispatch(setChecked(true));
+            return;
+          }
           if (__DEV__)
-            console.warn('[AuthProvider] getCurrentUser returned null for event:', event);
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          dispatch(setChecked(true));
-          return;
-        }
-        if (__DEV__)
-          console.log(
-            '[AuthProvider] getCurrentUser success:',
-            result.user.email,
-            'role:',
-            result.profile.role,
-          );
-        const { user, profile } = result;
-        if (profile.role === 'admin') {
-          await authSignOut();
-          if (mounted) {
-            dispatch(setUser(undefined));
-            dispatch(setLoggedIn(false));
-            dispatch(setChecked(true));
-            showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+            console.log(
+              '[AuthProvider] getCurrentUser success:',
+              result.user.email,
+              'role:',
+              result.profile.role,
+            );
+          const { user, profile } = result;
+          if (profile.role === 'admin') {
+            await authSignOut();
+            if (mounted) {
+              dispatch(setUser(undefined));
+              dispatch(setLoggedIn(false));
+              dispatch(setChecked(true));
+              showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+            }
+            return;
           }
-          return;
-        }
-        if (profile.is_banned) {
-          await authSignOut();
-          if (mounted) {
-            dispatch(setUser(undefined));
-            dispatch(setLoggedIn(false));
-            dispatch(setChecked(true));
-            showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
+          if (profile.is_banned) {
+            await authSignOut();
+            if (mounted) {
+              dispatch(setUser(undefined));
+              dispatch(setLoggedIn(false));
+              dispatch(setChecked(true));
+              showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
+            }
+            return;
           }
-          return;
-        }
-        if (mounted) {
-          dispatch(setUser(user));
-          dispatch(setLoggedIn(true));
-          dispatch(setChecked(true));
+          if (mounted) {
+            dispatch(setUser(user));
+            dispatch(setLoggedIn(true));
+            dispatch(setChecked(true));
+          }
+        } catch (error) {
+          if (__DEV__) console.error('[AuthProvider] onAuthStateChange error:', error);
+          // Don't reset login state on error — session exists, retry on next event
+          if (mounted) {
+            dispatch(setChecked(true));
+          }
         }
       }
     });
