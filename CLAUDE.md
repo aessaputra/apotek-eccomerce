@@ -27,7 +27,7 @@ This React Native Expo project follows specific patterns and uses built-in featu
 
 - **Single styling system**: Tamagui only. No StyleSheet or dual styling.
 - **Colors**: Defined in `themes.ts` (palettes + semantic tokens), imported by `tamagui.config.ts`. Use Tamagui tokens (`$primary`, `$background`, `$color`) in components; never hardcode.
-- **Fonts**: `@/utils/fonts` — `loadFonts()`, `fonts` (OpenSans). Call `loadFonts()` at app init (e.g. root layout).
+- **Fonts**: `@/utils/fonts` — `loadFonts()`, `fonts` (Poppins). Call `loadFonts()` at app init (e.g. root layout).
 - **Images**: `@/utils/images` — `loadImages()`, `images` (logo etc.). Call `loadImages()` at app init.
 - **Tamagui** - All UI uses Tamagui: components (Card, Input, Form, ListItem, Button), layout (YStack, XStack), tokens from themes. Import from `tamagui`.
 

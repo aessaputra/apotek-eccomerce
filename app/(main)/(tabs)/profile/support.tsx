@@ -9,7 +9,7 @@ export default function SupportScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['bottom']}>
-      <YStack flex={1} padding="$5" space="$4">
+      <YStack flex={1} padding="$5" gap="$4">
         <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
           Dukungan
         </Text>

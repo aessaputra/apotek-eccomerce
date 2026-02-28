@@ -13,7 +13,7 @@ export default function Orders() {
       justifyContent="center"
       backgroundColor="$background"
       padding="$5"
-      space="$4">
+      gap="$4">
       <Ionicons name="receipt-outline" size={64} color={subtleColor} />
       <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center" fontFamily="$heading">
         Belum Ada Pesanan

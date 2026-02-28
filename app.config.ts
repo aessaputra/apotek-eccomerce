@@ -77,12 +77,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         'expo-font',
         {
           fonts: [
-            './assets/fonts/OpenSans-Bold.ttf',
-            './assets/fonts/OpenSans-BoldItalic.ttf',
-            './assets/fonts/OpenSans-Italic.ttf',
-            './assets/fonts/OpenSans-Regular.ttf',
-            './assets/fonts/OpenSans-Semibold.ttf',
-            './assets/fonts/OpenSans-SemiboldItalic.ttf',
+            './assets/fonts/Poppins-Bold.ttf',
+            './assets/fonts/Poppins-BoldItalic.ttf',
+            './assets/fonts/Poppins-Italic.ttf',
+            './assets/fonts/Poppins-Regular.ttf',
+            './assets/fonts/Poppins-SemiBold.ttf',
+            './assets/fonts/Poppins-SemiBoldItalic.ttf',
           ],
         },
       ],

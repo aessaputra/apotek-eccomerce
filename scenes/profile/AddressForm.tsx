@@ -281,7 +281,7 @@ export default function AddressForm() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag">
           {/* Header Section */}
-          <YStack space="$4" marginBottom="$4">
+          <YStack gap="$4" marginBottom="$4">
             <Text fontSize="$7" fontWeight="700" color="$color" fontFamily="$heading">
               {isEdit ? 'Edit Alamat' : 'Tambah Alamat'}
             </Text>
@@ -304,8 +304,8 @@ export default function AddressForm() {
             borderColor="$surfaceBorder"
             borderRadius="$4"
             elevation={0}>
-            <YStack space="$4">
-              <XStack space="$2" alignItems="center" marginBottom="$2">
+            <YStack gap="$4">
+              <XStack gap="$2" alignItems="center" marginBottom="$2">
                 <Ionicons
                   name="person-outline"
                   size={20}
@@ -316,7 +316,7 @@ export default function AddressForm() {
                 </Text>
               </XStack>
 
-              <YStack space="$3">
+              <YStack gap="$3">
                 <FormInput
                   ref={receiverNameRef}
                   label="Nama Penerima"
@@ -372,8 +372,8 @@ export default function AddressForm() {
             borderColor="$surfaceBorder"
             borderRadius="$4"
             elevation={0}>
-            <YStack space="$4">
-              <XStack space="$2" alignItems="center" marginBottom="$2">
+            <YStack gap="$4">
+              <XStack gap="$2" alignItems="center" marginBottom="$2">
                 <Ionicons
                   name="location-outline"
                   size={20}
@@ -384,7 +384,7 @@ export default function AddressForm() {
                 </Text>
               </XStack>
 
-              <YStack space="$3">
+              <YStack gap="$3">
                 <FormInput
                   ref={streetAddressRef}
                   label="Alamat Lengkap"
@@ -410,7 +410,7 @@ export default function AddressForm() {
                   accessibilityHint="Masukkan alamat lengkap termasuk jalan, RT/RW, dan nomor rumah"
                 />
 
-                <XStack space="$3">
+                <XStack gap="$3">
                   <YStack flex={1}>
                     <FormInput
                       ref={cityRef}
@@ -496,7 +496,7 @@ export default function AddressForm() {
               accessibilityState={{ checked: isDefault }}
               accessibilityLabel="Jadikan alamat default"
               accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default yang akan digunakan otomatis saat checkout">
-              <XStack space="$3" alignItems="center">
+              <XStack gap="$3" alignItems="center">
                 <Checkbox
                   checked={isDefault}
                   onCheckedChange={checked => setIsDefault(checked as boolean)}
@@ -514,7 +514,7 @@ export default function AddressForm() {
                     />
                   </Checkbox.Indicator>
                 </Checkbox>
-                <YStack flex={1} space="$1">
+                <YStack flex={1} gap="$1">
                   <Text fontSize="$4" color="$color" fontWeight="600">
                     Jadikan alamat default
                   </Text>

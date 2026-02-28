@@ -8,7 +8,7 @@ export default function Home() {
 
   return (
     <YStack flex={1} backgroundColor="$background">
-      <YStack flex={1} alignItems="center" justifyContent="center" padding="$5" space="$4">
+      <YStack flex={1} alignItems="center" justifyContent="center" padding="$5" gap="$4">
         <Ionicons name="medical-outline" size={64} color={subtleColor} />
         <Text
           fontSize="$6"

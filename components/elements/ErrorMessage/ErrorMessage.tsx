@@ -52,7 +52,7 @@ function ErrorMessage({
           {...stackProps}>
           <XStack
             alignItems="center"
-            space="$2"
+            gap="$2"
             paddingVertical="$3"
             paddingHorizontal="$4"
             backgroundColor="$dangerSoft"

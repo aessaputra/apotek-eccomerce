@@ -49,7 +49,7 @@ const MenuItem = memo(function MenuItem({
         ? { 'aria-description': accessibilityHint }
         : { accessibilityHint })}>
       <XStack alignItems="center" justifyContent="space-between">
-        <XStack alignItems="center" space="$3" flex={1}>
+        <XStack alignItems="center" gap="$3" flex={1}>
           <Ionicons name={icon} size={22} color={iconColor} />
           <Text fontSize="$4" color="$color" fontWeight="500">
             {label}
@@ -128,7 +128,7 @@ export default function Profile() {
         }}
         showsVerticalScrollIndicator={false}>
         {/* Avatar, Nama lengkap, Bergabung */}
-        <YStack alignItems="center" marginBottom="$5" space="$3" accessibilityLabel="Foto profil">
+        <YStack alignItems="center" marginBottom="$5" gap="$3" accessibilityLabel="Foto profil">
           <Avatar
             avatarUrl={user.avatar_url}
             name={user.full_name || user.name || user.email}

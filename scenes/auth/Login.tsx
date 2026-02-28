@@ -107,11 +107,11 @@ export default function Login() {
             <YStack
               width="100%"
               maxWidth={media.gtMd ? 520 : media.gtSm ? 480 : 420}
-              space={media.gtSm ? '$6' : '$5'}>
+              gap={media.gtSm ? '$6' : '$5'}>
               {/* Logo dengan subtle animation dan responsive sizing */}
               <YStack
                 alignItems="center"
-                space={media.gtSm ? '$4' : '$3'}
+                gap={media.gtSm ? '$4' : '$3'}
                 animation="quick"
                 enterStyle={{ opacity: 0, y: -20, scale: 0.95 }}
                 opacity={1}
@@ -128,7 +128,7 @@ export default function Login() {
 
               {/* Header dengan enhanced typography */}
               <YStack
-                space="$2"
+                gap="$2"
                 animation="quick"
                 enterStyle={{ opacity: 0, y: -10 }}
                 opacity={1}
@@ -156,7 +156,7 @@ export default function Login() {
                 borderColor="$surfaceBorder"
                 elevation={4}
                 {...CARD_SHADOW}
-                space="$4"
+                gap="$4"
                 animation="quick"
                 enterStyle={{ opacity: 0, y: 20 }}
                 opacity={1}
@@ -164,9 +164,9 @@ export default function Login() {
                 {/* Error Message dengan height collapse animation (best practice) */}
                 <ErrorMessage message={error} onDismiss={() => setError(null)} dismissible={true} />
 
-                <YStack space="$4">
+                <YStack gap="$4">
                   {/* Email Input dengan enhanced focus states */}
-                  <YStack space="$1.5">
+                  <YStack gap="$1.5">
                     <EmailInput
                       value={email}
                       onChangeText={text => {
@@ -183,7 +183,7 @@ export default function Login() {
                   </YStack>
 
                   {/* Password Input dengan visibility toggle */}
-                  <YStack space="$1.5">
+                  <YStack gap="$1.5">
                     <PasswordInput
                       value={password}
                       onChangeText={text => {
@@ -250,7 +250,7 @@ export default function Login() {
               {/* Divider dengan enhanced styling */}
               <XStack
                 alignItems="center"
-                space="$3"
+                gap="$3"
                 paddingVertical="$3"
                 animation="quick"
                 enterStyle={{ opacity: 0 }}

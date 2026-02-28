@@ -39,7 +39,7 @@ export default function Avatar({
   const primaryColor = getThemeColor(theme, 'primary', '#0D9488');
   // Use theme-aware background with light mode default fallback (#FFFFFF)
   const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
-  const borderColor = getThemeColor(theme, 'borderColor', '#e2e8f0');
+  const borderColor = getThemeColor(theme, 'borderColor', '#E5E7EB');
 
   // Generate initial dari nama
   const getInitials = (fullName: string): string => {

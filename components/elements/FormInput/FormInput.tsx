@@ -158,7 +158,7 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
         </XStack>
 
         {error && (
-          <XStack space="$1" alignItems="center" marginTop="$1">
+          <XStack gap="$1" alignItems="center" marginTop="$1">
             <Ionicons
               name="close-circle"
               size={14}

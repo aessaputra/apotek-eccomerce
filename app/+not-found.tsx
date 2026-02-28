@@ -14,7 +14,7 @@ export default function NotFoundScreen() {
       justifyContent="center"
       backgroundColor="$background"
       padding="$4"
-      space="$4">
+      gap="$4">
       <Stack.Screen options={{ title: 'Oops!' }} />
 
       <Ionicons

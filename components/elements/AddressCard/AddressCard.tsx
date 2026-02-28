@@ -74,11 +74,11 @@ export default function AddressCard({
         borderColor={isDefault ? '$primary' : '$surfaceBorder'}
         borderRadius="$4"
         elevation={0}>
-        <YStack space="$2">
+        <YStack gap="$2">
           {/* Header dengan nama penerima dan badge default */}
           <XStack justifyContent="space-between" alignItems="flex-start">
-            <YStack flex={1} space="$1">
-              <XStack space="$2" alignItems="center">
+            <YStack flex={1} gap="$1">
+              <XStack gap="$2" alignItems="center">
                 <Text fontSize="$4" fontWeight="600" color="$color">
                   {address.receiver_name}
                 </Text>
@@ -102,7 +102,7 @@ export default function AddressCard({
               </Text>
             </YStack>
             {showActions && (
-              <XStack space="$2">
+              <XStack gap="$2">
                 {!isDefault && onSetDefault && (
                   <Pressable
                     onPress={handleSetDefaultPress}

@@ -138,7 +138,7 @@ export default function AddressList() {
   const renderEmpty = () => {
     const colorPress = getThemeColor(theme, 'colorPress', '#64748B');
     return (
-      <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$10" space="$4">
+      <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$10" gap="$4">
         <Ionicons name="location-outline" size={64} color={colorPress} />
         <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
           Belum ada alamat pengiriman

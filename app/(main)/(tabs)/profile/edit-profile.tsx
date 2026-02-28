@@ -207,7 +207,7 @@ export default function EditProfile() {
           <YStack
             alignItems="center"
             marginBottom="$5"
-            space="$3"
+            gap="$3"
             accessibilityLabel="Foto profil"
             accessibilityHint="Ketuk untuk mengubah foto profil">
             <Avatar
@@ -230,10 +230,10 @@ export default function EditProfile() {
             borderRadius="$4"
             elevation={1}
             accessibilityLabel="Form edit profil">
-            <YStack space="$4">
+            <YStack gap="$4">
               <ErrorMessage message={error} onDismiss={() => setError(null)} />
 
-              <YStack space="$3">
+              <YStack gap="$3">
                 <FormInput
                   ref={nameInputRef}
                   label="Nama lengkap"
