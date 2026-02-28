@@ -17,11 +17,7 @@ export default function NotFoundScreen() {
       gap="$4">
       <Stack.Screen options={{ title: 'Oops!' }} />
 
-      <Ionicons
-        name="alert-circle-outline"
-        size={64}
-        color={getThemeColor(theme, 'colorPress', '#888')}
-      />
+      <Ionicons name="alert-circle-outline" size={64} color={getThemeColor(theme, 'colorPress')} />
 
       <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading" ta="center">
         Halaman Tidak Ditemukan

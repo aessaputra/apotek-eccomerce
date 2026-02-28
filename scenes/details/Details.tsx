@@ -26,10 +26,7 @@ export default function Details() {
         height={44}
         width="50%"
         gradientBackgroundProps={{
-          colors: [
-            getThemeColor(theme, 'brandPrimary', '#0D9488'),
-            getThemeColor(theme, 'accent5', '#14B8A6'),
-          ],
+          colors: [getThemeColor(theme, 'brandPrimary'), getThemeColor(theme, 'accent5')],
           start: { x: 0, y: 1 },
           end: { x: 0.8, y: 0 },
         }}

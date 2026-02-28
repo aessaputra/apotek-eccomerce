@@ -5,7 +5,7 @@ import { getThemeColor } from '@/utils/theme';
 export default function SupportScreen() {
   const theme = useTheme();
   // Use theme-aware background with light mode default fallback (#FFFFFF)
-  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
+  const bgColor = getThemeColor(theme, 'background');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['bottom']}>

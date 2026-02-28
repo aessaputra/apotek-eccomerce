@@ -30,9 +30,9 @@ export default function AddressCard({
   showActions = false,
 }: AddressCardProps) {
   const theme = useTheme();
-  const primaryColor = getThemeColor(theme, 'primary', '#0D9488');
-  const colorPress = getThemeColor(theme, 'colorPress', '#64748B');
-  const dangerColor = getThemeColor(theme, 'danger', '#dc2626');
+  const primaryColor = getThemeColor(theme, 'primary');
+  const colorPress = getThemeColor(theme, 'colorPress');
+  const dangerColor = getThemeColor(theme, 'danger');
 
   const formatAddress = () => {
     const parts = [

@@ -50,7 +50,7 @@ export default function AddressForm() {
 
   const insets = useSafeAreaInsets();
   // Use theme-aware background with light mode default fallback (#FFFFFF)
-  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
+  const bgColor = getThemeColor(theme, 'background');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   // Extra gap so "Jadikan alamat default" card stays above the sticky Simpan button
   const scrollPaddingBottom = bottomBarHeight + FORM_SCROLL_PADDING.SPACIOUS;
@@ -306,11 +306,7 @@ export default function AddressForm() {
             elevation={0}>
             <YStack gap="$4">
               <XStack gap="$2" alignItems="center" marginBottom="$2">
-                <Ionicons
-                  name="person-outline"
-                  size={20}
-                  color={getThemeColor(theme, 'primary', '#0D9488')}
-                />
+                <Ionicons name="person-outline" size={20} color={getThemeColor(theme, 'primary')} />
                 <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
                   Informasi Penerima
                 </Text>
@@ -377,7 +373,7 @@ export default function AddressForm() {
                 <Ionicons
                   name="location-outline"
                   size={20}
-                  color={getThemeColor(theme, 'primary', '#0D9488')}
+                  color={getThemeColor(theme, 'primary')}
                 />
                 <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
                   Alamat Pengiriman
@@ -507,11 +503,7 @@ export default function AddressForm() {
                   borderWidth={isDefault ? 2 : 1.5}
                   accessibilityLabel="Jadikan alamat default">
                   <Checkbox.Indicator>
-                    <AntDesign
-                      name="check"
-                      size={16}
-                      color={getThemeColor(theme, 'white', '#ffffff')}
-                    />
+                    <AntDesign name="check" size={16} color={getThemeColor(theme, 'white')} />
                   </Checkbox.Indicator>
                 </Checkbox>
                 <YStack flex={1} gap="$1">

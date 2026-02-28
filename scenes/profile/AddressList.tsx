@@ -28,7 +28,7 @@ export default function AddressList() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Use theme-aware background with light mode default fallback (#FFFFFF)
-  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
+  const bgColor = getThemeColor(theme, 'background');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   const scrollPaddingBottom = bottomBarHeight + 16;
 
@@ -136,7 +136,7 @@ export default function AddressList() {
   );
 
   const renderEmpty = () => {
-    const colorPress = getThemeColor(theme, 'colorPress', '#64748B');
+    const colorPress = getThemeColor(theme, 'colorPress');
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$10" gap="$4">
         <Ionicons name="location-outline" size={64} color={colorPress} />

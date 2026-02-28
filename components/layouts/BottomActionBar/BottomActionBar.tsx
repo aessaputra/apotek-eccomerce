@@ -72,7 +72,7 @@ export default function BottomActionBar({
     ? VERTICAL_PADDING
     : VERTICAL_PADDING + Math.max(0, bottomInset);
 
-  const backgroundColor = getThemeColor(theme, 'background', '#FFFFFF');
+  const backgroundColor = getThemeColor(theme, 'background');
 
   return (
     <YStack

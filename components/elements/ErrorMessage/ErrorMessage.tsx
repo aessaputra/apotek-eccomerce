@@ -35,7 +35,7 @@ function ErrorMessage({
   ...stackProps
 }: ErrorMessageProps) {
   const theme = useTheme();
-  const dangerColor = getThemeColor(theme, 'danger', '#DC2626');
+  const dangerColor = getThemeColor(theme, 'danger');
 
   return (
     <AnimatePresence>

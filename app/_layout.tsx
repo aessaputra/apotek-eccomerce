@@ -71,11 +71,7 @@ function Router() {
   }, [checked, loggedIn, segments, router]);
 
   // Get header background color for StatusBar consistency
-  const headerBg = getThemeColor(
-    theme,
-    'headerBackground',
-    getThemeColor(theme, 'brandPrimary', '#0D9488'),
-  );
+  const headerBg = getThemeColor(theme, 'headerBackground', getThemeColor(theme, 'brandPrimary'));
 
   return (
     <Fragment>
@@ -85,7 +81,7 @@ function Router() {
         isOpen={isOpen}
         initialOpen
         // Use theme-aware background with light mode default fallback (#FFFFFF)
-        backgroundStyle={{ backgroundColor: getThemeColor(theme, 'background', '#FFFFFF') }}>
+        backgroundStyle={{ backgroundColor: getThemeColor(theme, 'background') }}>
         <BottomSheetContents onClose={() => setOpen(false)} />
       </BottomSheet>
     </Fragment>

@@ -4,7 +4,7 @@ import { getThemeColor } from '@/utils/theme';
 
 export default function Cart() {
   const theme = useTheme();
-  const subtleColor = getThemeColor(theme, 'colorPress', '#6B7280');
+  const subtleColor = getThemeColor(theme, 'colorPress');
 
   return (
     <YStack

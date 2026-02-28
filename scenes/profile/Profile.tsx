@@ -28,7 +28,7 @@ const MenuItem = memo(function MenuItem({
   accessibilityHint,
 }: MenuItemProps) {
   const theme = useTheme();
-  const iconColor = getThemeColor(theme, 'colorPress', '#6B7280');
+  const iconColor = getThemeColor(theme, 'colorPress');
 
   return (
     <Card
@@ -71,7 +71,7 @@ export default function Profile() {
   const insets = useSafeAreaInsets();
   const avatarSize = Dimensions.get('window').width < 375 ? 100 : 120;
   // Use theme-aware background with light mode default fallback (#FFFFFF)
-  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
+  const bgColor = getThemeColor(theme, 'background');
   const scrollPaddingBottom = 80 + insets.bottom;
 
   const formatMemberSince = useCallback((dateString?: string): string => {

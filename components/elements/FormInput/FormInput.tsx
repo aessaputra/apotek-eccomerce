@@ -81,14 +81,14 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
     const theme = useTheme();
     const [isFocused, setIsFocused] = useState(false);
 
-    const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
-    const textColor = getThemeColor(theme, 'color', '#111827');
-    const surfaceColor = getThemeColor(theme, 'background', '#FFFFFF');
+    const placeholderColor = getThemeColor(theme, 'placeholderColor');
+    const textColor = getThemeColor(theme, 'color');
+    const surfaceColor = getThemeColor(theme, 'background');
     const borderColorValue = error
-      ? getThemeColor(theme, 'danger', '#DC2626')
+      ? getThemeColor(theme, 'danger')
       : isFocused
-        ? getThemeColor(theme, 'primary', '#0D9488')
-        : getThemeColor(theme, 'borderColor', '#E2E8F0');
+        ? getThemeColor(theme, 'primary')
+        : getThemeColor(theme, 'borderColor');
 
     const inputHeight = multiline ? minHeight || 100 : 56;
     const textAlignVertical = multiline ? 'top' : 'center';
@@ -159,11 +159,7 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
 
         {error && (
           <XStack gap="$1" alignItems="center" marginTop="$1">
-            <Ionicons
-              name="close-circle"
-              size={14}
-              color={getThemeColor(theme, 'danger', '#DC2626')}
-            />
+            <Ionicons name="close-circle" size={14} color={getThemeColor(theme, 'danger')} />
             <Text fontSize="$2" color="$danger">
               {error}
             </Text>

@@ -45,14 +45,14 @@ function EmailInput({
 }: EmailInputProps) {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
-  const placeholderColor = getThemeColor(theme, 'colorPress', '#64748B');
-  const textColor = getThemeColor(theme, 'color', '#111827');
-  const surfaceColor = getThemeColor(theme, 'surface', '#FFFFFF');
+  const placeholderColor = getThemeColor(theme, 'placeholderColor');
+  const textColor = getThemeColor(theme, 'color');
+  const surfaceColor = getThemeColor(theme, 'surface');
   const borderColorValue = error
-    ? getThemeColor(theme, 'danger', '#DC2626')
+    ? getThemeColor(theme, 'danger')
     : isFocused
-      ? getThemeColor(theme, 'primary', '#16A34A')
-      : getThemeColor(theme, 'surfaceBorder', '#E5E7EB');
+      ? getThemeColor(theme, 'primary')
+      : getThemeColor(theme, 'surfaceBorder');
 
   return (
     <XStack

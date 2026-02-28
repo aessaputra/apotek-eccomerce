@@ -41,7 +41,7 @@ export default function EditProfile() {
   const insets = useSafeAreaInsets();
   const avatarSize = windowWidth < 375 ? 100 : 120;
   // Use theme-aware background with light mode default fallback (#FFFFFF)
-  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
+  const bgColor = getThemeColor(theme, 'background');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   // Scroll padding: bottom bar height + compact spacing (no tab bar since it's hidden)
   const scrollPaddingBottom = bottomBarHeight + FORM_SCROLL_PADDING.COMPACT;

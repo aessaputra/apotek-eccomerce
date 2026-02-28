@@ -85,8 +85,8 @@ Colors are defined as 12-step scales from background → foreground in `themes.t
 | 3    | `#454545`             | Default border color                    |
 | 4    | `#4D4D4D`             | Secondary border                        |
 | 5    | `#565656`             | Divider                                 |
-| 6    | `#6B7280`             | Subtle / inactive text (`$colorSubtle`) |
-| 7–9  | `#7A7A7A` – `#9CA3AF` | Gradation steps                         |
+| 6    | `#6B7280`             | Medium gray (light mode `$colorSubtle`) |
+| 9    | `#9CA3AF`             | Subtle / inactive text (`$colorSubtle`, `$placeholderColor`) |
 | 10   | `#E5E7EB`             | Pressed state text (`$colorPress`)      |
 | 11   | `#F9FAFB`             | Foreground text (`$color`)              |
 
@@ -108,7 +108,7 @@ Use these tokens in components — **never hardcode hex values**.
 | `$background`       | `#FFFFFF`          | `#2D2D2D`           | Page background                   |
 | `$color`            | `#022C22`          | `#F9FAFB`           | Primary text                      |
 | `$colorPress`       | `#052E16`          | `#E5E7EB`           | Pressed / secondary text          |
-| `$colorSubtle`      | `#6B7280`          | `#6B7280`           | Inactive / muted text             |
+| `$colorSubtle`      | `#6B7280`          | `#9CA3AF`           | Inactive / muted text             |
 | `$primary`          | Teal accent4       | Teal accent9        | Brand CTA, active elements        |
 | `$brandPrimary`     | Same as `$primary` | Same as `$primary`  | Alias for brand color             |
 | `$brandPrimarySoft` | Teal accent3       | Teal accent3        | Soft brand background             |
@@ -130,6 +130,15 @@ Use these tokens in components — **never hardcode hex values**.
 | `$shadowColor`      | `rgba(0,0,0,0.06)` | `rgba(0,0,0,0.3)`   | Shadow color                      |
 | `$headerBackground` | Teal accent4       | Teal accent4 (dark) | Navigation header bg              |
 | `$backgroundHover`  | `#F9FAFB`          | `#353535`           | Hover / press background (Profile) |
+| `$placeholderColor`   | `#9CA3AF`          | `#9CA3AF`           | Placeholder text in inputs          |
+| `$colorDisabled`      | `#9CA3AF`          | `#565656`           | Disabled element text               |
+| `$backgroundDisabled` | `#F3F4F6`          | `#3D3D3D`           | Disabled element background         |
+| `$borderColorDisabled`| `#E5E7EB`          | `#454545`           | Disabled element border             |
+| `$outlineColor`       | primary @ 30% alpha| primary @ 30% alpha | Focus outline / ring                |
+| `$backgroundFocus`    | Same as `$background` | Same as `$background` | Focused input background         |
+| `$borderColorFocus`   | Teal (primary)     | Teal (primary)      | Focused input border                |
+| `$info`               | Blue 9             | Blue 9 (dark)       | Informational states (healthcare)   |
+| `$infoSoft`           | Blue 3             | Blue 3 (dark)       | Informational background            |
 
 ### 2.4 Child Themes
 
@@ -148,6 +157,10 @@ Sub-themes for contextual color overrides:
 <Theme name="success">
   <Text color="$color">This inherits success palette</Text>
 </Theme>
+
+<Theme name="info">
+  <Text color="$color">This inherits info palette</Text>
+</Theme>
 ```
 
 ### 2.5 Color Usage Rules
@@ -159,10 +172,11 @@ Sub-themes for contextual color overrides:
 <Button backgroundColor="$primary" />
 
 // ✅ CORRECT: Use getThemeColor() for non-Tamagui APIs (icons, native components)
+// Fallbacks come from THEME_FALLBACKS in constants/ui.ts — no inline hex needed
 const theme = useTheme();
-const primaryColor = getThemeColor(theme, 'primary', '#0D9488');
+const primaryColor = getThemeColor(theme, 'primary');
 <AntDesign name="edit" size={24} color={primaryColor} />
-<StatusBar backgroundColor={getThemeColor(theme, 'headerBackground', '#0D9488')} />
+<StatusBar backgroundColor={getThemeColor(theme, 'headerBackground')} />
 
 // ✅ CORRECT: Brand colors that don't change between themes (e.g., Google blue)
 const GOOGLE_BLUE = '#4285F4'; // Brand identity, not theme-dependent
@@ -588,9 +602,9 @@ The project uses three `@expo/vector-icons` families:
 
 ```tsx
 const theme = useTheme();
-const primaryColor = getThemeColor(theme, 'primary', '#0D9488');
-const dangerColor = getThemeColor(theme, 'danger', '#DC2626');
-const subtleColor = getThemeColor(theme, 'colorPress', '#6B7280');
+const primaryColor = getThemeColor(theme, 'primary');
+const dangerColor = getThemeColor(theme, 'danger');
+const subtleColor = getThemeColor(theme, 'colorPress');
 
 <AntDesign name="edit" size={ICON_SIZES.BUTTON} color={subtleColor} />
 <FontAwesome5 name="exclamation-circle" size={16} color={dangerColor} />
@@ -801,7 +815,7 @@ Used in: `app/index.tsx`, `google-auth.tsx`, `Profile.tsx`, `AddressList.tsx`, `
   borderWidth={isDefault ? 2 : 1.5}
   accessibilityLabel="Jadikan alamat default">
   <Checkbox.Indicator>
-    <AntDesign name="check" size={16} color={getThemeColor(theme, 'white', '#ffffff')} />
+    <AntDesign name="check" size={16} color={getThemeColor(theme, 'white')} />
   </Checkbox.Indicator>
 </Checkbox>
 ```
@@ -829,6 +843,73 @@ import Image from '@/components/elements/Image';
 <Image source={{ uri: profileUrl }} style={{ width: 100, height: 100 }} />
 ```
 
+### 10.12 Bottom Tab Bar (Navigation)
+
+**Files:**
+- `app/(main)/(tabs)/_layout.tsx` — Tab configuration and color tokens
+- `components/layouts/TabBarIconWithPill/TabBarIconWithPill.tsx` — MD3 active indicator
+- `constants/ui.ts` — `MD3_PILL` dimensions
+
+The bottom tab bar uses theme tokens via `getThemeColor()` for all colors. Brand teal (`$primary`) is used for the active tab in **both** light and dark modes — following Material Design 3 guidelines where active navigation items always use the brand/primary color regardless of theme.
+
+#### Color Tokens
+
+| Element | Light Mode | Dark Mode | Token |
+| --- | --- | --- | --- |
+| Background | `#FFFFFF` (white) | `#3D3D3D` (elevated surface) | `surfaceElevated` |
+| Active icon/label | `#0D9488` (brand teal) | `~#4DB8AC` (lighter teal) | `primary` → `brandPrimary` |
+| Inactive icon/label | `#6B7280` (medium gray) | `#9CA3AF` (lighter gray) | `colorSubtle` → `colorPress` |
+| Top border | `#E5E7EB` | `#454545` | `borderColor` |
+| Active pill bg | `hsla(175, 66%, 46%, 0.12)` | `hsla(175, 53%, 56%, 0.15)` | `tabBarPillBackground` |
+
+```tsx
+// Active: brand teal in BOTH modes (Material Design 3 convention)
+const tabBarActive = getThemeColor(
+  theme,
+  'primary',
+  getThemeColor(theme, 'brandPrimary', DEFAULT_THEME_VALUES.brandPrimary),
+);
+
+// Inactive: subtle gray, theme-aware
+const tabBarInactive = getThemeColor(
+  theme,
+  'colorSubtle',
+  getThemeColor(theme, 'colorPress', DEFAULT_THEME_VALUES.colorSubtle),
+);
+
+// Background: elevated surface for visual depth
+const tabBarBg = getThemeColor(theme, 'surfaceElevated', ...);
+```
+
+#### MD3 Active Indicator (Pill)
+
+Each tab icon is wrapped in `TabBarIconWithPill` — a semi-transparent teal pill that appears behind the active icon, following [Material Design 3 Navigation Bar specs](https://m3.material.io/components/navigation-bar/specs).
+
+**Pill dimensions** (from `constants/ui.ts` → `MD3_PILL`):
+- Width: `64dp`, Height: `32dp`, Border Radius: `16dp` (fully rounded)
+
+**Animation** (react-native-reanimated):
+- Opacity: 0 → 1 (200ms `withTiming`)
+- ScaleX: 0.6 → 1 (250ms `withTiming`) — horizontal expand effect
+- Both animate on `focused` state change
+
+```tsx
+// Usage in _layout.tsx
+tabBarIcon: ({ color, focused }) => (
+  <TabBarIconWithPill focused={focused}>
+    <AntDesign name="home" size={ICON_SIZES.BUTTON} color={color} />
+  </TabBarIconWithPill>
+),
+```
+
+**Why `surfaceElevated` for dark mode background?**
+Dark mode uses `#3D3D3D` (slightly lighter than `#2D2D2D` background) to create visual depth — this follows both iOS Human Interface Guidelines and Material Design conventions for bottom navigation bars.
+
+**Why brand teal for active tab (not white)?**
+White active icons provide maximum contrast but lose brand identity. Brand teal (`primary`) in both modes keeps the pharmacy brand consistent, provides sufficient contrast (3:1+ on UI components per WCAG), and follows Material Design 3 where active navigation uses brand color.
+
+**Why MD3 pill indicator?**
+The semi-transparent pill provides clear active state feedback without relying on color alone (accessibility), works cross-platform (iOS, Android, Web), and is the standard pattern used by Google apps and Material Design 3. Shadow-based glow effects are iOS-only (Android elevation renders black shadows).
 ---
 
 ## 11. Responsive Design
@@ -966,7 +1047,7 @@ as any
 <YStack backgroundColor="$background" />;
 
 // ✅ getThemeColor() for non-Tamagui APIs
-const color = getThemeColor(theme, 'primary', '#0D9488');
+const color = getThemeColor(theme, 'primary');
 <AntDesign color={color} />;
 
 // ✅ Tamagui layout primitives
@@ -975,9 +1056,9 @@ import { YStack, XStack, Text } from 'tamagui';
 // ✅ Constants from constants/ui.ts
 import { MIN_TOUCH_TARGET, CARD_SHADOW } from '@/constants/ui';
 
-// ✅ THEME_FALLBACKS for getThemeColor() defaults
+// ✅ THEME_FALLBACKS provides automatic defaults — no inline hex needed
 import { THEME_FALLBACKS } from '@/constants/ui';
-getThemeColor(theme, 'primary', THEME_FALLBACKS.primary);
+getThemeColor(theme, 'primary'); // Falls back to THEME_FALLBACKS.primary
 ```
 
 ### Known Exception
@@ -1004,6 +1085,10 @@ White         → $white
 Shadow        → $shadowColor
 Header BG     → $headerBackground
 Hover BG      → $backgroundHover
+Placeholder → $placeholderColor
+Disabled    → $colorDisabled / $backgroundDisabled / $borderColorDisabled
+Focus       → $backgroundFocus / $borderColorFocus / $outlineColor
+Info        → $info / $infoSoft
 ```
 
 ### Component Import Map

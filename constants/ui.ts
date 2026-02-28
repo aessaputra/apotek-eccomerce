@@ -105,6 +105,37 @@ export const ICON_SIZES = {
 } as const;
 
 /**
+ * Material Design 3 Navigation Bar active indicator (pill) dimensions.
+ * The pill is a semi-transparent background behind the active tab icon.
+ *
+ * - WIDTH: 64dp (MD3 spec)
+ * - HEIGHT: 32dp (MD3 spec)
+ * - RADIUS: 16dp (fully rounded pill)
+ *
+ * @see https://m3.material.io/components/navigation-bar/specs
+ */
+export const MD3_PILL = {
+  /** Pill width in dp (MD3 spec: 64dp) */
+  WIDTH: 64,
+  /** Pill height in dp (MD3 spec: 32dp) */
+  HEIGHT: 32,
+  /** Pill border radius in dp (MD3 spec: 16dp, fully rounded) */
+  RADIUS: 16,
+  /** Opacity animation duration in ms (smooth fade) */
+  ANIMATION_OPACITY_MS: 200,
+  /** ScaleX animation duration in ms (slightly longer for natural feel) */
+  ANIMATION_SCALE_MS: 250,
+  /** Inactive pill horizontal scale (0.6 = 60% width before expanding to 100%) */
+  INACTIVE_SCALE_X: 0.6,
+} as const;
+
+/**
+ * Tab bar label font size.
+ * 12px is the standard label size for bottom navigation (iOS HIG & Material Design).
+ */
+export const TAB_BAR_LABEL_SIZE = 12;
+
+/**
  * Theme fallback colors for getThemeColor() utility function.
  * Used when theme values are not available (e.g., during initialization).
  * These values match the light theme defaults as single source of truth.
@@ -122,4 +153,42 @@ export const THEME_FALLBACKS = {
   primary: '#0D9488',
   /** Brand primary fallback */
   brandPrimary: '#0D9488',
+  /** Surface color fallback */
+  surface: '#FFFFFF',
+  /** Surface elevated fallback */
+  surfaceElevated: '#FFFFFF',
+  /** Surface border fallback */
+  surfaceBorder: '#E5E7EB',
+  /** Border color fallback */
+  borderColor: '#E5E7EB',
+  /** Placeholder color fallback (subtle gray for hint text) */
+  placeholderColor: '#9CA3AF',
+  /** Disabled text color fallback */
+  colorDisabled: '#9CA3AF',
+  /** Disabled background fallback */
+  backgroundDisabled: '#F3F4F6',
+  /** Disabled border fallback */
+  borderColorDisabled: '#E5E7EB',
+  /** Focus outline fallback (primary with alpha) */
+  outlineColor: 'hsla(175, 66%, 46%, 0.3)',
+  /** Focus background fallback */
+  backgroundFocus: '#FFFFFF',
+  /** Focus border fallback (primary teal) */
+  borderColorFocus: '#0D9488',
+  /** Danger/error color fallback */
+  danger: '#DC2626',
+  /** Info color fallback (blue for healthcare context) */
+  info: '#0091FF',
+  /** Info soft color fallback */
+  infoSoft: '#D5EFFF',
+  /** Color press fallback */
+  colorPress: '#052E16',
+  /** Color subtle fallback */
+  colorSubtle: '#6B7280',
+  /** Accent5 color fallback (palette-generated teal accent) */
+  accent5: 'hsla(175, 64%, 49%, 1)',
+  /** Color5 fallback (palette index 5) */
+  color5: '#9CA3AF',
+  /** Tab bar active indicator pill background fallback (12% opacity teal) */
+  tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',
 } as const;

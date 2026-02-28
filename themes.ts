@@ -1,6 +1,15 @@
 import { createThemes } from '@tamagui/config/v5';
 import { defaultComponentThemes } from '@tamagui/theme-builder';
-import { yellow, yellowDark, red, redDark, green, greenDark } from '@tamagui/colors';
+import {
+  yellow,
+  yellowDark,
+  red,
+  redDark,
+  green,
+  greenDark,
+  blue,
+  blueDark,
+} from '@tamagui/colors';
 
 // base.extra: semantic keys (white, primary, shadowColor, dll)
 // sehingga useTheme() mengembalikan theme.white.val, theme.primary.val, dst. (sesuai docs Tamagui).
@@ -107,12 +116,29 @@ const builtThemes = createThemes({
         // Color for subtle/inactive elements (e.g., inactive tab bar items)
         // Light mode: medium gray for subtle inactive state
         colorSubtle: lightPalette[6], // #6B7280
+        // Tab bar active indicator pill background (MD3 Navigation Bar spec)
+        // 12% opacity teal on white surface — subtle but visible active state
+        tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',
         // Override template-derived values so login/cards match Theme Builder (white card, dark text)
         background: lightPalette[0],
         backgroundHover: lightPalette[1],
         color: lightPalette[11],
         colorPress: lightPalette[10],
         borderColor: lightPalette[3],
+        // --- Missing Tamagui tokens for proper form/input/button states ---
+        // Placeholder: subtle medium gray (appropriate for hint text, not too dark)
+        placeholderColor: lightPalette[5], // #9CA3AF
+        // Disabled states
+        colorDisabled: lightPalette[5], // #9CA3AF
+        backgroundDisabled: lightPalette[2], // #F3F4F6
+        borderColorDisabled: lightPalette[3], // #E5E7EB
+        // Focus states
+        outlineColor: 'hsla(175, 66%, 46%, 0.3)', // primary with 30% alpha for focus ring
+        backgroundFocus: lightPalette[0], // #FFFFFF (same as background)
+        borderColorFocus: accentLight.accent4, // primary teal for focused border
+        // Info semantic color (blue — healthcare context: drug info, pharmacist notes)
+        info: blue.blue9,
+        infoSoft: blue.blue3,
       },
       dark: {
         white: darkPalette[11],
@@ -145,14 +171,33 @@ const builtThemes = createThemes({
         // accent4 (36% lightness) provides better contrast than accent9 (56% lightness)
         headerBackground: accentDark.accent4,
         // Color for subtle/inactive elements (e.g., inactive tab bar items)
-        // Dark mode: medium gray (#6B7280) for subtle inactive state - consistent with light mode
-        // Provides good contrast with dark background (#3D3D3D) while remaining subtle compared to active state (white)
-        colorSubtle: darkPalette[6], // #6B7280 - medium gray for optimal subtle inactive state
+        // Dark mode: lighter gray (#9CA3AF) for adequate contrast on dark backgrounds
+        // #9CA3AF on #3D3D3D (surfaceElevated) ≈ 3.8:1, on #2D2D2D (background) ≈ 4.6:1
+        // Meets WCAG AA for large text/UI components (3:1); near-AA for normal text
+        colorSubtle: darkPalette[9], // #9CA3AF - visible on dark surfaces
+        // Tab bar active indicator pill background (MD3 Navigation Bar spec)
+        // 15% opacity teal on dark surface — slightly higher opacity for visibility on dark bg
+        tabBarPillBackground: 'hsla(175, 53%, 56%, 0.15)',
         background: darkPalette[0],
         backgroundHover: darkPalette[1],
         color: darkPalette[11],
         colorPress: darkPalette[10],
         borderColor: darkPalette[3],
+        // --- Missing Tamagui tokens for proper form/input/button states ---
+        // Placeholder: lighter gray for adequate contrast on dark surfaces
+        // #9CA3AF on #3D3D3D ≈ 3.8:1 (meets WCAG AA for UI components)
+        placeholderColor: darkPalette[9], // #9CA3AF
+        // Disabled states
+        colorDisabled: darkPalette[5], // #565656
+        backgroundDisabled: darkPalette[2], // #3D3D3D
+        borderColorDisabled: darkPalette[3], // #454545
+        // Focus states
+        outlineColor: 'hsla(175, 53%, 56%, 0.3)', // primary with 30% alpha for focus ring
+        backgroundFocus: darkPalette[0], // #2D2D2D (same as background)
+        borderColorFocus: accentDark.accent9, // primary teal for focused border
+        // Info semantic color (blue — healthcare context: drug info, pharmacist notes)
+        info: blueDark.blue9,
+        infoSoft: blueDark.blue3,
       },
     },
   },
@@ -179,6 +224,12 @@ const builtThemes = createThemes({
       palette: {
         light: Object.values(green),
         dark: Object.values(greenDark),
+      },
+    },
+    info: {
+      palette: {
+        light: Object.values(blue),
+        dark: Object.values(blueDark),
       },
     },
   },
@@ -208,6 +259,20 @@ export const DEFAULT_THEME_VALUES = {
   brandPrimary: accentLight.accent4, // Teal brand color
   shadowColor: 'rgba(0,0,0,0.06)', // Light mode shadow
   white: lightPalette[0], // #FFFFFF
+  // Form/input/button state tokens
+  placeholderColor: lightPalette[5], // #9CA3AF (subtle gray for hint text)
+  colorDisabled: lightPalette[5], // #9CA3AF
+  backgroundDisabled: lightPalette[2], // #F3F4F6
+  borderColorDisabled: lightPalette[3], // #E5E7EB
+  outlineColor: 'hsla(175, 66%, 46%, 0.3)', // Focus ring
+  backgroundFocus: lightPalette[0], // #FFFFFF
+  borderColorFocus: accentLight.accent4, // Primary teal
+  // Semantic colors
+  danger: red.red10,
+  info: blue.blue9,
+  infoSoft: blue.blue3,
+  // Tab bar pill background (MD3 active indicator)
+  tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',
 
   // Dark mode defaults (for dark mode specific fallbacks)
   dark: {

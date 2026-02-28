@@ -49,21 +49,18 @@ export default function BottomSheetContents({ onClose }: WelcomeBottomSheetConte
       </Text>
       <GradientButton
         title="OK"
-        titleStyle={{ color: getThemeColor(theme, 'background', '#ffffff'), textAlign: 'center' }}
+        titleStyle={{ color: getThemeColor(theme, 'background'), textAlign: 'center' }}
         style={{
           justifyContent: 'center',
           alignItems: 'center',
           borderRadius: 22,
           height: 44,
           width: windowWidth / 2,
-          backgroundColor: getThemeColor(theme, 'color', '#0D9488'),
+          backgroundColor: getThemeColor(theme, 'color'),
           marginBottom: 40,
         }}
         gradientBackgroundProps={{
-          colors: [
-            getThemeColor(theme, 'color', '#0D9488'),
-            getThemeColor(theme, 'color5', '#14B8A6'),
-          ],
+          colors: [getThemeColor(theme, 'color'), getThemeColor(theme, 'color5')],
           start: { x: 0, y: 1 },
           end: { x: 0.8, y: 0 },
         }}

@@ -117,7 +117,7 @@ export default function AppAlertDialog({
               paddingVertical="$2"
               pressStyle={{ opacity: 0.8 }}
               onPress={handleConfirm}>
-              <Text color="white" fontWeight="600">
+              <Text color="$white" fontWeight="600">
                 {confirmText}
               </Text>
             </Button>

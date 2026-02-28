@@ -36,10 +36,10 @@ export default function Avatar({
   const theme = useTheme();
   const [localUri, setLocalUri] = useState<string | null>(null);
 
-  const primaryColor = getThemeColor(theme, 'primary', '#0D9488');
+  const primaryColor = getThemeColor(theme, 'primary');
   // Use theme-aware background with light mode default fallback (#FFFFFF)
-  const bgColor = getThemeColor(theme, 'background', '#FFFFFF');
-  const borderColor = getThemeColor(theme, 'borderColor', '#E5E7EB');
+  const bgColor = getThemeColor(theme, 'background');
+  const borderColor = getThemeColor(theme, 'borderColor');
 
   // Generate initial dari nama
   const getInitials = (fullName: string): string => {
