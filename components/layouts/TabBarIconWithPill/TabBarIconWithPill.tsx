@@ -18,7 +18,7 @@ interface TabBarIconWithPillProps {
  * Material Design 3 Navigation Bar specifications:
  * - Pill: 64×32dp, borderRadius 16dp
  * - Light mode: 12% opacity primary teal on white
- * - Dark mode: 15% opacity primary teal on dark surface
+ * - Dark mode: 42% opacity primary teal on dark surface (higher contrast)
  *
  * Uses react-native-reanimated for smooth opacity + scaleX transitions.
  * Color comes from theme token `tabBarPillBackground` (defined in themes.ts).

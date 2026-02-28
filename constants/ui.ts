@@ -135,6 +135,12 @@ export const MD3_PILL = {
  */
 export const TAB_BAR_LABEL_SIZE = 12;
 
+/** Tab bar container height (matches WhatsApp-style bottom nav). */
+export const TAB_BAR_HEIGHT = 70;
+/** Tab bar inner padding. */
+export const TAB_BAR_PADDING_TOP = 8;
+export const TAB_BAR_PADDING_BOTTOM = 10;
+
 /** Fallback colors for `getThemeColor()` when theme isn't ready. */
 export const THEME_FALLBACKS = {
   white: '#FFFFFF',
@@ -158,6 +164,7 @@ export const THEME_FALLBACKS = {
   infoSoft: '#D5EFFF',
   colorPress: '#052E16',
   colorSubtle: '#4B5563',
+  tabBarInactive: '#4B5563',
   accent5: 'hsla(175, 64%, 49%, 1)',
   color5: '#9CA3AF',
   tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',

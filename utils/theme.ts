@@ -28,7 +28,7 @@ export function getThemeColor(theme: unknown, key: string, fallback?: string): s
  * Shared Stack header options for Apotek Ecommerce branding.
  * Uses headerBackground for header bg and white for text/icons.
  * Light mode: accent1 (36% lightness) — white text ≈ 4.6:1 (WCAG AA).
- * Dark mode: accent4 (36% lightness) — white text ≈ 4.0:1.
+ * Dark mode: accent2 (28% lightness) — white text ≈ 5.8:1 (WCAG AA+).
  *
  * @see https://tamagui.dev/docs/core/use-theme
  */

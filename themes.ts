@@ -74,6 +74,29 @@ const accentDark = {
   accent12: 'hsla(250, 50%, 95%, 1)',
 };
 
+// Alpha-transparent accent colors (colocated with accent definitions for DRY).
+// If accent hue/saturation changes, update these to match.
+const accentLightAlpha = {
+  pillBg: 'hsla(175, 66%, 46%, 0.12)',
+  focusRing: 'hsla(175, 66%, 46%, 0.3)',
+};
+const accentDarkAlpha = {
+  pillBg: 'hsla(175, 53%, 40%, 0.15)',
+  /** Stronger opacity for tab bar pill so focus ring stands out on dark background */
+  tabBarPillBg: 'hsla(175, 53%, 40%, 0.42)',
+  focusRing: 'hsla(175, 53%, 40%, 0.3)',
+};
+
+// Semantic colors that fall between palette steps
+const shadows = {
+  light: 'rgba(0,0,0,0.06)',
+  dark: 'rgba(0,0,0,0.3)',
+};
+
+// Blue-gray placeholder for dark mode — sits between darkPalette[9] and [10].
+// #B0B8C1 on #3D3D3D ≈ 5.5:1, on #2D2D2D ≈ 7.2:1 (WCAG AA)
+const darkPlaceholder = '#B0B8C1';
+
 const builtThemes = createThemes({
   base: {
     palette: {
@@ -84,7 +107,7 @@ const builtThemes = createThemes({
       light: {
         white: lightPalette[0],
         red10: red.red10,
-        shadowColor: 'rgba(0,0,0,0.06)',
+        shadowColor: shadows.light,
         primary: accentLight.accent4,
         accent: accentLight.accent4,
         error: red.red10,
@@ -105,7 +128,8 @@ const builtThemes = createThemes({
         // Darker teal for white text readability (WCAG AA ≈ 4.6:1)
         headerBackground: accentLight.accent1,
         colorSubtle: lightPalette[7],
-        tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',
+        tabBarInactive: lightPalette[7],
+        tabBarPillBackground: accentLightAlpha.pillBg,
         background: lightPalette[0],
         backgroundHover: lightPalette[1],
         color: lightPalette[11],
@@ -115,7 +139,7 @@ const builtThemes = createThemes({
         colorDisabled: lightPalette[5],
         backgroundDisabled: lightPalette[2],
         borderColorDisabled: lightPalette[3],
-        outlineColor: 'hsla(175, 66%, 46%, 0.3)',
+        outlineColor: accentLightAlpha.focusRing,
         backgroundFocus: lightPalette[0],
         borderColorFocus: accentLight.accent4,
         info: blue.blue9,
@@ -124,7 +148,7 @@ const builtThemes = createThemes({
       dark: {
         white: darkPalette[11],
         red10: redDark.red10,
-        shadowColor: 'rgba(0,0,0,0.3)',
+        shadowColor: shadows.dark,
         // accent5 (40% lightness) — white text ≈ 4.8:1 WCAG AA
         primary: accentDark.accent5,
         accent: accentDark.accent5,
@@ -143,19 +167,22 @@ const builtThemes = createThemes({
         warningSoft: yellowDark.yellow3,
         danger: redDark.red9,
         dangerSoft: redDark.red3,
-        headerBackground: accentDark.accent4,
+        // Darker teal (accent2, 28% L) — white text ≈ 5.8:1 (WCAG AA+)
+        headerBackground: accentDark.accent2,
         colorSubtle: darkPalette[9],
-        tabBarPillBackground: 'hsla(175, 53%, 40%, 0.15)',
+        // Lighter than colorSubtle — #E5E7EB on #2D2D2D ≈ 10:1 (WCAG AAA)
+        tabBarInactive: darkPalette[10],
+        tabBarPillBackground: accentDarkAlpha.tabBarPillBg,
         background: darkPalette[0],
         backgroundHover: darkPalette[1],
         color: darkPalette[11],
         colorPress: darkPalette[10],
         borderColor: darkPalette[3],
-        placeholderColor: '#B0B8C1',
+        placeholderColor: darkPlaceholder,
         colorDisabled: darkPalette[5],
         backgroundDisabled: darkPalette[2],
         borderColorDisabled: darkPalette[3],
-        outlineColor: 'hsla(175, 53%, 40%, 0.3)',
+        outlineColor: accentDarkAlpha.focusRing,
         backgroundFocus: darkPalette[0],
         borderColorFocus: accentDark.accent5,
         info: blueDark.blue9,
@@ -213,22 +240,24 @@ export const DEFAULT_THEME_VALUES = {
   colorSubtle: lightPalette[7],
   primary: accentLight.accent4,
   brandPrimary: accentLight.accent4,
-  shadowColor: 'rgba(0,0,0,0.06)',
+  shadowColor: shadows.light,
   white: lightPalette[0],
   placeholderColor: lightPalette[6],
   colorDisabled: lightPalette[5],
   backgroundDisabled: lightPalette[2],
   borderColorDisabled: lightPalette[3],
-  outlineColor: 'hsla(175, 66%, 46%, 0.3)',
+  outlineColor: accentLightAlpha.focusRing,
   backgroundFocus: lightPalette[0],
   borderColorFocus: accentLight.accent4,
   danger: red.red10,
   info: blue.blue9,
   infoSoft: blue.blue3,
-  tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',
+  tabBarPillBackground: accentLightAlpha.pillBg,
+  tabBarInactive: lightPalette[7],
   dark: {
     background: darkPalette[0],
     color: darkPalette[11],
-    shadowColor: 'rgba(0,0,0,0.3)',
+    shadowColor: shadows.dark,
+    tabBarInactive: darkPalette[10],
   },
 } as const;
