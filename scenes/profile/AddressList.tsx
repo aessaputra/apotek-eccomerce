@@ -6,6 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Button from '@/components/elements/Button';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import AddressCard from '@/components/elements/AddressCard/AddressCard';
 import { useAppSlice } from '@/slices';
 import { getAddresses, deleteAddress, setDefaultAddress } from '@/services/address.service';
@@ -26,6 +27,8 @@ export default function AddressList() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState<Address | null>(null);
 
   // Use theme-aware background with light mode default fallback (#FFFFFF)
   const bgColor = getThemeColor(theme, 'background');
@@ -60,27 +63,21 @@ export default function AddressList() {
     loadAddresses();
   }, [loadAddresses]);
 
-  const handleDelete = useCallback(
-    (address: Address) => {
-      Alert.alert('Hapus Alamat', `Yakin ingin menghapus alamat ${address.receiver_name}?`, [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Hapus',
-          style: 'destructive',
-          onPress: async () => {
-            if (!user?.id) return;
-            const { error } = await deleteAddress(address.id, user.id);
-            if (error) {
-              Alert.alert('Error', 'Gagal menghapus alamat: ' + error.message);
-            } else {
-              loadAddresses();
-            }
-          },
-        },
-      ]);
-    },
-    [user?.id, loadAddresses],
-  );
+  const handleDelete = useCallback((address: Address) => {
+    setAddressToDelete(address);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!user?.id || !addressToDelete) return;
+    const { error } = await deleteAddress(addressToDelete.id, user.id);
+    if (error) {
+      Alert.alert('Error', 'Gagal menghapus alamat: ' + error.message);
+    } else {
+      loadAddresses();
+    }
+    setAddressToDelete(null);
+  }, [user?.id, addressToDelete, loadAddresses]);
 
   const handleSetDefault = useCallback(
     async (addressId: string) => {
@@ -227,6 +224,17 @@ export default function AddressList() {
           </YStack>
         )}
       </YStack>
+
+      <AppAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Hapus Alamat"
+        description={`Yakin ingin menghapus alamat ${addressToDelete?.receiver_name ?? ''}?`}
+        cancelText="Batal"
+        confirmText="Hapus"
+        confirmColor="$danger"
+        onConfirm={handleConfirmDelete}
+      />
     </SafeAreaView>
   );
 }

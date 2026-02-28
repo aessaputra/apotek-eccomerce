@@ -67,11 +67,10 @@ export default function TabLayout() {
         tabBarActiveBackgroundColor: tabBarBg,
         tabBarStyle: {
           display: hideTabBar ? 'none' : 'flex',
-          // Add top border for visual separation from content
-          // Follows Material Design and iOS conventions for bottom navigation
+          height: 64,
+          paddingBottom: 8,
           borderTopWidth: 1,
           borderTopColor: tabBarBorderColor,
-          // Platform-aware shadow: boxShadow on web (shadow* deprecated), shadow* on native
           ...(Platform.OS === 'web'
             ? { boxShadow: '0px -2px 4px rgba(0,0,0,0.1)' }
             : {
