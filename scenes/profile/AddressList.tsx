@@ -132,7 +132,12 @@ export default function AddressList() {
     [handleEdit, handleDelete, handleSetDefault],
   );
 
-  const renderEmpty = () => {
+  const handleAddAddress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/(main)/(tabs)/profile/address-form');
+  }, [router]);
+
+  const renderEmpty = useCallback(() => {
     const colorPress = getThemeColor(theme, 'colorPress');
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$10" gap="$4">
@@ -150,16 +155,13 @@ export default function AddressList() {
           minHeight={MIN_TOUCH_TARGET}
           backgroundColor="$primary"
           titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.push('/(main)/(tabs)/profile/address-form');
-          }}
+          onPress={handleAddAddress}
           accessibilityLabel="Tambah alamat pengiriman baru"
           accessibilityHint="Membuka form untuk menambahkan alamat pengiriman baru"
         />
       </YStack>
     );
-  };
+  }, [theme, handleAddAddress]);
 
   if (loading) {
     return (
@@ -214,10 +216,7 @@ export default function AddressList() {
               minHeight={MIN_TOUCH_TARGET}
               backgroundColor="$primary"
               titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push('/(main)/(tabs)/profile/address-form');
-              }}
+              onPress={handleAddAddress}
               accessibilityLabel="Tambah alamat pengiriman baru"
               accessibilityHint="Membuka form untuk menambahkan alamat pengiriman baru"
             />

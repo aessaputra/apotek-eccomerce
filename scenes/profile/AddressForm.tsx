@@ -280,18 +280,6 @@ export default function AddressForm() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag">
-          {/* Header Section */}
-          <YStack gap="$4" marginBottom="$4">
-            <Text fontSize="$7" fontWeight="700" color="$color" fontFamily="$heading">
-              {isEdit ? 'Edit Alamat' : 'Tambah Alamat'}
-            </Text>
-            <Text fontSize="$3" color="$colorPress">
-              {isEdit
-                ? 'Perbarui informasi alamat pengiriman Anda'
-                : 'Lengkapi informasi alamat pengiriman untuk memudahkan proses checkout'}
-            </Text>
-          </YStack>
-
           {/* General Error Message */}
           <ErrorMessage message={error} onDismiss={() => setError(null)} marginBottom="$4" />
 

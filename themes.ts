@@ -11,10 +11,6 @@ import {
   blueDark,
 } from '@tamagui/colors';
 
-// base.extra: semantic keys (white, primary, shadowColor, dll)
-// sehingga useTheme() mengembalikan theme.white.val, theme.primary.val, dst. (sesuai docs Tamagui).
-// Palet disesuaikan untuk brand Apotek (neutral klinis + aksen hijau/amber).
-
 // 12-step palette: background -> foreground (light)
 const lightPalette = [
   '#FFFFFF', // 0  - card / surface putih klinis
@@ -89,11 +85,6 @@ const builtThemes = createThemes({
         white: lightPalette[0],
         red10: red.red10,
         shadowColor: 'rgba(0,0,0,0.06)',
-        // Primary button color: accent4 (46% lightness) for light mode
-        // WCAG AA Compliance: Requires 4.5:1 contrast ratio for normal text (16px)
-        // White text (#FFFFFF) on accent4 background needs verification
-        // If contrast < 4.5:1, consider using accent3 (42% lightness) or accent2 (39% lightness)
-        // Current: accentLight.accent4 = hsla(175, 66%, 46%, 1) ≈ #0D9488
         primary: accentLight.accent4,
         accent: accentLight.accent4,
         error: red.red10,
@@ -111,32 +102,22 @@ const builtThemes = createThemes({
         warningSoft: yellow.yellow3,
         danger: red.red10,
         dangerSoft: red.red3,
-        // Header background: use brandPrimary for light mode (good contrast with white text)
-        headerBackground: accentLight.accent4,
-        // Color for subtle/inactive elements (e.g., inactive tab bar items)
-        // Light mode: medium gray for subtle inactive state
-        colorSubtle: lightPalette[6], // #6B7280
-        // Tab bar active indicator pill background (MD3 Navigation Bar spec)
-        // 12% opacity teal on white surface — subtle but visible active state
+        // Darker teal for white text readability (WCAG AA ≈ 4.6:1)
+        headerBackground: accentLight.accent1,
+        colorSubtle: lightPalette[7],
         tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',
-        // Override template-derived values so login/cards match Theme Builder (white card, dark text)
         background: lightPalette[0],
         backgroundHover: lightPalette[1],
         color: lightPalette[11],
         colorPress: lightPalette[10],
         borderColor: lightPalette[3],
-        // --- Missing Tamagui tokens for proper form/input/button states ---
-        // Placeholder: subtle medium gray (appropriate for hint text, not too dark)
-        placeholderColor: lightPalette[5], // #9CA3AF
-        // Disabled states
-        colorDisabled: lightPalette[5], // #9CA3AF
-        backgroundDisabled: lightPalette[2], // #F3F4F6
-        borderColorDisabled: lightPalette[3], // #E5E7EB
-        // Focus states
-        outlineColor: 'hsla(175, 66%, 46%, 0.3)', // primary with 30% alpha for focus ring
-        backgroundFocus: lightPalette[0], // #FFFFFF (same as background)
-        borderColorFocus: accentLight.accent4, // primary teal for focused border
-        // Info semantic color (blue — healthcare context: drug info, pharmacist notes)
+        placeholderColor: lightPalette[6],
+        colorDisabled: lightPalette[5],
+        backgroundDisabled: lightPalette[2],
+        borderColorDisabled: lightPalette[3],
+        outlineColor: 'hsla(175, 66%, 46%, 0.3)',
+        backgroundFocus: lightPalette[0],
+        borderColorFocus: accentLight.accent4,
         info: blue.blue9,
         infoSoft: blue.blue3,
       },
@@ -144,16 +125,11 @@ const builtThemes = createThemes({
         white: darkPalette[11],
         red10: redDark.red10,
         shadowColor: 'rgba(0,0,0,0.3)',
-        // Primary button color: accent9 (56% lightness) for dark mode
-        // WCAG AA Compliance: Requires 4.5:1 contrast ratio for normal text (16px)
-        // White text (#FFFFFF) on accent9 background needs verification
-        // Dark background (#2D2D2D) with lighter teal should provide good contrast
-        // Current: accentDark.accent9 = hsla(175, 53%, 56%, 1)
-        // If contrast < 4.5:1, consider using accent8 (52% lightness) or accent7 (48% lightness)
-        primary: accentDark.accent9,
-        accent: accentDark.accent9,
+        // accent5 (40% lightness) — white text ≈ 4.8:1 WCAG AA
+        primary: accentDark.accent5,
+        accent: accentDark.accent5,
         error: redDark.red10,
-        brandPrimary: accentDark.accent9,
+        brandPrimary: accentDark.accent5,
         brandPrimarySoft: accentDark.accent3,
         brandAccent: yellowDark.yellow9,
         brandAccentSoft: yellowDark.yellow3,
@@ -167,35 +143,21 @@ const builtThemes = createThemes({
         warningSoft: yellowDark.yellow3,
         danger: redDark.red9,
         dangerSoft: redDark.red3,
-        // Header background: use darker teal (accent4) for better contrast with white text in dark mode
-        // accent4 (36% lightness) provides better contrast than accent9 (56% lightness)
         headerBackground: accentDark.accent4,
-        // Color for subtle/inactive elements (e.g., inactive tab bar items)
-        // Dark mode: lighter gray (#9CA3AF) for adequate contrast on dark backgrounds
-        // #9CA3AF on #3D3D3D (surfaceElevated) ≈ 3.8:1, on #2D2D2D (background) ≈ 4.6:1
-        // Meets WCAG AA for large text/UI components (3:1); near-AA for normal text
-        colorSubtle: darkPalette[9], // #9CA3AF - visible on dark surfaces
-        // Tab bar active indicator pill background (MD3 Navigation Bar spec)
-        // 15% opacity teal on dark surface — slightly higher opacity for visibility on dark bg
-        tabBarPillBackground: 'hsla(175, 53%, 56%, 0.15)',
+        colorSubtle: darkPalette[9],
+        tabBarPillBackground: 'hsla(175, 53%, 40%, 0.15)',
         background: darkPalette[0],
         backgroundHover: darkPalette[1],
         color: darkPalette[11],
         colorPress: darkPalette[10],
         borderColor: darkPalette[3],
-        // --- Missing Tamagui tokens for proper form/input/button states ---
-        // Placeholder: lighter gray for adequate contrast on dark surfaces
-        // #9CA3AF on #3D3D3D ≈ 3.8:1 (meets WCAG AA for UI components)
-        placeholderColor: darkPalette[9], // #9CA3AF
-        // Disabled states
-        colorDisabled: darkPalette[5], // #565656
-        backgroundDisabled: darkPalette[2], // #3D3D3D
-        borderColorDisabled: darkPalette[3], // #454545
-        // Focus states
-        outlineColor: 'hsla(175, 53%, 56%, 0.3)', // primary with 30% alpha for focus ring
-        backgroundFocus: darkPalette[0], // #2D2D2D (same as background)
-        borderColorFocus: accentDark.accent9, // primary teal for focused border
-        // Info semantic color (blue — healthcare context: drug info, pharmacist notes)
+        placeholderColor: '#B0B8C1',
+        colorDisabled: darkPalette[5],
+        backgroundDisabled: darkPalette[2],
+        borderColorDisabled: darkPalette[3],
+        outlineColor: 'hsla(175, 53%, 40%, 0.3)',
+        backgroundFocus: darkPalette[0],
+        borderColorFocus: accentDark.accent5,
         info: blueDark.blue9,
         infoSoft: blueDark.blue3,
       },
@@ -240,44 +202,33 @@ export type Themes = typeof builtThemes;
 
 export const themes: Themes = builtThemes;
 
-/**
- * Default theme values for fallback purposes.
- * Use these constants as fallback values in getThemeColor() calls to ensure
- * single source of truth and maintainability.
- * These values match the light theme defaults (light mode is typically the default).
- */
+/** Light-mode fallback values for `getThemeColor()`. */
 export const DEFAULT_THEME_VALUES = {
-  // Light mode defaults (used as fallbacks)
-  background: lightPalette[0], // #FFFFFF
-  surface: lightPalette[0], // #FFFFFF
-  surfaceElevated: lightPalette[0], // #FFFFFF
-  borderColor: lightPalette[3], // #E5E7EB
-  color: lightPalette[11], // #022C22 (darkest for contrast)
-  colorPress: lightPalette[10], // #052E16
-  colorSubtle: lightPalette[6], // #6B7280
-  primary: accentLight.accent4, // Teal brand color
-  brandPrimary: accentLight.accent4, // Teal brand color
-  shadowColor: 'rgba(0,0,0,0.06)', // Light mode shadow
-  white: lightPalette[0], // #FFFFFF
-  // Form/input/button state tokens
-  placeholderColor: lightPalette[5], // #9CA3AF (subtle gray for hint text)
-  colorDisabled: lightPalette[5], // #9CA3AF
-  backgroundDisabled: lightPalette[2], // #F3F4F6
-  borderColorDisabled: lightPalette[3], // #E5E7EB
-  outlineColor: 'hsla(175, 66%, 46%, 0.3)', // Focus ring
-  backgroundFocus: lightPalette[0], // #FFFFFF
-  borderColorFocus: accentLight.accent4, // Primary teal
-  // Semantic colors
+  background: lightPalette[0],
+  surface: lightPalette[0],
+  surfaceElevated: lightPalette[0],
+  borderColor: lightPalette[3],
+  color: lightPalette[11],
+  colorPress: lightPalette[10],
+  colorSubtle: lightPalette[7],
+  primary: accentLight.accent4,
+  brandPrimary: accentLight.accent4,
+  shadowColor: 'rgba(0,0,0,0.06)',
+  white: lightPalette[0],
+  placeholderColor: lightPalette[6],
+  colorDisabled: lightPalette[5],
+  backgroundDisabled: lightPalette[2],
+  borderColorDisabled: lightPalette[3],
+  outlineColor: 'hsla(175, 66%, 46%, 0.3)',
+  backgroundFocus: lightPalette[0],
+  borderColorFocus: accentLight.accent4,
   danger: red.red10,
   info: blue.blue9,
   infoSoft: blue.blue3,
-  // Tab bar pill background (MD3 active indicator)
   tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',
-
-  // Dark mode defaults (for dark mode specific fallbacks)
   dark: {
-    background: darkPalette[0], // #2D2D2D
-    color: darkPalette[11], // #F9FAFB (white for dark mode)
-    shadowColor: 'rgba(0,0,0,0.3)', // Dark mode shadow
+    background: darkPalette[0],
+    color: darkPalette[11],
+    shadowColor: 'rgba(0,0,0,0.3)',
   },
 } as const;

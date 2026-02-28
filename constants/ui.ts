@@ -135,60 +135,30 @@ export const MD3_PILL = {
  */
 export const TAB_BAR_LABEL_SIZE = 12;
 
-/**
- * Theme fallback colors for getThemeColor() utility function.
- * Used when theme values are not available (e.g., during initialization).
- * These values match the light theme defaults as single source of truth.
- *
- * @see utils/theme.ts - getThemeColor() function
- */
+/** Fallback colors for `getThemeColor()` when theme isn't ready. */
 export const THEME_FALLBACKS = {
-  /** White color fallback */
   white: '#FFFFFF',
-  /** Text color fallback (dark for light mode) */
   color: '#000000',
-  /** Background color fallback */
   background: '#FFFFFF',
-  /** Primary brand color fallback (teal) */
   primary: '#0D9488',
-  /** Brand primary fallback */
   brandPrimary: '#0D9488',
-  /** Surface color fallback */
   surface: '#FFFFFF',
-  /** Surface elevated fallback */
   surfaceElevated: '#FFFFFF',
-  /** Surface border fallback */
   surfaceBorder: '#E5E7EB',
-  /** Border color fallback */
   borderColor: '#E5E7EB',
-  /** Placeholder color fallback (subtle gray for hint text) */
   placeholderColor: '#9CA3AF',
-  /** Disabled text color fallback */
   colorDisabled: '#9CA3AF',
-  /** Disabled background fallback */
   backgroundDisabled: '#F3F4F6',
-  /** Disabled border fallback */
   borderColorDisabled: '#E5E7EB',
-  /** Focus outline fallback (primary with alpha) */
   outlineColor: 'hsla(175, 66%, 46%, 0.3)',
-  /** Focus background fallback */
   backgroundFocus: '#FFFFFF',
-  /** Focus border fallback (primary teal) */
   borderColorFocus: '#0D9488',
-  /** Danger/error color fallback */
   danger: '#DC2626',
-  /** Info color fallback (blue for healthcare context) */
   info: '#0091FF',
-  /** Info soft color fallback */
   infoSoft: '#D5EFFF',
-  /** Color press fallback */
   colorPress: '#052E16',
-  /** Color subtle fallback */
-  colorSubtle: '#6B7280',
-  /** Accent5 color fallback (palette-generated teal accent) */
+  colorSubtle: '#4B5563',
   accent5: 'hsla(175, 64%, 49%, 1)',
-  /** Color5 fallback (palette index 5) */
   color5: '#9CA3AF',
-  /** Tab bar active indicator pill background fallback (12% opacity teal) */
   tabBarPillBackground: 'hsla(175, 66%, 46%, 0.12)',
 } as const;
