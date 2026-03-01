@@ -142,14 +142,20 @@ export default function AddressList() {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$10" gap="$4">
         <Ionicons name="location-outline" size={64} color={colorPress} />
-        <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
+        <Text
+          fontSize="$6"
+          fontWeight="700"
+          color="$color"
+          textAlign="center"
+          fontFamily="$heading">
           Belum ada alamat pengiriman
         </Text>
-        <Text fontSize="$3" color="$colorPress" textAlign="center" maxWidth={300}>
+        <Text fontSize="$4" color="$colorPress" textAlign="center" maxWidth={300} lineHeight="$4">
           Tambah alamat pengiriman untuk memudahkan proses checkout
         </Text>
         <Button
           title="Tambah Alamat"
+          alignSelf="stretch"
           paddingVertical="$2"
           borderRadius="$3"
           minHeight={MIN_TOUCH_TARGET}
