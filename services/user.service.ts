@@ -1,7 +1,6 @@
 import { supabase } from '@/utils/supabase';
 import { getProfile, ensureProfile } from '@/services/profile.service';
-import { profileToUser } from '@/types/user';
-import type { User, ProfileRow } from '@/types/user';
+import { profileToUser, type User, type ProfileRow } from '@/types/user';
 import type { Session } from '@supabase/supabase-js';
 
 export type CurrentUserResult = {

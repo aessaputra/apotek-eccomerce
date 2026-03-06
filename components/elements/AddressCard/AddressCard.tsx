@@ -115,7 +115,7 @@ export default function AddressCard({
                     accessibilityRole="button"
                     accessibilityLabel="Jadikan alamat default"
                     accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default">
-                    <AntDesign name="staro" size={24} color={primaryColor} />
+                    <AntDesign name="star" size={24} color={primaryColor} />
                   </Pressable>
                 )}
                 {onEdit && (

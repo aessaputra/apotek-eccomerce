@@ -37,7 +37,14 @@ if (Platform.OS !== 'web') {
   ): Promise<ArrayBuffer> {
     const algoName = typeof algorithm === 'string' ? algorithm : algorithm.name;
     const expoAlgo = ALGORITHM_MAP[algoName] ?? ExpoCrypto.CryptoDigestAlgorithm.SHA256;
-    return ExpoCrypto.digest(expoAlgo, data);
+
+    if (data instanceof ArrayBuffer) {
+      return ExpoCrypto.digest(expoAlgo, data);
+    }
+
+    const view = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    const normalizedBuffer = view.slice().buffer;
+    return ExpoCrypto.digest(expoAlgo, normalizedBuffer);
   }
 
   // react-native-get-random-values (imported above) ensures globalThis.crypto

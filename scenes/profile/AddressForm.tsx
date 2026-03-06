@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ScrollView, Alert, Pressable, TextInput as RNTextInput } from 'react-native';
+import {
+  ScrollView,
+  Alert,
+  Pressable,
+  TextInput as RNTextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { YStack, XStack, Text, Card, Spinner, Checkbox, useTheme } from 'tamagui';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -266,10 +273,19 @@ export default function AddressForm() {
       </SafeAreaView>
     );
   }
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
-      <YStack flex={1} position="relative">
+      {/* 
+        KeyboardAvoidingView is enabled only on iOS.
+        - iOS: Uses 'padding' behavior with offset for header height
+        - Android: Disabled because softwareKeyboardLayoutMode: 'resize' handles it natively
+        This prevents double keyboard handling issues on Android.
+      */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
@@ -506,8 +522,7 @@ export default function AddressForm() {
             </Pressable>
           </Card>
         </ScrollView>
-
-        {/* Bottom action bar — uses measureInWindow for adjustResize-agnostic positioning */}
+        {/* Bottom action bar - positioned by KeyboardAvoidingView */}
         <BottomActionBar
           buttonTitle={isEdit ? 'Simpan Perubahan' : 'Simpan Alamat'}
           onPress={handleSave}
@@ -516,7 +531,7 @@ export default function AddressForm() {
           accessibilityLabel={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
           accessibilityHint="Menyimpan data alamat pengiriman"
         />
-      </YStack>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

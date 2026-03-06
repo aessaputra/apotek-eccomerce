@@ -94,7 +94,9 @@ export default function Profile() {
       await removePersistData(DataPersistKeys.USER);
       await authSignOut();
     } catch (error) {
-      console.error('Logout error:', error);
+      if (__DEV__) {
+        console.error('Logout error:', error);
+      }
     } finally {
       router.replace('/(auth)/login');
     }

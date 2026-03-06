@@ -1,8 +1,10 @@
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/utils/supabase';
 import type { ProfileRow } from '@/types/user';
-import type { TablesUpdate } from '@/types/supabase';
+import type { TablesInsert, TablesUpdate } from '@/types/supabase';
+
+const ensureProfileInFlight = new Map<string, Promise<ProfileRow | null>>();
 
 export async function getProfile(userId: string): Promise<ProfileRow | null> {
   try {
@@ -33,34 +35,52 @@ export async function ensureProfile(
   fullName?: string | null,
   avatarUrl?: string | null,
 ): Promise<ProfileRow | null> {
+  const inflight = ensureProfileInFlight.get(userId);
+  if (inflight) return inflight;
+
+  const ensurePromise = ensureProfileInternal(userId, email, fullName, avatarUrl);
+  ensureProfileInFlight.set(userId, ensurePromise);
+
+  try {
+    return await ensurePromise;
+  } finally {
+    ensureProfileInFlight.delete(userId);
+  }
+}
+
+async function ensureProfileInternal(
+  userId: string,
+  email: string,
+  fullName?: string | null,
+  avatarUrl?: string | null,
+): Promise<ProfileRow | null> {
   // Try fetching existing profile first
   const existing = await getProfile(userId);
   if (existing) return existing;
 
   if (__DEV__) console.log('[Profile] No profile found, creating for:', email);
 
-  // Profile doesn't exist — create one
-  const { data, error } = await supabase
+  const insertPayload: TablesInsert<'profiles'> = {
+    id: userId,
+    full_name: fullName ?? email.split('@')[0] ?? null,
+    avatar_url: avatarUrl ?? null,
+    role: 'customer',
+    is_banned: false,
+  };
+
+  const { error } = await supabase
     .from('profiles')
-    .insert({
-      id: userId,
-      full_name: fullName ?? email.split('@')[0] ?? null,
-      avatar_url: avatarUrl ?? null,
-      role: 'customer',
-      is_banned: false,
-    })
-    .select()
-    .single();
+    .upsert(insertPayload, { onConflict: 'id', ignoreDuplicates: true });
 
   if (error) {
-    if (__DEV__) console.error('[Profile] ensureProfile insert error:', error.message);
-    // Could be a race condition where trigger already created the profile
-    // Retry fetching
-    return await getProfile(userId);
+    if (__DEV__) console.error('[Profile] ensureProfile upsert error:', error.message);
   }
 
-  if (__DEV__) console.log('[Profile] Created new profile for:', email);
-  return data as ProfileRow;
+  const profile = await getProfile(userId);
+  if (!profile) return null;
+
+  if (__DEV__) console.log('[Profile] Ensured profile for:', email);
+  return profile;
 }
 
 export type ProfileUpdatePayload = {
@@ -106,20 +126,19 @@ export async function uploadAvatar(
 ): Promise<{ url: string | null; error: Error | null }> {
   try {
     // Validasi file
-    const fileInfo = await FileSystem.getInfoAsync(imageUri);
-    if (!fileInfo.exists) {
+    const file = new File(imageUri);
+    if (!file.exists) {
       return { url: null, error: new Error('File tidak ditemukan') };
     }
 
-    const validation = validateImageFile(imageUri, fileInfo.size);
+    const fileSize = file.size > 0 ? file.size : undefined;
+    const validation = validateImageFile(imageUri, fileSize);
     if (!validation.valid) {
       return { url: null, error: new Error(validation.error || 'File tidak valid') };
     }
 
     // Baca file sebagai base64 (recommended untuk React Native)
-    const base64 = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: 'base64',
-    });
+    const base64 = await file.base64();
 
     // Convert base64 ke ArrayBuffer (required untuk Supabase Storage di React Native)
     const arrayBuffer = decode(base64);

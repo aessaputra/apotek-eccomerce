@@ -35,7 +35,6 @@ This React Native Expo project follows specific patterns and uses built-in featu
 
 - **`useColorScheme` from `@/hooks`** - For dark/light theme detection
 - **`useDataPersist` from `@/hooks`** - For local storage operations
-- **`useKeyboard` from `@/hooks`** - For keyboard state management
 - **`useAppSlice` from `@/slices`** - For global state operations
 
 ### State Management
@@ -318,6 +317,7 @@ import { validateEmail, validatePassword, getPasswordStrength } from '@/utils/va
 ## Active Agent Skills
 
 ### Essentials (Core)
+
 - `concise-planning`: Always start with a plan
 - `lint-and-validate`: Keep code clean automatically
 - `git-pushing`: Save work safely
@@ -326,12 +326,14 @@ import { validateEmail, validatePassword, getPasswordStrength } from '@/utils/va
 - `clean-code`: Clean Code principles for readability and maintainability
 
 ### TypeScript & React
+
 - `typescript-expert`: Advanced TypeScript patterns and strict mode best practices
 - `typescript-advanced-types`: Generics, conditional types, mapped types for type-safe code
 - `react-patterns`: Modern React hooks, composition, and performance patterns
 - `react-state-management`: Redux Toolkit, Zustand, and React Query patterns
 
 ### Mobile Development
+
 - `mobile-developer`: Cross-platform mobile development best practices
 - `react-native-architecture`: React Native with Expo project structure and native modules
 - `app-store-optimization`: Preparation for App Store and Play Store release
@@ -340,19 +342,23 @@ import { validateEmail, validatePassword, getPasswordStrength } from '@/utils/va
 - `ui-ux-pro-max`: 50 styles, 21 palettes, font pairings, and design system intelligence
 
 ### Backend & Data
+
 - `supabase-automation`: Supabase auth, database, storage, and edge functions
 - `api-design-principles`: REST API design, versioning, pagination standards
 - `database-design`: Schema design, indexing strategy, and ORM selection
 - `postgres-best-practices`: PostgreSQL optimization from Supabase best practices
 
 ### Payments & E-Commerce
+
 - `payment-integration`: Payment gateway integration (Midtrans QRIS, GoPay, VA)
 - `auth-implementation-patterns`: JWT, OAuth2, session management, and RBAC
 
 ### Security & Compliance
+
 - `api-security-best-practices`: Authentication, authorization, input validation, rate limiting
 - `gdpr-data-handling`: Data privacy compliance (applicable to Indonesia's UU PDP)
 
 ### Testing & Quality
+
 - `testing-patterns`: Jest patterns, factory functions, mocking strategies, and TDD
 - `test-driven-development`: TDD workflow — red-green-refactor cycle

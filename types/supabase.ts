@@ -274,7 +274,7 @@ export type Database = {
           id: string;
           is_banned: boolean;
           phone_number: string | null;
-          role: string | null;
+          role: 'admin' | 'customer' | null;
           updated_at: string;
         };
         Insert: {
@@ -284,7 +284,7 @@ export type Database = {
           id: string;
           is_banned?: boolean;
           phone_number?: string | null;
-          role?: string | null;
+          role?: 'admin' | 'customer' | null;
           updated_at?: string;
         };
         Update: {
@@ -294,7 +294,7 @@ export type Database = {
           id?: string;
           is_banned?: boolean;
           phone_number?: string | null;
-          role?: string | null;
+          role?: 'admin' | 'customer' | null;
           updated_at?: string;
         };
       };

@@ -28,13 +28,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...config.android,
       package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekeccomerce',
-      // Use 'pan' mode to prevent adjustResize inconsistencies.
-      // 'resize' mode causes unpredictable layout changes during theme switches
-      // (Tamagui remount) making it impossible to reliably detect the resize
-      // state from JavaScript. 'pan' mode keeps the window at full size and
-      // pans the content — BottomActionBar handles keyboard offset explicitly.
+      // Use 'resize' mode for consistent keyboard handling with KeyboardAvoidingView.
+      // This allows the container to resize when keyboard appears, enabling
+      // bottom action buttons to stay above keyboard.
       // @see https://docs.expo.dev/guides/keyboard-handling
-      softwareKeyboardLayoutMode: 'pan',
+      softwareKeyboardLayoutMode: 'resize',
       adaptiveIcon: {
         foregroundImage: './assets/images/logo.png',
         backgroundColor: '#ffffff',

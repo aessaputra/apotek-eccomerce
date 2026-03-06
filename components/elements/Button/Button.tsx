@@ -3,11 +3,13 @@ import { GestureResponderEvent, ImageSourcePropType, StyleProp, ImageStyle } fro
 import Image from '../Image';
 import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
+type ButtonTitleStyle = GetProps<typeof Text>;
+
 export interface ButtonProps extends Omit<GetProps<typeof XStack>, 'style'> {
   title?: string;
   image?: ImageSourcePropType;
   imageStyle?: StyleProp<ImageStyle>;
-  titleStyle?: object;
+  titleStyle?: Partial<ButtonTitleStyle>;
   onPress?: (event: GestureResponderEvent) => void;
   onLongPress?: (event: GestureResponderEvent) => void;
   isLoading?: boolean;
@@ -43,7 +45,7 @@ function Button({
   const mergedTitleStyle = {
     ...PRIMARY_BUTTON_TITLE_STYLE,
     ...titleStyle,
-  };
+  } as Partial<ButtonTitleStyle>;
 
   const stackProps = {
     flexDirection: 'row' as const,
@@ -70,7 +72,7 @@ function Button({
           fontFamily={mergedTitleStyle.fontFamily || '$body'}
           fontWeight={mergedTitleStyle.fontWeight}
           color={mergedTitleStyle.color}
-          {...(titleStyle as object)}>
+          {...titleStyle}>
           {title}
         </Text>
       )}

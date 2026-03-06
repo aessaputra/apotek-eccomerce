@@ -15,11 +15,14 @@ const mockAddress: Address = {
   phone_number: '081234567890',
   street_address: 'Jl. Sudirman No. 1',
   city: 'Jakarta',
+  city_id: null,
   province: 'DKI Jakarta',
+  province_id: null,
+  district_id: null,
+  subdistrict_id: null,
   postal_code: '12345',
   is_default: false,
   created_at: '2025-01-01T00:00:00Z',
-  updated_at: '2025-01-01T00:00:00Z',
 };
 
 describe('<AddressCard />', () => {

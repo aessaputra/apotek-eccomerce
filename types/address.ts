@@ -1,23 +1,13 @@
-import type { Tables } from './supabase';
+import type { Tables, TablesInsert, TablesUpdate } from './supabase';
 
-export type AddressRow = Tables<'addresses'>;
+/**
+ * Address types - using generated Supabase Database types for type safety.
+ * Regenerate types when schema changes via Supabase MCP.
+ */
 
-export type Address = AddressRow;
+export type AddressInsert = Omit<TablesInsert<'addresses'>, 'profile_id'>;
 
-export type AddressInsert = {
-  receiver_name: string;
-  phone_number: string;
-  street_address: string;
-  city: string;
-  postal_code: string;
-  province?: string | null;
-  province_id?: string | null;
-  city_id?: string | null;
-  district_id?: string | null;
-  subdistrict_id?: string | null;
-  is_default?: boolean;
-};
+export type AddressUpdate = Omit<TablesUpdate<'addresses'>, 'profile_id'>;
 
-export type AddressUpdate = Partial<AddressInsert> & {
-  is_default?: boolean;
-};
+// Row type (returned from .select())
+export type Address = Tables<'addresses'>;

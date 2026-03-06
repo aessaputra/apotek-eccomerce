@@ -1,13 +1,14 @@
 import { useState, useCallback } from 'react';
 import { FlatList, Alert, RefreshControl } from 'react-native';
 import { YStack, Text, Spinner, useTheme } from 'tamagui';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Button from '@/components/elements/Button';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import AddressCard from '@/components/elements/AddressCard/AddressCard';
+import AddressFormSheet from '@/components/AddressFormSheet';
 import { useAppSlice } from '@/slices';
 import { getAddresses, deleteAddress, setDefaultAddress } from '@/services/address.service';
 import type { Address } from '@/types/address';
@@ -20,7 +21,6 @@ import {
 } from '@/constants/ui';
 
 export default function AddressList() {
-  const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAppSlice();
@@ -29,6 +29,10 @@ export default function AddressList() {
   const [refreshing, setRefreshing] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState<Address | null>(null);
+
+  // Sheet state
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | undefined>(undefined);
 
   // Use theme-aware background with light mode default fallback (#FFFFFF)
   const bgColor = getThemeColor(theme, 'background');
@@ -92,15 +96,24 @@ export default function AddressList() {
     [user?.id, loadAddresses],
   );
 
-  const handleEdit = useCallback(
-    (addressId: string) => {
-      router.push({
-        pathname: '/(main)/(tabs)/profile/address-form',
-        params: { id: addressId },
-      });
-    },
-    [router],
-  );
+  // Open sheet for editing
+  const handleEdit = useCallback((addressId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setEditingAddressId(addressId);
+    setSheetOpen(true);
+  }, []);
+
+  // Open sheet for creating new address
+  const handleAddAddress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setEditingAddressId(undefined);
+    setSheetOpen(true);
+  }, []);
+
+  // Handle successful save
+  const handleSheetSuccess = useCallback(() => {
+    loadAddresses();
+  }, [loadAddresses]);
 
   // Estimated item height for FlatList optimization
   // Card padding: $4 (16px) top + bottom = 32px
@@ -131,11 +144,6 @@ export default function AddressList() {
     ),
     [handleEdit, handleDelete, handleSetDefault],
   );
-
-  const handleAddAddress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(main)/(tabs)/profile/address-form');
-  }, [router]);
 
   const renderEmpty = useCallback(() => {
     const colorPress = getThemeColor(theme, 'colorPress');
@@ -199,7 +207,7 @@ export default function AddressList() {
           accessibilityRole="list"
         />
 
-        {/* Sticky bottom bar: Tambah Alamat (same pattern as Edit Profile / Address Form) */}
+        {/* Sticky bottom bar: Tambah Alamat */}
         {addresses.length > 0 && (
           <YStack
             position="absolute"
@@ -230,6 +238,15 @@ export default function AddressList() {
         )}
       </YStack>
 
+      {/* Address Form Sheet - replaces full-screen navigation */}
+      <AddressFormSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        addressId={editingAddressId}
+        onSuccess={handleSheetSuccess}
+      />
+
+      {/* Delete Confirmation Dialog */}
       <AppAlertDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}

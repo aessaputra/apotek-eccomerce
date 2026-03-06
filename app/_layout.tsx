@@ -1,3 +1,6 @@
+// Import tamagui config to ensure TypeScript module augmentation is loaded
+import '@/tamagui.config';
+
 import { Fragment, useState, useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 // Tamagui web CSS - loaded for web platform

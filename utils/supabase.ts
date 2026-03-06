@@ -6,7 +6,54 @@ import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import config from '@/utils/config';
 import LargeSecureStore from '@/utils/LargeSecureStore';
+
+// Use generated Database type directly for full type safety
 import type { Database } from '@/types/supabase';
+
+type PublicSchema = Database['public'];
+
+type TablesWithRelationships = {
+  [TableName in keyof PublicSchema['Tables']]: PublicSchema['Tables'][TableName] & {
+    Relationships: [];
+  };
+};
+
+type ViewsWithRelationships = {
+  [ViewName in keyof PublicSchema['Views']]: PublicSchema['Views'][ViewName] extends {
+    Row: infer Row;
+  }
+    ? {
+        Row: Row;
+        Insert: PublicSchema['Views'][ViewName] extends { Insert: infer Insert }
+          ? Insert
+          : Record<string, never>;
+        Update: PublicSchema['Views'][ViewName] extends { Update: infer Update }
+          ? Update
+          : Record<string, never>;
+        Relationships: [];
+      }
+    : never;
+};
+
+type FunctionsCompatible = {
+  [FunctionName in keyof PublicSchema['Functions']]: PublicSchema['Functions'][FunctionName] extends {
+    Args: infer Args;
+    Returns: infer Returns;
+  }
+    ? {
+        Args: Args;
+        Returns: Returns;
+      }
+    : never;
+};
+
+type SupabaseDatabase = {
+  public: Omit<PublicSchema, 'Tables' | 'Views' | 'Functions'> & {
+    Tables: TablesWithRelationships;
+    Views: ViewsWithRelationships;
+    Functions: FunctionsCompatible;
+  };
+};
 
 const { supabaseUrl, supabasePublishableKey } = config;
 
@@ -32,7 +79,12 @@ const webStorage = {
 
 const authStorage = Platform.OS === 'web' ? webStorage : new LargeSecureStore();
 
-export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
+// Properly typed Supabase client - uses generated Database types
+// db.schema: 'public' is required for type inference to work correctly
+export const supabase = createClient<SupabaseDatabase>(supabaseUrl, supabasePublishableKey, {
+  db: {
+    schema: 'public',
+  },
   auth: {
     storage: authStorage,
     autoRefreshToken: true,
