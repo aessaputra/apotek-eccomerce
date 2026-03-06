@@ -1,27 +1,42 @@
+// Import tamagui config to ensure TypeScript module augmentation is loaded
+import '@/tamagui.config';
+
 import { Fragment, useState, useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
+// Tamagui web CSS - loaded for web platform
+import '@/tamagui-web.css';
 import BottomSheetContents from '@/components/layouts/BottomSheetContents';
 import BottomSheet from '@/components/elements/BottomSheet';
-import useColorScheme from '@/hooks/useColorScheme';
-import { loadImages, loadFonts, colors } from '@/theme';
-import { Slot } from 'expo-router';
+import { useTheme, useThemeName } from 'tamagui';
+import { getThemeColor } from '@/utils/theme';
+import { loadFonts } from '@/utils/fonts';
+import { loadImages } from '@/utils/images';
+import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAppSlice } from '@/slices';
-import Provider from '@/providers';
-import { AuthProvider } from '@/providers';
+import Provider, { AuthProvider } from '@/providers';
 
 SplashScreen.preventAutoHideAsync();
 
 function Router() {
-  const { isDark } = useColorScheme();
-  const { checked } = useAppSlice();
+  const theme = useTheme();
+  const themeName = useThemeName();
+  const isDark = themeName === 'dark';
+  const { checked, loggedIn } = useAppSlice();
+  const segments = useSegments();
+  const router = useRouter();
   const [assetsReady, setAssetsReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
-      await Promise.all([loadImages(), loadFonts()]);
-      setAssetsReady(true);
+      try {
+        await Promise.all([loadImages(), loadFonts()]);
+      } catch (error) {
+        if (__DEV__) console.warn('[RootLayout] Failed to load assets:', error);
+      } finally {
+        setAssetsReady(true);
+      }
     })();
   }, []);
 
@@ -32,14 +47,44 @@ function Router() {
     }
   }, [assetsReady, checked]);
 
+  // Centralized auth guard: handles all auth-based redirects.
+  // Uses setTimeout(0) to avoid navigation being swallowed during deep link re-mounts.
+  useEffect(() => {
+    // Wait until AuthProvider has finished initial session check
+    if (!checked) return;
+
+    const currentGroup = segments[0] as string | undefined;
+    const inAuthGroup = currentGroup === '(auth)';
+    const isCallback = currentGroup === 'google-auth';
+
+    if (loggedIn) {
+      // Authenticated user on auth/callback screens → redirect to main app
+      if (inAuthGroup || isCallback) {
+        setTimeout(() => router.replace('/(main)/(tabs)'), 0);
+      }
+    } else {
+      // Unauthenticated user on protected screens → redirect to login
+      // Skip: google-auth (let token exchange complete)
+      // Skip: index (handles its own declarative <Redirect>)
+      const inMainGroup = currentGroup === '(main)';
+      if (inMainGroup) {
+        setTimeout(() => router.replace('/(auth)/login'), 0);
+      }
+    }
+  }, [checked, loggedIn, segments, router]);
+
+  // Get header background color for StatusBar consistency
+  const headerBg = getThemeColor(theme, 'headerBackground', getThemeColor(theme, 'brandPrimary'));
+
   return (
     <Fragment>
       <Slot />
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={headerBg} translucent={false} />
       <BottomSheet
         isOpen={isOpen}
         initialOpen
-        backgroundStyle={isDark && { backgroundColor: colors.blackGray }}>
+        // Use theme-aware background with light mode default fallback (#FFFFFF)
+        backgroundStyle={{ backgroundColor: getThemeColor(theme, 'background') }}>
         <BottomSheetContents onClose={() => setOpen(false)} />
       </BottomSheet>
     </Fragment>

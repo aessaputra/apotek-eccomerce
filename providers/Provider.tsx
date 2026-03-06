@@ -1,17 +1,29 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider } from 'react-redux';
+import { PortalProvider, TamaguiProvider } from 'tamagui';
 import useColorScheme from '@/hooks/useColorScheme';
 import store from '@/utils/store';
+import tamaguiConfig from '@/tamagui.config';
 import 'react-native-reanimated';
 
 export default function Provider({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { isDark } = useColorScheme();
+  const { colorScheme, isDark } = useColorScheme();
+  const themeName = colorScheme ?? 'light';
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ReduxProvider store={store}>
-        <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>{children}</ThemeProvider>
-      </ReduxProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <ReduxProvider store={store}>
+          {/* PortalProvider must wrap TamaguiProvider for Sheet, Dialog, Popover to work */}
+          <PortalProvider shouldAddRootHost>
+            <TamaguiProvider config={tamaguiConfig} defaultTheme={themeName}>
+              <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>{children}</ThemeProvider>
+            </TamaguiProvider>
+          </PortalProvider>
+        </ReduxProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

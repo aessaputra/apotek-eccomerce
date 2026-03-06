@@ -1,126 +1,162 @@
-import { useEffect } from 'react';
-import { Alert, AppState, Platform, AppStateStatus } from 'react-native';
-import { useDispatch } from 'react-redux';
+import { useState, useEffect, useCallback } from 'react';
+import { AppState, Platform, AppStateStatus } from 'react-native';
 import { supabase } from '@/utils/supabase';
-import { getProfile } from '@/services/profile.service';
-import { signOut as authSignOut } from '@/services/auth.service';
+import { getCurrentUser } from '@/services/user.service';
+import { signOut as authSignOut, handleOAuthHashTokens } from '@/services/auth.service';
 import { useAppSlice } from '@/slices';
-import { profileToUser } from '@/types/user';
-import type { Dispatch } from '@/utils/store';
-
-const ADMIN_REJECT_MESSAGE =
-  'Hanya customer yang boleh login di app ini. Admin gunakan panel Refine.';
+import { ADMIN_REJECT_MESSAGE, BANNED_USER_MESSAGE } from '@/constants/auth';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
+import type { User } from '@/types/user';
 
 export interface AuthProviderProps {
   children: React.ReactNode;
 }
 
 export default function AuthProvider({ children }: AuthProviderProps) {
-  const dispatch = useDispatch<Dispatch>();
-  const { setUser, setLoggedIn, setChecked, reset } = useAppSlice();
+  const { dispatch, setUser, setLoggedIn, setChecked, reset } = useAppSlice();
 
-  // Initial session load; set checked when done
-  useEffect(() => {
-    let mounted = true;
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertDescription, setAlertDescription] = useState('');
 
-    async function init() {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
+  const showAlert = useCallback((title: string, description: string) => {
+    setAlertTitle(title);
+    setAlertDescription(description);
+    setAlertOpen(true);
+  }, []);
 
-      if (!mounted) return;
+  /** Dispatch auth state to Redux in one call. */
+  const dispatchAuth = useCallback(
+    (user: User | undefined, loggedIn: boolean) => {
+      dispatch(setUser(user));
+      dispatch(setLoggedIn(loggedIn));
+      dispatch(setChecked(true));
+    },
+    [dispatch, setUser, setLoggedIn, setChecked],
+  );
 
-      if (!session?.user) {
-        dispatch(setUser(undefined));
-        dispatch(setLoggedIn(false));
-        dispatch(setChecked(true));
-        return;
-      }
-
-      const profile = await getProfile(session.user.id);
-      if (!mounted) return;
-
-      if (!profile) {
-        dispatch(setUser(undefined));
-        dispatch(setLoggedIn(false));
-        dispatch(setChecked(true));
-        return;
-      }
-
+  /**
+   * Validate user result — reject admins and banned users.
+   * Returns true if user is allowed, false if rejected.
+   */
+  const validateAndDispatch = useCallback(
+    async (
+      user: User,
+      profile: { role: string | null; is_banned: boolean },
+      mounted: boolean,
+    ): Promise<boolean> => {
       if (profile.role === 'admin') {
         await authSignOut();
         if (mounted) {
-          dispatch(reset());
-          dispatch(setChecked(true));
-          Alert.alert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+          dispatchAuth(undefined, false);
+          showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
         }
-        return;
+        return false;
       }
 
       if (profile.is_banned) {
         await authSignOut();
         if (mounted) {
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          dispatch(setChecked(true));
+          dispatchAuth(undefined, false);
+          showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
         }
-        return;
+        return false;
       }
 
-      const user = profileToUser(profile, session.user.email ?? '');
-      dispatch(setUser(user));
-      dispatch(setLoggedIn(true));
-      dispatch(setChecked(true));
+      if (mounted) {
+        dispatchAuth(user, true);
+      }
+      return true;
+    },
+    [dispatchAuth, showAlert],
+  );
+
+  // Initial session load
+  useEffect(() => {
+    let mounted = true;
+
+    async function init() {
+      try {
+        // Web: process OAuth redirect tokens before getCurrentUser
+        const hashResult = await handleOAuthHashTokens();
+        if (hashResult) return; // onAuthStateChange will handle state
+
+        const result = await getCurrentUser({ createIfMissing: true });
+        if (!mounted) return;
+
+        if (!result) {
+          dispatchAuth(undefined, false);
+          return;
+        }
+
+        // Admin check uses reset() instead of dispatchAuth for init
+        if (result.profile.role === 'admin') {
+          await authSignOut();
+          if (mounted) {
+            dispatch(reset());
+            dispatch(setChecked(true));
+            showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
+          }
+          return;
+        }
+
+        await validateAndDispatch(result.user, result.profile, mounted);
+      } catch (error) {
+        if (__DEV__) console.warn('[AuthProvider] init error:', error);
+        if (mounted) dispatchAuth(undefined, false);
+      }
     }
 
     init();
     return () => {
       mounted = false;
     };
-  }, [dispatch, setUser, setLoggedIn, setChecked, reset]);
+  }, [dispatch, setChecked, reset, showAlert, dispatchAuth, validateAndDispatch]);
 
-  // onAuthStateChange
+  // Auth state change listener
   useEffect(() => {
+    let mounted = true;
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session?.user) {
-        dispatch(setUser(undefined));
-        dispatch(setLoggedIn(false));
+        if (mounted) dispatchAuth(undefined, false);
         return;
       }
 
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        const profile = await getProfile(session.user.id);
-        if (!profile) {
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          return;
-        }
-        if (profile.role === 'admin') {
-          await authSignOut();
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          Alert.alert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
-          return;
-        }
-        if (profile.is_banned) {
-          await authSignOut();
-          dispatch(setUser(undefined));
-          dispatch(setLoggedIn(false));
-          return;
-        }
-        const user = profileToUser(profile, session.user.email ?? '');
-        dispatch(setUser(user));
-        dispatch(setLoggedIn(true));
+        // Defer with setTimeout(0) to avoid deadlock: exchangeCodeForSession
+        // holds processLock while firing SIGNED_IN. PostgREST queries internally
+        // call getSession() which tries to acquire the same lock → deadlock.
+        setTimeout(async () => {
+          try {
+            const result = await getCurrentUser({
+              createIfMissing: event === 'SIGNED_IN' || event === 'INITIAL_SESSION',
+              session,
+            });
+            if (!mounted) return;
+
+            if (!result) {
+              dispatchAuth(undefined, false);
+              return;
+            }
+
+            await validateAndDispatch(result.user, result.profile, mounted);
+          } catch (error) {
+            if (__DEV__) console.error('[AuthProvider] onAuthStateChange error:', error);
+            if (mounted) dispatch(setChecked(true));
+          }
+        }, 0);
       }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [dispatch, setUser, setLoggedIn]);
+  }, [dispatch, setChecked, dispatchAuth, validateAndDispatch]);
 
-  // AppState: startAutoRefresh / stopAutoRefresh (React Native only)
+  // Auto-refresh tokens when app becomes active (React Native only)
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
@@ -137,5 +173,15 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <AppAlertDialog
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        title={alertTitle}
+        description={alertDescription}
+      />
+    </>
+  );
 }

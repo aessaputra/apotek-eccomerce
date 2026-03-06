@@ -10,21 +10,63 @@ jobs:
   update:
     name: Publish Preview Channel on Push / Pull-Request
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     strategy:
       matrix:
         node-version: [20.x]
     steps:
-      # Check for EXPO_TOKEN
+      # EXPO_TOKEN must be from the Expo account that OWNS this project (see app.json "owner").
+      # If you see "Entity not authorized", see docs/EAS_GITHUB_ACTIONS.md.
       - name: Check for EXPO_TOKEN
         run: |
           if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
             echo "You must provide an EXPO_TOKEN secret linked to this project's Expo account in this repo's secrets."
             exit 1
           fi
-
-      # checkout the repository
+      - name: Check for Supabase secrets
+        run: |
+          if [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" ] || [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}" ]; then
+            echo "::error::Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to this repo's GitHub Secrets (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Get branch name
+        id: branch-name
+        uses: tj-actions/branch-names@v8
+
+      # Pilih env berdasarkan branch: prod → .env.prod, staging → .env.staging, dev/PR → .env.dev
+      - name: Set EXPO env from env file
+        id: expo-env
+        run: |
+          BRANCH="${{ steps.branch-name.outputs.current_branch }}"
+          if [ "$BRANCH" = "main" ] || [[ "$BRANCH" == release/* ]]; then
+            ENV_FILE=".env.prod.example"
+          elif [ "$BRANCH" = "staging" ]; then
+            ENV_FILE=".env.staging.example"
+          else
+            ENV_FILE=".env.dev.example"
+          fi
+          echo "Using $ENV_FILE for branch $BRANCH"
+          PROJECT_ID=$(grep -E '^EXPO_PROJECT_ID=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
+          SLUG=$(grep -E '^EXPO_SLUG=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
+          if [ -z "$PROJECT_ID" ]; then
+            echo "EXPO_PROJECT_ID not found in $ENV_FILE"
+            exit 1
+          fi
+          if [ -z "$SLUG" ]; then
+            echo "EXPO_SLUG not found in $ENV_FILE"
+            exit 1
+          fi
+          echo "project_id<<EOF" >> $GITHUB_OUTPUT
+          echo "$PROJECT_ID" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "slug<<EOF" >> $GITHUB_OUTPUT
+          echo "$SLUG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       # setup node
       - name: Setup Node
@@ -50,17 +92,28 @@ jobs:
       - name: Install lightningcss Linux binary
         run: npm install lightningcss-linux-x64-gnu --save-optional
 
-      # get branch name
-      - name: Get branch name
-        id: branch-name
-        uses: tj-actions/branch-names@v8
-
-      # eas update (PR)
-      - name: EAS update
+      # Supabase URL/key required for bundle (app.config.ts + utils/supabase.ts). Add as repo secrets.
+      # eas update (PR) - preview subaction runs eas update --auto dan menambah komentar + QR di PR
+      - name: Create preview (EAS Update + PR comment)
         if: github.event_name == 'pull_request'
-        run: eas update --branch ${{ steps.branch-name.outputs.current_branch }} --message "${{ github.event.pull_request.title }}"
+        env:
+          EXPO_PROJECT_ID: ${{ steps.expo-env.outputs.project_id }}
+          EXPO_SLUG: ${{ steps.expo-env.outputs.slug }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
+        uses: expo/expo-github-action/preview@v8
+        with:
+          command: eas update --auto
 
-      # eas update (PUSH)
+      # eas update (PUSH) - sanitize in shell so double quotes in message don't break eas
       - name: EAS update
         if: github.event_name == 'push'
-        run: eas update --branch ${{ steps.branch-name.outputs.current_branch }} --message "${{ github.event.head_commit.message }}"
+        env:
+          EXPO_PROJECT_ID: ${{ steps.expo-env.outputs.project_id }}
+          EXPO_SLUG: ${{ steps.expo-env.outputs.slug }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
+          UPDATE_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          SAFE_MSG="${UPDATE_MSG//\"/\'}"
+          eas update --branch ${{ steps.branch-name.outputs.current_branch }} --message "$SAFE_MSG"

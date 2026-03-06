@@ -5,3 +5,4 @@ src/config.js
 README.md
 tsconfig.json
 tsconfig.build.json
+.agents

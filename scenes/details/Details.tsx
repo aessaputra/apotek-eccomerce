@@ -1,54 +1,37 @@
-import { Text, View, StyleSheet } from 'react-native';
+import { YStack, Text, useTheme } from 'tamagui';
 import GradientButton from '@/components/elements/GradientButton';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import useColorScheme from '@/hooks/useColorScheme';
-import { colors } from '@/theme';
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.lightGrayPurple,
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 20,
-  },
-  buttonTitle: {
-    fontSize: 16,
-    color: colors.white,
-    textAlign: 'center',
-  },
-  button: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 22,
-    height: 44,
-    width: '50%',
-  },
-});
+import { useRouter } from 'expo-router';
+import { getThemeColor } from '@/utils/theme';
+import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 export default function Details() {
   const router = useRouter();
-  const { isDark } = useColorScheme();
-  const { from } = useLocalSearchParams();
+  const theme = useTheme();
   return (
-    <View style={[styles.root, isDark && { backgroundColor: colors.blackGray }]}>
-      <Text
-        style={[styles.title, isDark && { color: colors.gray }]}>{`Details (from ${from})`}</Text>
+    <YStack
+      flex={1}
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      backgroundColor="$background">
+      <Text fontSize="$7" marginBottom="$5" color="$color" fontFamily="$heading" fontWeight="700">
+        Detail
+      </Text>
       <GradientButton
-        title="Go back to Home"
-        titleStyle={[styles.buttonTitle, isDark && { color: colors.blackGray }]}
-        style={styles.button}
+        title="Kembali ke Beranda"
+        titleStyle={{ ...PRIMARY_BUTTON_TITLE_STYLE, color: '$background', textAlign: 'center' }}
+        paddingVertical={8}
+        paddingHorizontal={16}
+        borderRadius={22}
+        height={44}
+        width="50%"
         gradientBackgroundProps={{
-          colors: [colors.purple, colors.pink],
+          colors: [getThemeColor(theme, 'brandPrimary'), getThemeColor(theme, 'accent5')],
           start: { x: 0, y: 1 },
           end: { x: 0.8, y: 0 },
         }}
         onPress={() => router.back()}
       />
-    </View>
+    </YStack>
   );
 }

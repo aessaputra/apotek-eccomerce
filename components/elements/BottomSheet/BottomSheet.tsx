@@ -1,42 +1,13 @@
 import React, { useRef, memo, useEffect } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import RNBottomSheet, {
   BottomSheetProps as RNBottomSheetProps,
   BottomSheetBackdrop,
   BottomSheetScrollView,
   BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import { YStack } from 'tamagui';
 import { isWeb } from '@/utils/deviceInfo';
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    width: '100%',
-  },
-  container: {
-    width: '100%',
-  },
-  webContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '80%',
-    zIndex: 1000,
-  },
-  webBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 999,
-  },
-});
 
 export interface BottomSheetProps extends RNBottomSheetProps {
   isOpen: boolean;
@@ -68,12 +39,34 @@ const BottomSheet = memo(function BottomSheet({
     if (!isOpen) return null;
     return (
       <>
-        <View style={styles.webBackdrop} />
-        <View style={styles.webContainer}>
-          <ScrollView contentContainerStyle={styles.container} style={styles.root}>
+        <YStack
+          position="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          backgroundColor="rgba(0, 0, 0, 0.5)"
+          zIndex={999}
+        />
+        <YStack
+          position="absolute"
+          bottom={0}
+          left={0}
+          right={0}
+          backgroundColor="$background"
+          borderTopLeftRadius={16}
+          borderTopRightRadius={16}
+          maxHeight="80%"
+          zIndex={1000}
+          flex={1}
+          width="100%">
+          <ScrollView
+            contentContainerStyle={{ width: '100%' }}
+            style={{ flex: 1, width: '100%' }}
+            showsVerticalScrollIndicator={false}>
             {children}
           </ScrollView>
-        </View>
+        </YStack>
       </>
     );
   }
@@ -91,7 +84,9 @@ const BottomSheet = memo(function BottomSheet({
       android_keyboardInputMode="adjustResize"
       index={initialOpen ? 0 : -1}
       {...others}>
-      <BottomSheetScrollView contentContainerStyle={styles.container} style={styles.root}>
+      <BottomSheetScrollView
+        contentContainerStyle={{ width: '100%' }}
+        style={{ flex: 1, width: '100%' }}>
         {children}
       </BottomSheetScrollView>
     </RNBottomSheet>

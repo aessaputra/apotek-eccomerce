@@ -2,13 +2,7 @@
  * Supabase database types — generated from project "Apotek Eccomerce".
  * Regenerate via Supabase MCP: generate_typescript_types(project_id).
  */
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   public: {
@@ -280,7 +274,7 @@ export type Database = {
           id: string;
           is_banned: boolean;
           phone_number: string | null;
-          role: string | null;
+          role: 'admin' | 'customer' | null;
           updated_at: string;
         };
         Insert: {
@@ -290,7 +284,7 @@ export type Database = {
           id: string;
           is_banned?: boolean;
           phone_number?: string | null;
-          role?: string | null;
+          role?: 'admin' | 'customer' | null;
           updated_at?: string;
         };
         Update: {
@@ -300,7 +294,7 @@ export type Database = {
           id?: string;
           is_banned?: boolean;
           phone_number?: string | null;
-          role?: string | null;
+          role?: 'admin' | 'customer' | null;
           updated_at?: string;
         };
       };

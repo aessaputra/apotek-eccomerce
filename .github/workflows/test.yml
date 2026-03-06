@@ -4,12 +4,14 @@ on:
   pull_request:
     branches: ['*']
   push:
-    branches: ['dev', 'staging', 'main']
+    branches: ['dev', 'staging', 'main', 'release/**']
 
 jobs:
   test:
     name: Test on Push / Pull-Request
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node-version: [20.x]
@@ -30,9 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # run code formatter
-      - name: Code Formatter
-        run: npm run format
+      # fail if code is not formatted (enforce format without modifying repo)
+      - name: Format check
+        run: npm run format:check
 
       # run lint test
       - name: Lint Test

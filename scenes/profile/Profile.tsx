@@ -1,245 +1,225 @@
-import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { useCallback, memo, useState } from 'react';
+import { ScrollView, Platform, Dimensions } from 'react-native';
+import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import useColorScheme from '@/hooks/useColorScheme';
-import Button from '@/components/elements/Button';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Avatar from '@/components/elements/Avatar';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { useAppSlice } from '@/slices';
 import { useDataPersist, DataPersistKeys } from '@/hooks';
-import { colors } from '@/theme';
 import { signOut as authSignOut } from '@/services/auth.service';
-import { updateProfile } from '@/services/profile.service';
-import type { User } from '@/types';
+import { getThemeColor } from '@/utils/theme';
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.lightGrayPurple,
-  },
-  darkContainer: {
-    backgroundColor: colors.blackGray,
-  },
-  scroll: {
-    flex: 1,
-  },
-  inner: {
-    padding: 24,
-    paddingBottom: 48,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    color: colors.gray,
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 18,
-    color: colors.darkPurple,
-  },
-  darkValue: {
-    color: colors.gray,
-  },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: colors.gray,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 12,
-    color: colors.black,
-    backgroundColor: colors.white,
-  },
-  darkInput: {
-    borderColor: colors.gray,
-    color: colors.white,
-    backgroundColor: colors.blackGray,
-  },
-  errorText: {
-    color: colors.pink,
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  button: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    height: 48,
-    backgroundColor: colors.lightPurple,
-    marginBottom: 12,
-  },
-  buttonTitle: {
-    fontSize: 16,
-    color: colors.white,
-  },
-  buttonOutlined: {
-    backgroundColor: colors.transparent,
-    borderWidth: 1,
-    borderColor: colors.lightPurple,
-  },
-  buttonOutlinedTitle: {
-    color: colors.lightPurple,
-  },
-  logoutButton: {
-    marginTop: 24,
-    backgroundColor: colors.pink,
-  },
+interface MenuItemProps {
+  label: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  onPress: () => void;
+  accessibilityLabel: string;
+  accessibilityHint: string;
+}
+
+const MenuItem = memo(function MenuItem({
+  label,
+  icon,
+  onPress,
+  accessibilityLabel,
+  accessibilityHint,
+}: MenuItemProps) {
+  const theme = useTheme();
+  const iconColor = getThemeColor(theme, 'colorPress');
+
+  return (
+    <Card
+      padding="$4"
+      marginBottom="$3"
+      backgroundColor="$surface"
+      borderWidth={1}
+      borderColor="$surfaceBorder"
+      borderRadius="$4"
+      elevation={1}
+      pressStyle={{ opacity: 0.85, backgroundColor: '$backgroundHover' }}
+      onPress={() => {
+        if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
+      accessibilityLabel={accessibilityLabel}
+      {...(Platform.OS === 'web'
+        ? { 'aria-description': accessibilityHint }
+        : { accessibilityHint })}>
+      <XStack alignItems="center" justifyContent="space-between">
+        <XStack alignItems="center" gap="$3" flex={1}>
+          <Ionicons name={icon} size={22} color={iconColor} />
+          <Text fontSize="$4" color="$color" fontWeight="500">
+            {label}
+          </Text>
+        </XStack>
+        <Ionicons name="chevron-forward" size={20} color={iconColor} />
+      </XStack>
+    </Card>
+  );
 });
 
 export default function Profile() {
   const router = useRouter();
-  const { isDark } = useColorScheme();
-  const { user, dispatch, setUser } = useAppSlice();
+  const theme = useTheme();
+  const { user } = useAppSlice();
   const { removePersistData } = useDataPersist();
-  const [editing, setEditing] = useState(false);
-  const [fullName, setFullName] = useState(user?.full_name ?? user?.name ?? '');
-  const [phoneNumber, setPhoneNumber] = useState(user?.phone_number ?? '');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
-  const handleSave = useCallback(async () => {
-    if (!user) return;
-    setError(null);
-    setSaving(true);
-    const { data, error: err } = await updateProfile(user.id, {
-      full_name: fullName.trim() || null,
-      phone_number: phoneNumber.trim() || null,
-    });
-    setSaving(false);
-    if (err) {
-      setError(err.message ?? 'Gagal menyimpan profil.');
-      return;
-    }
-    if (data) {
-      const updatedUser: User = {
-        ...user,
-        full_name: data.full_name,
-        name: data.full_name ?? user.email,
-        phone_number: data.phone_number,
-      };
-      dispatch(setUser(updatedUser));
-      setEditing(false);
-    }
-  }, [user, fullName, phoneNumber, dispatch, setUser]);
+  const insets = useSafeAreaInsets();
+  const avatarSize = Dimensions.get('window').width < 375 ? 100 : 120;
+  // Use theme-aware background with light mode default fallback (#FFFFFF)
+  const bgColor = getThemeColor(theme, 'background');
+  const scrollPaddingBottom = 80 + insets.bottom;
 
-  async function handleLogout() {
-    Alert.alert('Keluar', 'Anda yakin ingin keluar?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Keluar',
-        style: 'destructive',
-        onPress: async () => {
-          await removePersistData(DataPersistKeys.USER);
-          await authSignOut();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
-  }
+  const formatMemberSince = useCallback((dateString?: string): string => {
+    if (!dateString) return '–';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '–';
+      return date.toLocaleDateString('id-ID', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return '–';
+    }
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await removePersistData(DataPersistKeys.USER);
+      await authSignOut();
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Logout error:', error);
+      }
+    } finally {
+      router.replace('/(auth)/login');
+    }
+  }, [removePersistData, router]);
 
   if (!user) {
     return (
-      <SafeAreaView style={[styles.container, isDark && styles.darkContainer]} edges={['top']}>
-        <View style={styles.inner}>
-          <ActivityIndicator size="large" color={colors.lightPurple} />
-        </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+        <YStack
+          flex={1}
+          padding="$5"
+          paddingBottom="$10"
+          alignItems="center"
+          justifyContent="center"
+          accessibilityLabel="Memuat profil"
+          accessibilityLiveRegion="polite">
+          <Spinner size="large" color="$primary" />
+        </YStack>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.darkContainer]} edges={['top']}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={styles.label}>Email</Text>
-          <Text style={[styles.value, isDark && styles.darkValue]}>{user.email}</Text>
-        </View>
-
-        {editing ? (
-          <View style={styles.section}>
-            <Text style={styles.label}>Nama lengkap</Text>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            <TextInput
-              style={[styles.input, isDark && styles.darkInput]}
-              placeholder="Nama lengkap"
-              placeholderTextColor={colors.gray}
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
-              editable={!saving}
-            />
-            <Text style={styles.label}>Nomor telepon</Text>
-            <TextInput
-              style={[styles.input, isDark && styles.darkInput]}
-              placeholder="Nomor telepon"
-              placeholderTextColor={colors.gray}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-              editable={!saving}
-            />
-            <Button
-              title="Simpan"
-              style={styles.button}
-              titleStyle={styles.buttonTitle}
-              onPress={handleSave}
-              isLoading={saving}
-            />
-            <Button
-              title="Batal"
-              style={[styles.button, styles.buttonOutlined]}
-              titleStyle={[styles.buttonTitle, styles.buttonOutlinedTitle]}
-              onPress={() => {
-                setEditing(false);
-                setError(null);
-                setFullName(user.full_name ?? user.name ?? '');
-                setPhoneNumber(user.phone_number ?? '');
-              }}
-              disabled={saving}
-            />
-          </View>
-        ) : (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.label}>Nama</Text>
-              <Text style={[styles.value, isDark && styles.darkValue]}>
-                {user.full_name || user.name || '–'}
+    <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: scrollPaddingBottom,
+          flexGrow: 1,
+        }}
+        showsVerticalScrollIndicator={false}>
+        {/* Avatar, Nama lengkap, Bergabung */}
+        <YStack alignItems="center" marginBottom="$5" gap="$3" accessibilityLabel="Foto profil">
+          <Avatar
+            avatarUrl={user.avatar_url}
+            name={user.full_name || user.name || user.email}
+            size={avatarSize}
+            editable={false}
+          />
+          {/* Nama lengkap di bawah avatar */}
+          <Text
+            fontSize="$6"
+            fontWeight="700"
+            color="$color"
+            fontFamily="$heading"
+            textAlign="center">
+            {user.full_name || user.name || 'Pengguna'}
+          </Text>
+          {/* Bergabung dengan badge */}
+          {user.created_at && (
+            <XStack
+              paddingHorizontal="$3"
+              paddingVertical="$1.5"
+              borderRadius="$10"
+              backgroundColor="$backgroundHover"
+              borderWidth={1}
+              borderColor="$primary">
+              <Text fontSize="$3" fontWeight="600" color="$primary">
+                Bergabung {formatMemberSince(user.created_at)}
               </Text>
-            </View>
-            <View style={styles.section}>
-              <Text style={styles.label}>Telepon</Text>
-              <Text style={[styles.value, isDark && styles.darkValue]}>
-                {user.phone_number || '–'}
-              </Text>
-            </View>
-            <Button
-              title="Edit profil"
-              style={styles.button}
-              titleStyle={styles.buttonTitle}
-              onPress={() => {
-                setEditing(true);
-                setFullName(user.full_name ?? user.name ?? '');
-                setPhoneNumber(user.phone_number ?? '');
-                setError(null);
-              }}
-            />
-          </>
-        )}
+            </XStack>
+          )}
+        </YStack>
 
-        <Button
+        {/* Menu items */}
+        <MenuItem
+          label="Profile Saya"
+          icon="person-outline"
+          onPress={() => router.push('/(main)/(tabs)/profile/edit-profile')}
+          accessibilityLabel="Profile Saya"
+          accessibilityHint="Edit informasi profil Anda"
+        />
+        <MenuItem
+          label="Alamat"
+          icon="location-outline"
+          onPress={() => router.push('/(main)/(tabs)/profile/addresses')}
+          accessibilityLabel="Alamat pengiriman"
+          accessibilityHint="Kelola alamat pengiriman Anda"
+        />
+        <MenuItem
+          label="Dukungan"
+          icon="help-circle-outline"
+          onPress={() => router.push('/(main)/(tabs)/profile/support')}
+          accessibilityLabel="Dukungan"
+          accessibilityHint="Hubungi tim dukungan"
+        />
+
+        {/* Sign Out - red button, full-width touch target ≥44px */}
+        <Card
+          marginTop="$5"
+          marginBottom="$2"
+          padding="$4"
+          backgroundColor="transparent"
+          borderWidth={1}
+          borderColor="$danger"
+          borderRadius="$4"
+          elevation={0}
+          pressStyle={{ opacity: 0.85 }}
+          onPress={() => {
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setLogoutDialogOpen(true);
+          }}
+          {...(Platform.OS === 'web' ? { style: { cursor: 'pointer' } } : {})}
+          accessibilityLabel="Keluar dari akun"
+          {...(Platform.OS === 'web'
+            ? { 'aria-description': 'Keluar dari aplikasi dan kembali ke halaman login' }
+            : { accessibilityHint: 'Keluar dari aplikasi dan kembali ke halaman login' })}>
+          <Text fontSize="$5" color="$danger" fontWeight="600" textAlign="center">
+            Keluar
+          </Text>
+        </Card>
+
+        {/* Logout confirmation dialog */}
+        <AppAlertDialog
+          open={logoutDialogOpen}
+          onOpenChange={setLogoutDialogOpen}
           title="Keluar"
-          style={[styles.button, styles.logoutButton]}
-          titleStyle={styles.buttonTitle}
-          onPress={handleLogout}
+          description="Anda yakin ingin keluar?"
+          cancelText="Batal"
+          confirmText="Keluar"
+          confirmColor="$danger"
+          onConfirm={handleLogout}
         />
       </ScrollView>
     </SafeAreaView>

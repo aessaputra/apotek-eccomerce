@@ -1,31 +1,51 @@
-import { Stack, useNavigation } from 'expo-router';
-import { DrawerActions } from '@react-navigation/native';
-import NavigationHeaderLeft from '@/components/layouts/NavigationHeaderLeft';
-import NavigationHeaderTitle from '@/components/layouts/NavigationHeaderTitle';
-import useColorScheme from '@/hooks/useColorScheme';
-import { colors } from '@/theme';
+import { Stack } from 'expo-router';
+import { useTheme } from 'tamagui';
+import { getStackHeaderOptions } from '@/utils/theme';
 
 export default function ProfileStackLayout() {
-  const navigation = useNavigation();
-  const { isDark } = useColorScheme();
-  const toggleDrawer = () => navigation.dispatch(DrawerActions.toggleDrawer());
+  const theme = useTheme();
   return (
-    <Stack
-      screenOptions={{
-        headerTintColor: colors.white,
-        headerStyle: { backgroundColor: isDark ? colors.blackGray : colors.darkPurple },
-        headerTitleStyle: { fontSize: 18 },
-      }}>
+    <Stack screenOptions={getStackHeaderOptions(theme)}>
       <Stack.Screen
         name="index"
         options={{
-          title: 'Profile',
-          headerTitle: () => <NavigationHeaderTitle />,
-          headerLeft: () => <NavigationHeaderLeft onPress={toggleDrawer} />,
+          title: 'Akun',
           headerTitleAlign: 'center',
         }}
       />
-      <Stack.Screen name="details" options={{ title: 'Details' }} />
+      <Stack.Screen
+        name="addresses"
+        options={{
+          title: 'Alamat Pengiriman',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
+        name="address-form"
+        options={({ route }) => {
+          const params = route.params as { id?: string } | undefined;
+          const isEdit = !!params?.id;
+          return {
+            title: isEdit ? 'Edit Alamat' : 'Tambah Alamat',
+            headerTitleAlign: 'center',
+          };
+        }}
+      />
+      <Stack.Screen
+        name="support"
+        options={{
+          title: 'Dukungan',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
+        name="edit-profile"
+        options={{
+          title: 'Edit Profil',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen name="details" options={{ title: 'Detail' }} />
     </Stack>
   );
 }

@@ -44,3 +44,7 @@ yarn-error.*
 # coverage or example directories
 coverage/
 app-example
+
+# Agent
+.agent/
+.agents/
