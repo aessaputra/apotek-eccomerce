@@ -48,13 +48,18 @@ describe('<OAuthButton />', () => {
   });
 
   test('handles onPress error gracefully', async () => {
-    const onPressMock = jest.fn(() => {
-      throw new Error('Test error');
-    });
-    render(<OAuthButton provider="google" onPress={onPressMock} />);
-    const button = screen.getByLabelText('Masuk dengan Google');
-    // Should not crash
-    expect(() => fireEvent.press(button)).not.toThrow();
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const onPressMock = jest.fn(() => {
+        throw new Error('Test error');
+      });
+      render(<OAuthButton provider="google" onPress={onPressMock} />);
+      const button = screen.getByLabelText('Masuk dengan Google');
+      // Should not crash
+      expect(() => fireEvent.press(button)).not.toThrow();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   test('has correct accessibility label for Google', async () => {
