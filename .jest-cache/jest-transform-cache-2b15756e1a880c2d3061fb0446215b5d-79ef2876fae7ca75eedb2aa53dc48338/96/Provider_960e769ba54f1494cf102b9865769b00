@@ -1,0 +1,107 @@
+20f93b656c40bb7b818cf35975ff8b7a
+function cov_2jjig6sxa1() {
+  var path = "C:\\dev\\pharma\\frontend\\providers\\Provider.tsx";
+  var hash = "a5f1dadf65f42ec18884fd37f45493aa6cb168c5";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\providers\\Provider.tsx",
+    statementMap: {
+      "0": {
+        start: {
+          line: 11,
+          column: 2
+        },
+        end: {
+          line: 24,
+          column: 4
+        }
+      }
+    },
+    fnMap: {
+      "0": {
+        name: "Provider",
+        decl: {
+          start: {
+            line: 10,
+            column: 24
+          },
+          end: {
+            line: 10,
+            column: 32
+          }
+        },
+        loc: {
+          start: {
+            line: 10,
+            column: 88
+          },
+          end: {
+            line: 25,
+            column: 1
+          }
+        },
+        line: 10
+      }
+    },
+    branchMap: {},
+    s: {
+      "0": 0
+    },
+    f: {
+      "0": 0
+    },
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "a5f1dadf65f42ec18884fd37f45493aa6cb168c5"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_2jjig6sxa1 = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_2jjig6sxa1();
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import { Provider as ReduxProvider } from 'react-redux';
+import { PortalProvider, TamaguiProvider } from 'tamagui';
+import store from '@/utils/store';
+import tamaguiConfig from '@/tamagui.config';
+import 'react-native-reanimated';
+import { jsx as _jsx } from "react/jsx-runtime";
+export default function Provider(_ref) {
+  var children = _ref.children;
+  cov_2jjig6sxa1().f[0]++;
+  cov_2jjig6sxa1().s[0]++;
+  return _jsx(GestureHandlerRootView, {
+    style: {
+      flex: 1
+    },
+    children: _jsx(SafeAreaProvider, {
+      initialMetrics: initialWindowMetrics,
+      children: _jsx(ReduxProvider, {
+        store: store,
+        children: _jsx(PortalProvider, {
+          shouldAddRootHost: true,
+          children: _jsx(TamaguiProvider, {
+            config: tamaguiConfig,
+            defaultTheme: "brand",
+            children: _jsx(ThemeProvider, {
+              value: DefaultTheme,
+              children: children
+            })
+          })
+        })
+      })
+    })
+  });
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJEZWZhdWx0VGhlbWUiLCJUaGVtZVByb3ZpZGVyIiwiR2VzdHVyZUhhbmRsZXJSb290VmlldyIsIlNhZmVBcmVhUHJvdmlkZXIiLCJpbml0aWFsV2luZG93TWV0cmljcyIsIlByb3ZpZGVyIiwiUmVkdXhQcm92aWRlciIsIlBvcnRhbFByb3ZpZGVyIiwiVGFtYWd1aVByb3ZpZGVyIiwic3RvcmUiLCJ0YW1hZ3VpQ29uZmlnIiwianN4IiwiX2pzeCIsIl9yZWYiLCJjaGlsZHJlbiIsImNvdl8yamppZzZzeGExIiwiZiIsInMiLCJzdHlsZSIsImZsZXgiLCJpbml0aWFsTWV0cmljcyIsInNob3VsZEFkZFJvb3RIb3N0IiwiY29uZmlnIiwiZGVmYXVsdFRoZW1lIiwidmFsdWUiXSwic291cmNlcyI6WyJQcm92aWRlci50c3giXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgRGVmYXVsdFRoZW1lLCBUaGVtZVByb3ZpZGVyIH0gZnJvbSAnQHJlYWN0LW5hdmlnYXRpb24vbmF0aXZlJztcbmltcG9ydCB7IEdlc3R1cmVIYW5kbGVyUm9vdFZpZXcgfSBmcm9tICdyZWFjdC1uYXRpdmUtZ2VzdHVyZS1oYW5kbGVyJztcbmltcG9ydCB7IFNhZmVBcmVhUHJvdmlkZXIsIGluaXRpYWxXaW5kb3dNZXRyaWNzIH0gZnJvbSAncmVhY3QtbmF0aXZlLXNhZmUtYXJlYS1jb250ZXh0JztcbmltcG9ydCB7IFByb3ZpZGVyIGFzIFJlZHV4UHJvdmlkZXIgfSBmcm9tICdyZWFjdC1yZWR1eCc7XG5pbXBvcnQgeyBQb3J0YWxQcm92aWRlciwgVGFtYWd1aVByb3ZpZGVyIH0gZnJvbSAndGFtYWd1aSc7XG5pbXBvcnQgc3RvcmUgZnJvbSAnQC91dGlscy9zdG9yZSc7XG5pbXBvcnQgdGFtYWd1aUNvbmZpZyBmcm9tICdAL3RhbWFndWkuY29uZmlnJztcbmltcG9ydCAncmVhY3QtbmF0aXZlLXJlYW5pbWF0ZWQnO1xuXG5leHBvcnQgZGVmYXVsdCBmdW5jdGlvbiBQcm92aWRlcih7IGNoaWxkcmVuIH06IFJlYWRvbmx5PHsgY2hpbGRyZW46IFJlYWN0LlJlYWN0Tm9kZSB9Pikge1xuICByZXR1cm4gKFxuICAgIDxHZXN0dXJlSGFuZGxlclJvb3RWaWV3IHN0eWxlPXt7IGZsZXg6IDEgfX0+XG4gICAgICA8U2FmZUFyZWFQcm92aWRlciBpbml0aWFsTWV0cmljcz17aW5pdGlhbFdpbmRvd01ldHJpY3N9PlxuICAgICAgICA8UmVkdXhQcm92aWRlciBzdG9yZT17c3RvcmV9PlxuICAgICAgICAgIHsvKiBQb3J0YWxQcm92aWRlciBtdXN0IHdyYXAgVGFtYWd1aVByb3ZpZGVyIGZvciBTaGVldCwgRGlhbG9nLCBQb3BvdmVyIHRvIHdvcmsgKi99XG4gICAgICAgICAgPFBvcnRhbFByb3ZpZGVyIHNob3VsZEFkZFJvb3RIb3N0PlxuICAgICAgICAgICAgPFRhbWFndWlQcm92aWRlciBjb25maWc9e3RhbWFndWlDb25maWd9IGRlZmF1bHRUaGVtZT1cImJyYW5kXCI+XG4gICAgICAgICAgICAgIDxUaGVtZVByb3ZpZGVyIHZhbHVlPXtEZWZhdWx0VGhlbWV9PntjaGlsZHJlbn08L1RoZW1lUHJvdmlkZXI+XG4gICAgICAgICAgICA8L1RhbWFndWlQcm92aWRlcj5cbiAgICAgICAgICA8L1BvcnRhbFByb3ZpZGVyPlxuICAgICAgICA8L1JlZHV4UHJvdmlkZXI+XG4gICAgICA8L1NhZmVBcmVhUHJvdmlkZXI+XG4gICAgPC9HZXN0dXJlSGFuZGxlclJvb3RWaWV3PlxuICApO1xufVxuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxTQUFTQSxZQUFZLEVBQUVDLGFBQWEsUUFBUSwwQkFBMEI7QUFDdEUsU0FBU0Msc0JBQXNCLFFBQVEsOEJBQThCO0FBQ3JFLFNBQVNDLGdCQUFnQixFQUFFQyxvQkFBb0IsUUFBUSxnQ0FBZ0M7QUFDdkYsU0FBU0MsUUFBUSxJQUFJQyxhQUFhLFFBQVEsYUFBYTtBQUN2RCxTQUFTQyxjQUFjLEVBQUVDLGVBQWUsUUFBUSxTQUFTO0FBQ3pELE9BQU9DLEtBQUssTUFBTSxlQUFlO0FBQ2pDLE9BQU9DLGFBQWEsTUFBTSxrQkFBa0I7QUFDNUMsT0FBTyx5QkFBeUI7QUFBQyxTQUFBQyxHQUFBLElBQUFDLElBQUE7QUFFakMsZUFBZSxTQUFTUCxRQUFRQSxDQUFBUSxJQUFBLEVBQXdEO0VBQUEsSUFBckRDLFFBQVEsR0FBQUQsSUFBQSxDQUFSQyxRQUFRO0VBQUFDLGNBQUEsR0FBQUMsQ0FBQTtFQUFBRCxjQUFBLEdBQUFFLENBQUE7RUFDekMsT0FDRUwsSUFBQSxDQUFDVixzQkFBc0I7SUFBQ2dCLEtBQUssRUFBRTtNQUFFQyxJQUFJLEVBQUU7SUFBRSxDQUFFO0lBQUFMLFFBQUEsRUFDekNGLElBQUEsQ0FBQ1QsZ0JBQWdCO01BQUNpQixjQUFjLEVBQUVoQixvQkFBcUI7TUFBQVUsUUFBQSxFQUNyREYsSUFBQSxDQUFDTixhQUFhO1FBQUNHLEtBQUssRUFBRUEsS0FBTTtRQUFBSyxRQUFBLEVBRTFCRixJQUFBLENBQUNMLGNBQWM7VUFBQ2MsaUJBQWlCO1VBQUFQLFFBQUEsRUFDL0JGLElBQUEsQ0FBQ0osZUFBZTtZQUFDYyxNQUFNLEVBQUVaLGFBQWM7WUFBQ2EsWUFBWSxFQUFDLE9BQU87WUFBQVQsUUFBQSxFQUMxREYsSUFBQSxDQUFDWCxhQUFhO2NBQUN1QixLQUFLLEVBQUV4QixZQUFhO2NBQUFjLFFBQUEsRUFBRUE7WUFBUSxDQUFnQjtVQUFDLENBQy9DO1FBQUMsQ0FDSjtNQUFDLENBQ0o7SUFBQyxDQUNBO0VBQUMsQ0FDRyxDQUFDO0FBRTdCIiwiaWdub3JlTGlzdCI6W119

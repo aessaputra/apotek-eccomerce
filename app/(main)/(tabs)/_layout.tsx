@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { Tabs, useSegments } from 'expo-router';
 import { Platform } from 'react-native';
-import { useTheme, useThemeName } from 'tamagui';
-import { AntDesign } from '@expo/vector-icons';
+import { useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 import { DEFAULT_THEME_VALUES } from '@/themes';
 import {
@@ -14,17 +13,16 @@ import {
 } from '@/constants/ui';
 import { fonts } from '@/utils/fonts';
 import TabBarIconWithPill from '@/components/layouts/TabBarIconWithPill';
+import { HomeIcon, PackageIcon, UserIcon } from '@/components/icons';
 
 const TAB_BAR_ITEM_PADDING_VERTICAL = 4;
 const TAB_BAR_LABEL_MARGIN_TOP = 2;
 
 export default function TabLayout() {
   const theme = useTheme();
-  const themeName = useThemeName();
   const segments = useSegments();
 
   const tabBarColors = useMemo(() => {
-    const isDark = themeName === 'dark';
     const background = getThemeColor(
       theme,
       'surfaceElevated',
@@ -43,13 +41,9 @@ export default function TabLayout() {
         getThemeColor(theme, 'brandPrimary', DEFAULT_THEME_VALUES.brandPrimary),
       ),
       inactive: getThemeColor(theme, 'tabBarInactive', DEFAULT_THEME_VALUES.tabBarInactive),
-      shadowColor: getThemeColor(
-        theme,
-        'shadowColor',
-        isDark ? DEFAULT_THEME_VALUES.dark.shadowColor : DEFAULT_THEME_VALUES.shadowColor,
-      ),
+      shadowColor: getThemeColor(theme, 'shadowColor', DEFAULT_THEME_VALUES.shadowColor),
     };
-  }, [theme, themeName]);
+  }, [theme]);
 
   const hideTabBar =
     segments.includes('edit-profile') ||
@@ -108,7 +102,7 @@ export default function TabLayout() {
           title: 'Beranda',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIconWithPill focused={focused}>
-              <AntDesign name="home" size={ICON_SIZES.BUTTON} color={color} />
+              <HomeIcon size={ICON_SIZES.BUTTON} color={color} />
             </TabBarIconWithPill>
           ),
         }}
@@ -119,7 +113,7 @@ export default function TabLayout() {
           title: 'Pesanan',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIconWithPill focused={focused}>
-              <AntDesign name="solution" size={ICON_SIZES.BUTTON} color={color} />
+              <PackageIcon size={ICON_SIZES.BUTTON} color={color} />
             </TabBarIconWithPill>
           ),
         }}
@@ -130,7 +124,7 @@ export default function TabLayout() {
           title: 'Akun',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIconWithPill focused={focused}>
-              <AntDesign name="user" size={ICON_SIZES.BUTTON} color={color} />
+              <UserIcon size={ICON_SIZES.BUTTON} color={color} />
             </TabBarIconWithPill>
           ),
         }}

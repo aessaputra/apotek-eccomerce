@@ -1,0 +1,32 @@
+59b2604cf7e0413275baefa5b3fbc53a
+function cov_2o9x5orhcc() {
+  var path = "C:\\dev\\pharma\\frontend\\components\\layouts\\TabBarIconWithPill\\index.ts";
+  var hash = "9697835b18e411d3378d9bf96226e66a57c9c34e";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\components\\layouts\\TabBarIconWithPill\\index.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "9697835b18e411d3378d9bf96226e66a57c9c34e"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_2o9x5orhcc = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_2o9x5orhcc();
+export { default } from './TabBarIconWithPill';
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJkZWZhdWx0Il0sInNvdXJjZXMiOlsiaW5kZXgudHMiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IHsgZGVmYXVsdCB9IGZyb20gJy4vVGFiQmFySWNvbldpdGhQaWxsJztcclxuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQUFBLFNBQVNBLE9BQU8sUUFBUSxzQkFBc0IiLCJpZ25vcmVMaXN0IjpbXX0=

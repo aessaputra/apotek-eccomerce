@@ -1,6 +1,6 @@
 import { YStack, Text, useTheme } from 'tamagui';
-import { Ionicons } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
+import { PillIcon } from '@/components/icons';
 
 export default function Home() {
   const theme = useTheme();
@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <YStack flex={1} backgroundColor="$background">
       <YStack flex={1} alignItems="center" justifyContent="center" padding="$5" gap="$4">
-        <Ionicons name="medical-outline" size={64} color={subtleColor} />
+        <PillIcon size={64} color={subtleColor} />
         <Text
           fontSize="$6"
           fontWeight="700"

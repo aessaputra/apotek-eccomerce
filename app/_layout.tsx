@@ -7,7 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import '@/tamagui-web.css';
 import BottomSheetContents from '@/components/layouts/BottomSheetContents';
 import BottomSheet from '@/components/elements/BottomSheet';
-import { useTheme, useThemeName } from 'tamagui';
+import { useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 import { loadFonts } from '@/utils/fonts';
 import { loadImages } from '@/utils/images';
@@ -20,8 +20,6 @@ SplashScreen.preventAutoHideAsync();
 
 function Router() {
   const theme = useTheme();
-  const themeName = useThemeName();
-  const isDark = themeName === 'dark';
   const { checked, loggedIn } = useAppSlice();
   const segments = useSegments();
   const router = useRouter();
@@ -79,7 +77,7 @@ function Router() {
   return (
     <Fragment>
       <Slot />
-      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={headerBg} translucent={false} />
+      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
       <BottomSheet
         isOpen={isOpen}
         initialOpen

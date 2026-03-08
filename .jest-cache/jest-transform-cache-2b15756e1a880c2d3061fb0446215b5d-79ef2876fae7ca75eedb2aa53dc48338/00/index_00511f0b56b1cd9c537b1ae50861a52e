@@ -1,0 +1,32 @@
+0b9e5ddfc779a71d2130e6d0fa3dfe24
+function cov_kpt7378sk() {
+  var path = "C:\\dev\\pharma\\frontend\\components\\elements\\Avatar\\index.ts";
+  var hash = "51d011a5d840dcd8da6982214e7d5a3155f913d4";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\components\\elements\\Avatar\\index.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "51d011a5d840dcd8da6982214e7d5a3155f913d4"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_kpt7378sk = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_kpt7378sk();
+export { default } from './Avatar';
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJkZWZhdWx0Il0sInNvdXJjZXMiOlsiaW5kZXgudHMiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IHsgZGVmYXVsdCB9IGZyb20gJy4vQXZhdGFyJztcclxuZXhwb3J0IHR5cGUgeyBBdmF0YXJQcm9wcyB9IGZyb20gJy4vQXZhdGFyJztcclxuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQUFBLFNBQVNBLE9BQU8sUUFBUSxVQUFVIiwiaWdub3JlTGlzdCI6W119

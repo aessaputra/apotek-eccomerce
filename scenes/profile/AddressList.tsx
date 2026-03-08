@@ -3,7 +3,6 @@ import { FlatList, Alert, RefreshControl } from 'react-native';
 import { YStack, Text, Spinner, useTheme } from 'tamagui';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Button from '@/components/elements/Button';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
@@ -19,6 +18,7 @@ import {
   BOTTOM_BAR_SHADOW,
   PRIMARY_BUTTON_TITLE_STYLE,
 } from '@/constants/ui';
+import { MapPinIcon } from '@/components/icons';
 
 export default function AddressList() {
   const theme = useTheme();
@@ -54,11 +54,8 @@ export default function AddressList() {
   // Refresh addresses when screen comes into focus (including initial mount)
   useFocusEffect(
     useCallback(() => {
-      if (user?.id) {
-        loadAddresses();
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id]),
+      loadAddresses();
+    }, [loadAddresses]),
   );
 
   const handleRefresh = useCallback(() => {
@@ -149,7 +146,7 @@ export default function AddressList() {
     const colorPress = getThemeColor(theme, 'colorPress');
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$10" gap="$4">
-        <Ionicons name="location-outline" size={64} color={colorPress} />
+        <MapPinIcon size={64} color={colorPress} />
         <Text
           fontSize="$6"
           fontWeight="700"

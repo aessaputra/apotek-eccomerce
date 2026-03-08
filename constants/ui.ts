@@ -104,6 +104,17 @@ export const ICON_SIZES = {
   LARGE: 32,
 } as const;
 
+export const FORM_FIELD = {
+  HEIGHT: 56,
+  MULTILINE_MIN_HEIGHT: 100,
+  HORIZONTAL_PADDING: 18,
+  BORDER_RADIUS: 14,
+  BORDER_WIDTH: 1.5,
+  ACTIVE_BORDER_WIDTH: 2,
+  ICON_BUTTON_PADDING: 4,
+  ICON_BUTTON_MARGIN_LEFT: 8,
+} as const;
+
 /**
  * Material Design 3 Navigation Bar active indicator (pill) dimensions.
  * The pill is a semi-transparent background behind the active tab icon.

@@ -1,7 +1,7 @@
 import { AnimatePresence, YStack, XStack, Text, GetProps, useTheme } from 'tamagui';
-import { FontAwesome5 } from '@expo/vector-icons';
 import Button from '../Button';
 import { getThemeColor } from '@/utils/theme';
+import { AlertCircleIcon, CloseIcon } from '@/components/icons';
 
 export interface ErrorMessageProps extends Omit<GetProps<typeof YStack>, 'children'> {
   message: string | null;
@@ -59,7 +59,7 @@ function ErrorMessage({
             borderRadius="$3"
             borderWidth={1}
             borderColor="$danger">
-            <FontAwesome5 name="exclamation-circle" size={16} color={dangerColor} />
+            <AlertCircleIcon size={16} color={dangerColor} />
             <Text flex={1} fontSize={14} fontWeight="600" color="$danger" lineHeight={20}>
               {message}
             </Text>
@@ -70,7 +70,7 @@ function ErrorMessage({
                 padding={4}
                 accessibilityLabel="Dismiss error"
                 accessibilityRole="button">
-                <FontAwesome5 name="times" size={14} color={dangerColor} />
+                <CloseIcon size={14} color={dangerColor} />
               </Button>
             )}
           </XStack>

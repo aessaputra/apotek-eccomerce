@@ -1,0 +1,1 @@
+{"version":3,"names":["default","AuthProvider"],"sources":["index.ts"],"sourcesContent":["export { default } from './Provider';\r\nexport { default as AuthProvider } from './AuthProvider';\r\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA,SAASA,OAAO,QAAQ,YAAY;AACpC,SAASA,OAAO,IAAIC,YAAY,QAAQ,gBAAgB","ignoreList":[]}

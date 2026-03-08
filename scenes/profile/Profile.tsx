@@ -1,9 +1,8 @@
-import { useCallback, memo, useState } from 'react';
+import { type ComponentType, useCallback, memo, useState } from 'react';
 import { ScrollView, Platform, Dimensions } from 'react-native';
 import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Avatar from '@/components/elements/Avatar';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
@@ -11,10 +10,17 @@ import { useAppSlice } from '@/slices';
 import { useDataPersist, DataPersistKeys } from '@/hooks';
 import { signOut as authSignOut } from '@/services/auth.service';
 import { getThemeColor } from '@/utils/theme';
+import {
+  ChevronRightIcon,
+  CircleHelpIcon,
+  MapPinIcon,
+  UserIcon,
+  type IconProps,
+} from '@/components/icons';
 
 interface MenuItemProps {
   label: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: ComponentType<IconProps>;
   onPress: () => void;
   accessibilityLabel: string;
   accessibilityHint: string;
@@ -22,7 +28,7 @@ interface MenuItemProps {
 
 const MenuItem = memo(function MenuItem({
   label,
-  icon,
+  icon: Icon,
   onPress,
   accessibilityLabel,
   accessibilityHint,
@@ -50,12 +56,12 @@ const MenuItem = memo(function MenuItem({
         : { accessibilityHint })}>
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap="$3" flex={1}>
-          <Ionicons name={icon} size={22} color={iconColor} />
+          <Icon size={22} color={iconColor} />
           <Text fontSize="$4" color="$color" fontWeight="500">
             {label}
           </Text>
         </XStack>
-        <Ionicons name="chevron-forward" size={20} color={iconColor} />
+        <ChevronRightIcon size={20} color={iconColor} />
       </XStack>
     </Card>
   );
@@ -165,21 +171,21 @@ export default function Profile() {
         {/* Menu items */}
         <MenuItem
           label="Profile Saya"
-          icon="person-outline"
+          icon={UserIcon}
           onPress={() => router.push('/(main)/(tabs)/profile/edit-profile')}
           accessibilityLabel="Profile Saya"
           accessibilityHint="Edit informasi profil Anda"
         />
         <MenuItem
           label="Alamat"
-          icon="location-outline"
+          icon={MapPinIcon}
           onPress={() => router.push('/(main)/(tabs)/profile/addresses')}
           accessibilityLabel="Alamat pengiriman"
           accessibilityHint="Kelola alamat pengiriman Anda"
         />
         <MenuItem
           label="Dukungan"
-          icon="help-circle-outline"
+          icon={CircleHelpIcon}
           onPress={() => router.push('/(main)/(tabs)/profile/support')}
           accessibilityLabel="Dukungan"
           accessibilityHint="Hubungi tim dukungan"

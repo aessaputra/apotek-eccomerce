@@ -1,0 +1,203 @@
+f591c7f3254b1f1e9d5f91498d691a41
+var _Constants$expoConfig, _ref, _ref2, _ref3, _ref4;
+function cov_18smomt4a3() {
+  var path = "C:\\dev\\pharma\\frontend\\utils\\config.ts";
+  var hash = "6ea282bdef47161793be0c9e7b92403f6e6a6854";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\utils\\config.ts",
+    statementMap: {
+      "0": {
+        start: {
+          line: 4,
+          column: 14
+        },
+        end: {
+          line: 11,
+          column: 13
+        }
+      },
+      "1": {
+        start: {
+          line: 13,
+          column: 15
+        },
+        end: {
+          line: 23,
+          column: 1
+        }
+      }
+    },
+    fnMap: {},
+    branchMap: {
+      "0": {
+        loc: {
+          start: {
+            line: 14,
+            column: 7
+          },
+          end: {
+            line: 14,
+            column: 43
+          }
+        },
+        type: "binary-expr",
+        locations: [{
+          start: {
+            line: 14,
+            column: 7
+          },
+          end: {
+            line: 14,
+            column: 17
+          }
+        }, {
+          start: {
+            line: 14,
+            column: 22
+          },
+          end: {
+            line: 14,
+            column: 42
+          }
+        }],
+        line: 14
+      },
+      "1": {
+        loc: {
+          start: {
+            line: 15,
+            column: 10
+          },
+          end: {
+            line: 15,
+            column: 29
+          }
+        },
+        type: "binary-expr",
+        locations: [{
+          start: {
+            line: 15,
+            column: 10
+          },
+          end: {
+            line: 15,
+            column: 23
+          }
+        }, {
+          start: {
+            line: 15,
+            column: 27
+          },
+          end: {
+            line: 15,
+            column: 29
+          }
+        }],
+        line: 15
+      },
+      "2": {
+        loc: {
+          start: {
+            line: 16,
+            column: 15
+          },
+          end: {
+            line: 16,
+            column: 39
+          }
+        },
+        type: "binary-expr",
+        locations: [{
+          start: {
+            line: 16,
+            column: 15
+          },
+          end: {
+            line: 16,
+            column: 33
+          }
+        }, {
+          start: {
+            line: 16,
+            column: 37
+          },
+          end: {
+            line: 16,
+            column: 39
+          }
+        }],
+        line: 16
+      },
+      "3": {
+        loc: {
+          start: {
+            line: 17,
+            column: 26
+          },
+          end: {
+            line: 17,
+            column: 61
+          }
+        },
+        type: "binary-expr",
+        locations: [{
+          start: {
+            line: 17,
+            column: 26
+          },
+          end: {
+            line: 17,
+            column: 55
+          }
+        }, {
+          start: {
+            line: 17,
+            column: 59
+          },
+          end: {
+            line: 17,
+            column: 61
+          }
+        }],
+        line: 17
+      }
+    },
+    s: {
+      "0": 0,
+      "1": 0
+    },
+    f: {},
+    b: {
+      "0": [0, 0],
+      "1": [0, 0],
+      "2": [0, 0],
+      "3": [0, 0]
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "6ea282bdef47161793be0c9e7b92403f6e6a6854"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_18smomt4a3 = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_18smomt4a3();
+import Constants from 'expo-constants';
+var extra = (cov_18smomt4a3().s[0]++, (_Constants$expoConfig = Constants.expoConfig) == null ? void 0 : _Constants$expoConfig.extra);
+var config = (cov_18smomt4a3().s[1]++, {
+  env: (_ref = (cov_18smomt4a3().b[0][0]++, extra == null ? void 0 : extra.env)) != null ? _ref : (cov_18smomt4a3().b[0][1]++, 'development'),
+  apiUrl: (_ref2 = (cov_18smomt4a3().b[1][0]++, extra == null ? void 0 : extra.apiUrl)) != null ? _ref2 : (cov_18smomt4a3().b[1][1]++, ''),
+  supabaseUrl: (_ref3 = (cov_18smomt4a3().b[2][0]++, extra == null ? void 0 : extra.supabaseUrl)) != null ? _ref3 : (cov_18smomt4a3().b[2][1]++, ''),
+  supabasePublishableKey: (_ref4 = (cov_18smomt4a3().b[3][0]++, extra == null ? void 0 : extra.supabasePublishableKey)) != null ? _ref4 : (cov_18smomt4a3().b[3][1]++, '')
+});
+export default config;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJDb25zdGFudHMiLCJleHRyYSIsImNvdl8xOHNtb210NGEzIiwicyIsIl9Db25zdGFudHMkZXhwb0NvbmZpZyIsImV4cG9Db25maWciLCJjb25maWciLCJlbnYiLCJfcmVmIiwiYiIsImFwaVVybCIsIl9yZWYyIiwic3VwYWJhc2VVcmwiLCJfcmVmMyIsInN1cGFiYXNlUHVibGlzaGFibGVLZXkiLCJfcmVmNCJdLCJzb3VyY2VzIjpbImNvbmZpZy50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgQ29uc3RhbnRzIGZyb20gJ2V4cG8tY29uc3RhbnRzJztcclxuaW1wb3J0IHsgRW52IH0gZnJvbSAnQC90eXBlcyc7XHJcblxyXG5jb25zdCBleHRyYSA9IENvbnN0YW50cy5leHBvQ29uZmlnPy5leHRyYSBhc1xyXG4gIHwge1xyXG4gICAgICBlbnY/OiBFbnY7XHJcbiAgICAgIGFwaVVybD86IHN0cmluZztcclxuICAgICAgc3VwYWJhc2VVcmw/OiBzdHJpbmc7XHJcbiAgICAgIHN1cGFiYXNlUHVibGlzaGFibGVLZXk/OiBzdHJpbmc7XHJcbiAgICB9XHJcbiAgfCB1bmRlZmluZWQ7XHJcblxyXG5jb25zdCBjb25maWcgPSB7XHJcbiAgZW52OiBleHRyYT8uZW52ID8/ICgnZGV2ZWxvcG1lbnQnIGFzIEVudiksXHJcbiAgYXBpVXJsOiBleHRyYT8uYXBpVXJsID8/ICcnLFxyXG4gIHN1cGFiYXNlVXJsOiBleHRyYT8uc3VwYWJhc2VVcmwgPz8gJycsXHJcbiAgc3VwYWJhc2VQdWJsaXNoYWJsZUtleTogZXh0cmE/LnN1cGFiYXNlUHVibGlzaGFibGVLZXkgPz8gJycsXHJcbn0gYXMgY29uc3Qgc2F0aXNmaWVzIHtcclxuICBlbnY6IEVudjtcclxuICBhcGlVcmw6IHN0cmluZztcclxuICBzdXBhYmFzZVVybDogc3RyaW5nO1xyXG4gIHN1cGFiYXNlUHVibGlzaGFibGVLZXk6IHN0cmluZztcclxufTtcclxuXHJcbmV4cG9ydCBkZWZhdWx0IGNvbmZpZztcclxuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxPQUFPQSxTQUFTLE1BQU0sZ0JBQWdCO0FBR3RDLElBQU1DLEtBQUssSUFBQUMsY0FBQSxHQUFBQyxDQUFBLFFBQUFDLHFCQUFBLEdBQUdKLFNBQVMsQ0FBQ0ssVUFBVSxxQkFBcEJELHFCQUFBLENBQXNCSCxLQUFLLENBTzVCO0FBRWIsSUFBTUssTUFBTSxJQUFBSixjQUFBLEdBQUFDLENBQUEsT0FBRztFQUNiSSxHQUFHLEdBQUFDLElBQUEsSUFBQU4sY0FBQSxHQUFBTyxDQUFBLFVBQUVSLEtBQUssb0JBQUxBLEtBQUssQ0FBRU0sR0FBRyxhQUFBQyxJQUFBLElBQUFOLGNBQUEsR0FBQU8sQ0FBQSxVQUFLLGFBQWEsQ0FBUTtFQUN6Q0MsTUFBTSxHQUFBQyxLQUFBLElBQUFULGNBQUEsR0FBQU8sQ0FBQSxVQUFFUixLQUFLLG9CQUFMQSxLQUFLLENBQUVTLE1BQU0sYUFBQUMsS0FBQSxJQUFBVCxjQUFBLEdBQUFPLENBQUEsVUFBSSxFQUFFO0VBQzNCRyxXQUFXLEdBQUFDLEtBQUEsSUFBQVgsY0FBQSxHQUFBTyxDQUFBLFVBQUVSLEtBQUssb0JBQUxBLEtBQUssQ0FBRVcsV0FBVyxhQUFBQyxLQUFBLElBQUFYLGNBQUEsR0FBQU8sQ0FBQSxVQUFJLEVBQUU7RUFDckNLLHNCQUFzQixHQUFBQyxLQUFBLElBQUFiLGNBQUEsR0FBQU8sQ0FBQSxVQUFFUixLQUFLLG9CQUFMQSxLQUFLLENBQUVhLHNCQUFzQixhQUFBQyxLQUFBLElBQUFiLGNBQUEsR0FBQU8sQ0FBQSxVQUFJLEVBQUU7QUFDN0QsQ0FBQyxDQUtBO0FBRUQsZUFBZUgsTUFBTSIsImlnbm9yZUxpc3QiOltdfQ==

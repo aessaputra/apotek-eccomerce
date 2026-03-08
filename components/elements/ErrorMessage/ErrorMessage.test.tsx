@@ -65,8 +65,6 @@ describe('<ErrorMessage />', () => {
 
   test('renders with icon', async () => {
     render(<ErrorMessage message="Error message" />);
-    // Icon should be present (FontAwesome5 exclamation-circle)
-    // Note: Icon rendering might need specific test setup
     const errorText = screen.getByText('Error message');
     expect(errorText).not.toBeNull();
   });

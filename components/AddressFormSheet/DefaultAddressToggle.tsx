@@ -1,9 +1,9 @@
 import { Pressable } from 'react-native';
 import { YStack, XStack, Text, Card, Checkbox, useTheme } from 'tamagui';
-import { AntDesign } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { getThemeColor } from '@/utils/theme';
 import { MIN_TOUCH_TARGET } from '@/constants/ui';
+import { CheckIcon } from '@/components/icons';
 
 export interface DefaultAddressToggleProps {
   /** Whether the address is set as default */
@@ -56,7 +56,7 @@ function DefaultAddressToggle({ isDefault, isSaving, onToggle }: DefaultAddressT
             borderWidth={isDefault ? 2 : 1.5}
             accessibilityLabel="Jadikan alamat default">
             <Checkbox.Indicator>
-              <AntDesign name="check" size={16} color={getThemeColor(theme, 'white')} />
+              <CheckIcon size={16} color={getThemeColor(theme, 'white')} />
             </Checkbox.Indicator>
           </Checkbox>
           <YStack flex={1} gap="$1">

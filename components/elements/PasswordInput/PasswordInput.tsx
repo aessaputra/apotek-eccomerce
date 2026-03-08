@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Pressable, TextInput } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { XStack, useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
+import { FORM_FIELD } from '@/constants/ui';
+import { EyeIcon, EyeOffIcon } from '@/components/icons';
 
 export interface PasswordInputProps {
   value: string;
@@ -46,13 +47,13 @@ function PasswordInput({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 18,
+        paddingHorizontal: FORM_FIELD.HORIZONTAL_PADDING,
         overflow: 'hidden',
         backgroundColor: surfaceColor,
-        borderWidth: isFocused ? 2 : 1.5,
-        borderRadius: 14,
+        borderWidth: isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH,
+        borderRadius: FORM_FIELD.BORDER_RADIUS,
         borderColor: borderColorValue,
-        height: 56,
+        height: FORM_FIELD.HEIGHT,
         opacity: disabled ? 0.6 : 1,
       }}>
       <TextInput
@@ -88,15 +89,18 @@ function PasswordInput({
       />
       <Pressable
         onPress={() => setIsVisible(!isVisible)}
-        style={{ padding: 4, marginLeft: 8 }}
+        style={{
+          padding: FORM_FIELD.ICON_BUTTON_PADDING,
+          marginLeft: FORM_FIELD.ICON_BUTTON_MARGIN_LEFT,
+        }}
         disabled={disabled}
         accessibilityLabel={isVisible ? 'Sembunyikan password' : 'Tampilkan password'}
         accessibilityRole="button">
-        <FontAwesome5
-          name={isVisible ? 'eye-slash' : 'eye'}
-          size={18}
-          color={getThemeColor(theme, 'colorPress')}
-        />
+        {isVisible ? (
+          <EyeOffIcon size={18} color={getThemeColor(theme, 'colorPress')} />
+        ) : (
+          <EyeIcon size={18} color={getThemeColor(theme, 'colorPress')} />
+        )}
       </Pressable>
     </XStack>
   );

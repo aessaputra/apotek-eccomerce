@@ -1,0 +1,133 @@
+f055764faccf1ad924b8be9fd08b8380
+function cov_83vx9iar2() {
+  var path = "C:\\dev\\pharma\\frontend\\scenes\\home\\Home.tsx";
+  var hash = "dbe91ef51a5cdbb46705f123cc0bf7fda078c2a3";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\scenes\\home\\Home.tsx",
+    statementMap: {
+      "0": {
+        start: {
+          line: 6,
+          column: 16
+        },
+        end: {
+          line: 6,
+          column: 26
+        }
+      },
+      "1": {
+        start: {
+          line: 7,
+          column: 22
+        },
+        end: {
+          line: 7,
+          column: 56
+        }
+      },
+      "2": {
+        start: {
+          line: 9,
+          column: 2
+        },
+        end: {
+          line: 26,
+          column: 4
+        }
+      }
+    },
+    fnMap: {
+      "0": {
+        name: "Home",
+        decl: {
+          start: {
+            line: 5,
+            column: 24
+          },
+          end: {
+            line: 5,
+            column: 28
+          }
+        },
+        loc: {
+          start: {
+            line: 5,
+            column: 31
+          },
+          end: {
+            line: 27,
+            column: 1
+          }
+        },
+        line: 5
+      }
+    },
+    branchMap: {},
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0
+    },
+    f: {
+      "0": 0
+    },
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "dbe91ef51a5cdbb46705f123cc0bf7fda078c2a3"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_83vx9iar2 = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_83vx9iar2();
+import { YStack, Text, useTheme } from 'tamagui';
+import { Ionicons } from '@expo/vector-icons';
+import { getThemeColor } from '@/utils/theme';
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export default function Home() {
+  cov_83vx9iar2().f[0]++;
+  var theme = (cov_83vx9iar2().s[0]++, useTheme());
+  var subtleColor = (cov_83vx9iar2().s[1]++, getThemeColor(theme, 'colorPress'));
+  cov_83vx9iar2().s[2]++;
+  return _jsx(YStack, {
+    flex: 1,
+    backgroundColor: "$background",
+    children: _jsxs(YStack, {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "$5",
+      gap: "$4",
+      children: [_jsx(Ionicons, {
+        name: "medical-outline",
+        size: 64,
+        color: subtleColor
+      }), _jsx(Text, {
+        fontSize: "$6",
+        fontWeight: "700",
+        color: "$color",
+        textAlign: "center",
+        fontFamily: "$heading",
+        children: "Selamat Datang"
+      }), _jsx(Text, {
+        fontSize: "$4",
+        color: "$colorPress",
+        textAlign: "center",
+        maxWidth: 300,
+        lineHeight: "$4",
+        children: "Produk dan layanan kesehatan akan segera hadir di sini."
+      })]
+    })
+  });
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJZU3RhY2siLCJUZXh0IiwidXNlVGhlbWUiLCJJb25pY29ucyIsImdldFRoZW1lQ29sb3IiLCJqc3giLCJfanN4IiwianN4cyIsIl9qc3hzIiwiSG9tZSIsImNvdl84M3Z4OWlhcjIiLCJmIiwidGhlbWUiLCJzIiwic3VidGxlQ29sb3IiLCJmbGV4IiwiYmFja2dyb3VuZENvbG9yIiwiY2hpbGRyZW4iLCJhbGlnbkl0ZW1zIiwianVzdGlmeUNvbnRlbnQiLCJwYWRkaW5nIiwiZ2FwIiwibmFtZSIsInNpemUiLCJjb2xvciIsImZvbnRTaXplIiwiZm9udFdlaWdodCIsInRleHRBbGlnbiIsImZvbnRGYW1pbHkiLCJtYXhXaWR0aCIsImxpbmVIZWlnaHQiXSwic291cmNlcyI6WyJIb21lLnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBZU3RhY2ssIFRleHQsIHVzZVRoZW1lIH0gZnJvbSAndGFtYWd1aSc7XHJcbmltcG9ydCB7IElvbmljb25zIH0gZnJvbSAnQGV4cG8vdmVjdG9yLWljb25zJztcclxuaW1wb3J0IHsgZ2V0VGhlbWVDb2xvciB9IGZyb20gJ0AvdXRpbHMvdGhlbWUnO1xyXG5cclxuZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gSG9tZSgpIHtcclxuICBjb25zdCB0aGVtZSA9IHVzZVRoZW1lKCk7XHJcbiAgY29uc3Qgc3VidGxlQ29sb3IgPSBnZXRUaGVtZUNvbG9yKHRoZW1lLCAnY29sb3JQcmVzcycpO1xyXG5cclxuICByZXR1cm4gKFxyXG4gICAgPFlTdGFjayBmbGV4PXsxfSBiYWNrZ3JvdW5kQ29sb3I9XCIkYmFja2dyb3VuZFwiPlxyXG4gICAgICA8WVN0YWNrIGZsZXg9ezF9IGFsaWduSXRlbXM9XCJjZW50ZXJcIiBqdXN0aWZ5Q29udGVudD1cImNlbnRlclwiIHBhZGRpbmc9XCIkNVwiIGdhcD1cIiQ0XCI+XHJcbiAgICAgICAgPElvbmljb25zIG5hbWU9XCJtZWRpY2FsLW91dGxpbmVcIiBzaXplPXs2NH0gY29sb3I9e3N1YnRsZUNvbG9yfSAvPlxyXG4gICAgICAgIDxUZXh0XHJcbiAgICAgICAgICBmb250U2l6ZT1cIiQ2XCJcclxuICAgICAgICAgIGZvbnRXZWlnaHQ9XCI3MDBcIlxyXG4gICAgICAgICAgY29sb3I9XCIkY29sb3JcIlxyXG4gICAgICAgICAgdGV4dEFsaWduPVwiY2VudGVyXCJcclxuICAgICAgICAgIGZvbnRGYW1pbHk9XCIkaGVhZGluZ1wiPlxyXG4gICAgICAgICAgU2VsYW1hdCBEYXRhbmdcclxuICAgICAgICA8L1RleHQ+XHJcbiAgICAgICAgPFRleHQgZm9udFNpemU9XCIkNFwiIGNvbG9yPVwiJGNvbG9yUHJlc3NcIiB0ZXh0QWxpZ249XCJjZW50ZXJcIiBtYXhXaWR0aD17MzAwfSBsaW5lSGVpZ2h0PVwiJDRcIj5cclxuICAgICAgICAgIFByb2R1ayBkYW4gbGF5YW5hbiBrZXNlaGF0YW4gYWthbiBzZWdlcmEgaGFkaXIgZGkgc2luaS5cclxuICAgICAgICA8L1RleHQ+XHJcbiAgICAgIDwvWVN0YWNrPlxyXG4gICAgPC9ZU3RhY2s+XHJcbiAgKTtcclxufVxyXG4iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxTQUFTQSxNQUFNLEVBQUVDLElBQUksRUFBRUMsUUFBUSxRQUFRLFNBQVM7QUFDaEQsU0FBU0MsUUFBUSxRQUFRLG9CQUFvQjtBQUM3QyxTQUFTQyxhQUFhLFFBQVEsZUFBZTtBQUFDLFNBQUFDLEdBQUEsSUFBQUMsSUFBQSxFQUFBQyxJQUFBLElBQUFDLEtBQUE7QUFFOUMsZUFBZSxTQUFTQyxJQUFJQSxDQUFBLEVBQUc7RUFBQUMsYUFBQSxHQUFBQyxDQUFBO0VBQzdCLElBQU1DLEtBQUssSUFBQUYsYUFBQSxHQUFBRyxDQUFBLE9BQUdYLFFBQVEsQ0FBQyxDQUFDO0VBQ3hCLElBQU1ZLFdBQVcsSUFBQUosYUFBQSxHQUFBRyxDQUFBLE9BQUdULGFBQWEsQ0FBQ1EsS0FBSyxFQUFFLFlBQVksQ0FBQztFQUFDRixhQUFBLEdBQUFHLENBQUE7RUFFdkQsT0FDRVAsSUFBQSxDQUFDTixNQUFNO0lBQUNlLElBQUksRUFBRSxDQUFFO0lBQUNDLGVBQWUsRUFBQyxhQUFhO0lBQUFDLFFBQUEsRUFDNUNULEtBQUEsQ0FBQ1IsTUFBTTtNQUFDZSxJQUFJLEVBQUUsQ0FBRTtNQUFDRyxVQUFVLEVBQUMsUUFBUTtNQUFDQyxjQUFjLEVBQUMsUUFBUTtNQUFDQyxPQUFPLEVBQUMsSUFBSTtNQUFDQyxHQUFHLEVBQUMsSUFBSTtNQUFBSixRQUFBLEdBQ2hGWCxJQUFBLENBQUNILFFBQVE7UUFBQ21CLElBQUksRUFBQyxpQkFBaUI7UUFBQ0MsSUFBSSxFQUFFLEVBQUc7UUFBQ0MsS0FBSyxFQUFFVjtNQUFZLENBQUUsQ0FBQyxFQUNqRVIsSUFBQSxDQUFDTCxJQUFJO1FBQ0h3QixRQUFRLEVBQUMsSUFBSTtRQUNiQyxVQUFVLEVBQUMsS0FBSztRQUNoQkYsS0FBSyxFQUFDLFFBQVE7UUFDZEcsU0FBUyxFQUFDLFFBQVE7UUFDbEJDLFVBQVUsRUFBQyxVQUFVO1FBQUFYLFFBQUEsRUFBQztNQUV4QixDQUFNLENBQUMsRUFDUFgsSUFBQSxDQUFDTCxJQUFJO1FBQUN3QixRQUFRLEVBQUMsSUFBSTtRQUFDRCxLQUFLLEVBQUMsYUFBYTtRQUFDRyxTQUFTLEVBQUMsUUFBUTtRQUFDRSxRQUFRLEVBQUUsR0FBSTtRQUFDQyxVQUFVLEVBQUMsSUFBSTtRQUFBYixRQUFBLEVBQUM7TUFFMUYsQ0FBTSxDQUFDO0lBQUEsQ0FDRDtFQUFDLENBQ0gsQ0FBQztBQUViIiwiaWdub3JlTGlzdCI6W119

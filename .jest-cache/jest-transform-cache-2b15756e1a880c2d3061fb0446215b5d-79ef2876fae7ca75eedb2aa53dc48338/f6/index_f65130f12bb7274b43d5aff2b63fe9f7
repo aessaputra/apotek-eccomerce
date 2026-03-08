@@ -1,0 +1,32 @@
+6d30603ae276588ca5fcec3864ebe80d
+function cov_237x9egan() {
+  var path = "C:\\dev\\pharma\\frontend\\components\\layouts\\BottomSheetContents\\index.ts";
+  var hash = "5fa11d367b68228106bde997c3282af5611ad3c8";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\components\\layouts\\BottomSheetContents\\index.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "5fa11d367b68228106bde997c3282af5611ad3c8"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_237x9egan = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_237x9egan();
+export { default } from './BottomSheetContents';
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJkZWZhdWx0Il0sInNvdXJjZXMiOlsiaW5kZXgudHMiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IHsgZGVmYXVsdCB9IGZyb20gJy4vQm90dG9tU2hlZXRDb250ZW50cyc7XHJcbiJdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxTQUFTQSxPQUFPLFFBQVEsdUJBQXVCIiwiaWdub3JlTGlzdCI6W119

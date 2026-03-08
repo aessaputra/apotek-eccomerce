@@ -8,7 +8,6 @@ import {
   Platform,
 } from 'react-native';
 import { YStack, XStack, Text, Card, Spinner, Checkbox, useTheme } from 'tamagui';
-import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -20,6 +19,7 @@ import { getAddress, createAddress, updateAddress } from '@/services/address.ser
 import type { AddressInsert } from '@/types/address';
 import { getThemeColor } from '@/utils/theme';
 import { MIN_TOUCH_TARGET, BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
+import { CheckIcon, MapPinIcon, UserIcon } from '@/components/icons';
 
 export default function AddressForm() {
   const router = useRouter();
@@ -310,7 +310,7 @@ export default function AddressForm() {
             elevation={0}>
             <YStack gap="$4">
               <XStack gap="$2" alignItems="center" marginBottom="$2">
-                <Ionicons name="person-outline" size={20} color={getThemeColor(theme, 'primary')} />
+                <UserIcon size={20} color={getThemeColor(theme, 'primary')} />
                 <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
                   Informasi Penerima
                 </Text>
@@ -374,11 +374,7 @@ export default function AddressForm() {
             elevation={0}>
             <YStack gap="$4">
               <XStack gap="$2" alignItems="center" marginBottom="$2">
-                <Ionicons
-                  name="location-outline"
-                  size={20}
-                  color={getThemeColor(theme, 'primary')}
-                />
+                <MapPinIcon size={20} color={getThemeColor(theme, 'primary')} />
                 <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
                   Alamat Pengiriman
                 </Text>
@@ -507,7 +503,7 @@ export default function AddressForm() {
                   borderWidth={isDefault ? 2 : 1.5}
                   accessibilityLabel="Jadikan alamat default">
                   <Checkbox.Indicator>
-                    <AntDesign name="check" size={16} color={getThemeColor(theme, 'white')} />
+                    <CheckIcon size={16} color={getThemeColor(theme, 'white')} />
                   </Checkbox.Indicator>
                 </Checkbox>
                 <YStack flex={1} gap="$1">

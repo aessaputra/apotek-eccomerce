@@ -1,17 +1,18 @@
 import { XStack, Text, useTheme } from 'tamagui';
-import { AntDesign } from '@expo/vector-icons';
 import HeaderCartIcon from '@/components/layouts/HeaderCartIcon';
 import { getThemeColor } from '@/utils/theme';
+import { SearchIcon } from '@/components/icons';
 
-export default function HeaderSearchAndCart() {
+export interface HeaderSearchAndCartProps {
+  onSearchPress?: () => void;
+}
+
+export default function HeaderSearchAndCart({ onSearchPress }: HeaderSearchAndCartProps) {
   const theme = useTheme();
-  // Use placeholderColor token — theme-aware, no manual dark/light branching
   const placeholderColor = getThemeColor(theme, 'placeholderColor');
   const searchBg = getThemeColor(theme, 'surfaceElevated');
 
-  function onSearchPress() {
-    // TODO: navigate to search screen when implemented
-  }
+  const handleSearchPress = onSearchPress ?? (() => undefined);
 
   return (
     <XStack width="100%" flexDirection="row" alignItems="center" gap={12}>
@@ -25,11 +26,11 @@ export default function HeaderSearchAndCart() {
         borderRadius={20}
         gap={8}
         backgroundColor={searchBg}
-        onPress={onSearchPress}
+        onPress={handleSearchPress}
         cursor="pointer"
         accessibilityRole="search"
         accessibilityLabel="Cari produk">
-        <AntDesign name="search" size={20} color={placeholderColor} />
+        <SearchIcon size={20} color={placeholderColor} />
         <Text fontSize={15} color={placeholderColor}>
           Cari produk...
         </Text>

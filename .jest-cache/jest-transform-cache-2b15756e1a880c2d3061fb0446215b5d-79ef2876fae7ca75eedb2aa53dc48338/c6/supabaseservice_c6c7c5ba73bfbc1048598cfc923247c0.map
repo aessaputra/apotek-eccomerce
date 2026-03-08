@@ -1,0 +1,1 @@
+{"version":3,"names":["supabase"],"sources":["supabase.service.ts"],"sourcesContent":["/**\r\n * Supabase client re-export for use via @/services.\r\n * Use supabase for Auth, Database, Storage, and Realtime.\r\n */\r\nexport { supabase } from '@/utils/supabase';\r\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAIA,SAASA,QAAQ,QAAQ,kBAAkB","ignoreList":[]}

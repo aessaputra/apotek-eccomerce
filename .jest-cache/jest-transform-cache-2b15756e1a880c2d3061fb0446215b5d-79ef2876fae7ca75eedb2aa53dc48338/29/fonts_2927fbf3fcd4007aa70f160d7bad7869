@@ -1,0 +1,117 @@
+e7bb58a6dd46feb00f46c83164e3ba7e
+function cov_1m589bdini() {
+  var path = "C:\\dev\\pharma\\frontend\\utils\\fonts.ts";
+  var hash = "182cd91adc3bcf45768b17b21ccaba722322679f";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\utils\\fonts.ts",
+    statementMap: {
+      "0": {
+        start: {
+          line: 3,
+          column: 21
+        },
+        end: {
+          line: 12,
+          column: 1
+        }
+      },
+      "1": {
+        start: {
+          line: 15,
+          column: 25
+        },
+        end: {
+          line: 23,
+          column: 4
+        }
+      },
+      "2": {
+        start: {
+          line: 16,
+          column: 2
+        },
+        end: {
+          line: 23,
+          column: 4
+        }
+      }
+    },
+    fnMap: {
+      "0": {
+        name: "(anonymous_0)",
+        decl: {
+          start: {
+            line: 15,
+            column: 25
+          },
+          end: {
+            line: 15,
+            column: 26
+          }
+        },
+        loc: {
+          start: {
+            line: 16,
+            column: 2
+          },
+          end: {
+            line: 23,
+            column: 4
+          }
+        },
+        line: 16
+      }
+    },
+    branchMap: {},
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0
+    },
+    f: {
+      "0": 0
+    },
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "182cd91adc3bcf45768b17b21ccaba722322679f"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_1m589bdini = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_1m589bdini();
+import { loadAsync } from 'expo-font';
+export var fonts = (cov_1m589bdini().s[0]++, {
+  poppins: {
+    regular: 'poppins_regular',
+    regularItalic: 'poppins_regular_italic',
+    semiBold: 'poppins_semiBold',
+    semiBoldItalic: 'poppins_semiBold_italic',
+    bold: 'poppins_bold',
+    boldItalic: 'poppins_bold_italic'
+  }
+});
+cov_1m589bdini().s[1]++;
+export var loadFonts = function loadFonts() {
+  cov_1m589bdini().f[0]++;
+  cov_1m589bdini().s[2]++;
+  return loadAsync({
+    poppins_regular: require('@/assets/fonts/Poppins-Regular.ttf'),
+    poppins_regular_italic: require('@/assets/fonts/Poppins-Italic.ttf'),
+    poppins_semiBold: require('@/assets/fonts/Poppins-SemiBold.ttf'),
+    poppins_semiBold_italic: require('@/assets/fonts/Poppins-SemiBoldItalic.ttf'),
+    poppins_bold: require('@/assets/fonts/Poppins-Bold.ttf'),
+    poppins_bold_italic: require('@/assets/fonts/Poppins-BoldItalic.ttf')
+  });
+};
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJsb2FkQXN5bmMiLCJmb250cyIsImNvdl8xbTU4OWJkaW5pIiwicyIsInBvcHBpbnMiLCJyZWd1bGFyIiwicmVndWxhckl0YWxpYyIsInNlbWlCb2xkIiwic2VtaUJvbGRJdGFsaWMiLCJib2xkIiwiYm9sZEl0YWxpYyIsImxvYWRGb250cyIsImYiLCJwb3BwaW5zX3JlZ3VsYXIiLCJyZXF1aXJlIiwicG9wcGluc19yZWd1bGFyX2l0YWxpYyIsInBvcHBpbnNfc2VtaUJvbGQiLCJwb3BwaW5zX3NlbWlCb2xkX2l0YWxpYyIsInBvcHBpbnNfYm9sZCIsInBvcHBpbnNfYm9sZF9pdGFsaWMiXSwic291cmNlcyI6WyJmb250cy50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBsb2FkQXN5bmMgfSBmcm9tICdleHBvLWZvbnQnO1xyXG5cclxuZXhwb3J0IGNvbnN0IGZvbnRzID0ge1xyXG4gIHBvcHBpbnM6IHtcclxuICAgIHJlZ3VsYXI6ICdwb3BwaW5zX3JlZ3VsYXInLFxyXG4gICAgcmVndWxhckl0YWxpYzogJ3BvcHBpbnNfcmVndWxhcl9pdGFsaWMnLFxyXG4gICAgc2VtaUJvbGQ6ICdwb3BwaW5zX3NlbWlCb2xkJyxcclxuICAgIHNlbWlCb2xkSXRhbGljOiAncG9wcGluc19zZW1pQm9sZF9pdGFsaWMnLFxyXG4gICAgYm9sZDogJ3BvcHBpbnNfYm9sZCcsXHJcbiAgICBib2xkSXRhbGljOiAncG9wcGluc19ib2xkX2l0YWxpYycsXHJcbiAgfSxcclxufTtcclxuXHJcbi8qKiBQcmVsb2FkIGZvbnQgYXNzZXRzIChQb3BwaW5zKS4gUGFuZ2dpbCBzYWF0IGFwcCBpbml0LCBtaXMuIGRpIHJvb3QgbGF5b3V0LiAqL1xyXG5leHBvcnQgY29uc3QgbG9hZEZvbnRzID0gKCkgPT5cclxuICBsb2FkQXN5bmMoe1xyXG4gICAgcG9wcGluc19yZWd1bGFyOiByZXF1aXJlKCdAL2Fzc2V0cy9mb250cy9Qb3BwaW5zLVJlZ3VsYXIudHRmJyksXHJcbiAgICBwb3BwaW5zX3JlZ3VsYXJfaXRhbGljOiByZXF1aXJlKCdAL2Fzc2V0cy9mb250cy9Qb3BwaW5zLUl0YWxpYy50dGYnKSxcclxuICAgIHBvcHBpbnNfc2VtaUJvbGQ6IHJlcXVpcmUoJ0AvYXNzZXRzL2ZvbnRzL1BvcHBpbnMtU2VtaUJvbGQudHRmJyksXHJcbiAgICBwb3BwaW5zX3NlbWlCb2xkX2l0YWxpYzogcmVxdWlyZSgnQC9hc3NldHMvZm9udHMvUG9wcGlucy1TZW1pQm9sZEl0YWxpYy50dGYnKSxcclxuICAgIHBvcHBpbnNfYm9sZDogcmVxdWlyZSgnQC9hc3NldHMvZm9udHMvUG9wcGlucy1Cb2xkLnR0ZicpLFxyXG4gICAgcG9wcGluc19ib2xkX2l0YWxpYzogcmVxdWlyZSgnQC9hc3NldHMvZm9udHMvUG9wcGlucy1Cb2xkSXRhbGljLnR0ZicpLFxyXG4gIH0pO1xyXG4iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxTQUFTQSxTQUFTLFFBQVEsV0FBVztBQUVyQyxPQUFPLElBQU1DLEtBQUssSUFBQUMsY0FBQSxHQUFBQyxDQUFBLE9BQUc7RUFDbkJDLE9BQU8sRUFBRTtJQUNQQyxPQUFPLEVBQUUsaUJBQWlCO0lBQzFCQyxhQUFhLEVBQUUsd0JBQXdCO0lBQ3ZDQyxRQUFRLEVBQUUsa0JBQWtCO0lBQzVCQyxjQUFjLEVBQUUseUJBQXlCO0lBQ3pDQyxJQUFJLEVBQUUsY0FBYztJQUNwQkMsVUFBVSxFQUFFO0VBQ2Q7QUFDRixDQUFDO0FBQUNSLGNBQUEsR0FBQUMsQ0FBQTtBQUdGLE9BQU8sSUFBTVEsU0FBUyxHQUFHLFNBQVpBLFNBQVNBLENBQUEsRUFDcEI7RUFBQVQsY0FBQSxHQUFBVSxDQUFBO0VBQUFWLGNBQUEsR0FBQUMsQ0FBQTtFQUFBLE9BQUFILFNBQVMsQ0FBQztJQUNSYSxlQUFlLEVBQUVDLE9BQU8sQ0FBQyxvQ0FBb0MsQ0FBQztJQUM5REMsc0JBQXNCLEVBQUVELE9BQU8sQ0FBQyxtQ0FBbUMsQ0FBQztJQUNwRUUsZ0JBQWdCLEVBQUVGLE9BQU8sQ0FBQyxxQ0FBcUMsQ0FBQztJQUNoRUcsdUJBQXVCLEVBQUVILE9BQU8sQ0FBQywyQ0FBMkMsQ0FBQztJQUM3RUksWUFBWSxFQUFFSixPQUFPLENBQUMsaUNBQWlDLENBQUM7SUFDeERLLG1CQUFtQixFQUFFTCxPQUFPLENBQUMsdUNBQXVDO0VBQ3RFLENBQUMsQ0FBQztBQUFELENBQUMiLCJpZ25vcmVMaXN0IjpbXX0=

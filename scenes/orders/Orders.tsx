@@ -1,6 +1,6 @@
 import { YStack, Text, useTheme } from 'tamagui';
-import { Ionicons } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
+import { PackageIcon } from '@/components/icons';
 
 export default function Orders() {
   const theme = useTheme();
@@ -14,7 +14,7 @@ export default function Orders() {
       backgroundColor="$background"
       padding="$5"
       gap="$4">
-      <Ionicons name="receipt-outline" size={64} color={subtleColor} />
+      <PackageIcon size={64} color={subtleColor} />
       <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center" fontFamily="$heading">
         Belum Ada Pesanan
       </Text>

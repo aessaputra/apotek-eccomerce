@@ -1,0 +1,30 @@
+9b239e7ac15719cddf888abd3558371d
+var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault").default;
+var _asyncToGenerator2 = _interopRequireDefault(require("@babel/runtime/helpers/asyncToGenerator"));
+var _react = _interopRequireDefault(require("react"));
+var _renderWithTheme = require("../../../test-utils/renderWithTheme");
+var _GradientButton = _interopRequireDefault(require("./GradientButton"));
+var _jsxRuntime = require("react/jsx-runtime");
+describe('<GradientButton />', function () {
+  it('renders correctly with a title and gradation colors', (0, _asyncToGenerator2.default)(function* () {
+    (0, _renderWithTheme.render)((0, _jsxRuntime.jsx)(_GradientButton.default, {
+      title: "Click Me",
+      gradientBackgroundProps: {
+        colors: ['blue', 'red'],
+        start: {
+          x: 0,
+          y: 1
+        },
+        end: {
+          x: 0.8,
+          y: 0
+        }
+      }
+    }));
+    yield (0, _renderWithTheme.waitFor)(function () {
+      var button = _renderWithTheme.screen.getByText(/Click Me/i);
+      expect(button).not.toBeNull();
+    });
+  }));
+});
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJfcmVhY3QiLCJfaW50ZXJvcFJlcXVpcmVEZWZhdWx0IiwicmVxdWlyZSIsIl9yZW5kZXJXaXRoVGhlbWUiLCJfR3JhZGllbnRCdXR0b24iLCJfanN4UnVudGltZSIsImRlc2NyaWJlIiwiaXQiLCJfYXN5bmNUb0dlbmVyYXRvcjIiLCJkZWZhdWx0IiwicmVuZGVyIiwianN4IiwidGl0bGUiLCJncmFkaWVudEJhY2tncm91bmRQcm9wcyIsImNvbG9ycyIsInN0YXJ0IiwieCIsInkiLCJlbmQiLCJ3YWl0Rm9yIiwiYnV0dG9uIiwic2NyZWVuIiwiZ2V0QnlUZXh0IiwiZXhwZWN0Iiwibm90IiwidG9CZU51bGwiXSwic291cmNlcyI6WyJHcmFkaWVudEJ1dHRvbi50ZXN0LnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgUmVhY3QgZnJvbSAncmVhY3QnO1xyXG5pbXBvcnQgeyByZW5kZXIsIHNjcmVlbiwgd2FpdEZvciB9IGZyb20gJy4uLy4uLy4uL3Rlc3QtdXRpbHMvcmVuZGVyV2l0aFRoZW1lJztcclxuaW1wb3J0IEdyYWRpZW50QnV0dG9uIGZyb20gJy4vR3JhZGllbnRCdXR0b24nO1xyXG5cclxuZGVzY3JpYmUoJzxHcmFkaWVudEJ1dHRvbiAvPicsICgpID0+IHtcclxuICBpdCgncmVuZGVycyBjb3JyZWN0bHkgd2l0aCBhIHRpdGxlIGFuZCBncmFkYXRpb24gY29sb3JzJywgYXN5bmMgKCkgPT4ge1xyXG4gICAgcmVuZGVyKFxyXG4gICAgICA8R3JhZGllbnRCdXR0b25cclxuICAgICAgICB0aXRsZT1cIkNsaWNrIE1lXCJcclxuICAgICAgICBncmFkaWVudEJhY2tncm91bmRQcm9wcz17e1xyXG4gICAgICAgICAgY29sb3JzOiBbJ2JsdWUnLCAncmVkJ10sXHJcbiAgICAgICAgICBzdGFydDogeyB4OiAwLCB5OiAxIH0sXHJcbiAgICAgICAgICBlbmQ6IHsgeDogMC44LCB5OiAwIH0sXHJcbiAgICAgICAgfX1cclxuICAgICAgLz4sXHJcbiAgICApO1xyXG5cclxuICAgIGF3YWl0IHdhaXRGb3IoKCkgPT4ge1xyXG4gICAgICBjb25zdCBidXR0b24gPSBzY3JlZW4uZ2V0QnlUZXh0KC9DbGljayBNZS9pKTtcclxuICAgICAgZXhwZWN0KGJ1dHRvbikubm90LnRvQmVOdWxsKCk7XHJcbiAgICB9KTtcclxuICB9KTtcclxufSk7XHJcbiJdLCJtYXBwaW5ncyI6Ijs7QUFBQSxJQUFBQSxNQUFBLEdBQUFDLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBQyxnQkFBQSxHQUFBRCxPQUFBO0FBQ0EsSUFBQUUsZUFBQSxHQUFBSCxzQkFBQSxDQUFBQyxPQUFBO0FBQThDLElBQUFHLFdBQUEsR0FBQUgsT0FBQTtBQUU5Q0ksUUFBUSxDQUFDLG9CQUFvQixFQUFFLFlBQU07RUFDbkNDLEVBQUUsQ0FBQyxxREFBcUQsTUFBQUMsa0JBQUEsQ0FBQUMsT0FBQSxFQUFFLGFBQVk7SUFDcEUsSUFBQUMsdUJBQU0sRUFDSixJQUFBTCxXQUFBLENBQUFNLEdBQUEsRUFBQ1AsZUFBQSxDQUFBSyxPQUFjO01BQ2JHLEtBQUssRUFBQyxVQUFVO01BQ2hCQyx1QkFBdUIsRUFBRTtRQUN2QkMsTUFBTSxFQUFFLENBQUMsTUFBTSxFQUFFLEtBQUssQ0FBQztRQUN2QkMsS0FBSyxFQUFFO1VBQUVDLENBQUMsRUFBRSxDQUFDO1VBQUVDLENBQUMsRUFBRTtRQUFFLENBQUM7UUFDckJDLEdBQUcsRUFBRTtVQUFFRixDQUFDLEVBQUUsR0FBRztVQUFFQyxDQUFDLEVBQUU7UUFBRTtNQUN0QjtJQUFFLENBQ0gsQ0FDSCxDQUFDO0lBRUQsTUFBTSxJQUFBRSx3QkFBTyxFQUFDLFlBQU07TUFDbEIsSUFBTUMsTUFBTSxHQUFHQyx1QkFBTSxDQUFDQyxTQUFTLENBQUMsV0FBVyxDQUFDO01BQzVDQyxNQUFNLENBQUNILE1BQU0sQ0FBQyxDQUFDSSxHQUFHLENBQUNDLFFBQVEsQ0FBQyxDQUFDO0lBQy9CLENBQUMsQ0FBQztFQUNKLENBQUMsRUFBQztBQUNKLENBQUMsQ0FBQyIsImlnbm9yZUxpc3QiOltdfQ==
