@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TextInput } from 'react-native';
 import { XStack, useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
+import { FORM_FIELD } from '@/constants/ui';
 
 export interface EmailInputProps {
   value: string;
@@ -59,13 +60,13 @@ function EmailInput({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 18,
+        paddingHorizontal: FORM_FIELD.HORIZONTAL_PADDING,
         overflow: 'hidden',
         backgroundColor: surfaceColor,
-        borderWidth: isFocused ? 2 : 1.5,
-        borderRadius: 14,
+        borderWidth: isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH,
+        borderRadius: FORM_FIELD.BORDER_RADIUS,
         borderColor: borderColorValue,
-        height: 56,
+        height: FORM_FIELD.HEIGHT,
         opacity: disabled ? 0.6 : 1,
       }}>
       <TextInput

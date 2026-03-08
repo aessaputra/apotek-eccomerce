@@ -1,8 +1,9 @@
 import { forwardRef, useState } from 'react';
 import { TextInput as RNTextInput, TextInputProps as RNTextInputProps } from 'react-native';
 import { XStack, YStack, Text, useTheme } from 'tamagui';
-import { Ionicons } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
+import { FORM_FIELD } from '@/constants/ui';
+import { XCircleIcon } from '@/components/icons';
 
 export interface FormInputProps extends Omit<RNTextInputProps, 'style'> {
   /** Label untuk input field */
@@ -90,7 +91,9 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
         ? getThemeColor(theme, 'primary')
         : getThemeColor(theme, 'borderColor');
 
-    const inputHeight = multiline ? minHeight || 100 : 56;
+    const inputHeight = multiline
+      ? minHeight || FORM_FIELD.MULTILINE_MIN_HEIGHT
+      : FORM_FIELD.HEIGHT;
     const textAlignVertical = multiline ? 'top' : 'center';
 
     return (
@@ -106,12 +109,13 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
           style={{
             flexDirection: 'row',
             alignItems: multiline ? 'flex-start' : 'center',
-            paddingHorizontal: 18,
+            paddingHorizontal: FORM_FIELD.HORIZONTAL_PADDING,
             paddingVertical: multiline ? 16 : 0,
             overflow: 'hidden',
             backgroundColor: surfaceColor,
-            borderWidth: error ? 2 : isFocused ? 2 : 1.5,
-            borderRadius: 14,
+            borderWidth:
+              error || isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH,
+            borderRadius: FORM_FIELD.BORDER_RADIUS,
             borderColor: borderColorValue,
             height: multiline ? undefined : inputHeight,
             minHeight: multiline ? inputHeight : undefined,
@@ -159,7 +163,7 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
 
         {error && (
           <XStack gap="$1" alignItems="center" marginTop="$1">
-            <Ionicons name="close-circle" size={14} color={getThemeColor(theme, 'danger')} />
+            <XCircleIcon size={14} color={getThemeColor(theme, 'danger')} />
             <Text fontSize="$2" color="$danger">
               {error}
             </Text>

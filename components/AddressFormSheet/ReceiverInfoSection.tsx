@@ -1,9 +1,9 @@
 import { forwardRef } from 'react';
 import type { TextInput as RNTextInput } from 'react-native';
 import { YStack, XStack, Text, Card, useTheme } from 'tamagui';
-import { Ionicons } from '@expo/vector-icons';
 import FormInput from '@/components/elements/FormInput';
 import { getThemeColor } from '@/utils/theme';
+import { UserIcon } from '@/components/icons';
 
 export interface ReceiverInfoSectionProps {
   /** Receiver name value */
@@ -67,7 +67,7 @@ const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
         elevation={0}>
         <YStack gap="$4">
           <XStack gap="$2" alignItems="center" marginBottom="$2">
-            <Ionicons name="person-outline" size={20} color={getThemeColor(theme, 'primary')} />
+            <UserIcon size={20} color={getThemeColor(theme, 'primary')} />
             <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
               Informasi Penerima
             </Text>

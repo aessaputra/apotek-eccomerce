@@ -1,10 +1,11 @@
 import { Pressable } from 'react-native';
-import { useCallback } from 'react';
+import { type ComponentType, useCallback } from 'react';
 import { YStack, XStack, Text, Card, useTheme } from 'tamagui';
-import { AntDesign } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { getThemeColor } from '@/utils/theme';
 import type { Address } from '@/types/address';
+import { ICON_SIZES, MIN_TOUCH_TARGET } from '@/constants/ui';
+import { DeleteIcon, EditIcon, StarIcon, type IconProps } from '@/components/icons';
 
 export interface AddressCardProps {
   address: Address;
@@ -14,6 +15,40 @@ export interface AddressCardProps {
   onDelete?: () => void;
   onSetDefault?: () => void;
   showActions?: boolean;
+}
+
+interface ActionIconButtonProps {
+  onPress: () => void;
+  icon: ComponentType<IconProps>;
+  iconColor: string;
+  accessibilityLabel: string;
+  accessibilityHint: string;
+}
+
+const ACTION_BUTTON_STYLE = {
+  minWidth: MIN_TOUCH_TARGET,
+  minHeight: MIN_TOUCH_TARGET,
+  justifyContent: 'center' as const,
+  alignItems: 'center' as const,
+};
+
+function ActionIconButton({
+  onPress,
+  icon: Icon,
+  iconColor,
+  accessibilityLabel,
+  accessibilityHint,
+}: ActionIconButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={ACTION_BUTTON_STYLE}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}>
+      <Icon size={ICON_SIZES.BUTTON} color={iconColor} />
+    </Pressable>
+  );
 }
 
 /**
@@ -34,15 +69,14 @@ export default function AddressCard({
   const colorPress = getThemeColor(theme, 'colorPress');
   const dangerColor = getThemeColor(theme, 'danger');
 
-  const formatAddress = () => {
-    const parts = [
-      address.street_address,
-      address.city,
-      address.province,
-      address.postal_code,
-    ].filter(Boolean);
-    return parts.join(', ');
-  };
+  const formattedAddress = [
+    address.street_address,
+    address.city,
+    address.province,
+    address.postal_code,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   const handleSetDefaultPress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -104,49 +138,31 @@ export default function AddressCard({
             {showActions && (
               <XStack gap="$2">
                 {!isDefault && onSetDefault && (
-                  <Pressable
+                  <ActionIconButton
                     onPress={handleSetDefaultPress}
-                    style={{
-                      minWidth: 44,
-                      minHeight: 44,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                    accessibilityRole="button"
+                    icon={StarIcon}
+                    iconColor={primaryColor}
                     accessibilityLabel="Jadikan alamat default"
-                    accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default">
-                    <AntDesign name="star" size={24} color={primaryColor} />
-                  </Pressable>
+                    accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default"
+                  />
                 )}
                 {onEdit && (
-                  <Pressable
+                  <ActionIconButton
                     onPress={handleEditPress}
-                    style={{
-                      minWidth: 44,
-                      minHeight: 44,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                    accessibilityRole="button"
+                    icon={EditIcon}
+                    iconColor={colorPress}
                     accessibilityLabel="Edit alamat"
-                    accessibilityHint="Mengedit alamat pengiriman">
-                    <AntDesign name="edit" size={24} color={colorPress} />
-                  </Pressable>
+                    accessibilityHint="Mengedit alamat pengiriman"
+                  />
                 )}
                 {onDelete && (
-                  <Pressable
+                  <ActionIconButton
                     onPress={handleDeletePress}
-                    style={{
-                      minWidth: 44,
-                      minHeight: 44,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                    accessibilityRole="button"
+                    icon={DeleteIcon}
+                    iconColor={dangerColor}
                     accessibilityLabel="Hapus alamat"
-                    accessibilityHint="Menghapus alamat pengiriman ini">
-                    <AntDesign name="delete" size={24} color={dangerColor} />
-                  </Pressable>
+                    accessibilityHint="Menghapus alamat pengiriman ini"
+                  />
                 )}
               </XStack>
             )}
@@ -154,7 +170,7 @@ export default function AddressCard({
 
           {/* Alamat lengkap */}
           <Text fontSize="$3" color="$color" lineHeight="$4">
-            {formatAddress()}
+            {formattedAddress}
           </Text>
         </YStack>
       </Card>

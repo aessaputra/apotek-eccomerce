@@ -1,6 +1,6 @@
 import { YStack, Text, useTheme } from 'tamagui';
-import { Ionicons } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
+import { CartIcon } from '@/components/icons';
 
 export default function Cart() {
   const theme = useTheme();
@@ -14,7 +14,7 @@ export default function Cart() {
       backgroundColor="$background"
       padding="$5"
       gap="$4">
-      <Ionicons name="cart-outline" size={64} color={subtleColor} />
+      <CartIcon size={64} color={subtleColor} />
       <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center" fontFamily="$heading">
         Keranjang Kosong
       </Text>

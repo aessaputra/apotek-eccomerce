@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react';
 import { XStack, Text, GetProps, Spinner, useMedia } from 'tamagui';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { GoogleIcon } from '@/components/icons';
 
 export interface OAuthButtonProps extends Omit<GetProps<typeof XStack>, 'onPress'> {
   provider: 'google';
@@ -74,7 +74,7 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
             height={24}
             minWidth={24}
             maxWidth={24}>
-            <FontAwesome5 name="google" size={20} color={GOOGLE_BLUE} />
+            <GoogleIcon size={20} color={GOOGLE_BLUE} />
           </XStack>
           <Text fontSize={16} fontWeight="600" color="$color">
             {label}

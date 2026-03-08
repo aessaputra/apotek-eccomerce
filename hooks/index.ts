@@ -1,4 +1,3 @@
-export { default as useColorScheme } from './useColorScheme';
 export * from './useDataPersist';
 
 export { useAddressForm } from './useAddressForm';

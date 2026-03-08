@@ -1,7 +1,7 @@
 import { Link, Stack } from 'expo-router';
 import { YStack, Text, useTheme } from 'tamagui';
-import { Ionicons } from '@expo/vector-icons';
 import { getThemeColor } from '@/utils/theme';
+import { AlertCircleIcon } from '@/components/icons';
 
 export default function NotFoundScreen() {
   const theme = useTheme();
@@ -17,7 +17,7 @@ export default function NotFoundScreen() {
       gap="$4">
       <Stack.Screen options={{ title: 'Oops!' }} />
 
-      <Ionicons name="alert-circle-outline" size={64} color={getThemeColor(theme, 'colorPress')} />
+      <AlertCircleIcon size={64} color={getThemeColor(theme, 'colorPress')} />
 
       <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading" ta="center">
         Halaman Tidak Ditemukan

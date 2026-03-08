@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { YStack, Text, useTheme } from 'tamagui';
 import GradientButton from '@/components/elements/GradientButton';
 import { useRouter } from 'expo-router';
@@ -7,6 +8,10 @@ import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 export default function Details() {
   const router = useRouter();
   const theme = useTheme();
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
   return (
     <YStack
       flex={1}
@@ -30,7 +35,7 @@ export default function Details() {
           start: { x: 0, y: 1 },
           end: { x: 0.8, y: 0 },
         }}
-        onPress={() => router.back()}
+        onPress={handleBack}
       />
     </YStack>
   );
