@@ -1,0 +1,33 @@
+e85e6926573e9e6b2aed1e010cf70384
+function cov_xn2f9jpxv() {
+  var path = "C:\\dev\\pharma\\frontend\\components\\elements\\GradientButton\\index.ts";
+  var hash = "1bc1e6e366241e1b8561c7455e8b2abe170da37e";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\components\\elements\\GradientButton\\index.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "1bc1e6e366241e1b8561c7455e8b2abe170da37e"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_xn2f9jpxv = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_xn2f9jpxv();
+export * from './GradientButton';
+export { default } from './GradientButton';
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJkZWZhdWx0Il0sInNvdXJjZXMiOlsiaW5kZXgudHMiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0ICogZnJvbSAnLi9HcmFkaWVudEJ1dHRvbic7XHJcbmV4cG9ydCB7IGRlZmF1bHQgfSBmcm9tICcuL0dyYWRpZW50QnV0dG9uJztcclxuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQUFBLGNBQWMsa0JBQWtCO0FBQ2hDLFNBQVNBLE9BQU8sUUFBUSxrQkFBa0IiLCJpZ25vcmVMaXN0IjpbXX0=

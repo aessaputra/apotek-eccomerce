@@ -1,0 +1,130 @@
+9a2b49e1fb336531b7d0d4850077cfac
+function cov_17sjlxl8u7() {
+  var path = "C:\\dev\\pharma\\frontend\\scenes\\orders\\Orders.tsx";
+  var hash = "0166849b4c6fb2ba081388ebd9efd8dd5e35c519";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\scenes\\orders\\Orders.tsx",
+    statementMap: {
+      "0": {
+        start: {
+          line: 6,
+          column: 16
+        },
+        end: {
+          line: 6,
+          column: 26
+        }
+      },
+      "1": {
+        start: {
+          line: 7,
+          column: 22
+        },
+        end: {
+          line: 7,
+          column: 56
+        }
+      },
+      "2": {
+        start: {
+          line: 9,
+          column: 2
+        },
+        end: {
+          line: 25,
+          column: 4
+        }
+      }
+    },
+    fnMap: {
+      "0": {
+        name: "Orders",
+        decl: {
+          start: {
+            line: 5,
+            column: 24
+          },
+          end: {
+            line: 5,
+            column: 30
+          }
+        },
+        loc: {
+          start: {
+            line: 5,
+            column: 33
+          },
+          end: {
+            line: 26,
+            column: 1
+          }
+        },
+        line: 5
+      }
+    },
+    branchMap: {},
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0
+    },
+    f: {
+      "0": 0
+    },
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "0166849b4c6fb2ba081388ebd9efd8dd5e35c519"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_17sjlxl8u7 = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_17sjlxl8u7();
+import { YStack, Text, useTheme } from 'tamagui';
+import { Ionicons } from '@expo/vector-icons';
+import { getThemeColor } from '@/utils/theme';
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export default function Orders() {
+  cov_17sjlxl8u7().f[0]++;
+  var theme = (cov_17sjlxl8u7().s[0]++, useTheme());
+  var subtleColor = (cov_17sjlxl8u7().s[1]++, getThemeColor(theme, 'colorPress'));
+  cov_17sjlxl8u7().s[2]++;
+  return _jsxs(YStack, {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "$background",
+    padding: "$5",
+    gap: "$4",
+    children: [_jsx(Ionicons, {
+      name: "receipt-outline",
+      size: 64,
+      color: subtleColor
+    }), _jsx(Text, {
+      fontSize: "$6",
+      fontWeight: "700",
+      color: "$color",
+      textAlign: "center",
+      fontFamily: "$heading",
+      children: "Belum Ada Pesanan"
+    }), _jsx(Text, {
+      fontSize: "$4",
+      color: "$colorPress",
+      textAlign: "center",
+      maxWidth: 300,
+      lineHeight: "$4",
+      children: "Pesanan Anda akan muncul di sini setelah melakukan pembelian."
+    })]
+  });
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJZU3RhY2siLCJUZXh0IiwidXNlVGhlbWUiLCJJb25pY29ucyIsImdldFRoZW1lQ29sb3IiLCJqc3giLCJfanN4IiwianN4cyIsIl9qc3hzIiwiT3JkZXJzIiwiY292XzE3c2pseGw4dTciLCJmIiwidGhlbWUiLCJzIiwic3VidGxlQ29sb3IiLCJmbGV4IiwiYWxpZ25JdGVtcyIsImp1c3RpZnlDb250ZW50IiwiYmFja2dyb3VuZENvbG9yIiwicGFkZGluZyIsImdhcCIsImNoaWxkcmVuIiwibmFtZSIsInNpemUiLCJjb2xvciIsImZvbnRTaXplIiwiZm9udFdlaWdodCIsInRleHRBbGlnbiIsImZvbnRGYW1pbHkiLCJtYXhXaWR0aCIsImxpbmVIZWlnaHQiXSwic291cmNlcyI6WyJPcmRlcnMudHN4Il0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IFlTdGFjaywgVGV4dCwgdXNlVGhlbWUgfSBmcm9tICd0YW1hZ3VpJztcclxuaW1wb3J0IHsgSW9uaWNvbnMgfSBmcm9tICdAZXhwby92ZWN0b3ItaWNvbnMnO1xyXG5pbXBvcnQgeyBnZXRUaGVtZUNvbG9yIH0gZnJvbSAnQC91dGlscy90aGVtZSc7XHJcblxyXG5leHBvcnQgZGVmYXVsdCBmdW5jdGlvbiBPcmRlcnMoKSB7XHJcbiAgY29uc3QgdGhlbWUgPSB1c2VUaGVtZSgpO1xyXG4gIGNvbnN0IHN1YnRsZUNvbG9yID0gZ2V0VGhlbWVDb2xvcih0aGVtZSwgJ2NvbG9yUHJlc3MnKTtcclxuXHJcbiAgcmV0dXJuIChcclxuICAgIDxZU3RhY2tcclxuICAgICAgZmxleD17MX1cclxuICAgICAgYWxpZ25JdGVtcz1cImNlbnRlclwiXHJcbiAgICAgIGp1c3RpZnlDb250ZW50PVwiY2VudGVyXCJcclxuICAgICAgYmFja2dyb3VuZENvbG9yPVwiJGJhY2tncm91bmRcIlxyXG4gICAgICBwYWRkaW5nPVwiJDVcIlxyXG4gICAgICBnYXA9XCIkNFwiPlxyXG4gICAgICA8SW9uaWNvbnMgbmFtZT1cInJlY2VpcHQtb3V0bGluZVwiIHNpemU9ezY0fSBjb2xvcj17c3VidGxlQ29sb3J9IC8+XHJcbiAgICAgIDxUZXh0IGZvbnRTaXplPVwiJDZcIiBmb250V2VpZ2h0PVwiNzAwXCIgY29sb3I9XCIkY29sb3JcIiB0ZXh0QWxpZ249XCJjZW50ZXJcIiBmb250RmFtaWx5PVwiJGhlYWRpbmdcIj5cclxuICAgICAgICBCZWx1bSBBZGEgUGVzYW5hblxyXG4gICAgICA8L1RleHQ+XHJcbiAgICAgIDxUZXh0IGZvbnRTaXplPVwiJDRcIiBjb2xvcj1cIiRjb2xvclByZXNzXCIgdGV4dEFsaWduPVwiY2VudGVyXCIgbWF4V2lkdGg9ezMwMH0gbGluZUhlaWdodD1cIiQ0XCI+XHJcbiAgICAgICAgUGVzYW5hbiBBbmRhIGFrYW4gbXVuY3VsIGRpIHNpbmkgc2V0ZWxhaCBtZWxha3VrYW4gcGVtYmVsaWFuLlxyXG4gICAgICA8L1RleHQ+XHJcbiAgICA8L1lTdGFjaz5cclxuICApO1xyXG59XHJcbiJdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQUFBLFNBQVNBLE1BQU0sRUFBRUMsSUFBSSxFQUFFQyxRQUFRLFFBQVEsU0FBUztBQUNoRCxTQUFTQyxRQUFRLFFBQVEsb0JBQW9CO0FBQzdDLFNBQVNDLGFBQWEsUUFBUSxlQUFlO0FBQUMsU0FBQUMsR0FBQSxJQUFBQyxJQUFBLEVBQUFDLElBQUEsSUFBQUMsS0FBQTtBQUU5QyxlQUFlLFNBQVNDLE1BQU1BLENBQUEsRUFBRztFQUFBQyxjQUFBLEdBQUFDLENBQUE7RUFDL0IsSUFBTUMsS0FBSyxJQUFBRixjQUFBLEdBQUFHLENBQUEsT0FBR1gsUUFBUSxDQUFDLENBQUM7RUFDeEIsSUFBTVksV0FBVyxJQUFBSixjQUFBLEdBQUFHLENBQUEsT0FBR1QsYUFBYSxDQUFDUSxLQUFLLEVBQUUsWUFBWSxDQUFDO0VBQUNGLGNBQUEsR0FBQUcsQ0FBQTtFQUV2RCxPQUNFTCxLQUFBLENBQUNSLE1BQU07SUFDTGUsSUFBSSxFQUFFLENBQUU7SUFDUkMsVUFBVSxFQUFDLFFBQVE7SUFDbkJDLGNBQWMsRUFBQyxRQUFRO0lBQ3ZCQyxlQUFlLEVBQUMsYUFBYTtJQUM3QkMsT0FBTyxFQUFDLElBQUk7SUFDWkMsR0FBRyxFQUFDLElBQUk7SUFBQUMsUUFBQSxHQUNSZixJQUFBLENBQUNILFFBQVE7TUFBQ21CLElBQUksRUFBQyxpQkFBaUI7TUFBQ0MsSUFBSSxFQUFFLEVBQUc7TUFBQ0MsS0FBSyxFQUFFVjtJQUFZLENBQUUsQ0FBQyxFQUNqRVIsSUFBQSxDQUFDTCxJQUFJO01BQUN3QixRQUFRLEVBQUMsSUFBSTtNQUFDQyxVQUFVLEVBQUMsS0FBSztNQUFDRixLQUFLLEVBQUMsUUFBUTtNQUFDRyxTQUFTLEVBQUMsUUFBUTtNQUFDQyxVQUFVLEVBQUMsVUFBVTtNQUFBUCxRQUFBLEVBQUM7SUFFN0YsQ0FBTSxDQUFDLEVBQ1BmLElBQUEsQ0FBQ0wsSUFBSTtNQUFDd0IsUUFBUSxFQUFDLElBQUk7TUFBQ0QsS0FBSyxFQUFDLGFBQWE7TUFBQ0csU0FBUyxFQUFDLFFBQVE7TUFBQ0UsUUFBUSxFQUFFLEdBQUk7TUFBQ0MsVUFBVSxFQUFDLElBQUk7TUFBQVQsUUFBQSxFQUFDO0lBRTFGLENBQU0sQ0FBQztFQUFBLENBQ0QsQ0FBQztBQUViIiwiaWdub3JlTGlzdCI6W119

@@ -1,0 +1,37 @@
+733287b2ed2be4e4dd06a73cb142363f
+_getJestObj().mock('./src/RNGestureHandlerModule', function () {
+  return require('./src/mocks/mocks');
+});
+_getJestObj().mock('./src/components/GestureButtons', function () {
+  return require('./src/mocks/mocks');
+});
+_getJestObj().mock('./src/components/Pressable/Pressable', function () {
+  return require('./src/mocks/Pressable');
+});
+_getJestObj().mock('./lib/commonjs/RNGestureHandlerModule', function () {
+  return require('./lib/commonjs/mocks/mocks');
+});
+_getJestObj().mock('./lib/commonjs/components/GestureButtons', function () {
+  return require('./lib/commonjs/mocks/mocks');
+});
+_getJestObj().mock('./lib/commonjs/components/Pressable', function () {
+  return require('./lib/commonjs/mocks/Pressable');
+});
+_getJestObj().mock('./lib/module/RNGestureHandlerModule', function () {
+  return require('./lib/module/mocks/mocks');
+});
+_getJestObj().mock('./lib/module/components/GestureButtons', function () {
+  return require('./lib/module/mocks/mocks');
+});
+_getJestObj().mock('./lib/module/components/Pressable', function () {
+  return require('./lib/module/mocks/Pressable');
+});
+function _getJestObj() {
+  var _require = require("@jest/globals"),
+    jest = _require.jest;
+  _getJestObj = function _getJestObj() {
+    return jest;
+  };
+  return jest;
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJfZ2V0SmVzdE9iaiIsIm1vY2siLCJyZXF1aXJlIiwiX3JlcXVpcmUiLCJqZXN0Il0sInNvdXJjZXMiOlsiamVzdFNldHVwLmpzIl0sInNvdXJjZXNDb250ZW50IjpbImplc3QubW9jaygnLi9zcmMvUk5HZXN0dXJlSGFuZGxlck1vZHVsZScsICgpID0+IHJlcXVpcmUoJy4vc3JjL21vY2tzL21vY2tzJykpO1xuamVzdC5tb2NrKCcuL3NyYy9jb21wb25lbnRzL0dlc3R1cmVCdXR0b25zJywgKCkgPT4gcmVxdWlyZSgnLi9zcmMvbW9ja3MvbW9ja3MnKSk7XG5qZXN0Lm1vY2soJy4vc3JjL2NvbXBvbmVudHMvUHJlc3NhYmxlL1ByZXNzYWJsZScsICgpID0+IHJlcXVpcmUoJy4vc3JjL21vY2tzL1ByZXNzYWJsZScpKTtcblxuXG5qZXN0Lm1vY2soJy4vbGliL2NvbW1vbmpzL1JOR2VzdHVyZUhhbmRsZXJNb2R1bGUnLCAoKSA9PlxuICByZXF1aXJlKCcuL2xpYi9jb21tb25qcy9tb2Nrcy9tb2NrcycpXG4pO1xuamVzdC5tb2NrKCcuL2xpYi9jb21tb25qcy9jb21wb25lbnRzL0dlc3R1cmVCdXR0b25zJywgKCkgPT5cbiAgcmVxdWlyZSgnLi9saWIvY29tbW9uanMvbW9ja3MvbW9ja3MnKVxuKTtcbmplc3QubW9jaygnLi9saWIvY29tbW9uanMvY29tcG9uZW50cy9QcmVzc2FibGUnLCAoKSA9PlxuICByZXF1aXJlKCcuL2xpYi9jb21tb25qcy9tb2Nrcy9QcmVzc2FibGUnKVxuKTtcblxuXG5qZXN0Lm1vY2soJy4vbGliL21vZHVsZS9STkdlc3R1cmVIYW5kbGVyTW9kdWxlJywgKCkgPT5cbiAgcmVxdWlyZSgnLi9saWIvbW9kdWxlL21vY2tzL21vY2tzJylcbik7XG5qZXN0Lm1vY2soJy4vbGliL21vZHVsZS9jb21wb25lbnRzL0dlc3R1cmVCdXR0b25zJywgKCkgPT5cbiAgcmVxdWlyZSgnLi9saWIvbW9kdWxlL21vY2tzL21vY2tzJylcbik7XG5qZXN0Lm1vY2soJy4vbGliL21vZHVsZS9jb21wb25lbnRzL1ByZXNzYWJsZScsICgpID0+XG4gIHJlcXVpcmUoJy4vbGliL21vZHVsZS9tb2Nrcy9QcmVzc2FibGUnKVxuKTtcblxuIl0sIm1hcHBpbmdzIjoiQUFBQUEsV0FBQSxHQUFLQyxJQUFJLENBQUMsOEJBQThCLEVBQUU7RUFBQSxPQUFNQyxPQUFPLENBQUMsbUJBQW1CLENBQUM7QUFBQSxFQUFDO0FBQzdFRixXQUFBLEdBQUtDLElBQUksQ0FBQyxpQ0FBaUMsRUFBRTtFQUFBLE9BQU1DLE9BQU8sQ0FBQyxtQkFBbUIsQ0FBQztBQUFBLEVBQUM7QUFDaEZGLFdBQUEsR0FBS0MsSUFBSSxDQUFDLHNDQUFzQyxFQUFFO0VBQUEsT0FBTUMsT0FBTyxDQUFDLHVCQUF1QixDQUFDO0FBQUEsRUFBQztBQUd6RkYsV0FBQSxHQUFLQyxJQUFJLENBQUMsdUNBQXVDLEVBQUU7RUFBQSxPQUNqREMsT0FBTyxDQUFDLDRCQUE0QixDQUFDO0FBQUEsQ0FDdkMsQ0FBQztBQUNERixXQUFBLEdBQUtDLElBQUksQ0FBQywwQ0FBMEMsRUFBRTtFQUFBLE9BQ3BEQyxPQUFPLENBQUMsNEJBQTRCLENBQUM7QUFBQSxDQUN2QyxDQUFDO0FBQ0RGLFdBQUEsR0FBS0MsSUFBSSxDQUFDLHFDQUFxQyxFQUFFO0VBQUEsT0FDL0NDLE9BQU8sQ0FBQyxnQ0FBZ0MsQ0FBQztBQUFBLENBQzNDLENBQUM7QUFHREYsV0FBQSxHQUFLQyxJQUFJLENBQUMscUNBQXFDLEVBQUU7RUFBQSxPQUMvQ0MsT0FBTyxDQUFDLDBCQUEwQixDQUFDO0FBQUEsQ0FDckMsQ0FBQztBQUNERixXQUFBLEdBQUtDLElBQUksQ0FBQyx3Q0FBd0MsRUFBRTtFQUFBLE9BQ2xEQyxPQUFPLENBQUMsMEJBQTBCLENBQUM7QUFBQSxDQUNyQyxDQUFDO0FBQ0RGLFdBQUEsR0FBS0MsSUFBSSxDQUFDLG1DQUFtQyxFQUFFO0VBQUEsT0FDN0NDLE9BQU8sQ0FBQyw4QkFBOEIsQ0FBQztBQUFBLENBQ3pDLENBQUM7QUFBQyxTQUFBRixZQUFBO0VBQUEsSUFBQUcsUUFBQSxHQUFBRCxPQUFBO0lBQUFFLElBQUEsR0FBQUQsUUFBQSxDQUFBQyxJQUFBO0VBQUFKLFdBQUEsWUFBQUEsWUFBQTtJQUFBLE9BQUFJLElBQUE7RUFBQTtFQUFBLE9BQUFBLElBQUE7QUFBQSIsImlnbm9yZUxpc3QiOltdfQ==

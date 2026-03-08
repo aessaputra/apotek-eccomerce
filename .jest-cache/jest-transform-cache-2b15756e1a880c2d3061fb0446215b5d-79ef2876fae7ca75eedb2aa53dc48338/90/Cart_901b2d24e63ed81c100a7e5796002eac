@@ -1,0 +1,130 @@
+c026efb6bac09381f87b0cc6ff49e8d7
+function cov_ib5t6la6b() {
+  var path = "C:\\dev\\pharma\\frontend\\scenes\\cart\\Cart.tsx";
+  var hash = "2843d17648d67be766c55e4e4cb398416b44f76c";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\scenes\\cart\\Cart.tsx",
+    statementMap: {
+      "0": {
+        start: {
+          line: 6,
+          column: 16
+        },
+        end: {
+          line: 6,
+          column: 26
+        }
+      },
+      "1": {
+        start: {
+          line: 7,
+          column: 22
+        },
+        end: {
+          line: 7,
+          column: 56
+        }
+      },
+      "2": {
+        start: {
+          line: 9,
+          column: 2
+        },
+        end: {
+          line: 25,
+          column: 4
+        }
+      }
+    },
+    fnMap: {
+      "0": {
+        name: "Cart",
+        decl: {
+          start: {
+            line: 5,
+            column: 24
+          },
+          end: {
+            line: 5,
+            column: 28
+          }
+        },
+        loc: {
+          start: {
+            line: 5,
+            column: 31
+          },
+          end: {
+            line: 26,
+            column: 1
+          }
+        },
+        line: 5
+      }
+    },
+    branchMap: {},
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0
+    },
+    f: {
+      "0": 0
+    },
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "2843d17648d67be766c55e4e4cb398416b44f76c"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_ib5t6la6b = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_ib5t6la6b();
+import { YStack, Text, useTheme } from 'tamagui';
+import { Ionicons } from '@expo/vector-icons';
+import { getThemeColor } from '@/utils/theme';
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export default function Cart() {
+  cov_ib5t6la6b().f[0]++;
+  var theme = (cov_ib5t6la6b().s[0]++, useTheme());
+  var subtleColor = (cov_ib5t6la6b().s[1]++, getThemeColor(theme, 'colorPress'));
+  cov_ib5t6la6b().s[2]++;
+  return _jsxs(YStack, {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "$background",
+    padding: "$5",
+    gap: "$4",
+    children: [_jsx(Ionicons, {
+      name: "cart-outline",
+      size: 64,
+      color: subtleColor
+    }), _jsx(Text, {
+      fontSize: "$6",
+      fontWeight: "700",
+      color: "$color",
+      textAlign: "center",
+      fontFamily: "$heading",
+      children: "Keranjang Kosong"
+    }), _jsx(Text, {
+      fontSize: "$4",
+      color: "$colorPress",
+      textAlign: "center",
+      maxWidth: 300,
+      lineHeight: "$4",
+      children: "Produk yang Anda tambahkan akan muncul di sini."
+    })]
+  });
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJZU3RhY2siLCJUZXh0IiwidXNlVGhlbWUiLCJJb25pY29ucyIsImdldFRoZW1lQ29sb3IiLCJqc3giLCJfanN4IiwianN4cyIsIl9qc3hzIiwiQ2FydCIsImNvdl9pYjV0NmxhNmIiLCJmIiwidGhlbWUiLCJzIiwic3VidGxlQ29sb3IiLCJmbGV4IiwiYWxpZ25JdGVtcyIsImp1c3RpZnlDb250ZW50IiwiYmFja2dyb3VuZENvbG9yIiwicGFkZGluZyIsImdhcCIsImNoaWxkcmVuIiwibmFtZSIsInNpemUiLCJjb2xvciIsImZvbnRTaXplIiwiZm9udFdlaWdodCIsInRleHRBbGlnbiIsImZvbnRGYW1pbHkiLCJtYXhXaWR0aCIsImxpbmVIZWlnaHQiXSwic291cmNlcyI6WyJDYXJ0LnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBZU3RhY2ssIFRleHQsIHVzZVRoZW1lIH0gZnJvbSAndGFtYWd1aSc7XHJcbmltcG9ydCB7IElvbmljb25zIH0gZnJvbSAnQGV4cG8vdmVjdG9yLWljb25zJztcclxuaW1wb3J0IHsgZ2V0VGhlbWVDb2xvciB9IGZyb20gJ0AvdXRpbHMvdGhlbWUnO1xyXG5cclxuZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gQ2FydCgpIHtcclxuICBjb25zdCB0aGVtZSA9IHVzZVRoZW1lKCk7XHJcbiAgY29uc3Qgc3VidGxlQ29sb3IgPSBnZXRUaGVtZUNvbG9yKHRoZW1lLCAnY29sb3JQcmVzcycpO1xyXG5cclxuICByZXR1cm4gKFxyXG4gICAgPFlTdGFja1xyXG4gICAgICBmbGV4PXsxfVxyXG4gICAgICBhbGlnbkl0ZW1zPVwiY2VudGVyXCJcclxuICAgICAganVzdGlmeUNvbnRlbnQ9XCJjZW50ZXJcIlxyXG4gICAgICBiYWNrZ3JvdW5kQ29sb3I9XCIkYmFja2dyb3VuZFwiXHJcbiAgICAgIHBhZGRpbmc9XCIkNVwiXHJcbiAgICAgIGdhcD1cIiQ0XCI+XHJcbiAgICAgIDxJb25pY29ucyBuYW1lPVwiY2FydC1vdXRsaW5lXCIgc2l6ZT17NjR9IGNvbG9yPXtzdWJ0bGVDb2xvcn0gLz5cclxuICAgICAgPFRleHQgZm9udFNpemU9XCIkNlwiIGZvbnRXZWlnaHQ9XCI3MDBcIiBjb2xvcj1cIiRjb2xvclwiIHRleHRBbGlnbj1cImNlbnRlclwiIGZvbnRGYW1pbHk9XCIkaGVhZGluZ1wiPlxyXG4gICAgICAgIEtlcmFuamFuZyBLb3NvbmdcclxuICAgICAgPC9UZXh0PlxyXG4gICAgICA8VGV4dCBmb250U2l6ZT1cIiQ0XCIgY29sb3I9XCIkY29sb3JQcmVzc1wiIHRleHRBbGlnbj1cImNlbnRlclwiIG1heFdpZHRoPXszMDB9IGxpbmVIZWlnaHQ9XCIkNFwiPlxyXG4gICAgICAgIFByb2R1ayB5YW5nIEFuZGEgdGFtYmFoa2FuIGFrYW4gbXVuY3VsIGRpIHNpbmkuXHJcbiAgICAgIDwvVGV4dD5cclxuICAgIDwvWVN0YWNrPlxyXG4gICk7XHJcbn1cclxuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBQUEsU0FBU0EsTUFBTSxFQUFFQyxJQUFJLEVBQUVDLFFBQVEsUUFBUSxTQUFTO0FBQ2hELFNBQVNDLFFBQVEsUUFBUSxvQkFBb0I7QUFDN0MsU0FBU0MsYUFBYSxRQUFRLGVBQWU7QUFBQyxTQUFBQyxHQUFBLElBQUFDLElBQUEsRUFBQUMsSUFBQSxJQUFBQyxLQUFBO0FBRTlDLGVBQWUsU0FBU0MsSUFBSUEsQ0FBQSxFQUFHO0VBQUFDLGFBQUEsR0FBQUMsQ0FBQTtFQUM3QixJQUFNQyxLQUFLLElBQUFGLGFBQUEsR0FBQUcsQ0FBQSxPQUFHWCxRQUFRLENBQUMsQ0FBQztFQUN4QixJQUFNWSxXQUFXLElBQUFKLGFBQUEsR0FBQUcsQ0FBQSxPQUFHVCxhQUFhLENBQUNRLEtBQUssRUFBRSxZQUFZLENBQUM7RUFBQ0YsYUFBQSxHQUFBRyxDQUFBO0VBRXZELE9BQ0VMLEtBQUEsQ0FBQ1IsTUFBTTtJQUNMZSxJQUFJLEVBQUUsQ0FBRTtJQUNSQyxVQUFVLEVBQUMsUUFBUTtJQUNuQkMsY0FBYyxFQUFDLFFBQVE7SUFDdkJDLGVBQWUsRUFBQyxhQUFhO0lBQzdCQyxPQUFPLEVBQUMsSUFBSTtJQUNaQyxHQUFHLEVBQUMsSUFBSTtJQUFBQyxRQUFBLEdBQ1JmLElBQUEsQ0FBQ0gsUUFBUTtNQUFDbUIsSUFBSSxFQUFDLGNBQWM7TUFBQ0MsSUFBSSxFQUFFLEVBQUc7TUFBQ0MsS0FBSyxFQUFFVjtJQUFZLENBQUUsQ0FBQyxFQUM5RFIsSUFBQSxDQUFDTCxJQUFJO01BQUN3QixRQUFRLEVBQUMsSUFBSTtNQUFDQyxVQUFVLEVBQUMsS0FBSztNQUFDRixLQUFLLEVBQUMsUUFBUTtNQUFDRyxTQUFTLEVBQUMsUUFBUTtNQUFDQyxVQUFVLEVBQUMsVUFBVTtNQUFBUCxRQUFBLEVBQUM7SUFFN0YsQ0FBTSxDQUFDLEVBQ1BmLElBQUEsQ0FBQ0wsSUFBSTtNQUFDd0IsUUFBUSxFQUFDLElBQUk7TUFBQ0QsS0FBSyxFQUFDLGFBQWE7TUFBQ0csU0FBUyxFQUFDLFFBQVE7TUFBQ0UsUUFBUSxFQUFFLEdBQUk7TUFBQ0MsVUFBVSxFQUFDLElBQUk7TUFBQVQsUUFBQSxFQUFDO0lBRTFGLENBQU0sQ0FBQztFQUFBLENBQ0QsQ0FBQztBQUViIiwiaWdub3JlTGlzdCI6W119

@@ -1,0 +1,1 @@
+{"version":3,"names":["default","Login","SignUp"],"sources":["index.ts"],"sourcesContent":["export { default as Login } from './Login';\r\nexport { default as SignUp } from './SignUp';\r\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA,SAASA,OAAO,IAAIC,KAAK,QAAQ,SAAS;AAC1C,SAASD,OAAO,IAAIE,MAAM,QAAQ,UAAU","ignoreList":[]}

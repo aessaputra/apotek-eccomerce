@@ -1,0 +1,401 @@
+ec7c808d0711371ac75e604293595d09
+import _asyncToGenerator from "@babel/runtime/helpers/asyncToGenerator";
+function cov_1yv0k4imwt() {
+  var path = "C:\\dev\\pharma\\frontend\\hooks\\useDataPersist.ts";
+  var hash = "372d4210d1ad5dddd9c7584ed9c9742fee19be0a";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\hooks\\useDataPersist.ts",
+    statementMap: {
+      "0": {
+        start: {
+          line: 16,
+          column: 21
+        },
+        end: {
+          line: 16,
+          column: 41
+        }
+      },
+      "1": {
+        start: {
+          line: 17,
+          column: 4
+        },
+        end: {
+          line: 17,
+          column: 46
+        }
+      },
+      "2": {
+        start: {
+          line: 18,
+          column: 4
+        },
+        end: {
+          line: 18,
+          column: 16
+        }
+      },
+      "3": {
+        start: {
+          line: 27,
+          column: 16
+        },
+        end: {
+          line: 27,
+          column: 47
+        }
+      },
+      "4": {
+        start: {
+          line: 28,
+          column: 4
+        },
+        end: {
+          line: 28,
+          column: 45
+        }
+      },
+      "5": {
+        start: {
+          line: 37,
+          column: 4
+        },
+        end: {
+          line: 37,
+          column: 39
+        }
+      },
+      "6": {
+        start: {
+          line: 38,
+          column: 4
+        },
+        end: {
+          line: 38,
+          column: 16
+        }
+      },
+      "7": {
+        start: {
+          line: 46,
+          column: 4
+        },
+        end: {
+          line: 46,
+          column: 100
+        }
+      },
+      "8": {
+        start: {
+          line: 46,
+          column: 67
+        },
+        end: {
+          line: 46,
+          column: 97
+        }
+      },
+      "9": {
+        start: {
+          line: 49,
+          column: 2
+        },
+        end: {
+          line: 49,
+          column: 85
+        }
+      }
+    },
+    fnMap: {
+      "0": {
+        name: "useDataPersist",
+        decl: {
+          start: {
+            line: 8,
+            column: 16
+          },
+          end: {
+            line: 8,
+            column: 30
+          }
+        },
+        loc: {
+          start: {
+            line: 8,
+            column: 33
+          },
+          end: {
+            line: 50,
+            column: 1
+          }
+        },
+        line: 8
+      },
+      "1": {
+        name: "setPersistData",
+        decl: {
+          start: {
+            line: 15,
+            column: 17
+          },
+          end: {
+            line: 15,
+            column: 31
+          }
+        },
+        loc: {
+          start: {
+            line: 15,
+            column: 84
+          },
+          end: {
+            line: 19,
+            column: 3
+          }
+        },
+        line: 15
+      },
+      "2": {
+        name: "getPersistData",
+        decl: {
+          start: {
+            line: 26,
+            column: 17
+          },
+          end: {
+            line: 26,
+            column: 31
+          }
+        },
+        loc: {
+          start: {
+            line: 26,
+            column: 81
+          },
+          end: {
+            line: 29,
+            column: 3
+          }
+        },
+        line: 26
+      },
+      "3": {
+        name: "removePersistData",
+        decl: {
+          start: {
+            line: 36,
+            column: 17
+          },
+          end: {
+            line: 36,
+            column: 34
+          }
+        },
+        loc: {
+          start: {
+            line: 36,
+            column: 75
+          },
+          end: {
+            line: 39,
+            column: 3
+          }
+        },
+        line: 36
+      },
+      "4": {
+        name: "removeAllPersistData",
+        decl: {
+          start: {
+            line: 45,
+            column: 17
+          },
+          end: {
+            line: 45,
+            column: 37
+          }
+        },
+        loc: {
+          start: {
+            line: 45,
+            column: 40
+          },
+          end: {
+            line: 47,
+            column: 3
+          }
+        },
+        line: 45
+      },
+      "5": {
+        name: "(anonymous_5)",
+        decl: {
+          start: {
+            line: 46,
+            column: 58
+          },
+          end: {
+            line: 46,
+            column: 59
+          }
+        },
+        loc: {
+          start: {
+            line: 46,
+            column: 67
+          },
+          end: {
+            line: 46,
+            column: 97
+          }
+        },
+        line: 46
+      }
+    },
+    branchMap: {
+      "0": {
+        loc: {
+          start: {
+            line: 28,
+            column: 11
+          },
+          end: {
+            line: 28,
+            column: 44
+          }
+        },
+        type: "cond-expr",
+        locations: [{
+          start: {
+            line: 28,
+            column: 17
+          },
+          end: {
+            line: 28,
+            column: 32
+          }
+        }, {
+          start: {
+            line: 28,
+            column: 35
+          },
+          end: {
+            line: 28,
+            column: 44
+          }
+        }],
+        line: 28
+      }
+    },
+    s: {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0
+    },
+    f: {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0
+    },
+    b: {
+      "0": [0, 0]
+    },
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "372d4210d1ad5dddd9c7584ed9c9742fee19be0a"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_1yv0k4imwt = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_1yv0k4imwt();
+import AsyncStorage from '@react-native-async-storage/async-storage';
+export var DataPersistKeys = function (DataPersistKeys) {
+  DataPersistKeys["USER"] = "USER";
+  return DataPersistKeys;
+}({});
+export function useDataPersist() {
+  cov_1yv0k4imwt().f[0]++;
+  function setPersistData(_x, _x2) {
+    return _setPersistData.apply(this, arguments);
+  }
+  function _setPersistData() {
+    _setPersistData = _asyncToGenerator(function* (key, data) {
+      cov_1yv0k4imwt().f[1]++;
+      var jsonData = (cov_1yv0k4imwt().s[0]++, JSON.stringify(data));
+      cov_1yv0k4imwt().s[1]++;
+      yield AsyncStorage.setItem(key, jsonData);
+      cov_1yv0k4imwt().s[2]++;
+      return true;
+    });
+    return _setPersistData.apply(this, arguments);
+  }
+  function getPersistData(_x3) {
+    return _getPersistData.apply(this, arguments);
+  }
+  function _getPersistData() {
+    _getPersistData = _asyncToGenerator(function* (key) {
+      cov_1yv0k4imwt().f[2]++;
+      var res = (cov_1yv0k4imwt().s[3]++, yield AsyncStorage.getItem(key));
+      cov_1yv0k4imwt().s[4]++;
+      return res ? (cov_1yv0k4imwt().b[0][0]++, JSON.parse(res)) : (cov_1yv0k4imwt().b[0][1]++, undefined);
+    });
+    return _getPersistData.apply(this, arguments);
+  }
+  function removePersistData(_x4) {
+    return _removePersistData.apply(this, arguments);
+  }
+  function _removePersistData() {
+    _removePersistData = _asyncToGenerator(function* (key) {
+      cov_1yv0k4imwt().f[3]++;
+      cov_1yv0k4imwt().s[5]++;
+      yield AsyncStorage.removeItem(key);
+      cov_1yv0k4imwt().s[6]++;
+      return true;
+    });
+    return _removePersistData.apply(this, arguments);
+  }
+  function removeAllPersistData() {
+    return _removeAllPersistData.apply(this, arguments);
+  }
+  function _removeAllPersistData() {
+    _removeAllPersistData = _asyncToGenerator(function* () {
+      cov_1yv0k4imwt().f[4]++;
+      cov_1yv0k4imwt().s[7]++;
+      return Promise.all(Object.values(DataPersistKeys).map(function (value) {
+        cov_1yv0k4imwt().f[5]++;
+        cov_1yv0k4imwt().s[8]++;
+        return AsyncStorage.removeItem(value);
+      }));
+    });
+    return _removeAllPersistData.apply(this, arguments);
+  }
+  cov_1yv0k4imwt().s[9]++;
+  return {
+    setPersistData: setPersistData,
+    getPersistData: getPersistData,
+    removePersistData: removePersistData,
+    removeAllPersistData: removeAllPersistData
+  };
+}
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJBc3luY1N0b3JhZ2UiLCJEYXRhUGVyc2lzdEtleXMiLCJ1c2VEYXRhUGVyc2lzdCIsImNvdl8xeXYwazRpbXd0IiwiZiIsInNldFBlcnNpc3REYXRhIiwiX3giLCJfeDIiLCJfc2V0UGVyc2lzdERhdGEiLCJhcHBseSIsImFyZ3VtZW50cyIsIl9hc3luY1RvR2VuZXJhdG9yIiwia2V5IiwiZGF0YSIsImpzb25EYXRhIiwicyIsIkpTT04iLCJzdHJpbmdpZnkiLCJzZXRJdGVtIiwiZ2V0UGVyc2lzdERhdGEiLCJfeDMiLCJfZ2V0UGVyc2lzdERhdGEiLCJyZXMiLCJnZXRJdGVtIiwiYiIsInBhcnNlIiwidW5kZWZpbmVkIiwicmVtb3ZlUGVyc2lzdERhdGEiLCJfeDQiLCJfcmVtb3ZlUGVyc2lzdERhdGEiLCJyZW1vdmVJdGVtIiwicmVtb3ZlQWxsUGVyc2lzdERhdGEiLCJfcmVtb3ZlQWxsUGVyc2lzdERhdGEiLCJQcm9taXNlIiwiYWxsIiwiT2JqZWN0IiwidmFsdWVzIiwibWFwIiwidmFsdWUiXSwic291cmNlcyI6WyJ1c2VEYXRhUGVyc2lzdC50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgQXN5bmNTdG9yYWdlIGZyb20gJ0ByZWFjdC1uYXRpdmUtYXN5bmMtc3RvcmFnZS9hc3luYy1zdG9yYWdlJztcclxuXHJcbmV4cG9ydCBlbnVtIERhdGFQZXJzaXN0S2V5cyB7XHJcbiAgVVNFUiA9ICdVU0VSJyxcclxuICAvLyBhZGQgbW9yZSBrZXlzIGhlcmVcclxufVxyXG5cclxuZXhwb3J0IGZ1bmN0aW9uIHVzZURhdGFQZXJzaXN0KCkge1xyXG4gIC8qKlxyXG4gICAqIHNldCBwZXJzaXN0ZW50IGRhdGFcclxuICAgKiBAcGFyYW0ga2V5XHJcbiAgICogQHBhcmFtIGRhdGFcclxuICAgKiBAcmV0dXJuc1xyXG4gICAqL1xyXG4gIGFzeW5jIGZ1bmN0aW9uIHNldFBlcnNpc3REYXRhPFQ+KGtleTogRGF0YVBlcnNpc3RLZXlzLCBkYXRhOiBUKTogUHJvbWlzZTxib29sZWFuPiB7XHJcbiAgICBjb25zdCBqc29uRGF0YSA9IEpTT04uc3RyaW5naWZ5KGRhdGEpO1xyXG4gICAgYXdhaXQgQXN5bmNTdG9yYWdlLnNldEl0ZW0oa2V5LCBqc29uRGF0YSk7XHJcbiAgICByZXR1cm4gdHJ1ZTtcclxuICB9XHJcblxyXG4gIC8qKlxyXG4gICAqIGdldCBwZXJzaXN0ZW50IGRhdGFcclxuICAgKiBAcGFyYW0ga2V5XHJcbiAgICogQHJldHVybnNcclxuICAgKi9cclxuICBhc3luYyBmdW5jdGlvbiBnZXRQZXJzaXN0RGF0YTxUPihrZXk6IERhdGFQZXJzaXN0S2V5cyk6IFByb21pc2U8VCB8IHVuZGVmaW5lZD4ge1xyXG4gICAgY29uc3QgcmVzID0gYXdhaXQgQXN5bmNTdG9yYWdlLmdldEl0ZW0oa2V5KTtcclxuICAgIHJldHVybiByZXMgPyBKU09OLnBhcnNlKHJlcykgOiB1bmRlZmluZWQ7XHJcbiAgfVxyXG5cclxuICAvKipcclxuICAgKiByZW1vdmUgcGVyc2lzdGVudCBkYXRhIGJ5IGtleVxyXG4gICAqIEBwYXJhbSBrZXlcclxuICAgKiBAcmV0dXJuc1xyXG4gICAqL1xyXG4gIGFzeW5jIGZ1bmN0aW9uIHJlbW92ZVBlcnNpc3REYXRhKGtleTogRGF0YVBlcnNpc3RLZXlzKTogUHJvbWlzZTxib29sZWFuPiB7XHJcbiAgICBhd2FpdCBBc3luY1N0b3JhZ2UucmVtb3ZlSXRlbShrZXkpO1xyXG4gICAgcmV0dXJuIHRydWU7XHJcbiAgfVxyXG5cclxuICAvKipcclxuICAgKiByZW1vdmUgYWxsIHBlcnNpc3RlbnQgZGF0YVxyXG4gICAqIEByZXR1cm5zXHJcbiAgICovXHJcbiAgYXN5bmMgZnVuY3Rpb24gcmVtb3ZlQWxsUGVyc2lzdERhdGEoKSB7XHJcbiAgICByZXR1cm4gUHJvbWlzZS5hbGwoT2JqZWN0LnZhbHVlcyhEYXRhUGVyc2lzdEtleXMpLm1hcCh2YWx1ZSA9PiBBc3luY1N0b3JhZ2UucmVtb3ZlSXRlbSh2YWx1ZSkpKTtcclxuICB9XHJcblxyXG4gIHJldHVybiB7IHNldFBlcnNpc3REYXRhLCBnZXRQZXJzaXN0RGF0YSwgcmVtb3ZlUGVyc2lzdERhdGEsIHJlbW92ZUFsbFBlcnNpc3REYXRhIH07XHJcbn1cclxuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxPQUFPQSxZQUFZLE1BQU0sMkNBQTJDO0FBRXBFLFdBQVlDLGVBQWUsYUFBZkEsZUFBZTtFQUFmQSxlQUFlO0VBQUEsT0FBZkEsZUFBZTtBQUFBO0FBSzNCLE9BQU8sU0FBU0MsY0FBY0EsQ0FBQSxFQUFHO0VBQUFDLGNBQUEsR0FBQUMsQ0FBQTtFQUFBLFNBT2hCQyxjQUFjQSxDQUFBQyxFQUFBLEVBQUFDLEdBQUE7SUFBQSxPQUFBQyxlQUFBLENBQUFDLEtBQUEsT0FBQUMsU0FBQTtFQUFBO0VBQUEsU0FBQUYsZ0JBQUE7SUFBQUEsZUFBQSxHQUFBRyxpQkFBQSxDQUE3QixXQUFpQ0MsR0FBb0IsRUFBRUMsSUFBTyxFQUFvQjtNQUFBVixjQUFBLEdBQUFDLENBQUE7TUFDaEYsSUFBTVUsUUFBUSxJQUFBWCxjQUFBLEdBQUFZLENBQUEsT0FBR0MsSUFBSSxDQUFDQyxTQUFTLENBQUNKLElBQUksQ0FBQztNQUFDVixjQUFBLEdBQUFZLENBQUE7TUFDdEMsTUFBTWYsWUFBWSxDQUFDa0IsT0FBTyxDQUFDTixHQUFHLEVBQUVFLFFBQVEsQ0FBQztNQUFDWCxjQUFBLEdBQUFZLENBQUE7TUFDMUMsT0FBTyxJQUFJO0lBQ2IsQ0FBQztJQUFBLE9BQUFQLGVBQUEsQ0FBQUMsS0FBQSxPQUFBQyxTQUFBO0VBQUE7RUFBQSxTQU9jUyxjQUFjQSxDQUFBQyxHQUFBO0lBQUEsT0FBQUMsZUFBQSxDQUFBWixLQUFBLE9BQUFDLFNBQUE7RUFBQTtFQUFBLFNBQUFXLGdCQUFBO0lBQUFBLGVBQUEsR0FBQVYsaUJBQUEsQ0FBN0IsV0FBaUNDLEdBQW9CLEVBQTBCO01BQUFULGNBQUEsR0FBQUMsQ0FBQTtNQUM3RSxJQUFNa0IsR0FBRyxJQUFBbkIsY0FBQSxHQUFBWSxDQUFBLGFBQVNmLFlBQVksQ0FBQ3VCLE9BQU8sQ0FBQ1gsR0FBRyxDQUFDO01BQUNULGNBQUEsR0FBQVksQ0FBQTtNQUM1QyxPQUFPTyxHQUFHLElBQUFuQixjQUFBLEdBQUFxQixDQUFBLFVBQUdSLElBQUksQ0FBQ1MsS0FBSyxDQUFDSCxHQUFHLENBQUMsS0FBQW5CLGNBQUEsR0FBQXFCLENBQUEsVUFBR0UsU0FBUztJQUMxQyxDQUFDO0lBQUEsT0FBQUwsZUFBQSxDQUFBWixLQUFBLE9BQUFDLFNBQUE7RUFBQTtFQUFBLFNBT2NpQixpQkFBaUJBLENBQUFDLEdBQUE7SUFBQSxPQUFBQyxrQkFBQSxDQUFBcEIsS0FBQSxPQUFBQyxTQUFBO0VBQUE7RUFBQSxTQUFBbUIsbUJBQUE7SUFBQUEsa0JBQUEsR0FBQWxCLGlCQUFBLENBQWhDLFdBQWlDQyxHQUFvQixFQUFvQjtNQUFBVCxjQUFBLEdBQUFDLENBQUE7TUFBQUQsY0FBQSxHQUFBWSxDQUFBO01BQ3ZFLE1BQU1mLFlBQVksQ0FBQzhCLFVBQVUsQ0FBQ2xCLEdBQUcsQ0FBQztNQUFDVCxjQUFBLEdBQUFZLENBQUE7TUFDbkMsT0FBTyxJQUFJO0lBQ2IsQ0FBQztJQUFBLE9BQUFjLGtCQUFBLENBQUFwQixLQUFBLE9BQUFDLFNBQUE7RUFBQTtFQUFBLFNBTWNxQixvQkFBb0JBLENBQUE7SUFBQSxPQUFBQyxxQkFBQSxDQUFBdkIsS0FBQSxPQUFBQyxTQUFBO0VBQUE7RUFBQSxTQUFBc0Isc0JBQUE7SUFBQUEscUJBQUEsR0FBQXJCLGlCQUFBLENBQW5DLGFBQXNDO01BQUFSLGNBQUEsR0FBQUMsQ0FBQTtNQUFBRCxjQUFBLEdBQUFZLENBQUE7TUFDcEMsT0FBT2tCLE9BQU8sQ0FBQ0MsR0FBRyxDQUFDQyxNQUFNLENBQUNDLE1BQU0sQ0FBQ25DLGVBQWUsQ0FBQyxDQUFDb0MsR0FBRyxDQUFDLFVBQUFDLEtBQUssRUFBSTtRQUFBbkMsY0FBQSxHQUFBQyxDQUFBO1FBQUFELGNBQUEsR0FBQVksQ0FBQTtRQUFBLE9BQUFmLFlBQVksQ0FBQzhCLFVBQVUsQ0FBQ1EsS0FBSyxDQUFDO01BQUQsQ0FBQyxDQUFDLENBQUM7SUFDakcsQ0FBQztJQUFBLE9BQUFOLHFCQUFBLENBQUF2QixLQUFBLE9BQUFDLFNBQUE7RUFBQTtFQUFBUCxjQUFBLEdBQUFZLENBQUE7RUFFRCxPQUFPO0lBQUVWLGNBQWMsRUFBZEEsY0FBYztJQUFFYyxjQUFjLEVBQWRBLGNBQWM7SUFBRVEsaUJBQWlCLEVBQWpCQSxpQkFBaUI7SUFBRUksb0JBQW9CLEVBQXBCQTtFQUFxQixDQUFDO0FBQ3BGIiwiaWdub3JlTGlzdCI6W119

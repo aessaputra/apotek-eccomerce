@@ -1,0 +1,1 @@
+{"version":3,"names":["default"],"sources":["index.ts"],"sourcesContent":["export { default } from './OAuthButton';\r\nexport type { OAuthButtonProps } from './OAuthButton';\r\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA,SAASA,OAAO,QAAQ,eAAe","ignoreList":[]}

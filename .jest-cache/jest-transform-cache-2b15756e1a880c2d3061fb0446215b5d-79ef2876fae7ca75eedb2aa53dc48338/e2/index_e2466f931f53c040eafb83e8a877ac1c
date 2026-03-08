@@ -1,0 +1,32 @@
+602a650e006d9a45fe24459b6a9650ef
+function cov_dconkvmeo() {
+  var path = "C:\\dev\\pharma\\frontend\\components\\layouts\\HeaderCartIcon\\index.ts";
+  var hash = "d35ce94ae1cbd0b3bb584225699e451d002e036c";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\components\\layouts\\HeaderCartIcon\\index.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "d35ce94ae1cbd0b3bb584225699e451d002e036c"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_dconkvmeo = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_dconkvmeo();
+export { default } from './HeaderCartIcon';
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJkZWZhdWx0Il0sInNvdXJjZXMiOlsiaW5kZXgudHMiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IHsgZGVmYXVsdCB9IGZyb20gJy4vSGVhZGVyQ2FydEljb24nO1xyXG4iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBQUEsU0FBU0EsT0FBTyxRQUFRLGtCQUFrQiIsImlnbm9yZUxpc3QiOltdfQ==

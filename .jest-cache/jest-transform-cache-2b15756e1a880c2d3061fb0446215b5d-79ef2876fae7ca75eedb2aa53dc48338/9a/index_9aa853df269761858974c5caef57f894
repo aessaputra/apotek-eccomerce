@@ -1,0 +1,36 @@
+d705631ff0e31e869b8fddb9c3e71b58
+function cov_ffskjgr9n() {
+  var path = "C:\\dev\\pharma\\frontend\\services\\index.ts";
+  var hash = "d1a5a73a6d06152c148948cece042afab40ec0a7";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\services\\index.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "d1a5a73a6d06152c148948cece042afab40ec0a7"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_ffskjgr9n = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_ffskjgr9n();
+export * from './supabase.service';
+export * from './auth.service';
+export * from './profile.service';
+export * from './user.service';
+export * from './address.service';
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiaW5kZXgudHMiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0ICogZnJvbSAnLi9zdXBhYmFzZS5zZXJ2aWNlJztcclxuZXhwb3J0ICogZnJvbSAnLi9hdXRoLnNlcnZpY2UnO1xyXG5leHBvcnQgKiBmcm9tICcuL3Byb2ZpbGUuc2VydmljZSc7XHJcbmV4cG9ydCAqIGZyb20gJy4vdXNlci5zZXJ2aWNlJztcclxuZXhwb3J0ICogZnJvbSAnLi9hZGRyZXNzLnNlcnZpY2UnO1xyXG4iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBQUEsY0FBYyxvQkFBb0I7QUFDbEMsY0FBYyxnQkFBZ0I7QUFDOUIsY0FBYyxtQkFBbUI7QUFDakMsY0FBYyxnQkFBZ0I7QUFDOUIsY0FBYyxtQkFBbUIiLCJpZ25vcmVMaXN0IjpbXX0=

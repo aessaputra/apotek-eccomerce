@@ -1,0 +1,32 @@
+458f134bc59085d141639d479b2b4a9f
+function cov_ke3zsf7zv() {
+  var path = "C:\\dev\\pharma\\frontend\\services\\supabase.service.ts";
+  var hash = "de4df02454e18aa4724362f3189730202d05c9a7";
+  var global = new Function("return this")();
+  var gcv = "__coverage__";
+  var coverageData = {
+    path: "C:\\dev\\pharma\\frontend\\services\\supabase.service.ts",
+    statementMap: {},
+    fnMap: {},
+    branchMap: {},
+    s: {},
+    f: {},
+    b: {},
+    _coverageSchema: "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+    hash: "de4df02454e18aa4724362f3189730202d05c9a7"
+  };
+  var coverage = global[gcv] || (global[gcv] = {});
+  if (!coverage[path] || coverage[path].hash !== hash) {
+    coverage[path] = coverageData;
+  }
+  var actualCoverage = coverage[path];
+  {
+    cov_ke3zsf7zv = function () {
+      return actualCoverage;
+    };
+  }
+  return actualCoverage;
+}
+cov_ke3zsf7zv();
+export { supabase } from '@/utils/supabase';
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJzdXBhYmFzZSJdLCJzb3VyY2VzIjpbInN1cGFiYXNlLnNlcnZpY2UudHMiXSwic291cmNlc0NvbnRlbnQiOlsiLyoqXHJcbiAqIFN1cGFiYXNlIGNsaWVudCByZS1leHBvcnQgZm9yIHVzZSB2aWEgQC9zZXJ2aWNlcy5cclxuICogVXNlIHN1cGFiYXNlIGZvciBBdXRoLCBEYXRhYmFzZSwgU3RvcmFnZSwgYW5kIFJlYWx0aW1lLlxyXG4gKi9cclxuZXhwb3J0IHsgc3VwYWJhc2UgfSBmcm9tICdAL3V0aWxzL3N1cGFiYXNlJztcclxuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQUlBLFNBQVNBLFFBQVEsUUFBUSxrQkFBa0IiLCJpZ25vcmVMaXN0IjpbXX0=
