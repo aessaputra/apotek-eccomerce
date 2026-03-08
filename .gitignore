@@ -12,10 +12,14 @@ expo-env.d.ts
 # Native
 *.orig.*
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
+ios/build/
+ios/**/xcuserdata/
+*.xcuserstate
 
 # Metro
 .metro-health-check*
