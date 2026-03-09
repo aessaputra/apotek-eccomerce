@@ -54,6 +54,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       apiUrl: process.env.API_URL ?? '',
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '',
+      biteshipOriginAreaId: process.env.EXPO_PUBLIC_BITESHIP_ORIGIN_AREA_ID ?? '',
+      biteshipCouriers: process.env.EXPO_PUBLIC_BITESHIP_COURIERS ?? 'jne,jnt,sicepat,anteraja,pos',
     },
     plugins: [
       'expo-router',

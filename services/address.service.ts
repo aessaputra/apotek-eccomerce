@@ -1,6 +1,53 @@
 import { supabase } from '@/utils/supabase';
 import type { Address, AddressInsert, AddressUpdate } from '@/types/address';
 
+export interface ByteshipShippingAddress {
+  recipient_name: string;
+  phone_number: string;
+  street_address: string;
+  city: string;
+  province: string;
+  postal_code: string;
+  country_code: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+const DEFAULT_COUNTRY_CODE = 'ID';
+
+function normalizeText(value: string | null | undefined): string {
+  return value?.trim() ?? '';
+}
+
+function requireField(value: string | null | undefined, fieldName: string): string {
+  const normalized = normalizeText(value);
+
+  if (!normalized) {
+    throw new Error(`Address is missing required field: ${fieldName}`);
+  }
+
+  return normalized;
+}
+
+export function toByteshipShippingAddress(address: Address): ByteshipShippingAddress {
+  const normalized: ByteshipShippingAddress = {
+    recipient_name: requireField(address.receiver_name, 'receiver_name'),
+    phone_number: requireField(address.phone_number, 'phone_number'),
+    street_address: requireField(address.street_address, 'street_address'),
+    city: requireField(address.city, 'city'),
+    province: requireField(address.province, 'province'),
+    postal_code: requireField(address.postal_code, 'postal_code'),
+    country_code: (normalizeText(address.country_code) || DEFAULT_COUNTRY_CODE).toUpperCase(),
+  };
+
+  if (typeof address.latitude === 'number' && typeof address.longitude === 'number') {
+    normalized.latitude = address.latitude;
+    normalized.longitude = address.longitude;
+  }
+
+  return normalized;
+}
+
 /**
  * Get all addresses for a user profile
  */

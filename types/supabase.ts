@@ -11,10 +11,13 @@ export type Database = {
         Row: {
           city: string;
           city_id: string | null;
+          country_code: string | null;
           created_at: string;
           district_id: string | null;
           id: string;
           is_default: boolean | null;
+          latitude: number | null;
+          longitude: number | null;
           phone_number: string;
           postal_code: string;
           profile_id: string;
@@ -27,10 +30,13 @@ export type Database = {
         Insert: {
           city: string;
           city_id?: string | null;
+          country_code?: string | null;
           created_at?: string;
           district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
+          latitude?: number | null;
+          longitude?: number | null;
           phone_number: string;
           postal_code: string;
           profile_id: string;
@@ -43,10 +49,13 @@ export type Database = {
         Update: {
           city?: string;
           city_id?: string | null;
+          country_code?: string | null;
           created_at?: string;
           district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
+          latitude?: number | null;
+          longitude?: number | null;
           phone_number?: string;
           postal_code?: string;
           profile_id?: string;
