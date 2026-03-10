@@ -1,41 +1,34 @@
 import { forwardRef } from 'react';
 import type { TextInput as RNTextInput } from 'react-native';
-import { YStack, XStack, Text, Card, useTheme } from 'tamagui';
+import { YStack, XStack, Text, Card, styled } from 'tamagui';
 import FormInput from '@/components/elements/FormInput';
-import { getThemeColor } from '@/utils/theme';
 import { UserIcon } from '@/components/icons';
 
 export interface ReceiverInfoSectionProps {
-  /** Receiver name value */
   receiverName: string;
-  /** Phone number value */
   phoneNumber: string;
-  /** Receiver name error message */
   receiverNameError: string | null;
-  /** Phone number error message */
   phoneNumberError: string | null;
-  /** Whether the form is in saving state */
   isSaving: boolean;
-  /** Callback when receiver name changes */
   onReceiverNameChange: (value: string) => void;
-  /** Callback when phone number changes */
   onPhoneNumberChange: (value: string) => void;
-  /** Callback when receiver name is blurred */
   onReceiverNameBlur: () => void;
-  /** Callback when phone number is blurred */
   onPhoneNumberBlur: () => void;
-  /** Ref for receiver name input */
   receiverNameRef: React.RefObject<RNTextInput | null>;
-  /** Ref for phone number input */
   phoneNumberRef: React.RefObject<RNTextInput | null>;
-  /** Callback to focus street address input */
   onFocusStreetAddress: () => void;
 }
 
-/**
- * Receiver Information Section
- * Contains name and phone number fields for the address form
- */
+const SectionCard = styled(Card, {
+  padding: '$4',
+  marginBottom: '$4',
+  backgroundColor: '$surface',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  borderRadius: '$5',
+  elevation: 1,
+});
+
 const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
   (
     {
@@ -54,20 +47,11 @@ const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
     },
     ref,
   ) => {
-    const theme = useTheme();
-
     return (
-      <Card
-        padding="$4"
-        marginBottom="$4"
-        backgroundColor="$surface"
-        borderWidth={1}
-        borderColor="$surfaceBorder"
-        borderRadius="$4"
-        elevation={0}>
+      <SectionCard>
         <YStack gap="$4">
           <XStack gap="$2" alignItems="center" marginBottom="$2">
-            <UserIcon size={20} color={getThemeColor(theme, 'primary')} />
+            <UserIcon size={20} color="$primary" />
             <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
               Informasi Penerima
             </Text>
@@ -106,7 +90,7 @@ const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
             />
           </YStack>
         </YStack>
-      </Card>
+      </SectionCard>
     );
   },
 );

@@ -1,42 +1,25 @@
 import { forwardRef } from 'react';
 import type { TextInput as RNTextInput } from 'react-native';
-import { YStack, XStack, Text, Card, useTheme } from 'tamagui';
+import { YStack, XStack, Text, Card, styled } from 'tamagui';
 import FormInput from '@/components/elements/FormInput';
-import { getThemeColor } from '@/utils/theme';
 import { MapPinIcon } from '@/components/icons';
 
 export interface AddressInfoSectionProps {
-  /** Street address value */
   streetAddress: string;
-  /** City value */
   city: string;
-  /** Postal code value */
   postalCode: string;
-  /** Province value */
   province: string;
-  /** Street address error message */
   streetAddressError: string | null;
-  /** City error message */
   cityError: string | null;
-  /** Postal code error message */
   postalCodeError: string | null;
-  /** Whether the form is in saving state */
   isSaving: boolean;
-  /** Callback when street address changes */
   onStreetAddressChange: (value: string) => void;
-  /** Callback when city changes */
   onCityChange: (value: string) => void;
-  /** Callback when postal code changes */
   onPostalCodeChange: (value: string) => void;
-  /** Callback when province changes */
   onProvinceChange: (value: string) => void;
-  /** Callback when street address is blurred */
   onStreetAddressBlur: () => void;
-  /** Callback when city is blurred */
   onCityBlur: () => void;
-  /** Callback when postal code is blurred */
   onPostalCodeBlur: () => void;
-  /** Refs for input focus management */
   refs: {
     streetAddressRef: React.RefObject<RNTextInput | null>;
     cityRef: React.RefObject<RNTextInput | null>;
@@ -45,10 +28,16 @@ export interface AddressInfoSectionProps {
   };
 }
 
-/**
- * Address Information Section
- * Contains street address, city, postal code, and province fields
- */
+const SectionCard = styled(Card, {
+  padding: '$4',
+  marginBottom: '$4',
+  backgroundColor: '$surface',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  borderRadius: '$5',
+  elevation: 1,
+});
+
 const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
   (
     {
@@ -71,20 +60,11 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
     },
     ref,
   ) => {
-    const theme = useTheme();
-
     return (
-      <Card
-        padding="$4"
-        marginBottom="$4"
-        backgroundColor="$surface"
-        borderWidth={1}
-        borderColor="$surfaceBorder"
-        borderRadius="$4"
-        elevation={0}>
+      <SectionCard>
         <YStack gap="$4">
           <XStack gap="$2" alignItems="center" marginBottom="$2">
-            <MapPinIcon size={20} color={getThemeColor(theme, 'primary')} />
+            <MapPinIcon size={20} color="$primary" />
             <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
               Alamat Pengiriman
             </Text>
@@ -104,7 +84,6 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
               editable={!isSaving}
               multiline
               numberOfLines={3}
-              minHeight={100}
               returnKeyType="next"
               onSubmitEditing={() => refs.cityRef.current?.focus()}
               accessibilityLabel="Alamat lengkap"
@@ -162,7 +141,7 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
             />
           </YStack>
         </YStack>
-      </Card>
+      </SectionCard>
     );
   },
 );

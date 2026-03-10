@@ -1,8 +1,7 @@
-import { useTheme, YStack } from 'tamagui';
+import { YStack } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
-import { MIN_TOUCH_TARGET, BOTTOM_BAR_SHADOW, PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
-import { getThemeColor } from '@/utils/theme';
+import { MIN_TOUCH_TARGET, PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 /**
  * Standard vertical padding for the action bar (8px).
@@ -51,36 +50,29 @@ export default function BottomActionBar({
   accessibilityHint,
 }: BottomActionBarProps) {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
 
   const bottomInset = insets.bottom;
   const innerPaddingBottom = VERTICAL_PADDING + Math.max(0, bottomInset);
-  const backgroundColor = getThemeColor(theme, 'background');
 
   return (
     <YStack
       borderTopWidth={1}
-      borderColor="$borderColor"
+      borderTopColor="$borderColor"
+      backgroundColor="$background"
       px="$4"
       pt="$2"
       pb={innerPaddingBottom}
       elevation={8}
-      {...BOTTOM_BAR_SHADOW}
       accessibilityRole="toolbar"
       accessibilityLabel="Bottom action bar"
-      accessibilityHint="Action bar with primary action button"
-      style={{
-        backgroundColor,
-      }}>
+      accessibilityHint="Action bar with primary action button">
       <Button
         title={buttonTitle}
         width="100%"
         backgroundColor="$primary"
         titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
-        style={{
-          borderRadius: BUTTON_BORDER_RADIUS,
-          minHeight: MIN_TOUCH_TARGET,
-        }}
+        borderRadius={BUTTON_BORDER_RADIUS}
+        minHeight={MIN_TOUCH_TARGET}
         onPress={onPress}
         isLoading={isLoading}
         disabled={disabled}

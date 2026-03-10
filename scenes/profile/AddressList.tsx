@@ -1,23 +1,44 @@
-import { useState, useCallback } from 'react';
-import { FlatList, Alert, RefreshControl } from 'react-native';
-import { YStack, Text, Spinner, useTheme } from 'tamagui';
+import { useState, useCallback, useMemo } from 'react';
+import { SectionList, Alert, RefreshControl } from 'react-native';
+import { YStack, Text, Spinner, useTheme, styled } from 'tamagui';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import Animated, { FadeInDown, FadeOutLeft, Layout } from 'react-native-reanimated';
+
 import Button from '@/components/elements/Button';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
-import AddressCard from '@/components/elements/AddressCard/AddressCard';
+import SwipeableAddressRow from '@/components/elements/AddressCard/SwipeableAddressRow';
 import { useAppSlice } from '@/slices';
 import { getAddresses, deleteAddress, setDefaultAddress } from '@/services/address.service';
 import type { Address } from '@/types/address';
-import { getThemeColor } from '@/utils/theme';
 import {
   MIN_TOUCH_TARGET,
   BOTTOM_BAR_HEIGHT,
-  BOTTOM_BAR_SHADOW,
   PRIMARY_BUTTON_TITLE_STYLE,
+  BOTTOM_BAR_SHADOW,
 } from '@/constants/ui';
 import { MapPinIcon } from '@/components/icons';
+import {
+  ENTRANCE_STAGGER_DELAY_MS,
+  ENTRANCE_DURATION_MS,
+  EXIT_DURATION_MS,
+  EMPTY_STATE_ICON_SIZE,
+  LIST_HORIZONTAL_PADDING,
+} from '@/constants/address';
+import { getThemeColor } from '@/utils/theme';
+
+const ReanimatedView = Animated.View;
+
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+  backgroundColor: '$background',
+});
+
+type AddressSection = {
+  title: 'Alamat Default' | 'Alamat Lainnya';
+  data: Address[];
+};
 
 export default function AddressList() {
   const router = useRouter();
@@ -30,10 +51,10 @@ export default function AddressList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState<Address | null>(null);
 
-  // Use theme-aware background with light mode default fallback (#FFFFFF)
-  const bgColor = getThemeColor(theme, 'background');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   const scrollPaddingBottom = bottomBarHeight + 16;
+  const emptyStatePaddingBottom = 100;
+  const bottomCtaInset = 8;
 
   const loadAddresses = useCallback(async () => {
     if (!user?.id) return;
@@ -47,7 +68,6 @@ export default function AddressList() {
     setRefreshing(false);
   }, [user?.id]);
 
-  // Refresh addresses when screen comes into focus (including initial mount)
   useFocusEffect(
     useCallback(() => {
       loadAddresses();
@@ -102,72 +122,103 @@ export default function AddressList() {
     router.push('/(main)/(tabs)/profile/address-form');
   }, [router]);
 
-  // Estimated item height for FlatList optimization
-  // Card padding: $4 (16px) top + bottom = 32px
-  // Content: ~88px (nama + phone + alamat text)
-  // Margin bottom: $3 (12px)
-  // Total: ~132px per item
-  const ITEM_HEIGHT = 132;
+  const defaultAddress = addresses.find(a => a.is_default);
+  const otherAddresses = addresses.filter(a => !a.is_default);
 
-  const getItemLayout = useCallback(
-    (_data: ArrayLike<Address> | null | undefined, index: number) => ({
-      length: ITEM_HEIGHT,
-      offset: ITEM_HEIGHT * index,
-      index,
+  const sections: AddressSection[] = [];
+  if (defaultAddress) {
+    sections.push({ title: 'Alamat Default', data: [defaultAddress] });
+  }
+  if (otherAddresses.length > 0) {
+    sections.push({ title: 'Alamat Lainnya', data: otherAddresses });
+  }
+
+  const listContentContainerStyle = useMemo(
+    () => ({
+      padding: LIST_HORIZONTAL_PADDING,
+      paddingBottom: addresses.length > 0 ? scrollPaddingBottom : emptyStatePaddingBottom,
+      flexGrow: 1,
     }),
-    [],
+    [addresses.length, scrollPaddingBottom],
   );
 
+  const renderSectionHeader = useCallback(({ section }: { section: AddressSection }) => {
+    if (section.data.length === 0) return null;
+    return (
+      <Text
+        fontSize="$3"
+        fontWeight="600"
+        color="$colorSubtle"
+        textTransform="uppercase"
+        letterSpacing={0.5}
+        marginBottom="$2"
+        marginTop="$3">
+        {section.title}
+      </Text>
+    );
+  }, []);
+
   const renderItem = useCallback(
-    ({ item }: { item: Address }) => (
-      <AddressCard
-        address={item}
-        isDefault={item.is_default ?? false}
-        onPress={() => handleEdit(item.id)}
-        showActions={true}
-        onEdit={() => handleEdit(item.id)}
-        onDelete={() => handleDelete(item)}
-        onSetDefault={!item.is_default ? () => handleSetDefault(item.id) : undefined}
-      />
-    ),
-    [handleEdit, handleDelete, handleSetDefault],
+    ({ item, index, section }: { item: Address; index: number; section: AddressSection }) => {
+      const animationIndex =
+        section.title === 'Alamat Lainnya' && defaultAddress ? index + 1 : index;
+
+      return (
+        <ReanimatedView
+          entering={FadeInDown.delay(animationIndex * ENTRANCE_STAGGER_DELAY_MS).duration(
+            ENTRANCE_DURATION_MS,
+          )}
+          exiting={FadeOutLeft.duration(EXIT_DURATION_MS)}
+          layout={Layout.springify()}>
+          <SwipeableAddressRow
+            address={item}
+            isDefault={item.is_default ?? false}
+            onPress={() => handleEdit(item.id)}
+            onEdit={() => handleEdit(item.id)}
+            onDelete={() => handleDelete(item)}
+            onSetDefault={!item.is_default ? () => handleSetDefault(item.id) : undefined}
+          />
+        </ReanimatedView>
+      );
+    },
+    [handleEdit, handleDelete, handleSetDefault, defaultAddress],
   );
 
   const renderEmpty = useCallback(() => {
-    const colorPress = getThemeColor(theme, 'colorPress');
     return (
-      <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$10" gap="$4">
-        <MapPinIcon size={64} color={colorPress} />
+      <YStack flex={1} ai="center" jc="center" py="$10" gap="$4">
+        <MapPinIcon size={EMPTY_STATE_ICON_SIZE} color="$primary" />
         <Text
           fontSize="$6"
           fontWeight="700"
           color="$color"
           textAlign="center"
           fontFamily="$heading">
-          Belum ada alamat pengiriman
+          Belum ada alamat tersimpan
         </Text>
         <Text fontSize="$4" color="$colorPress" textAlign="center" maxWidth={300} lineHeight="$4">
-          Tambah alamat pengiriman untuk memudahkan proses checkout
+          Tambahkan alamat pengiriman agar checkout lebih cepat dan mudah
         </Text>
         <Button
           title="Tambah Alamat"
           alignSelf="stretch"
-          paddingVertical="$2"
+          py="$2"
           borderRadius="$3"
           minHeight={MIN_TOUCH_TARGET}
           backgroundColor="$primary"
           titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
           onPress={handleAddAddress}
+          elevation={2}
           accessibilityLabel="Tambah alamat pengiriman baru"
           accessibilityHint="Membuka form untuk menambahkan alamat pengiriman baru"
         />
       </YStack>
     );
-  }, [theme, handleAddAddress]);
+  }, [handleAddAddress]);
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+      <SafeAreaView edges={['top']}>
         <YStack flex={1} alignItems="center" justifyContent="center">
           <Spinner size="large" color="$primary" />
         </YStack>
@@ -175,27 +226,31 @@ export default function AddressList() {
     );
   }
 
+  const themePrimary = getThemeColor(theme, 'primary');
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+    <SafeAreaView edges={['top']}>
       <YStack flex={1}>
-        <FlatList
-          data={addresses}
+        <SectionList<Address, AddressSection>
+          sections={sections}
           renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
           keyExtractor={item => item.id}
-          getItemLayout={getItemLayout}
-          contentContainerStyle={{
-            padding: 20,
-            paddingBottom: addresses.length > 0 ? scrollPaddingBottom : 100,
-            flexGrow: 1,
-          }}
+          contentContainerStyle={listContentContainerStyle}
           ListEmptyComponent={renderEmpty}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={themePrimary}
+              colors={[themePrimary]}
+            />
+          }
           showsVerticalScrollIndicator={false}
           accessibilityLabel="Daftar alamat pengiriman"
           accessibilityRole="list"
         />
 
-        {/* Sticky bottom bar: Tambah Alamat */}
         {addresses.length > 0 && (
           <YStack
             position="absolute"
@@ -203,17 +258,17 @@ export default function AddressList() {
             left={0}
             right={0}
             backgroundColor="$background"
-            borderTopWidth={1}
-            borderColor="$borderColor"
-            paddingHorizontal="$4"
-            paddingTop="$2"
-            paddingBottom={8 + insets.bottom}
+            px="$4"
+            pt="$2"
+            pb={bottomCtaInset + insets.bottom}
             elevation={8}
+            borderTopWidth={1}
+            borderTopColor="$borderColor"
             style={BOTTOM_BAR_SHADOW}>
             <Button
               title="Tambah Alamat"
               width="100%"
-              paddingVertical="$2"
+              py="$2"
               borderRadius="$3"
               minHeight={MIN_TOUCH_TARGET}
               backgroundColor="$primary"
@@ -226,7 +281,6 @@ export default function AddressList() {
         )}
       </YStack>
 
-      {/* Delete Confirmation Dialog */}
       <AppAlertDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}

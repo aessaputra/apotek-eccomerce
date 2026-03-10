@@ -93,10 +93,8 @@ function AddressForm({
         placeholder="Nama jalan, nomor rumah"
         multiline
         numberOfLines={4}
-        minHeight={120}
         autoCapitalize="words"
         editable={!isSaving}
-        blurOnSubmit
         returnKeyType="next"
         onSubmitEditing={() => refs.cityRef.current?.focus()}
       />

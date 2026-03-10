@@ -1,26 +1,42 @@
-import { useEffect, useCallback } from 'react';
-import { ScrollView, Alert } from 'react-native';
-import { YStack, Spinner, useTheme } from 'tamagui';
+import { useEffect, useCallback, useState } from 'react';
+import { Alert } from 'react-native';
+import { YStack, Spinner, styled, ScrollView } from 'tamagui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AddressFieldsForm from '@/components/AddressFormSheet/AddressForm';
 import DefaultAddressToggle from '@/components/AddressFormSheet/DefaultAddressToggle';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { useAddressForm } from '@/hooks/useAddressForm';
 import { useAddressData } from '@/hooks/useAddressData';
 import type { AddressInsert } from '@/types/address';
-import { getThemeColor } from '@/utils/theme';
 import { FORM_SCROLL_PADDING } from '@/constants/ui';
+
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+  backgroundColor: '$background',
+});
+
+const FormScrollView = styled(ScrollView, {
+  flex: 1,
+});
+
+const FormContent = styled(YStack, {
+  paddingHorizontal: '$4',
+  paddingTop: '$3',
+  paddingBottom: FORM_SCROLL_PADDING.SPACIOUS,
+  flexGrow: 1,
+});
 
 export default function AddressFormScreen() {
   const router = useRouter();
-  const theme = useTheme();
   const { user } = useAppSlice();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
 
   const {
     values,
@@ -107,19 +123,13 @@ export default function AddressFormScreen() {
     });
 
     if (success) {
-      Alert.alert(
-        'Berhasil',
-        isEdit ? 'Alamat berhasil diperbarui' : 'Alamat berhasil ditambahkan',
-        [{ text: 'OK', onPress: () => router.back() }],
-      );
+      setSuccessDialogOpen(true);
     }
   }, [id, isEdit, router, saveAddress, setGeneralError, user?.id, validateAll, values]);
 
-  const bgColor = getThemeColor(theme, 'background');
-
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+      <SafeAreaView edges={['top']}>
         <YStack flex={1} alignItems="center" justifyContent="center">
           <Spinner size="large" color="$primary" />
         </YStack>
@@ -128,19 +138,12 @@ export default function AddressFormScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: FORM_SCROLL_PADDING.SPACIOUS,
-          flexGrow: 1,
-        }}
+    <SafeAreaView edges={['top']}>
+      <FormScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag">
-        <YStack gap="$4">
+        <FormContent gap="$4">
           <ErrorMessage
             message={generalError}
             onDismiss={() => setGeneralError(null)}
@@ -164,8 +167,8 @@ export default function AddressFormScreen() {
             isSaving={saving}
             onToggle={value => setFieldValue('isDefault', value)}
           />
-        </YStack>
-      </ScrollView>
+        </FormContent>
+      </FormScrollView>
 
       <BottomActionBar
         buttonTitle={isEdit ? 'Simpan Perubahan' : 'Simpan Alamat'}
@@ -174,6 +177,15 @@ export default function AddressFormScreen() {
         disabled={saving}
         accessibilityLabel={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
         accessibilityHint="Menyimpan data alamat pengiriman"
+      />
+
+      <AppAlertDialog
+        open={successDialogOpen}
+        onOpenChange={setSuccessDialogOpen}
+        title={isEdit ? 'Alamat Berhasil Diperbarui' : 'Alamat Berhasil Ditambahkan'}
+        description="Data alamat telah berhasil disimpan."
+        confirmText="OK"
+        onConfirm={() => router.back()}
       />
     </SafeAreaView>
   );

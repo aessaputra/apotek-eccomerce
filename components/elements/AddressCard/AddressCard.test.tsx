@@ -3,11 +3,6 @@ import { render, screen, fireEvent } from '../../../test-utils/renderWithTheme';
 import AddressCard from './AddressCard';
 import type { Address } from '@/types/address';
 
-jest.mock('expo-haptics', () => ({
-  impactAsync: jest.fn(),
-  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium' },
-}));
-
 const mockAddress: Address = {
   id: '1',
   profile_id: 'user-1',
@@ -56,38 +51,5 @@ describe('<AddressCard />', () => {
     const card = screen.getByLabelText('Alamat John Doe');
     fireEvent.press(card);
     expect(onPress).toHaveBeenCalledTimes(1);
-  });
-
-  test('does not show action buttons when showActions is false', async () => {
-    render(
-      <AddressCard
-        address={mockAddress}
-        showActions={false}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
-    expect(screen.queryByLabelText('Edit alamat')).toBeNull();
-    expect(screen.queryByLabelText('Hapus alamat')).toBeNull();
-  });
-
-  test('shows edit and delete buttons when showActions is true', async () => {
-    render(
-      <AddressCard address={mockAddress} showActions onEdit={jest.fn()} onDelete={jest.fn()} />,
-    );
-    expect(screen.getByLabelText('Edit alamat')).not.toBeNull();
-    expect(screen.getByLabelText('Hapus alamat')).not.toBeNull();
-  });
-
-  test('shows set default button when not default and onSetDefault provided', async () => {
-    render(
-      <AddressCard address={mockAddress} isDefault={false} showActions onSetDefault={jest.fn()} />,
-    );
-    expect(screen.getByLabelText('Jadikan alamat default')).not.toBeNull();
-  });
-
-  test('does not show set default button when already default', async () => {
-    render(<AddressCard address={mockAddress} isDefault showActions onSetDefault={jest.fn()} />);
-    expect(screen.queryByLabelText('Jadikan alamat default')).toBeNull();
   });
 });

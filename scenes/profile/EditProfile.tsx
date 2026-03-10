@@ -1,32 +1,58 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { ScrollView, Platform } from 'react-native';
-import { YStack, XStack, Text, useTheme, Card, Spinner, Dialog, Input, Button } from 'tamagui';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { ComponentRef } from 'react';
+import {
+  YStack,
+  Text,
+  useTheme,
+  Card,
+  Spinner,
+  Input,
+  Separator,
+  styled,
+  ScrollView,
+} from 'tamagui';
+import { useRouter } from 'expo-router';
+import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import ErrorMessage from '@/components/elements/ErrorMessage';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
+import ErrorMessage from '@/components/elements/ErrorMessage';
+import FormInput from '@/components/elements/FormInput';
 import Avatar from '@/components/elements/Avatar';
+import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { updateProfile, uploadAvatar } from '@/services/profile.service';
 import { getThemeColor } from '@/utils/theme';
 import { windowWidth } from '@/utils/deviceInfo';
-import { FORM_SCROLL_PADDING } from '@/constants/ui';
+import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 
-type EditableField = 'fullName' | 'phoneNumber';
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+  backgroundColor: '$background',
+});
+
+const FormScrollView = styled(ScrollView, {
+  flex: 1,
+});
+
+const FormContent = styled(YStack, {
+  px: '$4',
+  pt: '$4',
+  flexGrow: 1,
+});
 
 export default function EditProfile() {
+  const router = useRouter();
   const theme = useTheme();
   const { user, dispatch, setUser } = useAppSlice();
   const [fullName, setFullName] = useState(user?.full_name ?? user?.name ?? '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phone_number ?? '');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<EditableField | null>(null);
-  const [dialogValue, setDialogValue] = useState('');
-  const [dialogError, setDialogError] = useState<string | null>(null);
-  const [dialogSaving, setDialogSaving] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
-  const saveCloseGuardRef = useRef(false);
+  const [fullNameError, setFullNameError] = useState<string | null>(null);
+  const [phoneNumberError, setPhoneNumberError] = useState<string | null>(null);
+  const phoneInputRef = useRef<ComponentRef<typeof Input>>(null);
 
   useEffect(() => {
     if (user) {
@@ -38,12 +64,13 @@ export default function EditProfile() {
   const insets = useSafeAreaInsets();
   const avatarSize = windowWidth < 375 ? 100 : 120;
   const bgColor = getThemeColor(theme, 'background');
-  const scrollPaddingBottom = insets.bottom + FORM_SCROLL_PADDING.COMPACT;
+  const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
+  const scrollPaddingBottom = bottomBarHeight + FORM_SCROLL_PADDING.COMPACT;
 
   const validateName = useCallback((value: string): string | null => {
     const trimmed = value.trim();
     if (trimmed.length === 0) {
-      return null;
+      return 'Nama lengkap wajib diisi';
     }
     if (trimmed.length < 2) {
       return 'Nama harus minimal 2 karakter';
@@ -57,7 +84,7 @@ export default function EditProfile() {
   const validatePhone = useCallback((value: string): string | null => {
     const trimmed = value.trim();
     if (trimmed.length === 0) {
-      return null;
+      return 'Nomor telepon wajib diisi';
     }
     const phoneRegex = /^[\d\s\+\-\(\)]+$/;
     if (!phoneRegex.test(trimmed)) {
@@ -73,31 +100,9 @@ export default function EditProfile() {
     return null;
   }, []);
 
-  const openFieldDialog = useCallback(
-    (field: EditableField) => {
-      setError(null);
-      setDialogError(null);
-      setEditingField(field);
-      setDialogValue(field === 'fullName' ? fullName : phoneNumber);
-    },
-    [fullName, phoneNumber],
-  );
-
-  const handleDialogOpenChange = useCallback(
-    (open: boolean) => {
-      if (open) {
-        return;
-      }
-
-      if (dialogSaving || saveCloseGuardRef.current) {
-        return;
-      }
-
-      setEditingField(null);
-      setDialogError(null);
-    },
-    [dialogSaving],
-  );
+  const isDirty =
+    fullName !== (user?.full_name ?? user?.name ?? '') ||
+    phoneNumber !== (user?.phone_number ?? '');
 
   const handleAvatarUpload = useCallback(
     async (uri: string) => {
@@ -126,30 +131,32 @@ export default function EditProfile() {
     [user, dispatch, setUser],
   );
 
-  const handleSaveField = useCallback(async () => {
-    if (!user || !editingField) return;
+  const handleSaveProfile = useCallback(async () => {
+    if (!user || savingProfile || !isDirty) return;
 
-    const validationError =
-      editingField === 'fullName' ? validateName(dialogValue) : validatePhone(dialogValue);
+    const nameValidationError = validateName(fullName);
+    const phoneValidationError = validatePhone(phoneNumber);
 
-    if (validationError) {
+    setFullNameError(nameValidationError);
+    setPhoneNumberError(phoneValidationError);
+
+    if (nameValidationError || phoneValidationError) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setDialogError(validationError);
       return;
     }
 
     setError(null);
-    setDialogError(null);
-    setDialogSaving(true);
+    setSuccessDialogOpen(false);
+    setSavingProfile(true);
 
-    const payload =
-      editingField === 'fullName'
-        ? { full_name: dialogValue.trim() || null }
-        : { phone_number: dialogValue.trim() || null };
+    const payload = {
+      full_name: fullName.trim(),
+      phone_number: phoneNumber.trim() || null,
+    };
 
     const { data, error: err } = await updateProfile(user.id, payload);
 
-    setDialogSaving(false);
+    setSavingProfile(false);
 
     if (err) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -161,6 +168,8 @@ export default function EditProfile() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setFullName(data.full_name ?? '');
       setPhoneNumber(data.phone_number ?? '');
+      setFullNameError(null);
+      setPhoneNumberError(null);
       dispatch(
         setUser({
           ...user,
@@ -169,26 +178,24 @@ export default function EditProfile() {
           phone_number: data.phone_number,
         }),
       );
-      setEditingField(null);
-      setDialogValue('');
       setSuccessDialogOpen(true);
     }
-  }, [user, editingField, dialogValue, dispatch, setUser, validateName, validatePhone]);
-
-  const handleSaveButtonPress = useCallback(() => {
-    saveCloseGuardRef.current = true;
-    void handleSaveField().finally(() => {
-      saveCloseGuardRef.current = false;
-    });
-  }, [handleSaveField]);
-
-  const preventOutsideDismiss = useCallback((event: { preventDefault: () => void }) => {
-    event.preventDefault();
-  }, []);
+  }, [
+    router,
+    user,
+    fullName,
+    phoneNumber,
+    dispatch,
+    setUser,
+    validateName,
+    validatePhone,
+    savingProfile,
+    isDirty,
+  ]);
 
   if (!user) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+      <SafeAreaView style={{ backgroundColor: bgColor }} edges={['top']}>
         <YStack
           flex={1}
           padding="$5"
@@ -204,186 +211,153 @@ export default function EditProfile() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
-      <YStack flex={1} position="relative">
-        <ScrollView
-          style={{ flex: 1 }}
+    <SafeAreaView style={{ backgroundColor: bgColor }} edges={['top']}>
+      <YStack flex={1}>
+        <FormScrollView
           contentContainerStyle={{
-            padding: 16,
             paddingBottom: scrollPaddingBottom,
-            flexGrow: 1,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag">
-          <YStack
-            alignItems="center"
-            marginBottom="$5"
-            gap="$3"
-            accessibilityLabel="Foto profil"
-            accessibilityHint="Ketuk untuk mengubah foto profil">
-            <Avatar
-              avatarUrl={user.avatar_url}
-              name={user.full_name || user.name || user.email}
-              size={avatarSize}
-              editable={true}
-              onUpload={handleAvatarUpload}
-              uploading={uploadingAvatar}
-            />
-          </YStack>
-
-          <Card
-            padding="$4"
-            marginBottom="$5"
-            backgroundColor="$surface"
-            borderWidth={1}
-            borderColor="$surfaceBorder"
-            borderRadius="$4"
-            elevation={1}
-            accessibilityLabel="Form edit profil">
-            <YStack gap="$4">
-              <ErrorMessage message={error} onDismiss={() => setError(null)} />
-
-              <YStack gap="$3">
-                <Card
-                  padding="$3.5"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  borderRadius="$3"
-                  backgroundColor="$background"
-                  pressStyle={{ opacity: 0.9, backgroundColor: '$backgroundHover' }}
-                  onPress={() => openFieldDialog('fullName')}
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit nama lengkap"
-                  {...(Platform.OS === 'web'
-                    ? { 'aria-description': 'Buka dialog untuk mengubah nama lengkap' }
-                    : { accessibilityHint: 'Buka dialog untuk mengubah nama lengkap' })}>
-                  <XStack alignItems="center" justifyContent="space-between" gap="$3">
-                    <YStack flex={1} gap="$1">
-                      <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
-                        Nama lengkap
-                      </Text>
-                      <Text fontSize="$4" color="$color" numberOfLines={1}>
-                        {fullName.trim() || 'Belum diisi'}
-                      </Text>
-                    </YStack>
-                    <Text fontSize="$4" color="$colorSubtle">
-                      Ubah
-                    </Text>
-                  </XStack>
-                </Card>
-
-                <Card
-                  padding="$3.5"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  borderRadius="$3"
-                  backgroundColor="$background"
-                  pressStyle={{ opacity: 0.9, backgroundColor: '$backgroundHover' }}
-                  onPress={() => openFieldDialog('phoneNumber')}
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit nomor telepon"
-                  {...(Platform.OS === 'web'
-                    ? { 'aria-description': 'Buka dialog untuk mengubah nomor telepon' }
-                    : { accessibilityHint: 'Buka dialog untuk mengubah nomor telepon' })}>
-                  <XStack alignItems="center" justifyContent="space-between" gap="$3">
-                    <YStack flex={1} gap="$1">
-                      <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
-                        Nomor telepon
-                      </Text>
-                      <Text fontSize="$4" color="$color" numberOfLines={1}>
-                        {phoneNumber.trim() || 'Belum diisi'}
-                      </Text>
-                    </YStack>
-                    <Text fontSize="$4" color="$colorSubtle">
-                      Ubah
-                    </Text>
-                  </XStack>
-                </Card>
-              </YStack>
+          <FormContent gap="$5">
+            <YStack
+              alignItems="center"
+              gap="$3"
+              accessibilityLabel="Foto profil"
+              accessibilityHint="Ketuk untuk mengubah foto profil">
+              <Avatar
+                avatarUrl={user.avatar_url}
+                name={user.full_name || user.name || user.email}
+                size={avatarSize}
+                editable={true}
+                onUpload={handleAvatarUpload}
+                uploading={uploadingAvatar}
+              />
             </YStack>
-          </Card>
-        </ScrollView>
 
-        <Dialog open={editingField !== null} onOpenChange={handleDialogOpenChange} modal>
-          <Dialog.Portal>
-            <Dialog.Overlay
-              key="edit-profile-overlay"
-              animation="quick"
-              enterStyle={{ opacity: 0 }}
-              exitStyle={{ opacity: 0 }}
-              backgroundColor="$shadow6"
-            />
-            <Dialog.Content
-              key="edit-profile-content"
-              bordered
-              elevate
-              animation="quick"
-              width="90%"
-              maxWidth={420}
-              enterStyle={{ opacity: 0, scale: 0.95 }}
-              exitStyle={{ opacity: 0, scale: 0.95 }}
-              onPointerDownOutside={preventOutsideDismiss}
-              onInteractOutside={preventOutsideDismiss}
-              accessibilityLabel="Dialog edit profil">
-              <YStack gap="$3">
-                <Dialog.Title>
-                  {editingField === 'fullName' ? 'Edit Nama Lengkap' : 'Edit Nomor Telepon'}
-                </Dialog.Title>
-                <Dialog.Description>
-                  {editingField === 'fullName'
-                    ? 'Masukkan nama lengkap yang ingin ditampilkan pada profil Anda.'
-                    : 'Masukkan nomor telepon aktif untuk kebutuhan kontak pesanan.'}
-                </Dialog.Description>
+            <Card
+              p="$4"
+              mb="$5"
+              backgroundColor="$surface"
+              borderWidth={1}
+              borderColor="$surfaceBorder"
+              borderRadius="$4"
+              elevation={2}
+              accessibilityLabel="Form edit profil">
+              <YStack gap="$4.5">
+                <YStack gap="$1.5">
+                  <Text fontFamily="$heading" fontSize="$6" fontWeight="700" color="$color">
+                    Informasi Profil
+                  </Text>
+                  <Text fontSize="$3" color="$colorSubtle" lineHeight="$4">
+                    Perbarui informasi pribadi Anda.
+                  </Text>
+                </YStack>
 
-                <Input
-                  value={dialogValue}
-                  onChangeText={setDialogValue}
-                  autoFocus
-                  autoCapitalize={editingField === 'fullName' ? 'words' : 'none'}
-                  keyboardType={editingField === 'phoneNumber' ? 'phone-pad' : 'default'}
-                  placeholder={editingField === 'phoneNumber' ? '08xx xxxx xxxx' : 'Nama lengkap'}
-                  returnKeyType="done"
-                  onSubmitEditing={handleSaveField}
-                  editable={!dialogSaving}
-                  accessibilityLabel={
-                    editingField === 'fullName' ? 'Input nama lengkap' : 'Input nomor telepon'
-                  }
-                />
+                <Separator borderColor="$surfaceBorder" />
 
-                <ErrorMessage message={dialogError} onDismiss={() => setDialogError(null)} />
+                <ErrorMessage message={error} onDismiss={() => setError(null)} />
 
-                <XStack justifyContent="flex-end" gap="$2" paddingTop="$1">
-                  <Dialog.Close asChild>
-                    <Button
-                      chromeless
-                      disabled={dialogSaving}
-                      accessibilityLabel="Batal edit profil">
-                      Batal
-                    </Button>
-                  </Dialog.Close>
-                  <Dialog.Close asChild>
-                    <Button
-                      backgroundColor="$primary"
-                      color="$white"
-                      onPress={handleSaveButtonPress}
-                      disabled={dialogSaving}
-                      accessibilityLabel="Simpan perubahan profil">
-                      {dialogSaving ? 'Menyimpan...' : 'Simpan'}
-                    </Button>
-                  </Dialog.Close>
-                </XStack>
+                <YStack gap="$4">
+                  <YStack gap="$2">
+                    <FormInput
+                      label="Nama lengkap"
+                      required
+                      value={fullName}
+                      onChangeText={value => {
+                        setFullName(value);
+                        if (fullNameError) {
+                          setFullNameError(validateName(value));
+                        }
+                        if (error) {
+                          setError(null);
+                        }
+                      }}
+                      onBlur={() => setFullNameError(validateName(fullName))}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      placeholder="Nama lengkap"
+                      returnKeyType="next"
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => phoneInputRef.current?.focus()}
+                      accessibilityLabel="Input nama lengkap"
+                      accessibilityHint="Wajib diisi, gunakan 2-100 karakter"
+                      error={fullNameError}
+                    />
+                    <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
+                      Gunakan 2-100 karakter.
+                    </Text>
+                  </YStack>
+
+                  <YStack gap="$2">
+                    <FormInput
+                      ref={phoneInputRef}
+                      label="Nomor telepon"
+                      required
+                      value={phoneNumber}
+                      onChangeText={value => {
+                        setPhoneNumber(value);
+                        if (phoneNumberError) {
+                          setPhoneNumberError(validatePhone(value));
+                        }
+                        if (error) {
+                          setError(null);
+                        }
+                      }}
+                      onBlur={() => setPhoneNumberError(validatePhone(phoneNumber))}
+                      autoCapitalize="none"
+                      keyboardType="phone-pad"
+                      placeholder="08xx xxxx xxxx"
+                      returnKeyType="done"
+                      onSubmitEditing={handleSaveProfile}
+                      accessibilityLabel="Input nomor telepon"
+                      accessibilityHint="Wajib diisi, 8-15 digit angka"
+                      error={phoneNumberError}
+                    />
+                    <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
+                      Wajib diisi, 8-15 digit angka.
+                    </Text>
+                  </YStack>
+
+                  <YStack gap="$2">
+                    <Text fontSize="$4" color="$color" fontWeight="600">
+                      Email
+                    </Text>
+                    <Input
+                      value={user.email}
+                      editable={false}
+                      color="$colorSubtle"
+                      backgroundColor="$backgroundFocus"
+                      borderColor="$surfaceBorder"
+                      accessibilityLabel="Email akun"
+                    />
+                    <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
+                      Email dikelola melalui pengaturan autentikasi akun.
+                    </Text>
+                  </YStack>
+                </YStack>
               </YStack>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog>
+            </Card>
+          </FormContent>
+        </FormScrollView>
+
+        <BottomActionBar
+          buttonTitle={savingProfile ? 'Menyimpan...' : 'Simpan Perubahan'}
+          onPress={handleSaveProfile}
+          isLoading={savingProfile}
+          disabled={savingProfile || !isDirty}
+          accessibilityLabel="Simpan perubahan profil"
+          accessibilityHint="Menyimpan pembaruan informasi profil"
+        />
 
         <AppAlertDialog
           open={successDialogOpen}
           onOpenChange={setSuccessDialogOpen}
-          title="Berhasil"
-          description="Profil berhasil diperbarui"
+          title="Profil Berhasil Diperbarui"
+          description="Perubahan profil Anda telah berhasil disimpan."
           confirmText="OK"
+          onConfirm={() => router.back()}
         />
       </YStack>
     </SafeAreaView>

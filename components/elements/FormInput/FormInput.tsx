@@ -1,11 +1,8 @@
 import { forwardRef, useState } from 'react';
-import { TextInput as RNTextInput, TextInputProps as RNTextInputProps } from 'react-native';
-import { XStack, YStack, Text, useTheme } from 'tamagui';
-import { getThemeColor } from '@/utils/theme';
-import { FORM_FIELD } from '@/constants/ui';
+import { Input, XStack, YStack, Text, styled } from 'tamagui';
 import { XCircleIcon } from '@/components/icons';
 
-export interface FormInputProps extends Omit<RNTextInputProps, 'style'> {
+export interface FormInputProps {
   /** Label untuk input field */
   label?: string;
   /** Apakah field required (menampilkan asterisk) */
@@ -30,29 +27,81 @@ export interface FormInputProps extends Omit<RNTextInputProps, 'style'> {
   multiline?: boolean;
   /** Jumlah baris untuk multiline (default: 3) */
   numberOfLines?: number;
-  /** Minimum height untuk multiline input */
-  minHeight?: number;
+  /** Value input */
+  value?: string;
+  /** Keyboard type */
+  keyboardType?:
+    | 'default'
+    | 'email-address'
+    | 'numeric'
+    | 'phone-pad'
+    | 'number-pad'
+    | 'decimal-pad';
+  /** Auto capitalize */
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  /** Auto correct */
+  autoCorrect?: boolean;
+  /** Return key type */
+  returnKeyType?: 'default' | 'done' | 'go' | 'next' | 'search' | 'send';
+  /** On submit editing */
+  onSubmitEditing?: () => void;
+  /** Blur on submit */
+  blurOnSubmit?: boolean;
+  /** Editable */
+  editable?: boolean;
 }
 
-/**
- * Reusable FormInput component dengan built-in label, error handling, dan styling.
- * Mengikuti design system apotek dengan focus states yang jelas dan inline error messages.
- * Konsisten dengan EmailInput dan PasswordInput components.
- *
- * @example
- * ```tsx
- * <FormInput
- *   label="Nama Penerima"
- *   required
- *   value={name}
- *   onChangeText={setName}
- *   error={nameError}
- *   placeholder="Masukkan nama"
- *   autoCapitalize="words"
- * />
- * ```
- */
-const FormInput = forwardRef<RNTextInput, FormInputProps>(
+const InputContainer = styled(XStack, {
+  backgroundColor: '$background',
+  borderWidth: 1.5,
+  borderRadius: '$4',
+  borderColor: '$borderColor',
+  paddingHorizontal: '$4',
+  minHeight: 56,
+  alignItems: 'center',
+  overflow: 'hidden',
+
+  variants: {
+    multiline: {
+      true: {
+        alignItems: 'flex-start',
+        paddingVertical: '$4',
+        minHeight: 120,
+      },
+    },
+    focused: {
+      true: {
+        borderWidth: 2,
+        borderColor: '$primary',
+      },
+    },
+    error: {
+      true: {
+        borderWidth: 2,
+        borderColor: '$danger',
+      },
+    },
+    disabled: {
+      true: {
+        opacity: 0.6,
+      },
+    },
+  } as const,
+});
+
+const StyledInput = styled(Input, {
+  flex: 1,
+  backgroundColor: 'transparent',
+  borderWidth: 0,
+  padding: 0,
+  margin: 0,
+  fontSize: 16,
+  color: '$color',
+  minHeight: 56,
+  textAlignVertical: 'center',
+});
+
+const FormInput = forwardRef<Input, FormInputProps>(
   (
     {
       label,
@@ -68,33 +117,18 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
       accessibilityHint,
       multiline = false,
       numberOfLines = 3,
-      minHeight,
       keyboardType = 'default',
       autoCapitalize = 'none',
       autoCorrect = false,
       returnKeyType,
       onSubmitEditing,
+      blurOnSubmit,
       editable = true,
-      ...restProps
     },
     ref,
   ) => {
-    const theme = useTheme();
     const [isFocused, setIsFocused] = useState(false);
-
-    const placeholderColor = getThemeColor(theme, 'placeholderColor');
-    const textColor = getThemeColor(theme, 'color');
-    const surfaceColor = getThemeColor(theme, 'background');
-    const borderColorValue = error
-      ? getThemeColor(theme, 'danger')
-      : isFocused
-        ? getThemeColor(theme, 'primary')
-        : getThemeColor(theme, 'borderColor');
-
-    const inputHeight = multiline
-      ? minHeight || FORM_FIELD.MULTILINE_MIN_HEIGHT
-      : FORM_FIELD.HEIGHT;
-    const textAlignVertical = multiline ? 'top' : 'center';
+    const isDisabled = disabled || !editable;
 
     return (
       <YStack>
@@ -105,35 +139,16 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
           </Text>
         )}
 
-        <XStack
-          style={{
-            flexDirection: 'row',
-            alignItems: multiline ? 'flex-start' : 'center',
-            paddingHorizontal: FORM_FIELD.HORIZONTAL_PADDING,
-            paddingVertical: multiline ? 16 : 0,
-            overflow: 'hidden',
-            backgroundColor: surfaceColor,
-            borderWidth:
-              error || isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH,
-            borderRadius: FORM_FIELD.BORDER_RADIUS,
-            borderColor: borderColorValue,
-            height: multiline ? undefined : inputHeight,
-            minHeight: multiline ? inputHeight : undefined,
-            opacity: disabled || !editable ? 0.6 : 1,
-          }}>
-          <RNTextInput
+        <InputContainer
+          multiline={multiline}
+          focused={isFocused && !error}
+          error={!!error}
+          disabled={isDisabled}
+          minHeight={multiline ? 120 : 56}>
+          <StyledInput
             ref={ref}
-            style={{
-              flex: 1,
-              height: multiline ? undefined : '100%',
-              fontSize: 16,
-              fontFamily: theme.bodyFont?.val || 'System',
-              color: textColor,
-              padding: 0,
-              margin: 0,
-            }}
             placeholder={placeholder}
-            placeholderTextColor={placeholderColor}
+            placeholderTextColor="$colorSubtle"
             value={value}
             onChangeText={onChangeText}
             keyboardType={keyboardType}
@@ -141,11 +156,10 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
             autoCorrect={autoCorrect}
             returnKeyType={returnKeyType}
             onSubmitEditing={onSubmitEditing}
-            editable={editable && !disabled}
+            blurOnSubmit={blurOnSubmit}
+            editable={!isDisabled}
             multiline={multiline}
             numberOfLines={multiline ? numberOfLines : undefined}
-            textAlignVertical={textAlignVertical}
-            underlineColorAndroid="transparent"
             onFocus={() => {
               setIsFocused(true);
               onFocus?.();
@@ -157,13 +171,13 @@ const FormInput = forwardRef<RNTextInput, FormInputProps>(
             accessibilityLabel={accessibilityLabel || label || placeholder}
             accessibilityHint={accessibilityHint}
             accessibilityLiveRegion={error ? 'polite' : undefined}
-            {...restProps}
+            underlineColorAndroid="transparent"
           />
-        </XStack>
+        </InputContainer>
 
         {error && (
           <XStack gap="$1" alignItems="center" marginTop="$1">
-            <XCircleIcon size={14} color={getThemeColor(theme, 'danger')} />
+            <XCircleIcon size={14} color="$danger" />
             <Text fontSize="$2" color="$danger">
               {error}
             </Text>
