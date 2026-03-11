@@ -1,27 +1,334 @@
-import { YStack, Text, useTheme } from 'tamagui';
+import { useCallback } from 'react';
+import { RefreshControl } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Card, Image, ScrollView, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
+import { BellIcon, CircleHelpIcon, PillIcon, SearchIcon, StarIcon } from '@/components/icons';
+import CategoryItem, { CategorySkeleton } from '@/components/elements/CategoryItem';
+import ProductCard, { ProductCardSkeleton } from '@/components/elements/ProductCard';
+import { TAB_BAR_HEIGHT } from '@/constants/ui';
+import { useAppSlice } from '@/slices';
+import { useHomeData } from '@/hooks';
 import { getThemeColor } from '@/utils/theme';
-import { PillIcon } from '@/components/icons';
+
+const ScreenRoot = styled(YStack, {
+  flex: 1,
+  backgroundColor: '$surfaceSubtle',
+});
+
+const ContentStack = styled(YStack, {
+  width: '100%',
+  maxWidth: 560,
+  alignSelf: 'center',
+  gap: '$4',
+});
+
+const SectionTitle = styled(Text, {
+  color: '$color',
+  fontSize: 14,
+  fontWeight: '700',
+});
+
+const SurfaceIconButton = styled(Card, {
+  width: 36,
+  height: 36,
+  borderRadius: '$10',
+  backgroundColor: '$surface',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  alignItems: 'center',
+  justifyContent: 'center',
+  elevation: 1,
+  pressStyle: { opacity: 0.9 },
+});
+
+const PillAction = styled(XStack, {
+  alignSelf: 'flex-start',
+  backgroundColor: '$surface',
+  borderRadius: '$10',
+  paddingVertical: '$1',
+  paddingHorizontal: '$3',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  pressStyle: { opacity: 0.92 },
+});
+
+const BannerCard = styled(Card, {
+  backgroundColor: '$infoSoft',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  borderRadius: '$4',
+  padding: '$3.5',
+  elevation: 2,
+});
+
+const IllustrationPanel = styled(YStack, {
+  borderRadius: '$4',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '$surface',
+});
+
+const SearchShell = styled(Card, {
+  alignItems: 'center',
+  flexDirection: 'row',
+  borderRadius: '$10',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  backgroundColor: '$surface',
+  height: 46,
+  paddingLeft: '$2',
+  paddingRight: '$3',
+  gap: '$2',
+  elevation: 1,
+  pressStyle: { opacity: 0.92 },
+});
 
 export default function Home() {
+  const router = useRouter();
+  const media = useMedia();
   const theme = useTheme();
-  const subtleColor = getThemeColor(theme, 'colorPress');
+  const insets = useSafeAreaInsets();
+  const { user } = useAppSlice();
+  const { categories, products, isLoadingCategories, isLoadingProducts, refresh } = useHomeData();
+
+  const iconColor = getThemeColor(theme, 'colorPress');
+  const heroColor = getThemeColor(theme, 'color');
+  const horizontalPadding = media.gtSm ? '$5' : '$4';
+  const productWidth = media.gtSm ? 156 : 140;
+  const topPadding = (media.gtSm ? 16 : 12) + insets.top;
+
+  const categorySize = media.gtLg ? 'large' : media.gtMd ? 'medium' : 'small';
+  const categoryLayout = media.gtLg ? 'grid4' : media.gtMd ? 'grid3' : 'scroll';
+  const isLargeScreen = media.gtMd;
+
+  const handleOpenOrders = () => {
+    router.push('/(main)/(tabs)/orders');
+  };
+
+  const handleOpenSupport = () => {
+    router.push('/(main)/(tabs)/profile/support');
+  };
+
+  const handleOpenDoctorDiscovery = () => {
+    router.push('/(main)/(tabs)/home/details');
+  };
+
+  const handleOpenDetails = () => {
+    router.push('/(main)/(tabs)/home/details');
+  };
+
+  const handleCategoryPress = useCallback(() => {}, []);
+
+  const handleProductPress = useCallback(
+    (productId: string) => {
+      router.push({
+        pathname: '/(main)/(tabs)/home/product-details',
+        params: { id: productId },
+      });
+    },
+    [router],
+  );
+
+  const userName = user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer';
+  const userAvatarUrl = user?.avatar_url;
+  const userInitial = userName.charAt(0).toUpperCase();
+
+  const isRefreshing = isLoadingCategories || isLoadingProducts;
 
   return (
-    <YStack flex={1} backgroundColor="$background">
-      <YStack flex={1} alignItems="center" justifyContent="center" padding="$5" gap="$4">
-        <PillIcon size={64} color={subtleColor} />
-        <Text
-          fontSize="$6"
-          fontWeight="700"
-          color="$color"
-          textAlign="center"
-          fontFamily="$heading">
-          Selamat Datang
-        </Text>
-        <Text fontSize="$4" color="$colorPress" textAlign="center" maxWidth={300} lineHeight="$4">
-          Produk dan layanan kesehatan akan segera hadir di sini.
-        </Text>
-      </YStack>
-    </YStack>
+    <ScreenRoot>
+      <ScrollView
+        flex={1}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}>
+        <ContentStack pt={topPadding} px={horizontalPadding} pb={TAB_BAR_HEIGHT + insets.bottom}>
+          <XStack alignItems="center" justifyContent="space-between" gap="$3">
+            <XStack alignItems="center" gap="$2.5" flex={1} minWidth={0}>
+              {userAvatarUrl ? (
+                <Card width={42} height={42} borderRadius="$10" overflow="hidden">
+                  <YStack width="100%" height="100%">
+                    <Image source={{ uri: userAvatarUrl }} width="100%" height="100%" />
+                  </YStack>
+                </Card>
+              ) : (
+                <YStack
+                  width={42}
+                  height={42}
+                  borderRadius="$10"
+                  alignItems="center"
+                  justifyContent="center"
+                  backgroundColor="$infoSoft">
+                  <Text color="$primary" fontSize={16} fontWeight="700">
+                    {userInitial}
+                  </Text>
+                </YStack>
+              )}
+              <YStack flex={1} minWidth={0}>
+                <Text fontSize={14} fontWeight="600" color="$primary" numberOfLines={1}>
+                  {userName}
+                </Text>
+                <Text fontSize={12} color="$colorSubtle" numberOfLines={1}>
+                  Customer
+                </Text>
+              </YStack>
+            </XStack>
+
+            <XStack gap="$2" alignItems="center">
+              <SurfaceIconButton
+                onPress={handleOpenOrders}
+                accessibilityRole="button"
+                accessibilityLabel="Orders"
+                accessibilityHint="Open orders tab">
+                <BellIcon size={16} color={iconColor} />
+              </SurfaceIconButton>
+              <SurfaceIconButton
+                onPress={handleOpenSupport}
+                accessibilityRole="button"
+                accessibilityLabel="Help"
+                accessibilityHint="Open help center">
+                <CircleHelpIcon size={16} color={iconColor} />
+              </SurfaceIconButton>
+            </XStack>
+          </XStack>
+
+          <YStack gap="$3">
+            <Text
+              color={heroColor}
+              fontSize={media.gtSm ? 42 : 36}
+              lineHeight={media.gtSm ? 48 : 42}
+              fontWeight="800"
+              letterSpacing={-0.8}
+              maxWidth={320}>
+              Sehat jadi mudah
+            </Text>
+
+            <SearchShell
+              onPress={handleOpenDetails}
+              accessibilityRole="button"
+              accessibilityLabel="Search products"
+              accessibilityHint="Open product discovery details">
+              <Text flex={1} color="$placeholderColor" fontSize={14} fontWeight="500" pl="$1">
+                Search by product name
+              </Text>
+              <SearchIcon size={16} color={iconColor} />
+            </SearchShell>
+          </YStack>
+
+          <BannerCard>
+            <XStack alignItems="center" gap="$3" justifyContent="space-between">
+              <YStack flex={1} minWidth={0} gap="$2">
+                <Text color="$color" fontSize={14} lineHeight={18} fontWeight="700">
+                  Your last order has{`\n`}been proceed
+                </Text>
+                <PillAction
+                  onPress={handleOpenOrders}
+                  accessibilityRole="button"
+                  accessibilityLabel="Track last order"
+                  accessibilityHint="Open order tracking details">
+                  <Text color="$primary" fontSize={11} fontWeight="700">
+                    Track now
+                  </Text>
+                </PillAction>
+              </YStack>
+
+              <IllustrationPanel width={74} height={66}>
+                <PillIcon size={30} color={iconColor} />
+                <XStack width={24} height={4} borderRadius="$10" backgroundColor="$infoSoft" />
+              </IllustrationPanel>
+            </XStack>
+          </BannerCard>
+
+          <YStack gap="$2.5">
+            <SectionTitle>Categories</SectionTitle>
+            {isLoadingCategories ? (
+              <CategorySkeleton isLargeScreen={isLargeScreen} />
+            ) : categories.length === 0 ? (
+              <Text fontSize={13} color="$colorSubtle">
+                No categories available
+              </Text>
+            ) : isLargeScreen ? (
+              <XStack flexWrap="wrap" gap="$2.5" justifyContent="space-between">
+                {categories.map(category => (
+                  <CategoryItem
+                    key={category.id}
+                    category={category}
+                    onPress={handleCategoryPress}
+                    size={categorySize}
+                    layout={categoryLayout}
+                  />
+                ))}
+              </XStack>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <XStack gap="$2.5" pr="$2">
+                  {categories.map(category => (
+                    <CategoryItem
+                      key={category.id}
+                      category={category}
+                      onPress={handleCategoryPress}
+                      size={categorySize}
+                      layout={categoryLayout}
+                    />
+                  ))}
+                </XStack>
+              </ScrollView>
+            )}
+          </YStack>
+
+          <YStack gap="$2.5">
+            <SectionTitle>Latest Products</SectionTitle>
+            {isLoadingProducts ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <ProductCardSkeleton width={productWidth} />
+              </ScrollView>
+            ) : products.length === 0 ? (
+              <Text fontSize={13} color="$colorSubtle">
+                No products available
+              </Text>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <XStack gap="$2.5" pr="$2">
+                  {products.map(item => (
+                    <ProductCard
+                      key={item.id}
+                      item={item}
+                      width={productWidth}
+                      iconColor={iconColor}
+                      onPress={() => handleProductPress(item.id)}
+                    />
+                  ))}
+                </XStack>
+              </ScrollView>
+            )}
+          </YStack>
+
+          <BannerCard>
+            <XStack alignItems="center" justifyContent="space-between" gap="$2.5">
+              <YStack flex={1} minWidth={0} gap="$2.5">
+                <Text color="$color" fontSize={15} lineHeight={20} fontWeight="700">
+                  Explore great doctors{`\n`}for your better life
+                </Text>
+                <PillAction
+                  onPress={handleOpenDoctorDiscovery}
+                  accessibilityRole="button"
+                  accessibilityLabel="Explore doctors"
+                  accessibilityHint="Open doctor discovery">
+                  <Text color="$primary" fontSize={12} fontWeight="700">
+                    Explore life
+                  </Text>
+                </PillAction>
+              </YStack>
+
+              <IllustrationPanel width={88} height={78} gap="$1">
+                <StarIcon size={18} color={iconColor} />
+                <PillIcon size={24} color={iconColor} />
+              </IllustrationPanel>
+            </XStack>
+          </BannerCard>
+        </ContentStack>
+      </ScrollView>
+    </ScreenRoot>
   );
 }

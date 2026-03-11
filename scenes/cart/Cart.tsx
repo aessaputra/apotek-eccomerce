@@ -1,17 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
+import { WebView } from 'react-native-webview';
+import * as Crypto from 'expo-crypto';
 import { getThemeColor } from '@/utils/theme';
 import { CartIcon, MapPinIcon } from '@/components/icons';
 import AddressCard from '@/components/elements/AddressCard/AddressCard';
 import Button from '@/components/elements/Button';
 import { useAppSlice } from '@/slices';
+import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
 import { getAddresses } from '@/services/address.service';
 import { getShippingRatesForAddress } from '@/services/shipping.service';
+import {
+  createCheckoutOrder,
+  createSnapToken,
+  pollOrderPaymentStatus,
+} from '@/services/checkout.service';
 import type { Address } from '@/types/address';
 import type { ShippingOption } from '@/types/shipping';
 import type { Tables } from '@/types/supabase';
 import { supabase } from '@/utils/supabase';
+import config from '@/utils/config';
 
 const DEFAULT_PRODUCT_WEIGHT_GRAMS = 200;
 
@@ -19,6 +28,12 @@ interface CartSnapshot {
   itemCount: number;
   estimatedWeightGrams: number;
   packageValue: number;
+}
+
+interface PersistedCheckoutSession {
+  fingerprint: string;
+  idempotency_key: string;
+  order_id: string | null;
 }
 
 const EMPTY_CART: CartSnapshot = {
@@ -31,6 +46,7 @@ export default function Cart() {
   const router = useRouter();
   const theme = useTheme();
   const { user } = useAppSlice();
+  const { getPersistData, setPersistData, removePersistData } = useDataPersist();
   const subtleColor = getThemeColor(theme, 'colorPress');
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -41,6 +57,13 @@ export default function Cart() {
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShippingKey, setSelectedShippingKey] = useState<string | null>(null);
+  const [quoteDestinationAreaId, setQuoteDestinationAreaId] = useState<string | null>(null);
+  const [quoteDestinationPostalCode, setQuoteDestinationPostalCode] = useState<number | null>(null);
+  const [startingCheckout, setStartingCheckout] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string | null>(null);
 
   const selectedAddress = useMemo(
     () => addresses.find(address => address.id === selectedAddressId) ?? null,
@@ -53,6 +76,26 @@ export default function Cart() {
         option => `${option.courier_code}-${option.service_code}` === selectedShippingKey,
       ) ?? null,
     [shippingOptions, selectedShippingKey],
+  );
+
+  const checkoutFingerprint = useMemo(
+    () =>
+      [
+        user?.id ?? '',
+        selectedAddressId ?? '',
+        selectedShippingKey ?? '',
+        cartSnapshot.itemCount,
+        cartSnapshot.estimatedWeightGrams,
+        cartSnapshot.packageValue,
+      ].join('|'),
+    [
+      cartSnapshot.estimatedWeightGrams,
+      cartSnapshot.itemCount,
+      cartSnapshot.packageValue,
+      selectedAddressId,
+      selectedShippingKey,
+      user?.id,
+    ],
   );
 
   const loadAddresses = useCallback(async () => {
@@ -196,6 +239,8 @@ export default function Cart() {
 
     const options = data?.options ?? [];
     setShippingOptions(options);
+    setQuoteDestinationAreaId(data?.destination_area_id ?? null);
+    setQuoteDestinationPostalCode(data?.destination_postal_code ?? null);
 
     if (options.length === 0) {
       setShippingError('Tidak ada layanan kurir yang tersedia untuk alamat ini.');
@@ -212,15 +257,270 @@ export default function Cart() {
   }, [router]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const hydrateCheckoutSession = async () => {
+      if (!user?.id) {
+        setCheckoutIdempotencyKey(null);
+        setActiveOrderId(null);
+        await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
+        return;
+      }
+
+      const persisted = await getPersistData<PersistedCheckoutSession>(
+        DataPersistKeys.CHECKOUT_SESSION,
+      );
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (persisted?.fingerprint === checkoutFingerprint) {
+        setCheckoutIdempotencyKey(persisted.idempotency_key);
+        setActiveOrderId(persisted.order_id);
+        return;
+      }
+
+      setCheckoutIdempotencyKey(null);
+      setActiveOrderId(null);
+      await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
+    };
+
+    void hydrateCheckoutSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [checkoutFingerprint, getPersistData, removePersistData, user?.id]);
+
+  useEffect(() => {
     setShippingError(null);
     setShippingOptions([]);
     setSelectedShippingKey(null);
+    setQuoteDestinationAreaId(null);
+    setQuoteDestinationPostalCode(null);
+    setCheckoutIdempotencyKey(null);
+    setActiveOrderId(null);
+    void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
   }, [
     selectedAddressId,
     cartSnapshot.estimatedWeightGrams,
     cartSnapshot.itemCount,
     cartSnapshot.packageValue,
+    removePersistData,
   ]);
+
+  useEffect(() => {
+    if (!selectedShippingKey) {
+      return;
+    }
+
+    setCheckoutIdempotencyKey(null);
+    setActiveOrderId(null);
+    void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
+  }, [removePersistData, selectedShippingKey]);
+
+  const finalizePaymentFlow = useCallback(
+    async (reason: 'success' | 'pending' | 'failed') => {
+      setPaymentUrl(null);
+
+      if (!activeOrderId) {
+        router.push('/(main)/(tabs)/orders');
+        return;
+      }
+
+      if (reason === 'failed') {
+        setShippingError('Pembayaran dibatalkan atau gagal. Anda bisa coba lagi.');
+        setCheckoutIdempotencyKey(null);
+        setActiveOrderId(null);
+        void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
+        router.push('/(main)/(tabs)/orders');
+        return;
+      }
+
+      setConfirmingPayment(true);
+      const { data, error } = await pollOrderPaymentStatus(activeOrderId, 12, 2000);
+      setConfirmingPayment(false);
+
+      if (error) {
+        setShippingError(error.message);
+      } else if (data?.payment_status === 'failed') {
+        setShippingError('Pembayaran terdeteksi gagal. Silakan ulangi pembayaran.');
+      } else if (data?.payment_status === 'success') {
+        setShippingError(null);
+      }
+
+      setCheckoutIdempotencyKey(null);
+      setActiveOrderId(null);
+      void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
+
+      router.push('/(main)/(tabs)/orders');
+    },
+    [activeOrderId, removePersistData, router],
+  );
+
+  const handleStartCheckout = useCallback(async () => {
+    setShippingError(null);
+
+    if (!user?.id) {
+      setShippingError('Silakan login terlebih dahulu.');
+      return;
+    }
+
+    if (!selectedAddress) {
+      setShippingError('Pilih alamat pengiriman terlebih dahulu.');
+      return;
+    }
+
+    if (!selectedShippingOption) {
+      setShippingError('Pilih kurir sebelum melanjutkan pembayaran.');
+      return;
+    }
+
+    if (!config.biteshipOriginAreaId) {
+      setShippingError('Origin area toko belum dikonfigurasi.');
+      return;
+    }
+
+    const currentIdempotencyKey = checkoutIdempotencyKey ?? Crypto.randomUUID();
+    if (!checkoutIdempotencyKey) {
+      setCheckoutIdempotencyKey(currentIdempotencyKey);
+    }
+
+    await setPersistData<PersistedCheckoutSession>(DataPersistKeys.CHECKOUT_SESSION, {
+      fingerprint: checkoutFingerprint,
+      idempotency_key: currentIdempotencyKey,
+      order_id: activeOrderId,
+    });
+
+    setStartingCheckout(true);
+
+    const { data: orderData, error: orderError } = await createCheckoutOrder({
+      user_id: user.id,
+      shipping_address_id: selectedAddress.id,
+      origin_area_id: config.biteshipOriginAreaId,
+      destination_area_id: quoteDestinationAreaId ?? undefined,
+      destination_postal_code: quoteDestinationPostalCode ?? undefined,
+      shipping_option: selectedShippingOption,
+      checkout_idempotency_key: currentIdempotencyKey,
+    });
+
+    if (orderError || !orderData) {
+      setStartingCheckout(false);
+      setShippingError(orderError?.message ?? 'Gagal membuat order checkout.');
+      return;
+    }
+
+    setActiveOrderId(orderData.order_id);
+    await setPersistData<PersistedCheckoutSession>(DataPersistKeys.CHECKOUT_SESSION, {
+      fingerprint: checkoutFingerprint,
+      idempotency_key: currentIdempotencyKey,
+      order_id: orderData.order_id,
+    });
+
+    const { data: snapData, error: snapError } = await createSnapToken(orderData.order_id);
+    setStartingCheckout(false);
+
+    if (snapError || !snapData) {
+      setShippingError(snapError?.message ?? 'Gagal memproses token pembayaran.');
+      return;
+    }
+
+    setPaymentUrl(snapData.redirect_url);
+  }, [
+    activeOrderId,
+    checkoutFingerprint,
+    checkoutIdempotencyKey,
+    quoteDestinationAreaId,
+    quoteDestinationPostalCode,
+    selectedAddress,
+    selectedShippingOption,
+    setPersistData,
+    user?.id,
+  ]);
+
+  if (paymentUrl) {
+    return (
+      <YStack flex={1} backgroundColor="$background">
+        <XStack alignItems="center" justifyContent="space-between" padding="$3" gap="$2">
+          <YStack flex={1} gap="$1">
+            <Text fontSize="$5" fontWeight="700" color="$color" fontFamily="$heading">
+              Pembayaran Midtrans
+            </Text>
+            <Text fontSize="$3" color="$colorPress">
+              Selesaikan pembayaran lalu tunggu konfirmasi order secara otomatis.
+            </Text>
+          </YStack>
+          <Button
+            title="Tutup"
+            backgroundColor="transparent"
+            titleStyle={{ color: '$primary', fontWeight: '600' }}
+            onPress={() => {
+              void finalizePaymentFlow('pending');
+            }}
+            accessibilityLabel="Tutup pembayaran"
+          />
+        </XStack>
+
+        {confirmingPayment ? (
+          <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$4">
+            <Spinner size="large" color="$primary" />
+            <Text textAlign="center" color="$colorPress">
+              Memastikan status pembayaran dari server. Mohon tunggu...
+            </Text>
+          </YStack>
+        ) : (
+          <WebView
+            source={{ uri: paymentUrl }}
+            style={{ flex: 1 }}
+            onShouldStartLoadWithRequest={request => {
+              const url = request.url || '';
+              if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                return false;
+              }
+
+              const hasSettlement =
+                url.includes('transaction_status=settlement') ||
+                url.includes('transaction_status=capture');
+              const hasPending = url.includes('transaction_status=pending');
+              const hasFailed =
+                url.includes('transaction_status=deny') ||
+                url.includes('transaction_status=cancel') ||
+                url.includes('transaction_status=expire');
+              const reachedFinish =
+                url.includes('example.com') ||
+                url.includes('/finish') ||
+                url.includes('/unfinish') ||
+                url.includes('/error');
+
+              if (reachedFinish || hasSettlement || hasPending || hasFailed) {
+                if (hasFailed) {
+                  void finalizePaymentFlow('failed');
+                } else if (hasSettlement) {
+                  void finalizePaymentFlow('success');
+                } else {
+                  void finalizePaymentFlow('pending');
+                }
+
+                return false;
+              }
+
+              return true;
+            }}
+            onNavigationStateChange={navState => {
+              const url = navState.url || '';
+              if (
+                url.includes('transaction_status=settlement') ||
+                url.includes('transaction_status=capture')
+              ) {
+                void finalizePaymentFlow('success');
+              }
+            }}
+          />
+        )}
+      </YStack>
+    );
+  }
 
   if (!user) {
     return (
@@ -437,18 +737,16 @@ export default function Cart() {
             </Text>
           </Card>
           <Button
-            title="Gunakan Kurir Terpilih"
-            disabled={!selectedShippingOption}
+            title={startingCheckout ? 'Memproses Checkout...' : 'Lanjut ke Pembayaran'}
+            disabled={!selectedShippingOption || startingCheckout}
+            isLoading={startingCheckout}
             onPress={() => {
-              if (!selectedShippingOption) {
-                return;
-              }
-              router.push('/(main)/(tabs)/orders');
+              void handleStartCheckout();
             }}
             paddingVertical="$2"
             borderRadius="$3"
             minHeight={44}
-            accessibilityLabel="Gunakan kurir terpilih"
+            accessibilityLabel="Lanjut ke pembayaran"
           />
         </YStack>
       ) : null}

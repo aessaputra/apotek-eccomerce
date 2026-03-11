@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 import {
   AlertCircle,
   Bell,
+  ChevronLeft,
   CircleHelp,
   Check,
   ChevronRight,
@@ -12,6 +13,7 @@ import {
   Heart,
   Home,
   MapPin,
+  MoreHorizontal,
   Package,
   Pencil,
   Pill,
@@ -82,6 +84,10 @@ export function ChevronRightIcon(props: IconProps) {
   return <ChevronRight {...props} />;
 }
 
+export function ChevronLeftIcon(props: IconProps) {
+  return <ChevronLeft {...props} />;
+}
+
 export function XCircleIcon(props: IconProps) {
   return <XCircle {...props} />;
 }
@@ -112,4 +118,8 @@ export function GoogleIcon(props: IconProps) {
 
 export function CloseIcon(props: IconProps) {
   return <X {...props} />;
+}
+
+export function MoreIcon(props: IconProps) {
+  return <MoreHorizontal {...props} />;
 }

@@ -29,6 +29,26 @@ function requireField(value: string | null | undefined, fieldName: string): stri
   return normalized;
 }
 
+function parseCoordinate(value: number | string | null | undefined): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const parsed = Number.parseFloat(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
 export function toByteshipShippingAddress(address: Address): ByteshipShippingAddress {
   const normalized: ByteshipShippingAddress = {
     recipient_name: requireField(address.receiver_name, 'receiver_name'),
@@ -40,9 +60,12 @@ export function toByteshipShippingAddress(address: Address): ByteshipShippingAdd
     country_code: (normalizeText(address.country_code) || DEFAULT_COUNTRY_CODE).toUpperCase(),
   };
 
-  if (typeof address.latitude === 'number' && typeof address.longitude === 'number') {
-    normalized.latitude = address.latitude;
-    normalized.longitude = address.longitude;
+  const latitude = parseCoordinate(address.latitude);
+  const longitude = parseCoordinate(address.longitude);
+
+  if (latitude !== null && longitude !== null) {
+    normalized.latitude = latitude;
+    normalized.longitude = longitude;
   }
 
   return normalized;

@@ -1,19 +1,9 @@
-import { YStack, useTheme } from 'tamagui';
+import { useTheme } from 'tamagui';
 import { Stack } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import HeaderSearchAndCart from '@/components/layouts/HeaderSearchAndCart';
-import { getStackHeaderOptions, getThemeColor } from '@/utils/theme';
-import { DEFAULT_THEME_VALUES } from '@/themes';
+import { getStackHeaderOptions } from '@/utils/theme';
 
 export default function HomeStackLayout() {
   const theme = useTheme();
-  // Use headerBackground for theme-aware header color (darker teal in dark mode for better contrast)
-  // Use DEFAULT_THEME_VALUES for fallback to ensure consistency with theme definitions
-  const headerBg = getThemeColor(
-    theme,
-    'headerBackground',
-    getThemeColor(theme, 'brandPrimary', DEFAULT_THEME_VALUES.brandPrimary),
-  );
 
   return (
     <Stack
@@ -24,23 +14,17 @@ export default function HomeStackLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: '',
-          headerTitle: () => null,
-          header: () => (
-            <SafeAreaView style={{ backgroundColor: headerBg }} edges={['top']}>
-              <YStack
-                paddingHorizontal={16}
-                paddingVertical={6}
-                minHeight={44}
-                justifyContent="center"
-                width="100%">
-                <HeaderSearchAndCart />
-              </YStack>
-            </SafeAreaView>
-          ),
+          headerShown: false,
         }}
       />
       <Stack.Screen name="details" options={{ title: 'Details' }} />
+      <Stack.Screen
+        name="product-details"
+        options={{
+          title: 'Product Details',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
