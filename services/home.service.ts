@@ -9,6 +9,15 @@ export interface ProductWithImages extends ProductRow {
   images: { url: string; sort_order: number }[];
 }
 
+export interface ProductDetailsData extends ProductWithImages {
+  category_name: string | null;
+  category_slug: string | null;
+}
+
+interface CartMutationResult {
+  error: Error | null;
+}
+
 /**
  * Fetch all active categories from Supabase
  */
@@ -119,6 +128,151 @@ export async function getLatestProductsWithImages(
   } catch (error) {
     if (__DEV__) console.warn('[HomeService] getLatestProductsWithImages error:', error);
     return [];
+  }
+}
+
+export async function getProductDetailsById(productId: string): Promise<ProductDetailsData | null> {
+  const normalizedId = productId.trim();
+  if (!normalizedId) return null;
+
+  try {
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', normalizedId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (productError) {
+      if (__DEV__)
+        console.warn('[HomeService] getProductDetailsById product error:', productError.message);
+      return null;
+    }
+
+    if (!product) return null;
+
+    const [imagesResult, categoryResult] = await Promise.all([
+      supabase
+        .from('product_images')
+        .select('*')
+        .eq('product_id', normalizedId)
+        .order('sort_order', { ascending: true }),
+      product.category_id
+        ? supabase
+            .from('categories')
+            .select('name,slug')
+            .eq('id', product.category_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    if (imagesResult.error) {
+      if (__DEV__)
+        console.warn(
+          '[HomeService] getProductDetailsById images error:',
+          imagesResult.error.message,
+        );
+    }
+
+    if (categoryResult.error) {
+      if (__DEV__)
+        console.warn(
+          '[HomeService] getProductDetailsById category error:',
+          categoryResult.error.message,
+        );
+    }
+
+    return {
+      ...product,
+      images: (imagesResult.data || []).map(image => ({
+        url: image.url,
+        sort_order: image.sort_order,
+      })),
+      category_name: categoryResult.data?.name ?? null,
+      category_slug: categoryResult.data?.slug ?? null,
+    };
+  } catch (error) {
+    if (__DEV__) console.warn('[HomeService] getProductDetailsById error:', error);
+    return null;
+  }
+}
+
+export async function addProductToCart(
+  userId: string,
+  productId: string,
+  quantityToAdd: number = 1,
+): Promise<CartMutationResult> {
+  const normalizedUserId = userId.trim();
+  const normalizedProductId = productId.trim();
+
+  if (!normalizedUserId || !normalizedProductId || quantityToAdd <= 0) {
+    return { error: new Error('Invalid cart mutation payload.') };
+  }
+
+  try {
+    const { data: existingCarts, error: existingCartsError } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('user_id', normalizedUserId)
+      .limit(1);
+
+    if (existingCartsError) {
+      return { error: existingCartsError as unknown as Error };
+    }
+
+    let cartId = existingCarts?.[0]?.id ?? null;
+
+    if (!cartId) {
+      const { data: insertedCart, error: insertedCartError } = await supabase
+        .from('carts')
+        .insert({ user_id: normalizedUserId })
+        .select('id')
+        .single();
+
+      if (insertedCartError) {
+        return { error: insertedCartError as unknown as Error };
+      }
+
+      cartId = insertedCart.id;
+    }
+
+    const { data: existingItem, error: existingItemError } = await supabase
+      .from('cart_items')
+      .select('id, quantity')
+      .eq('cart_id', cartId)
+      .eq('product_id', normalizedProductId)
+      .maybeSingle();
+
+    if (existingItemError) {
+      return { error: existingItemError as unknown as Error };
+    }
+
+    if (existingItem) {
+      const { error: updateError } = await supabase
+        .from('cart_items')
+        .update({ quantity: existingItem.quantity + quantityToAdd })
+        .eq('id', existingItem.id);
+
+      if (updateError) {
+        return { error: updateError as unknown as Error };
+      }
+
+      return { error: null };
+    }
+
+    const { error: insertItemError } = await supabase.from('cart_items').insert({
+      cart_id: cartId,
+      product_id: normalizedProductId,
+      quantity: quantityToAdd,
+    });
+
+    if (insertItemError) {
+      return { error: insertItemError as unknown as Error };
+    }
+
+    return { error: null };
+  } catch (error) {
+    return { error: error as Error };
   }
 }
 
