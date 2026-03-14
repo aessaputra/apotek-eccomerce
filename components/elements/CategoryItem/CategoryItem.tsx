@@ -4,8 +4,47 @@ import { PillIcon } from '@/components/icons';
 import type { CategoryRow } from '@/services/home.service';
 import { getThemeColor } from '@/utils/theme';
 
+const CATEGORY_SIZE_CONFIG = {
+  small: {
+    minWidth: 148,
+    maxWidth: 196,
+    minHeight: 64,
+    iconContainer: 32,
+    iconImage: 22,
+    iconGlyph: 16,
+    textSize: 12,
+    lineHeight: 16,
+    horizontalPadding: '$3.5',
+    verticalPadding: '$2.5',
+  },
+  medium: {
+    minWidth: 178,
+    maxWidth: 232,
+    minHeight: 70,
+    iconContainer: 36,
+    iconImage: 24,
+    iconGlyph: 18,
+    textSize: 13,
+    lineHeight: 17,
+    horizontalPadding: '$4',
+    verticalPadding: '$3',
+  },
+  large: {
+    minWidth: 214,
+    maxWidth: 276,
+    minHeight: 78,
+    iconContainer: 40,
+    iconImage: 28,
+    iconGlyph: 20,
+    textSize: 14,
+    lineHeight: 18,
+    horizontalPadding: '$4.5',
+    verticalPadding: '$3.5',
+  },
+} as const;
+
 const CategoryCard = styled(Card, {
-  minHeight: 60,
+  minHeight: 64,
   paddingHorizontal: '$3',
   paddingVertical: '$2.5',
   backgroundColor: '$surfaceElevated',
@@ -13,38 +52,53 @@ const CategoryCard = styled(Card, {
   borderColor: '$surfaceBorder',
   borderRadius: '$6',
   elevation: 2,
-  pressStyle: { opacity: 0.94, scale: 0.98 },
-  flex: 1,
+  shadowColor: '$shadowColor',
+  shadowOpacity: 0.12,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
+  justifyContent: 'center',
+  pressStyle: { opacity: 0.96, scale: 0.985 },
+  hoverStyle: { borderColor: '$primary', backgroundColor: '$surface' },
+  focusStyle: { borderColor: '$primary' },
+  animation: 'quick',
+
+  $gtSm: {
+    borderRadius: '$7',
+  },
 
   variants: {
     size: {
       small: {
-        minWidth: 120,
-        maxWidth: 152,
+        minWidth: 148,
+        maxWidth: 196,
+        minHeight: 64,
       },
       medium: {
-        minWidth: 148,
-        maxWidth: 188,
+        minWidth: 178,
+        maxWidth: 232,
+        minHeight: 70,
       },
       large: {
-        minWidth: 176,
-        maxWidth: 232,
+        minWidth: 214,
+        maxWidth: 276,
+        minHeight: 78,
       },
     },
     layout: {
       scroll: {
-        flex: 1,
+        flexGrow: 0,
+        flexShrink: 0,
       },
       grid2: {
-        flexBasis: '48%',
+        flexBasis: '48.8%',
         flexGrow: 0,
       },
       grid3: {
-        flexBasis: '31.5%',
+        flexBasis: '32%',
         flexGrow: 0,
       },
       grid4: {
-        flexBasis: '23.5%',
+        flexBasis: '24%',
         flexGrow: 0,
       },
     },
@@ -57,10 +111,16 @@ const CategoryCard = styled(Card, {
 });
 
 const SkeletonCard = styled(Card, {
-  backgroundColor: '$surface',
+  backgroundColor: '$surfaceElevated',
   borderWidth: 1,
   borderColor: '$surfaceBorder',
-  borderRadius: '$4',
+  borderRadius: '$6',
+  minHeight: 64,
+  justifyContent: 'center',
+  overflow: 'hidden',
+  $gtSm: {
+    borderRadius: '$7',
+  },
 });
 
 export interface CategoryItemProps {
@@ -77,73 +137,99 @@ export interface CategorySkeletonProps {
 export const CategorySkeleton = memo(function CategorySkeleton({
   isLargeScreen = false,
 }: CategorySkeletonProps) {
-  const skeletonItems = [1, 2, 3, 4, 5, 6].map(i => (
+  const skeletonItems = [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
     <SkeletonCard
       key={i}
-      minWidth={100}
-      flex={1}
-      minHeight={52}
-      paddingHorizontal="$2.5"
-      paddingVertical="$2">
-      <XStack alignItems="center" justifyContent="center" gap="$2">
-        <YStack width={24} height={24} borderRadius="$3" backgroundColor="$surfaceBorder" />
-        <YStack width={60} height={14} borderRadius="$2" backgroundColor="$surfaceBorder" />
+      minWidth={148}
+      maxWidth={196}
+      $gtSm={{ minWidth: 178, maxWidth: 232 }}
+      $gtLg={{ minWidth: 214, maxWidth: 276 }}
+      paddingHorizontal="$3.5"
+      paddingVertical="$2.5">
+      <XStack alignItems="center" justifyContent="flex-start" gap="$2.5">
+        <YStack width={32} height={32} borderRadius="$10" backgroundColor="$surfaceSubtle" />
+        <YStack flex={1} maxWidth={92} gap="$1.5">
+          <YStack width="82%" height={10} borderRadius="$2" backgroundColor="$surfaceBorder" />
+          <YStack width="58%" height={8} borderRadius="$2" backgroundColor="$surfaceSubtle" />
+        </YStack>
       </XStack>
     </SkeletonCard>
   ));
 
   if (isLargeScreen) {
     return (
-      <XStack flexWrap="wrap" gap="$2.5">
+      <XStack flexWrap="wrap" gap="$3" justifyContent="flex-start">
         {skeletonItems}
       </XStack>
     );
   }
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <XStack gap="$2.5" pr="$2">
-        {skeletonItems}
-      </XStack>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 2, paddingRight: 6 }}>
+      <XStack gap="$3">{skeletonItems}</XStack>
     </ScrollView>
   );
 });
 
 function CategoryItem({ category, onPress, size = 'small', layout = 'scroll' }: CategoryItemProps) {
   const theme = useTheme();
+  const sizeConfig = CATEGORY_SIZE_CONFIG[size];
+  const textLines = 2;
 
   return (
     <CategoryCard
       size={size}
       layout={layout}
+      minHeight={Math.max(sizeConfig.minHeight, 44)}
+      minWidth={Math.max(sizeConfig.minWidth, 44)}
+      maxWidth={sizeConfig.maxWidth}
+      paddingHorizontal={sizeConfig.horizontalPadding}
+      paddingVertical={sizeConfig.verticalPadding}
       onPress={onPress}
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={onPress ? `${category.name} category` : undefined}
       accessibilityHint={onPress ? `Explore ${category.name} products` : undefined}>
-      <XStack alignItems="center" justifyContent="flex-start" gap="$2.5">
+      <XStack alignItems="center" justifyContent="flex-start" gap="$2.5" minHeight={44}>
         {category.logo_url ? (
           <Card
-            width={30}
-            height={30}
+            width={sizeConfig.iconContainer}
+            height={sizeConfig.iconContainer}
             borderRadius="$10"
             backgroundColor="$surfaceSubtle"
             alignItems="center"
             justifyContent="center"
             overflow="hidden">
-            <Image source={{ uri: category.logo_url }} width={24} height={24} borderRadius="$3" />
+            <Image
+              source={{ uri: category.logo_url }}
+              width={sizeConfig.iconImage}
+              height={sizeConfig.iconImage}
+              borderRadius="$3"
+              resizeMode="contain"
+            />
           </Card>
         ) : (
           <YStack
-            width={30}
-            height={30}
+            width={sizeConfig.iconContainer}
+            height={sizeConfig.iconContainer}
             borderRadius="$10"
             alignItems="center"
             justifyContent="center"
             backgroundColor="$warningSoft">
-            <PillIcon size={16} color={getThemeColor(theme, 'primary')} />
+            <PillIcon size={sizeConfig.iconGlyph} color={getThemeColor(theme, 'primary')} />
           </YStack>
         )}
-        <Text fontSize={13} lineHeight={16} color="$color" fontWeight="700" numberOfLines={1}>
+        <Text
+          flex={1}
+          minWidth={0}
+          fontSize={sizeConfig.textSize}
+          lineHeight={sizeConfig.lineHeight}
+          color="$color"
+          fontWeight="700"
+          numberOfLines={textLines}
+          ellipsizeMode="tail">
           {category.name}
         </Text>
       </XStack>

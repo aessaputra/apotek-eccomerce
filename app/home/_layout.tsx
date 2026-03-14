@@ -25,6 +25,13 @@ export default function HomeStackLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="product-list"
+        options={{
+          title: 'Products',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

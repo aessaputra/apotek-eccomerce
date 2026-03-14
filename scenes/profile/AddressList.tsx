@@ -112,14 +112,14 @@ export default function AddressList() {
   const handleEdit = useCallback(
     (addressId: string) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      router.push(`/(main)/(tabs)/profile/address-form?id=${addressId}`);
+      router.push(`/profile/address-form?id=${addressId}`);
     },
     [router],
   );
 
   const handleAddAddress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(main)/(tabs)/profile/address-form');
+    router.push('/profile/address-form');
   }, [router]);
 
   const defaultAddress = addresses.find(a => a.is_default);

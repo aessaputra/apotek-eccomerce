@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Image,
+  Sheet,
   ScrollView,
   Text,
   View,
@@ -19,7 +20,6 @@ import {
   CartIcon,
   ChevronLeftIcon,
   HeartIcon,
-  MoreIcon,
   PillIcon,
 } from '@/components/icons';
 import {
@@ -31,6 +31,7 @@ import {
 } from '@/services/home.service';
 import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
+import QuantitySelector from '@/components/elements/QuantitySelector';
 
 const ScreenRoot = styled(YStack, {
   flex: 1,
@@ -106,10 +107,29 @@ const CategoryIcon = styled(View, {
 });
 
 const AddToCartButton = styled(Button, {
-  height: 48,
-  borderRadius: '$6',
+  height: 52,
+  borderRadius: '$8',
   backgroundColor: '$primary',
+  borderWidth: 1,
+  borderColor: '$primary',
+  elevation: 3,
+  pressStyle: { opacity: 0.95, scale: 0.985 },
+  disabledStyle: {
+    backgroundColor: '$backgroundDisabled',
+    borderColor: '$borderColorDisabled',
+    opacity: 1,
+  },
+});
+
+const SheetConfirmButton = styled(Button, {
+  width: 56,
+  height: 56,
+  borderRadius: '$10',
+  backgroundColor: '$primary',
+  alignItems: 'center',
+  justifyContent: 'center',
   pressStyle: { opacity: 0.95, scale: 0.98 },
+  disabledStyle: { opacity: 0.55 },
 });
 
 interface LoadingStateProps {
@@ -130,7 +150,7 @@ function ProductDetailsLoading({
           <XStack alignItems="center" justifyContent="space-between">
             <SkeletonBlock width={40} height={40} borderRadius="$10" />
             <SkeletonBlock width={80} height={18} />
-            <SkeletonBlock width={40} height={40} borderRadius="$10" />
+            <YStack width={40} />
           </XStack>
 
           <SkeletonBlock width="100%" aspectRatio={1} borderRadius="$6" />
@@ -142,31 +162,17 @@ function ProductDetailsLoading({
             </XStack>
             <SkeletonBlock width={110} height={28} borderRadius="$10" />
             <SkeletonBlock width="100%" height={76} />
+
+            <XStack alignItems="center" justifyContent="space-between" gap="$4" marginTop="$4">
+              <YStack gap="$1.5">
+                <SkeletonBlock width={140} height={28} />
+                <SkeletonBlock width={70} height={14} />
+              </YStack>
+              <SkeletonBlock width={152} height={48} borderRadius="$6" />
+            </XStack>
           </YStack>
         </ContentStack>
       </ScrollView>
-
-      <YStack
-        position="absolute"
-        bottom={0}
-        left={0}
-        right={0}
-        backgroundColor="$surface"
-        borderTopWidth={1}
-        borderTopColor="$surfaceBorder"
-        padding="$4"
-        paddingBottom={bottomPadding - 104}
-        elevation={4}>
-        <ContentStack maxWidth={560} alignSelf="center" width="100%">
-          <XStack alignItems="center" justifyContent="space-between" gap="$3">
-            <YStack gap="$1.5">
-              <SkeletonBlock width={140} height={28} />
-              <SkeletonBlock width={70} height={14} />
-            </YStack>
-            <SkeletonBlock width={152} height={48} borderRadius="$6" />
-          </XStack>
-        </ContentStack>
-      </YStack>
     </ScreenRoot>
   );
 }
@@ -202,6 +208,7 @@ interface ProductErrorStateProps {
   topPadding: number;
   horizontalPadding: '$4' | '$5';
   message: string;
+  title: string;
   onBack: () => void;
   onRetry: () => void;
 }
@@ -210,6 +217,7 @@ function ProductErrorState({
   topPadding,
   horizontalPadding,
   message,
+  title,
   onBack,
   onRetry,
 }: ProductErrorStateProps) {
@@ -233,8 +241,15 @@ function ProductErrorState({
             <ChevronLeftIcon size={20} color={getThemeColor(theme, 'color')} />
           </Card>
 
-          <Text fontSize={16} fontWeight="700" color="$color">
-            Details
+          <Text
+            fontSize={16}
+            fontWeight="700"
+            color="$color"
+            flex={1}
+            textAlign="center"
+            numberOfLines={1}
+            px="$2">
+            {title}
           </Text>
 
           <YStack width={40} />
@@ -295,6 +310,8 @@ export default function ProductDetails() {
   const [error, setError] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [product, setProduct] = useState<ProductDetailsData | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const productId = useMemo(() => {
     if (Array.isArray(params.id)) return params.id[0] ?? '';
@@ -303,8 +320,7 @@ export default function ProductDetails() {
 
   const topPadding = (media.gtSm ? 16 : 12) + insets.top;
   const horizontalPadding: '$4' | '$5' = media.gtSm ? '$5' : '$4';
-  const contentBottomPadding = insets.bottom + 120;
-  const stickyBottomPadding = insets.bottom + 16;
+  const contentBottomPadding = insets.bottom + 24;
 
   const fetchProduct = useCallback(async () => {
     if (!productId.trim()) {
@@ -334,6 +350,15 @@ export default function ProductDetails() {
     void fetchProduct();
   }, [fetchProduct]);
 
+  useEffect(() => {
+    if (!product) return;
+
+    setQuantity(prevQuantity => {
+      const maxQuantity = Math.max(product.stock, 1);
+      return Math.min(Math.max(prevQuantity, 1), maxQuantity);
+    });
+  }, [product]);
+
   const handleBack = useCallback(() => {
     router.back();
   }, [router]);
@@ -341,33 +366,40 @@ export default function ProductDetails() {
   const handleAddToCart = useCallback(async () => {
     if (!product) {
       setActionFeedback('Produk tidak tersedia.');
-      return;
+      return false;
     }
 
     if (!user?.id) {
       setActionFeedback('Silakan login untuk menambahkan produk ke keranjang.');
-      return;
+      return false;
     }
 
     if (product.stock <= 0) {
       setActionFeedback('Stok produk habis untuk saat ini.');
-      return;
+      return false;
     }
 
     setActionFeedback(null);
     setIsAddingToCart(true);
 
-    const { error: cartError } = await addProductToCart(user.id, product.id, 1);
+    const { error: cartError } = await addProductToCart(user.id, product.id, quantity);
     setIsAddingToCart(false);
 
     if (cartError) {
       setActionFeedback(cartError.message || 'Gagal menambahkan produk ke keranjang.');
-      return;
+      return false;
     }
 
-    setActionFeedback('Produk berhasil ditambahkan ke keranjang.');
-    router.push('/(main)/(tabs)/cart');
-  }, [product, router, user?.id]);
+    setActionFeedback(`Produk berhasil ditambahkan ke keranjang (${quantity} item).`);
+    setIsSheetOpen(false);
+    router.push('/cart');
+    return true;
+  }, [product, quantity, router, user?.id]);
+
+  const handleQuantityChange = useCallback((nextQuantity: number) => {
+    setQuantity(nextQuantity);
+    setActionFeedback(null);
+  }, []);
 
   const handleToggleFavorite = useCallback(() => {
     setIsFavorite(prev => !prev);
@@ -377,7 +409,15 @@ export default function ProductDetails() {
     void fetchProduct();
   }, [fetchProduct]);
 
-  const handleMoreOptions = useCallback(() => {}, []);
+  const handleOpenSheet = useCallback(() => {
+    if ((product?.stock ?? 0) <= 0) return;
+    setActionFeedback(null);
+    setIsSheetOpen(true);
+  }, [product?.stock]);
+
+  const handleConfirmFromSheet = useCallback(() => {
+    void handleAddToCart();
+  }, [handleAddToCart]);
 
   if (isLoading) {
     return (
@@ -395,6 +435,7 @@ export default function ProductDetails() {
         topPadding={topPadding}
         horizontalPadding={horizontalPadding}
         message={error ?? 'Terjadi kesalahan yang tidak diketahui.'}
+        title="Product Details"
         onBack={handleBack}
         onRetry={handleRetry}
       />
@@ -402,11 +443,14 @@ export default function ProductDetails() {
   }
 
   const imageUrl = getPrimaryImageUrl(product);
+  const pageTitle = product.name.trim() || 'Product Details';
   const categoryLabel = product.category_name ?? 'Uncategorized';
   const descriptionLabel =
     product.description?.trim() || 'Deskripsi produk belum tersedia untuk item ini.';
-  const formattedPrice = formatPrice(product.price);
+  const formattedUnitPrice = formatPrice(product.price);
+  const formattedTotalPrice = formatPrice(product.price * quantity);
   const isOutOfStock = product.stock <= 0;
+  const maxQuantity = Math.max(product.stock, 1);
 
   return (
     <ScreenRoot>
@@ -417,13 +461,18 @@ export default function ProductDetails() {
               <ChevronLeftIcon size={20} color={getThemeColor(theme, 'color')} />
             </HeaderButton>
 
-            <Text fontSize={16} fontWeight="700" color="$color">
-              Details
+            <Text
+              fontSize={16}
+              fontWeight="700"
+              color="$color"
+              flex={1}
+              textAlign="center"
+              numberOfLines={1}
+              px="$2">
+              {pageTitle}
             </Text>
 
-            <HeaderButton onPress={handleMoreOptions}>
-              <MoreIcon size={20} color={getThemeColor(theme, 'color')} />
-            </HeaderButton>
+            <YStack width={40} />
           </XStack>
 
           <ProductImage imageUrl={imageUrl} />
@@ -473,6 +522,61 @@ export default function ProductDetails() {
               {descriptionLabel}
             </Text>
 
+            <XStack alignItems="stretch" justifyContent="space-between" gap="$3" mt="$4">
+              <YStack
+                flex={1}
+                flexBasis={0}
+                minWidth={0}
+                flexShrink={1}
+                justifyContent="center"
+                backgroundColor="$surface"
+                borderWidth={1}
+                borderColor="$surfaceBorder"
+                borderRadius="$6"
+                px="$3"
+                py="$2">
+                <Text
+                  fontSize={26}
+                  lineHeight={31}
+                  color="$color"
+                  fontWeight="800"
+                  letterSpacing={-0.5}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.5}>
+                  {formattedUnitPrice}
+                </Text>
+              </YStack>
+
+              <AddToCartButton
+                flex={1.35}
+                flexBasis={0}
+                minWidth={0}
+                flexShrink={1}
+                onPress={handleOpenSheet}
+                disabled={isOutOfStock}
+                justifyContent="center"
+                px="$3">
+                <XStack flex={1} alignItems="center" justifyContent="center" gap="$2" minWidth={0}>
+                  <CartIcon
+                    size={18}
+                    color={getThemeColor(theme, isOutOfStock ? 'colorDisabled' : 'white')}
+                  />
+                  <Text
+                    color={isOutOfStock ? '$colorDisabled' : '$white'}
+                    fontSize={15}
+                    fontWeight="700"
+                    flexShrink={1}
+                    minWidth={0}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}>
+                    {isOutOfStock ? 'Stok Habis' : 'Tambah Keranjang'}
+                  </Text>
+                </XStack>
+              </AddToCartButton>
+            </XStack>
+
             {actionFeedback ? (
               <Text fontSize={13} color={isOutOfStock ? '$danger' : '$primary'}>
                 {actionFeedback}
@@ -482,43 +586,94 @@ export default function ProductDetails() {
         </ContentStack>
       </ScrollView>
 
-      <YStack
-        position="absolute"
-        bottom={0}
-        left={0}
-        right={0}
-        backgroundColor="$surface"
-        borderTopWidth={1}
-        borderTopColor="$surfaceBorder"
-        padding="$4"
-        paddingBottom={stickyBottomPadding}
-        elevation={4}>
-        <ContentStack maxWidth={560} alignSelf="center" width="100%">
-          <XStack alignItems="center" justifyContent="space-between" gap="$4">
-            <YStack>
-              <Text fontSize={26} color="$color" fontWeight="800" letterSpacing={-0.5}>
-                {formattedPrice}
+      <Sheet
+        open={isSheetOpen}
+        onOpenChange={setIsSheetOpen}
+        modal
+        dismissOnOverlayPress
+        dismissOnSnapToBottom
+        moveOnKeyboardChange
+        snapPoints={media.gtSm ? [62] : [72]}
+        animation="medium"
+        animationConfig={{
+          type: 'spring',
+          damping: 24,
+          mass: 0.9,
+          stiffness: 200,
+        }}>
+        <Sheet.Overlay animation="lazy" enterStyle={{ opacity: 0 }} exitStyle={{ opacity: 0 }} />
+        <Sheet.Handle />
+        <Sheet.Frame backgroundColor="$surface" borderTopLeftRadius="$6" borderTopRightRadius="$6">
+          <YStack px="$4" pt="$3" pb={Math.max(insets.bottom + 10, 18)} gap="$4">
+            <XStack alignItems="center" gap="$3">
+              {imageUrl ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  width={56}
+                  height={56}
+                  borderRadius="$4"
+                  backgroundColor="$surfaceSubtle"
+                />
+              ) : (
+                <YStack
+                  width={56}
+                  height={56}
+                  borderRadius="$4"
+                  alignItems="center"
+                  justifyContent="center"
+                  backgroundColor="$warningSoft">
+                  <HeartIcon size={24} color={getThemeColor(theme, 'primary')} />
+                </YStack>
+              )}
+
+              <YStack flex={1} gap="$1">
+                <Text fontSize={16} fontWeight="700" color="$color" numberOfLines={2}>
+                  {product.name}
+                </Text>
+                <Text fontSize={13} color="$colorSubtle" fontWeight="600">
+                  Harga satuan: {formattedUnitPrice}
+                </Text>
+                <Text fontSize={13} color="$colorSubtle" fontWeight="600">
+                  Stok: {product.stock}
+                </Text>
+              </YStack>
+            </XStack>
+
+            <YStack gap="$2">
+              <Text fontSize={14} color="$colorSubtle" fontWeight="600">
+                Quantity
               </Text>
-              <Text fontSize={12} color="$colorSubtle" fontWeight="600">
-                /quantity
-              </Text>
+              <QuantitySelector
+                value={quantity}
+                min={1}
+                max={maxQuantity}
+                onChange={handleQuantityChange}
+                disabled={isOutOfStock || isAddingToCart}
+                alignSelf="flex-start"
+              />
             </YStack>
 
-            <AddToCartButton
-              onPress={() => {
-                void handleAddToCart();
-              }}
-              disabled={isAddingToCart || isOutOfStock}>
-              <XStack alignItems="center" gap="$2">
-                <CartIcon size={18} color={getThemeColor(theme, 'white')} />
-                <Text color="$white" fontSize={15} fontWeight="700">
-                  {isOutOfStock ? 'Out of Stock' : isAddingToCart ? 'Adding...' : 'Add to Cart'}
+            <XStack alignItems="center" justifyContent="space-between" gap="$3">
+              <YStack gap="$1">
+                <Text fontSize={14} color="$colorSubtle" fontWeight="600">
+                  Total
                 </Text>
-              </XStack>
-            </AddToCartButton>
-          </XStack>
-        </ContentStack>
-      </YStack>
+                <Text fontSize={24} color="$color" fontWeight="800" letterSpacing={-0.4}>
+                  {formattedTotalPrice}
+                </Text>
+              </YStack>
+
+              <SheetConfirmButton
+                accessibilityLabel="Konfirmasi tambah ke keranjang"
+                accessibilityHint="Menambahkan produk ke keranjang lalu membuka halaman keranjang"
+                onPress={handleConfirmFromSheet}
+                disabled={isAddingToCart || isOutOfStock}>
+                <CartIcon size={22} color={getThemeColor(theme, 'white')} />
+              </SheetConfirmButton>
+            </XStack>
+          </YStack>
+        </Sheet.Frame>
+      </Sheet>
     </ScreenRoot>
   );
 }

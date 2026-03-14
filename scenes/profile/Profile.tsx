@@ -172,21 +172,21 @@ export default function Profile() {
         <MenuItem
           label="Profile Saya"
           icon={UserIcon}
-          onPress={() => router.push('/(main)/(tabs)/profile/edit-profile')}
+          onPress={() => router.push('/profile/edit-profile')}
           accessibilityLabel="Profile Saya"
           accessibilityHint="Edit informasi profil Anda"
         />
         <MenuItem
           label="Alamat"
           icon={MapPinIcon}
-          onPress={() => router.push('/(main)/(tabs)/profile/addresses')}
+          onPress={() => router.push('/profile/addresses')}
           accessibilityLabel="Alamat pengiriman"
           accessibilityHint="Kelola alamat pengiriman Anda"
         />
         <MenuItem
           label="Dukungan"
           icon={CircleHelpIcon}
-          onPress={() => router.push('/(main)/(tabs)/profile/support')}
+          onPress={() => router.push('/profile/support')}
           accessibilityLabel="Dukungan"
           accessibilityHint="Hubungi tim dukungan"
         />

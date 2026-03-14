@@ -21,6 +21,20 @@ const ContentStack = styled(YStack, {
   maxWidth: 560,
   alignSelf: 'center',
   gap: '$4',
+
+  $gtSm: {
+    maxWidth: 720,
+    gap: '$4.5',
+  },
+
+  $gtMd: {
+    maxWidth: 920,
+    gap: '$5',
+  },
+
+  $gtLg: {
+    maxWidth: 1080,
+  },
 });
 
 const SectionTitle = styled(Text, {
@@ -30,8 +44,8 @@ const SectionTitle = styled(Text, {
 });
 
 const SurfaceIconButton = styled(Card, {
-  width: 36,
-  height: 36,
+  width: 44,
+  height: 44,
   borderRadius: '$10',
   backgroundColor: '$surface',
   borderWidth: 1,
@@ -94,36 +108,51 @@ export default function Home() {
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
-  const horizontalPadding = media.gtSm ? '$5' : '$4';
+  const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
   const productWidth = media.gtSm ? 156 : 140;
   const topPadding = (media.gtSm ? 16 : 12) + insets.top;
 
-  const categorySize = media.gtLg ? 'large' : media.gtMd ? 'medium' : 'small';
-  const categoryLayout = media.gtLg ? 'grid4' : media.gtMd ? 'grid3' : 'scroll';
-  const isLargeScreen = media.gtMd;
+  const categorySize = media.gtLg ? 'large' : media.gtSm ? 'medium' : 'small';
+  const categoryLayout = media.gtLg
+    ? 'grid4'
+    : media.gtMd
+      ? 'grid3'
+      : media.gtSm
+        ? 'grid2'
+        : 'scroll';
+  const isLargeScreen = media.gtSm;
+  const categoryGap = media.gtLg ? '$3.5' : media.gtMd ? '$3' : media.gtSm ? '$2.5' : '$3';
 
   const handleOpenOrders = () => {
-    router.push('/(main)/(tabs)/orders');
+    router.push('/orders');
   };
 
   const handleOpenSupport = () => {
-    router.push('/(main)/(tabs)/profile/support');
+    router.push('/profile/support');
   };
 
   const handleOpenDoctorDiscovery = () => {
-    router.push('/(main)/(tabs)/home/details');
+    router.push('/home/details');
   };
 
   const handleOpenDetails = () => {
-    router.push('/(main)/(tabs)/home/details');
+    router.push('/home/details');
   };
 
-  const handleCategoryPress = useCallback(() => {}, []);
+  const handleCategoryPress = useCallback(
+    (categoryId: string, categoryName: string) => {
+      router.push({
+        pathname: '/home/product-list',
+        params: { categoryId, categoryName },
+      });
+    },
+    [router],
+  );
 
   const handleProductPress = useCallback(
     (productId: string) => {
       router.push({
-        pathname: '/(main)/(tabs)/home/product-details',
+        pathname: '/home/product-details',
         params: { id: productId },
       });
     },
@@ -249,25 +278,28 @@ export default function Home() {
                 No categories available
               </Text>
             ) : isLargeScreen ? (
-              <XStack flexWrap="wrap" gap="$2.5" justifyContent="space-between">
+              <XStack flexWrap="wrap" gap={categoryGap} justifyContent="flex-start" width="100%">
                 {categories.map(category => (
                   <CategoryItem
                     key={category.id}
                     category={category}
-                    onPress={handleCategoryPress}
+                    onPress={() => handleCategoryPress(category.id, category.name)}
                     size={categorySize}
                     layout={categoryLayout}
                   />
                 ))}
               </XStack>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <XStack gap="$2.5" pr="$2">
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 2, paddingRight: 6 }}>
+                <XStack gap={categoryGap}>
                   {categories.map(category => (
                     <CategoryItem
                       key={category.id}
                       category={category}
-                      onPress={handleCategoryPress}
+                      onPress={() => handleCategoryPress(category.id, category.name)}
                       size={categorySize}
                       layout={categoryLayout}
                     />

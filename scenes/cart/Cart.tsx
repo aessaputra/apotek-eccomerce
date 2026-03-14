@@ -253,7 +253,7 @@ export default function Cart() {
   ]);
 
   const handleManageAddresses = useCallback(() => {
-    router.push('/(main)/(tabs)/profile/addresses');
+    router.push('/profile/addresses');
   }, [router]);
 
   useEffect(() => {
@@ -294,6 +294,10 @@ export default function Cart() {
   }, [checkoutFingerprint, getPersistData, removePersistData, user?.id]);
 
   useEffect(() => {
+    if (checkoutFingerprint == null) {
+      return;
+    }
+
     setShippingError(null);
     setShippingOptions([]);
     setSelectedShippingKey(null);
@@ -302,13 +306,7 @@ export default function Cart() {
     setCheckoutIdempotencyKey(null);
     setActiveOrderId(null);
     void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-  }, [
-    selectedAddressId,
-    cartSnapshot.estimatedWeightGrams,
-    cartSnapshot.itemCount,
-    cartSnapshot.packageValue,
-    removePersistData,
-  ]);
+  }, [checkoutFingerprint, removePersistData]);
 
   useEffect(() => {
     if (!selectedShippingKey) {
@@ -325,7 +323,7 @@ export default function Cart() {
       setPaymentUrl(null);
 
       if (!activeOrderId) {
-        router.push('/(main)/(tabs)/orders');
+        router.push('/orders');
         return;
       }
 
@@ -334,7 +332,7 @@ export default function Cart() {
         setCheckoutIdempotencyKey(null);
         setActiveOrderId(null);
         void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-        router.push('/(main)/(tabs)/orders');
+        router.push('/orders');
         return;
       }
 
@@ -354,7 +352,7 @@ export default function Cart() {
       setActiveOrderId(null);
       void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
 
-      router.push('/(main)/(tabs)/orders');
+      router.push('/orders');
     },
     [activeOrderId, removePersistData, router],
   );

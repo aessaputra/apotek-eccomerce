@@ -32,7 +32,7 @@ export default function HeaderCartIcon({
         padding={12}
         alignItems="center"
         justifyContent="center"
-        onPress={() => router.push('/(main)/(tabs)/cart')}
+        onPress={() => router.push('/cart')}
         hitSlop={12}
         cursor="pointer"
         accessibilityRole="button"
