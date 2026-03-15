@@ -6,8 +6,13 @@ import { Card, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui'
 import { ChevronLeftIcon } from '@/components/icons';
 import ProductCard from '@/components/elements/ProductCard';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
-import { type ProductWithImages } from '@/services/home.service';
+import {
+  addProductToCart,
+  getProductImages,
+  type ProductWithImages,
+} from '@/services/home.service';
 import { supabase } from '@/services';
+import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 
 const ScreenRoot = styled(YStack, {
@@ -66,11 +71,18 @@ interface ProductListItemProps {
   width: number;
   iconColor: string;
   onPress: (productId: string) => void;
+  onAddToCart: (productId: string) => void;
 }
 
-function ProductListItem({ item, width, iconColor, onPress }: ProductListItemProps) {
+function ProductListItem({ item, width, iconColor, onPress, onAddToCart }: ProductListItemProps) {
   return (
-    <ProductCard item={item} width={width} iconColor={iconColor} onPress={() => onPress(item.id)} />
+    <ProductCard
+      item={item}
+      width={width}
+      iconColor={iconColor}
+      onPress={() => onPress(item.id)}
+      onAddToCart={() => onAddToCart(item.id)}
+    />
   );
 }
 
@@ -81,9 +93,11 @@ export default function ProductList() {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const params = useLocalSearchParams();
+  const { user } = useAppSlice();
   const [products, setProducts] = useState<ProductWithImages[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cartFeedback, setCartFeedback] = useState<string | null>(null);
 
   const categoryId = useMemo(() => {
     const value = params.categoryId;
@@ -99,8 +113,8 @@ export default function ProductList() {
 
   const topPadding = (media.gtSm ? 16 : 12) + insets.top;
   const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
-  const columns = media.gtMd ? 3 : media.gtSm ? 2 : 1;
-  const maxWidth = media.gtLg ? 1080 : media.gtMd ? 920 : media.gtSm ? 720 : 560;
+  const columns = media.gtMd ? 3 : 2;
+  const maxWidth = media.gtLg ? 1080 : media.gtMd ? 920 : 720;
   const contentPaddingHorizontal = media.gtLg ? 24 : media.gtMd ? 22 : media.gtSm ? 20 : 16;
   const itemGap = media.gtSm ? 12 : 10;
   const iconColor = getThemeColor(theme, 'colorPress');
@@ -120,28 +134,49 @@ export default function ProductList() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('category_id', categoryId)
-      .eq('is_active', true)
-      .gt('stock', 0);
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('category_id', categoryId)
+        .eq('is_active', true)
+        .gt('stock', 0);
 
-    if (error || !data) {
+      if (error || !data) {
+        setProducts([]);
+        return;
+      }
+
+      if (data.length === 0) {
+        setProducts([]);
+        return;
+      }
+
+      const productIds = data.map(product => product.id);
+      const images = await getProductImages(productIds);
+
+      const imagesByProduct = images.reduce(
+        (acc, image) => {
+          if (!acc[image.product_id]) acc[image.product_id] = [];
+          acc[image.product_id].push({ url: image.url, sort_order: image.sort_order });
+          return acc;
+        },
+        {} as Record<string, { url: string; sort_order: number }[]>,
+      );
+
+      const normalizedProducts: ProductWithImages[] = data.map(product => ({
+        ...product,
+        images: imagesByProduct[product.id] || [],
+      }));
+
+      setProducts(normalizedProducts);
+    } catch (error) {
+      if (__DEV__) console.warn('[ProductList] fetchProducts error:', error);
       setProducts([]);
+    } finally {
       setIsLoading(false);
       setIsRefreshing(false);
-      return;
     }
-
-    const normalizedProducts: ProductWithImages[] = data.map(product => ({
-      ...product,
-      images: [],
-    }));
-
-    setProducts(normalizedProducts);
-    setIsLoading(false);
-    setIsRefreshing(false);
   }, [categoryId]);
 
   useEffect(() => {
@@ -167,6 +202,27 @@ export default function ProductList() {
     [router],
   );
 
+  const handleAddToCart = useCallback(
+    async (productId: string) => {
+      if (!user?.id) {
+        setCartFeedback('Silakan login untuk menambahkan produk ke keranjang.');
+        setTimeout(() => setCartFeedback(null), 3000);
+        return;
+      }
+
+      const { error } = await addProductToCart(user.id, productId, 1);
+
+      if (error) {
+        setCartFeedback(error.message || 'Gagal menambahkan produk ke keranjang.');
+      } else {
+        setCartFeedback('Produk berhasil ditambahkan ke keranjang.');
+      }
+
+      setTimeout(() => setCartFeedback(null), 3000);
+    },
+    [user?.id],
+  );
+
   return (
     <ScreenRoot>
       <FlatList
@@ -181,7 +237,7 @@ export default function ProductList() {
           paddingHorizontal: contentPaddingHorizontal,
           paddingBottom: TAB_BAR_HEIGHT + insets.bottom,
         }}
-        columnWrapperStyle={columns > 1 ? { gap: itemGap } : undefined}
+        columnWrapperStyle={{ gap: itemGap }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -215,6 +271,11 @@ export default function ProductList() {
                 Loading products...
               </Text>
             ) : null}
+            {cartFeedback ? (
+              <Text fontSize={13} color="$primary" pt="$2">
+                {cartFeedback}
+              </Text>
+            ) : null}
           </ContentStack>
         }
         renderItem={({ item }) => (
@@ -224,6 +285,7 @@ export default function ProductList() {
               width={cardWidth}
               iconColor={iconColor}
               onPress={handleOpenProductDetails}
+              onAddToCart={handleAddToCart}
             />
           </YStack>
         )}

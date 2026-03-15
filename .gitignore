@@ -47,4 +47,4 @@ app-example
 
 # Agent
 .agent/
-.agents/
+#.agents/

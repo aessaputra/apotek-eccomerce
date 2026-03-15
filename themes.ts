@@ -60,6 +60,7 @@ export const themes = {
     backgroundFocus: '#FFFFFF',
     info: blue.blue9,
     infoSoft: blue.blue3,
+    sheetOverlay: 'rgba(0,0,0,0.4)',
   },
 } as const;
 

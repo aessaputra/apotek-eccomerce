@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Card, Image, Text, XStack, YStack } from 'tamagui';
-import { PillIcon } from '@/components/icons';
+import { CartIcon, PillIcon } from '@/components/icons';
 import { formatPrice, getPrimaryImageUrl, type ProductWithImages } from '@/services/home.service';
 
 export interface ProductCardProps {
@@ -8,6 +8,7 @@ export interface ProductCardProps {
   width: number;
   iconColor: string;
   onPress?: () => void;
+  onAddToCart?: () => void;
 }
 
 export interface ProductCardSkeletonProps {
@@ -43,9 +44,14 @@ export const ProductCardSkeleton = memo(function ProductCardSkeleton({
   );
 });
 
-function ProductCard({ item, width, iconColor, onPress }: ProductCardProps) {
+function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCardProps) {
   const imageUrl = getPrimaryImageUrl(item);
   const accentColor = item.category_id ? '$warningSoft' : '$infoSoft';
+
+  const handleAddToCart = (event: { stopPropagation: () => void }) => {
+    event.stopPropagation();
+    onAddToCart?.();
+  };
 
   return (
     <Card
@@ -82,9 +88,25 @@ function ProductCard({ item, width, iconColor, onPress }: ProductCardProps) {
       <Text fontSize={14} lineHeight={18} color="$color" fontWeight="600" numberOfLines={2}>
         {item.name}
       </Text>
-      <Text fontSize={12} color="$colorSubtle" fontWeight="500">
-        {formatPrice(item.price)}
-      </Text>
+      <XStack alignItems="center" justifyContent="space-between" gap="$2">
+        <Text fontSize={12} color="$colorSubtle" fontWeight="500" flex={1} numberOfLines={1}>
+          {formatPrice(item.price)}
+        </Text>
+        <XStack
+          width={32}
+          height={32}
+          borderRadius="$8"
+          backgroundColor="$primary"
+          alignItems="center"
+          justifyContent="center"
+          pressStyle={{ opacity: 0.9, scale: 0.95 }}
+          onPress={handleAddToCart}
+          accessibilityRole="button"
+          accessibilityLabel={`Add ${item.name} to cart`}
+          accessibilityHint="Adds product to shopping cart">
+          <CartIcon size={16} color="$white" />
+        </XStack>
+      </XStack>
     </Card>
   );
 }

@@ -32,6 +32,7 @@ import {
 import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import QuantitySelector from '@/components/elements/QuantitySelector';
+import ProductImageGallery from '@/components/elements/ProductImageGallery';
 
 const ScreenRoot = styled(YStack, {
   flex: 1,
@@ -56,30 +57,6 @@ const HeaderButton = styled(Card, {
   justifyContent: 'center',
   elevation: 2,
   pressStyle: { opacity: 0.9, scale: 0.98 },
-});
-
-const ImageContainer = styled(YStack, {
-  width: '100%',
-  aspectRatio: 1,
-  borderRadius: '$6',
-  alignItems: 'center',
-  justifyContent: 'center',
-  overflow: 'hidden',
-});
-
-const OrganicShape = styled(View, {
-  position: 'absolute',
-  width: '85%',
-  height: '85%',
-  borderRadius: '$8',
-  backgroundColor: '$infoSoft',
-  transform: [{ rotate: '-3deg' }],
-});
-
-const AccentBubble = styled(View, {
-  position: 'absolute',
-  borderRadius: '$10',
-  opacity: 0.95,
 });
 
 const SkeletonBlock = styled(YStack, {
@@ -174,33 +151,6 @@ function ProductDetailsLoading({
         </ContentStack>
       </ScrollView>
     </ScreenRoot>
-  );
-}
-
-function ProductImage({ imageUrl }: { imageUrl: string | null }) {
-  const theme = useTheme();
-
-  return (
-    <ImageContainer>
-      <OrganicShape />
-      <AccentBubble width={76} height={76} top={18} right={14} backgroundColor="$warningSoft" />
-      <AccentBubble width={58} height={58} bottom={22} left={16} backgroundColor="$successSoft" />
-      <View width="80%" height="80%" alignItems="center" justifyContent="center" zIndex={1}>
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} width="100%" height="100%" resizeMode="contain" />
-        ) : (
-          <YStack
-            width={120}
-            height={120}
-            borderRadius="$12"
-            backgroundColor="$warningSoft"
-            alignItems="center"
-            justifyContent="center">
-            <HeartIcon size={48} color={getThemeColor(theme, 'primary')} />
-          </YStack>
-        )}
-      </View>
-    </ImageContainer>
   );
 }
 
@@ -475,7 +425,7 @@ export default function ProductDetails() {
             <YStack width={40} />
           </XStack>
 
-          <ProductImage imageUrl={imageUrl} />
+          <ProductImageGallery images={product.images} />
 
           <YStack gap="$3" mt="$2">
             <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
@@ -593,7 +543,7 @@ export default function ProductDetails() {
         dismissOnOverlayPress
         dismissOnSnapToBottom
         moveOnKeyboardChange
-        snapPoints={media.gtSm ? [62] : [72]}
+        snapPointsMode="fit"
         animation="medium"
         animationConfig={{
           type: 'spring',
@@ -601,9 +551,17 @@ export default function ProductDetails() {
           mass: 0.9,
           stiffness: 200,
         }}>
-        <Sheet.Overlay animation="lazy" enterStyle={{ opacity: 0 }} exitStyle={{ opacity: 0 }} />
+        <Sheet.Overlay
+          animation="lazy"
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+          backgroundColor="$sheetOverlay"
+        />
         <Sheet.Handle />
-        <Sheet.Frame backgroundColor="$surface" borderTopLeftRadius="$6" borderTopRightRadius="$6">
+        <Sheet.Frame
+          backgroundColor="$surfaceSubtle"
+          borderTopLeftRadius="$6"
+          borderTopRightRadius="$6">
           <YStack px="$4" pt="$3" pb={Math.max(insets.bottom + 10, 18)} gap="$4">
             <XStack alignItems="center" gap="$3">
               {imageUrl ? (
@@ -629,9 +587,6 @@ export default function ProductDetails() {
               <YStack flex={1} gap="$1">
                 <Text fontSize={16} fontWeight="700" color="$color" numberOfLines={2}>
                   {product.name}
-                </Text>
-                <Text fontSize={13} color="$colorSubtle" fontWeight="600">
-                  Harga satuan: {formattedUnitPrice}
                 </Text>
                 <Text fontSize={13} color="$colorSubtle" fontWeight="600">
                   Stok: {product.stock}
