@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { RefreshControl } from 'react-native';
+import { RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Image, ScrollView, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
@@ -98,18 +98,46 @@ const SearchShell = styled(Card, {
   pressStyle: { opacity: 0.92 },
 });
 
+const SPACE_TOKEN_TO_PX = {
+  '$2.5': 10,
+  $3: 12,
+  '$3.5': 14,
+  $4: 16,
+  $5: 20,
+  '$5.5': 22,
+  $6: 24,
+} as const;
+
+type SpaceToken = keyof typeof SPACE_TOKEN_TO_PX;
+
 export default function Home() {
   const router = useRouter();
   const media = useMedia();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const { user } = useAppSlice();
   const { categories, products, isLoadingCategories, isLoadingProducts, refresh } = useHomeData();
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
   const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
-  const productWidth = media.gtSm ? 156 : 140;
+  const contentMaxWidth = media.gtLg ? 1080 : media.gtMd ? 920 : media.gtSm ? 720 : 560;
+  const contentWidth = Math.min(screenWidth, contentMaxWidth);
+  const horizontalPaddingPx = SPACE_TOKEN_TO_PX[horizontalPadding as SpaceToken];
+  const categoryGap = media.gtLg ? '$3.5' : media.gtMd ? '$3' : media.gtSm ? '$2.5' : '$3';
+  const categoryGapPx = SPACE_TOKEN_TO_PX[categoryGap as SpaceToken];
+  const productGapPx = SPACE_TOKEN_TO_PX['$2.5'];
+  const mobileInnerWidth = contentWidth - horizontalPaddingPx * 2;
+  const productPeekOffset = Math.floor(productGapPx * 0.6);
+  const categoryPeekOffset = Math.floor(categoryGapPx * 0.6);
+  const productWidth = media.gtSm
+    ? 156
+    : Math.max(44, Math.floor((mobileInnerWidth - productGapPx - productPeekOffset) / 2));
+  const mobileCategoryWidth = Math.max(
+    44,
+    Math.floor((mobileInnerWidth - categoryGapPx - categoryPeekOffset) / 2),
+  );
   const topPadding = (media.gtSm ? 16 : 12) + insets.top;
 
   const categorySize = media.gtLg ? 'large' : media.gtSm ? 'medium' : 'small';
@@ -121,7 +149,6 @@ export default function Home() {
         ? 'grid2'
         : 'scroll';
   const isLargeScreen = media.gtSm;
-  const categoryGap = media.gtLg ? '$3.5' : media.gtMd ? '$3' : media.gtSm ? '$2.5' : '$3';
 
   const handleOpenOrders = () => {
     router.push('/orders');
@@ -293,7 +320,7 @@ export default function Home() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 2, paddingRight: 6 }}>
+                contentContainerStyle={{ paddingRight: categoryPeekOffset }}>
                 <XStack gap={categoryGap}>
                   {categories.map(category => (
                     <CategoryItem
@@ -302,6 +329,7 @@ export default function Home() {
                       onPress={() => handleCategoryPress(category.id, category.name)}
                       size={categorySize}
                       layout={categoryLayout}
+                      width={mobileCategoryWidth}
                     />
                   ))}
                 </XStack>
@@ -320,8 +348,11 @@ export default function Home() {
                 No products available
               </Text>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <XStack gap="$2.5" pr="$2">
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: productPeekOffset }}>
+                <XStack gap="$2.5">
                   {products.map(item => (
                     <ProductCard
                       key={item.id}

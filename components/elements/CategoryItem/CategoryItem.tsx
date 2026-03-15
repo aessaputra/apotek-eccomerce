@@ -128,6 +128,7 @@ export interface CategoryItemProps {
   onPress?: () => void;
   size?: 'small' | 'medium' | 'large';
   layout?: 'scroll' | 'grid2' | 'grid3' | 'grid4';
+  width?: number;
 }
 
 export interface CategorySkeletonProps {
@@ -174,18 +175,27 @@ export const CategorySkeleton = memo(function CategorySkeleton({
   );
 });
 
-function CategoryItem({ category, onPress, size = 'small', layout = 'scroll' }: CategoryItemProps) {
+function CategoryItem({
+  category,
+  onPress,
+  size = 'small',
+  layout = 'scroll',
+  width,
+}: CategoryItemProps) {
   const theme = useTheme();
   const sizeConfig = CATEGORY_SIZE_CONFIG[size];
   const textLines = 2;
+  const constrainedWidth =
+    layout === 'scroll' && typeof width === 'number' ? Math.max(width, 44) : null;
 
   return (
     <CategoryCard
       size={size}
       layout={layout}
       minHeight={Math.max(sizeConfig.minHeight, 44)}
-      minWidth={Math.max(sizeConfig.minWidth, 44)}
-      maxWidth={sizeConfig.maxWidth}
+      width={constrainedWidth ?? undefined}
+      minWidth={constrainedWidth ?? Math.max(sizeConfig.minWidth, 44)}
+      maxWidth={constrainedWidth ?? sizeConfig.maxWidth}
       paddingHorizontal={sizeConfig.horizontalPadding}
       paddingVertical={sizeConfig.verticalPadding}
       onPress={onPress}
