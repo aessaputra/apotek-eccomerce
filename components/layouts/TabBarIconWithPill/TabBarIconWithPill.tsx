@@ -49,6 +49,7 @@ export default function TabBarIconWithPill({ focused, children }: TabBarIconWith
   return (
     <Animated.View
       style={{
+        width: '100%',
         alignItems: 'center',
         justifyContent: 'center',
       }}>

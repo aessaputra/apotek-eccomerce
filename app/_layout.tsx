@@ -159,13 +159,16 @@ function Router() {
           tabBarItemStyle: {
             flex: 1,
             alignItems: 'center',
-            overflow: 'visible',
+            justifyContent: 'center',
+            minWidth: 70,
             paddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
           },
           tabBarAllowFontScaling: false,
           tabBarLabel: ({ color, children }) => (
             <Text
               allowFontScaling={false}
+              numberOfLines={1}
+              ellipsizeMode="tail"
               style={{
                 color,
                 fontFamily: fonts.poppins.regular,
@@ -173,7 +176,7 @@ function Router() {
                 marginTop: TAB_BAR_LABEL_MARGIN_TOP,
                 textAlign: 'center',
                 width: '100%',
-                flexShrink: 0,
+                includeFontPadding: false,
               }}>
               {children}
             </Text>
