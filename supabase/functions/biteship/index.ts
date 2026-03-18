@@ -27,11 +27,12 @@ const ORIGIN_POSTAL_CODE = Number.isFinite(BITESHIP_ORIGIN_POSTAL_CODE)
   ? BITESHIP_ORIGIN_POSTAL_CODE
   : DEFAULT_ORIGIN_POSTAL_CODE;
 
-// Create Supabase client ONCE outside Deno.serve() for shared JWKS cache
-// This enables efficient JWT validation via getClaims() with local verification
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-// getClaims() requires SB_PUBLISHABLE_KEY (not SUPABASE_ANON_KEY) for JWKS verification
-const supabasePublishableKey = Deno.env.get('SB_PUBLISHABLE_KEY')!;
+const supabasePublishableKey = Deno.env.get('SB_PUBLISHABLE_KEY');
+if (!supabasePublishableKey) {
+  throw new Error('Missing SB_PUBLISHABLE_KEY environment variable');
+}
+// ES256/HS256: getClaims() verifies locally via JWKS (asymmetric) or server-side (symmetric)
 const supabaseClient = createClient(supabaseUrl, supabasePublishableKey);
 
 // Validate tracking_id to prevent URL manipulation
@@ -146,33 +147,32 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // 2. Validate JWT using getClaims() for local JWT verification (no network call)
-    // getClaims() validates signature and expiry using Web Crypto API with cached JWKS
+    // 2. Validate JWT using getClaims() — local JWKS verification (no network call for ES256)
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Extract token from Authorization header
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.slice(7).trim();
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Use getClaims() for efficient local JWT validation
-    // Returns: { data: { claims: JwtPayload }, error: null } on success
-    // Returns: { data: null, error: AuthError } on invalid/expired token
     const { data: claimsData, error: authError } = await supabaseClient.auth.getClaims(token);
+    const userId = claimsData?.claims?.sub;
 
-    if (authError || !claimsData) {
+    if (!userId || authError) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // 3. Get user_id from claims.sub (JWT subject = user UUID)
-    const userId = claimsData.claims.sub;
 
     // 4. Parse request
     const { action, payload }: BiteshipProxyRequest = await req.json();
