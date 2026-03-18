@@ -157,12 +157,13 @@ function Router() {
           tabBarActiveBackgroundColor: tabBarColors.background,
           tabBarStyle,
           tabBarItemStyle: {
+            flex: 1,
+            minWidth: 88,
             paddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
           },
           tabBarAllowFontScaling: false,
           tabBarLabel: ({ color, children }) => (
             <Text
-              numberOfLines={1}
               allowFontScaling={false}
               style={{
                 color,
