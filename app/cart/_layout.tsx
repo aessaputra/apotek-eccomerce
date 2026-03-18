@@ -13,6 +13,13 @@ export default function CartStackLayout() {
           headerTitleAlign: 'center',
         }}
       />
+      <Stack.Screen
+        name="addresses"
+        options={{
+          title: 'Pilih Alamat Pengiriman',
+          headerTitleAlign: 'center',
+        }}
+      />
     </Stack>
   );
 }

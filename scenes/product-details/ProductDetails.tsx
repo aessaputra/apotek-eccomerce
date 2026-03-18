@@ -592,7 +592,7 @@ export default function ProductDetails() {
         dismissOnOverlayPress
         dismissOnSnapToBottom
         moveOnKeyboardChange
-        snapPointsMode="fit"
+        snapPoints={[60]}
         animation="medium"
         animationConfig={{
           type: 'spring',

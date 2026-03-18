@@ -3,7 +3,7 @@ import { RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Image, ScrollView, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
-import { BellIcon, CircleHelpIcon, PillIcon, SearchIcon, StarIcon } from '@/components/icons';
+import { CartIcon, PillIcon, SearchIcon, StarIcon } from '@/components/icons';
 import CategoryItem, { CategorySkeleton } from '@/components/elements/CategoryItem';
 import ProductCard, { ProductCardSkeleton } from '@/components/elements/ProductCard';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
@@ -151,11 +151,7 @@ export default function Home() {
   const isLargeScreen = media.gtSm;
 
   const handleOpenOrders = () => {
-    router.push('/orders');
-  };
-
-  const handleOpenSupport = () => {
-    router.push('/profile/support');
+    router.push('/cart');
   };
 
   const handleOpenDoctorDiscovery = () => {
@@ -235,16 +231,9 @@ export default function Home() {
               <SurfaceIconButton
                 onPress={handleOpenOrders}
                 accessibilityRole="button"
-                accessibilityLabel="Orders"
-                accessibilityHint="Open orders tab">
-                <BellIcon size={16} color={iconColor} />
-              </SurfaceIconButton>
-              <SurfaceIconButton
-                onPress={handleOpenSupport}
-                accessibilityRole="button"
-                accessibilityLabel="Help"
-                accessibilityHint="Open help center">
-                <CircleHelpIcon size={16} color={iconColor} />
+                accessibilityLabel="Cart"
+                accessibilityHint="Open cart page">
+                <CartIcon size={16} color={iconColor} />
               </SurfaceIconButton>
             </XStack>
           </XStack>

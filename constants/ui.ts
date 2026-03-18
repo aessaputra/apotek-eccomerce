@@ -147,7 +147,7 @@ export const MD3_PILL = {
 export const TAB_BAR_LABEL_SIZE = 12;
 
 /** Tab bar container height (matches WhatsApp-style bottom nav). */
-export const TAB_BAR_HEIGHT = 78;
+export const TAB_BAR_HEIGHT = 80;
 /** Tab bar inner padding. */
 export const TAB_BAR_PADDING_TOP = 8;
 export const TAB_BAR_PADDING_BOTTOM = 6;

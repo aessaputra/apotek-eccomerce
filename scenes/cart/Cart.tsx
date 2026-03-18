@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RefreshCw } from '@tamagui/lucide-icons';
 import {
@@ -11,13 +11,13 @@ import {
   Spinner,
   Separator,
   ScrollView,
+  Sheet,
   Button as TamaguiButton,
 } from 'tamagui';
 import { WebView } from 'react-native-webview';
 import * as Crypto from 'expo-crypto';
 import { getThemeColor } from '@/utils/theme';
-import { CartIcon } from '@/components/icons';
-import AddressCard from '@/components/elements/AddressCard/AddressCard';
+import { CartIcon, ChevronRightIcon, MapPinIcon } from '@/components/icons';
 import Button from '@/components/elements/Button';
 import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
 import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
@@ -53,9 +53,62 @@ const EMPTY_CART: CartSnapshot = {
 
 const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 const QUANTITY_SYNC_DEBOUNCE_MS = 400;
+const COURIER_CARD_PRESS_STYLE = {
+  scale: 0.98,
+  opacity: 0.9,
+} as const;
+const COURIER_CARD_ANIMATE_ONLY = ['transform', 'opacity'];
+
+interface CourierOptionCardProps {
+  option: ShippingOption;
+  optionKey: string;
+  isSelected: boolean;
+  onSelect: (shippingKey: string) => void;
+  formatRupiah: (amount: number) => string;
+}
+
+const CourierOptionCard = React.memo(function CourierOptionCard({
+  option,
+  optionKey,
+  isSelected,
+  onSelect,
+  formatRupiah,
+}: CourierOptionCardProps) {
+  const handlePress = React.useCallback(() => {
+    onSelect(optionKey);
+  }, [onSelect, optionKey]);
+
+  return (
+    <Card
+      onPress={handlePress}
+      animation="quick"
+      animateOnly={COURIER_CARD_ANIMATE_ONLY}
+      pressStyle={COURIER_CARD_PRESS_STYLE}
+      borderRadius="$4"
+      borderWidth={2}
+      borderColor={isSelected ? '$primary' : '$surfaceBorder'}
+      padding="$3"
+      backgroundColor="$surface">
+      <XStack justifyContent="space-between" alignItems="flex-start" gap="$2">
+        <YStack flex={1} gap="$0.5">
+          <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={2}>
+            {option.courier_name} - {option.service_name}
+          </Text>
+          <Text fontSize="$3" color="$colorSubtle">
+            Estimasi: {option.estimated_delivery}
+          </Text>
+        </YStack>
+        <Text fontSize="$4" fontWeight="700" color="$primary" flexShrink={0}>
+          {formatRupiah(option.price)}
+        </Text>
+      </XStack>
+    </Card>
+  );
+});
 
 export default function Cart() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ selectedId?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { user } = useAppSlice();
@@ -71,6 +124,8 @@ export default function Cart() {
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShippingKey, setSelectedShippingKey] = useState<string | null>(null);
+  const [addressSheetOpen, setAddressSheetOpen] = useState(false);
+  const [shippingSheetOpen, setShippingSheetOpen] = useState(false);
   const [quoteDestinationAreaId, setQuoteDestinationAreaId] = useState<string | null>(null);
   const [quoteDestinationPostalCode, setQuoteDestinationPostalCode] = useState<number | null>(null);
   const [startingCheckout, setStartingCheckout] = useState(false);
@@ -82,6 +137,9 @@ export default function Cart() {
   const pendingQuantityUpdatesRef = useRef<Map<string, number>>(new Map());
   const confirmedQuantitiesRef = useRef<Map<string, number>>(new Map());
   const previousSelectedAddressIdRef = useRef<string | null>(null);
+  const shouldOpenShippingSheetRef = useRef(false);
+  const cartMountedRef = useRef(true);
+  const finalizeOnceRef = useRef(false);
 
   const computeCartSnapshot = useCallback((items: CartItemWithProduct[]): CartSnapshot => {
     let itemCount = 0;
@@ -124,6 +182,29 @@ export default function Cart() {
       ) ?? null,
     [shippingOptions, selectedShippingKey],
   );
+
+  const selectedAddressFullText = useMemo(() => {
+    if (!selectedAddress) {
+      return '';
+    }
+
+    return [
+      selectedAddress.street_address,
+      selectedAddress.city,
+      selectedAddress.province,
+      selectedAddress.postal_code,
+    ]
+      .filter(Boolean)
+      .join(', ');
+  }, [selectedAddress]);
+
+  const selectedAddressParam = useMemo(() => {
+    if (!params.selectedId) {
+      return null;
+    }
+
+    return Array.isArray(params.selectedId) ? params.selectedId[0] : params.selectedId;
+  }, [params.selectedId]);
 
   const checkoutFingerprint = useMemo(
     () =>
@@ -191,42 +272,51 @@ export default function Cart() {
     }
   }, [user?.id]);
 
-  const flushPendingQuantityUpdates = useCallback(async () => {
-    const pendingUpdates = Array.from(pendingQuantityUpdatesRef.current.entries());
-    pendingQuantityUpdatesRef.current.clear();
+  const flushPendingQuantityUpdates = useCallback(
+    async ({ skipStateUpdates = false }: { skipStateUpdates?: boolean } = {}) => {
+      const pendingUpdates = Array.from(pendingQuantityUpdatesRef.current.entries());
+      pendingQuantityUpdatesRef.current.clear();
 
-    if (pendingUpdates.length === 0) {
-      return;
-    }
-
-    const results = await Promise.all(
-      pendingUpdates.map(async ([cartItemId, quantity]) => {
-        const result = await updateCartItemQuantity(cartItemId, quantity);
-        return {
-          cartItemId,
-          quantity,
-          error: result.error,
-        };
-      }),
-    );
-
-    for (const result of results) {
-      if (result.error) {
-        const fallbackQuantity = confirmedQuantitiesRef.current.get(result.cartItemId);
-        if (fallbackQuantity != null) {
-          updateCartState(items =>
-            items.map(item =>
-              item.id === result.cartItemId ? { ...item, quantity: fallbackQuantity } : item,
-            ),
-          );
-        }
-        setShippingError(result.error.message);
-        continue;
+      if (pendingUpdates.length === 0) {
+        return;
       }
 
-      confirmedQuantitiesRef.current.set(result.cartItemId, result.quantity);
-    }
-  }, [updateCartState]);
+      const results = await Promise.all(
+        pendingUpdates.map(async ([cartItemId, quantity]) => {
+          const result = await updateCartItemQuantity(cartItemId, quantity);
+          return {
+            cartItemId,
+            quantity,
+            error: result.error,
+          };
+        }),
+      );
+
+      for (const result of results) {
+        const allowStateUpdates = cartMountedRef.current && !skipStateUpdates;
+
+        if (result.error) {
+          const fallbackQuantity = confirmedQuantitiesRef.current.get(result.cartItemId);
+          if (fallbackQuantity != null && allowStateUpdates) {
+            updateCartState(items =>
+              items.map(item =>
+                item.id === result.cartItemId ? { ...item, quantity: fallbackQuantity } : item,
+              ),
+            );
+          }
+
+          if (allowStateUpdates) {
+            setShippingError(result.error.message);
+          }
+
+          continue;
+        }
+
+        confirmedQuantitiesRef.current.set(result.cartItemId, result.quantity);
+      }
+    },
+    [updateCartState],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -235,8 +325,16 @@ export default function Cart() {
     }, [loadAddresses, loadCartData]),
   );
 
+  useEffect(() => {
+    if (!selectedAddressParam) {
+      return;
+    }
+
+    setSelectedAddressId(selectedAddressParam);
+  }, [selectedAddressParam]);
+
   const handleQuantityChange = useCallback(
-    async (cartItemId: string, newQuantity: number) => {
+    (cartItemId: string, newQuantity: number) => {
       let itemExists = false;
 
       updateCartState(items =>
@@ -296,7 +394,6 @@ export default function Cart() {
   const handleCalculateShipping = useCallback(async () => {
     setShippingError(null);
     setShippingOptions([]);
-    setSelectedShippingKey(null);
 
     if (!selectedAddress) {
       setShippingError('Pilih alamat pengiriman terlebih dahulu.');
@@ -337,15 +434,32 @@ export default function Cart() {
     selectedAddress,
   ]);
 
-  const handleManageAddresses = useCallback(() => {
-    router.push('/profile/addresses');
-  }, [router]);
+  const handleManageAddresses = useCallback(
+    (selectedId?: string) => {
+      router.push({
+        pathname: '/cart/addresses',
+        params:
+          (selectedId ?? selectedAddressId)
+            ? { selectedId: selectedId ?? selectedAddressId ?? undefined }
+            : undefined,
+      });
+    },
+    [router, selectedAddressId],
+  );
+
+  const handleSelectShippingKey = useCallback((shippingKey: string) => {
+    setSelectedShippingKey(currentKey => (currentKey === shippingKey ? currentKey : shippingKey));
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
     const hydrateCheckoutSession = async () => {
       if (!user?.id) {
+        if (!isMounted) {
+          return;
+        }
+
         setCheckoutIdempotencyKey(null);
         setActiveOrderId(null);
         await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
@@ -360,7 +474,13 @@ export default function Cart() {
         return;
       }
 
-      if (persisted?.fingerprint === checkoutFingerprint) {
+      if (!persisted) {
+        setCheckoutIdempotencyKey(null);
+        setActiveOrderId(null);
+        return;
+      }
+
+      if (persisted.fingerprint === checkoutFingerprint) {
         setCheckoutIdempotencyKey(persisted.idempotency_key);
         setActiveOrderId(persisted.order_id);
         return;
@@ -379,29 +499,18 @@ export default function Cart() {
   }, [checkoutFingerprint, getPersistData, removePersistData, user?.id]);
 
   useEffect(() => {
-    if (checkoutFingerprint == null) {
-      return;
-    }
+    cartMountedRef.current = true;
 
-    setShippingError(null);
-    setShippingOptions([]);
-    setSelectedShippingKey(null);
-    setQuoteDestinationAreaId(null);
-    setQuoteDestinationPostalCode(null);
-    setCheckoutIdempotencyKey(null);
-    setActiveOrderId(null);
-    void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-  }, [checkoutFingerprint, removePersistData]);
-
-  useEffect(() => {
     return () => {
+      cartMountedRef.current = false;
+
       if (quantitySyncTimerRef.current) {
         clearTimeout(quantitySyncTimerRef.current);
         quantitySyncTimerRef.current = null;
       }
 
       if (pendingQuantityUpdatesRef.current.size > 0) {
-        void flushPendingQuantityUpdates();
+        void flushPendingQuantityUpdates({ skipStateUpdates: true });
       }
     };
   }, [flushPendingQuantityUpdates]);
@@ -428,13 +537,52 @@ export default function Cart() {
 
     previousSelectedAddressIdRef.current = selectedAddressId;
 
+    setSelectedShippingKey(null);
+
     if (cartSnapshot.itemCount > 0) {
       void handleCalculateShipping();
     }
   }, [cartSnapshot.itemCount, handleCalculateShipping, selectedAddressId]);
 
+  useEffect(() => {
+    if (loadingRates || !shouldOpenShippingSheetRef.current) {
+      return;
+    }
+
+    if (shippingOptions.length === 0) {
+      if (shippingError) {
+        shouldOpenShippingSheetRef.current = false;
+      }
+
+      return;
+    }
+
+    shouldOpenShippingSheetRef.current = false;
+
+    setShippingSheetOpen(true);
+  }, [loadingRates, shippingError, shippingOptions.length]);
+
+  useEffect(() => {
+    if (shippingOptions.length === 0 || selectedShippingKey !== null) {
+      return;
+    }
+
+    const jne = shippingOptions.find(
+      o => o.courier_code.toLowerCase() === 'jne' && o.service_code.toLowerCase() === 'reg',
+    );
+
+    if (jne) {
+      setSelectedShippingKey(jne.courier_code + '-' + jne.service_code);
+    }
+  }, [shippingOptions, selectedShippingKey]);
+
   const finalizePaymentFlow = useCallback(
     async (reason: 'success' | 'pending' | 'failed') => {
+      if (finalizeOnceRef.current) {
+        return;
+      }
+
+      finalizeOnceRef.current = true;
       setPaymentUrl(null);
 
       if (!activeOrderId) {
@@ -533,6 +681,7 @@ export default function Cart() {
       return;
     }
 
+    finalizeOnceRef.current = false;
     setPaymentUrl(snapData.redirect_url);
   }, [
     activeOrderId,
@@ -702,70 +851,134 @@ export default function Cart() {
                 />
               </Card>
 
-              <XStack alignItems="center" justifyContent="space-between">
-                <Text fontSize="$5" fontWeight="700" color="$color" fontFamily="$heading">
-                  Alamat Pengiriman
-                </Text>
-                <Button
-                  title="Kelola"
-                  backgroundColor="transparent"
-                  titleStyle={{ color: '$primary', fontWeight: '600' }}
-                  onPress={handleManageAddresses}
-                  accessibilityLabel="Kelola alamat"
-                />
-              </XStack>
-
               {loadingAddresses ? (
                 <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
                   <Spinner size="large" color="$primary" />
                 </YStack>
-              ) : addresses.length === 0 ? (
-                <YStack
+              ) : selectedAddress ? (
+                <Card
+                  bordered
+                  elevate
+                  size="$4"
+                  backgroundColor="$surface"
+                  borderColor="$surfaceBorder"
+                  onPress={() => setAddressSheetOpen(true)}
+                  accessibilityLabel="Ganti alamat pengiriman">
+                  <XStack padding="$4" gap="$3" alignItems="center">
+                    <XStack alignSelf="flex-start" marginTop="$1">
+                      <MapPinIcon size={20} color="$primary" />
+                    </XStack>
+
+                    <YStack gap="$1" flex={1}>
+                      <XStack alignItems="center" gap="$1" flex={1}>
+                        <Text color="$color" fontWeight="700" numberOfLines={1}>
+                          {selectedAddress.receiver_name}
+                        </Text>
+                        <Text color="$colorSubtle" fontSize="$3">
+                          {' | '}
+                        </Text>
+                        <Text color="$colorSubtle" fontSize="$3" numberOfLines={1} flex={1}>
+                          {selectedAddress.phone_number}
+                        </Text>
+                      </XStack>
+                      <Text color="$colorSubtle" numberOfLines={2}>
+                        {selectedAddressFullText}
+                      </Text>
+                    </YStack>
+
+                    <XStack alignItems="center" justifyContent="center">
+                      <ChevronRightIcon size={16} color="$colorSubtle" />
+                    </XStack>
+                  </XStack>
+                </Card>
+              ) : (
+                <Card
                   borderRadius="$4"
                   borderWidth={1}
                   borderColor="$surfaceBorder"
-                  padding="$4"
                   backgroundColor="$surface"
-                  gap="$2">
-                  <Text fontSize="$4" color="$color">
-                    Belum ada alamat pengiriman.
-                  </Text>
-                  <Button
-                    title="Tambah Alamat"
-                    onPress={handleManageAddresses}
-                    paddingVertical="$2"
-                    borderRadius="$3"
-                    minHeight={44}
-                    accessibilityLabel="Tambah alamat"
-                  />
-                </YStack>
-              ) : (
-                <YStack gap="$1">
-                  {addresses.map(address => (
-                    <Card
-                      key={address.id}
-                      borderWidth={address.id === selectedAddressId ? 2 : 1}
-                      borderColor={address.id === selectedAddressId ? '$primary' : '$surfaceBorder'}
-                      borderRadius="$4"
-                      backgroundColor="$surface"
-                      onPress={() => setSelectedAddressId(address.id)}>
-                      <AddressCard address={address} isDefault={address.is_default ?? false} />
-                    </Card>
-                  ))}
-                </YStack>
+                  padding="$4"
+                  style={{ borderStyle: 'dashed' }}>
+                  <YStack gap="$3">
+                    <XStack alignItems="center" gap="$2">
+                      <MapPinIcon size={18} color="$primary" />
+                      <Text color="$color" fontWeight="600">
+                        Belum ada alamat
+                      </Text>
+                    </XStack>
+                    <TamaguiButton
+                      backgroundColor="$primary"
+                      color="white"
+                      borderRadius="$3"
+                      minHeight={44}
+                      onPress={() => handleManageAddresses()}
+                      accessibilityLabel="Tambah alamat pengiriman">
+                      Tambah Alamat
+                    </TamaguiButton>
+                  </YStack>
+                </Card>
               )}
 
-              <XStack alignItems="center" justifyContent="space-between">
-                <XStack alignItems="center" gap="$2">
-                  <Text fontSize="$5" fontWeight="700" color="$color" fontFamily="$heading">
-                    Opsi Pengiriman
-                  </Text>
-                  {loadingRates ? <Spinner size="small" color="$primary" /> : null}
-                </XStack>
+              <Card
+                bordered
+                elevate
+                size="$4"
+                backgroundColor="$surface"
+                borderColor="$surfaceBorder"
+                onPress={() => {
+                  if (loadingRates || !selectedAddressId) {
+                    return;
+                  }
 
-                {selectedAddressId &&
-                (shippingError || shippingOptions.length === 0) &&
-                !loadingRates ? (
+                  if (shippingOptions.length === 0) {
+                    shouldOpenShippingSheetRef.current = true;
+                    void handleCalculateShipping();
+                    return;
+                  }
+
+                  setShippingSheetOpen(true);
+                }}>
+                <Card.Header padded>
+                  <XStack alignItems="center" justifyContent="space-between" gap="$3">
+                    <Text fontSize="$4" fontWeight="600" color="$color" numberOfLines={1} flex={1}>
+                      Opsi Pengiriman
+                    </Text>
+                    {loadingRates ? (
+                      <Spinner size="small" color="$primary" />
+                    ) : (
+                      <ChevronRightIcon size={16} color="$colorSubtle" />
+                    )}
+                  </XStack>
+                </Card.Header>
+
+                <Separator />
+
+                <XStack padding="$3" gap="$3" alignItems="center">
+                  {selectedShippingOption ? (
+                    <>
+                      <YStack flex={1} gap="$0.5" minWidth={0}>
+                        <Text color="$color" fontWeight="700" numberOfLines={1}>
+                          {selectedShippingOption.courier_name} -{' '}
+                          {selectedShippingOption.service_name}
+                        </Text>
+                        <Text color="$colorSubtle" fontSize="$3" numberOfLines={1}>
+                          Estimasi: {selectedShippingOption.estimated_delivery}
+                        </Text>
+                      </YStack>
+                      <Text color="$primary" fontWeight="700" flexShrink={0}>
+                        {formatRupiah(selectedShippingOption.price)}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text flex={1} color="$colorSubtle" fontWeight="500" textAlign="center">
+                      Pilih Kurir
+                    </Text>
+                  )}
+                </XStack>
+              </Card>
+
+              {shippingError && shippingOptions.length === 0 && !loadingRates ? (
+                <XStack justifyContent="flex-end" marginTop="$-2">
                   <TamaguiButton
                     size="$2"
                     circular
@@ -779,8 +992,8 @@ export default function Cart() {
                     icon={<RefreshCw size={14} color="$primary" />}
                     accessibilityLabel="Muat ulang ongkir"
                   />
-                ) : null}
-              </XStack>
+                </XStack>
+              ) : null}
 
               {shippingError ? (
                 <Card
@@ -792,85 +1005,236 @@ export default function Cart() {
                   <Text color="$danger">{shippingError}</Text>
                 </Card>
               ) : null}
-
-              {shippingOptions.length > 0 ? (
-                <YStack gap="$2" paddingBottom="$2">
-                  {shippingOptions.map(option => (
-                    <Card
-                      key={`${option.courier_code}-${option.service_code}`}
-                      onPress={() =>
-                        setSelectedShippingKey(`${option.courier_code}-${option.service_code}`)
-                      }
-                      borderRadius="$4"
-                      borderWidth={
-                        selectedShippingKey === `${option.courier_code}-${option.service_code}`
-                          ? 2
-                          : 1
-                      }
-                      borderColor={
-                        selectedShippingKey === `${option.courier_code}-${option.service_code}`
-                          ? '$primary'
-                          : '$surfaceBorder'
-                      }
-                      padding="$3"
-                      backgroundColor="$surface">
-                      <XStack justifyContent="space-between" alignItems="flex-start" gap="$2">
-                        <YStack flex={1} gap="$1">
-                          <Text fontSize="$4" fontWeight="700" color="$color">
-                            {option.courier_name} - {option.service_name}
-                          </Text>
-                          <Text fontSize="$3" color="$colorPress">
-                            Kode: {option.courier_code.toUpperCase()} / {option.service_code}
-                          </Text>
-                          <Text fontSize="$3" color="$colorPress">
-                            Estimasi: {option.estimated_delivery}
-                          </Text>
-                        </YStack>
-                        <Text fontSize="$4" fontWeight="700" color="$primary">
-                          {formatRupiah(option.price)}
-                        </Text>
-                      </XStack>
-                    </Card>
-                  ))}
-                </YStack>
-              ) : (
-                <Card
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderColor="$surfaceBorder"
-                  padding="$3"
-                  backgroundColor="$surface">
-                  <Text color="$colorPress">
-                    {selectedAddressId
-                      ? 'Belum ada tarif ongkir untuk alamat ini.'
-                      : 'Pilih alamat untuk melihat ongkir'}
-                  </Text>
-                </Card>
-              )}
-
-              {shippingOptions.length > 0 ? (
-                <YStack gap="$2">
-                  <Card
-                    borderRadius="$4"
-                    borderWidth={1}
-                    borderColor="$surfaceBorder"
-                    padding="$3"
-                    backgroundColor="$surface">
-                    <Text fontWeight="600" color="$color">
-                      Kurir terpilih:
-                    </Text>
-                    <Text color="$colorPress">
-                      {selectedShippingOption
-                        ? `${selectedShippingOption.courier_name} - ${selectedShippingOption.service_name} (${formatRupiah(selectedShippingOption.price)})`
-                        : 'Belum dipilih'}
-                    </Text>
-                  </Card>
-                </YStack>
-              ) : null}
             </>
           )}
         </YStack>
       </ScrollView>
+
+      <Sheet
+        modal
+        dismissOnOverlayPress
+        dismissOnSnapToBottom
+        moveOnKeyboardChange
+        snapPoints={[60]}
+        open={addressSheetOpen}
+        onOpenChange={setAddressSheetOpen}
+        animation="medium"
+        animationConfig={{
+          type: 'spring',
+          damping: 24,
+          mass: 0.9,
+          stiffness: 200,
+        }}>
+        <Sheet.Overlay
+          animation="lazy"
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+          backgroundColor="$sheetOverlay"
+        />
+        <Sheet.Handle />
+        <Sheet.Frame
+          backgroundColor="$surfaceSubtle"
+          borderTopLeftRadius="$6"
+          borderTopRightRadius="$6">
+          <YStack flex={1}>
+            <YStack px="$4" pt="$2" pb="$3">
+              <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading">
+                Pilih Alamat
+              </Text>
+            </YStack>
+
+            <Sheet.ScrollView showsVerticalScrollIndicator={false}>
+              <YStack pb="$4">
+                {addresses.map((address, index) => {
+                  const isSelected = selectedAddressId === address.id;
+                  const fullAddressText = [
+                    address.street_address,
+                    address.city,
+                    address.province,
+                    address.postal_code,
+                  ]
+                    .filter(Boolean)
+                    .join(', ');
+
+                  let addressLabel: string | null = null;
+                  if (
+                    'label' in address &&
+                    typeof address.label === 'string' &&
+                    address.label.trim().length > 0
+                  ) {
+                    addressLabel = address.label.trim();
+                  }
+
+                  const badgeText = address.is_default ? 'Utama' : addressLabel;
+
+                  return (
+                    <React.Fragment key={address.id}>
+                      <XStack
+                        px="$4"
+                        py="$3"
+                        gap="$3"
+                        alignItems="flex-start"
+                        onPress={() => {
+                          setSelectedAddressId(address.id);
+                          setAddressSheetOpen(false);
+                        }}>
+                        <XStack
+                          width={20}
+                          height={20}
+                          borderRadius={10}
+                          marginTop={2}
+                          borderWidth={2}
+                          borderColor={isSelected ? '$primary' : '$colorSubtle'}
+                          backgroundColor={isSelected ? '$primary' : 'transparent'}
+                          alignItems="center"
+                          justifyContent="center">
+                          {isSelected ? (
+                            <XStack
+                              width={8}
+                              height={8}
+                              borderRadius={4}
+                              backgroundColor="$surface"
+                            />
+                          ) : null}
+                        </XStack>
+
+                        <YStack flex={1} gap="$1">
+                          <XStack gap="$2" alignItems="center">
+                            <Text fontWeight="700" color="$color" fontSize="$4">
+                              {address.receiver_name}
+                            </Text>
+                            <Text color="$colorSubtle" fontSize="$3">
+                              ({address.phone_number})
+                            </Text>
+                          </XStack>
+                          <Text color="$colorSubtle" fontSize="$3" numberOfLines={3}>
+                            {fullAddressText}
+                          </Text>
+                          {badgeText ? (
+                            <XStack
+                              alignSelf="flex-start"
+                              borderWidth={1}
+                              borderColor="$primary"
+                              borderRadius="$2"
+                              px="$2"
+                              py="$0.5">
+                              <Text fontSize={11} color="$primary" fontWeight="600">
+                                {badgeText}
+                              </Text>
+                            </XStack>
+                          ) : null}
+                        </YStack>
+
+                        <TamaguiButton
+                          size="$2"
+                          chromeless
+                          color="$primary"
+                          fontWeight="600"
+                          onPress={event => {
+                            event.stopPropagation();
+                            setAddressSheetOpen(false);
+                            router.push({
+                              pathname: '/profile/address-form',
+                              params: { id: address.id },
+                            });
+                          }}>
+                          Ubah
+                        </TamaguiButton>
+                      </XStack>
+
+                      {index < addresses.length - 1 ? <Separator /> : null}
+                    </React.Fragment>
+                  );
+                })}
+              </YStack>
+            </Sheet.ScrollView>
+
+            <YStack px="$4" pt="$2" pb="$4">
+              <TamaguiButton
+                borderRadius="$3"
+                minHeight={44}
+                borderWidth={1}
+                borderColor="$primary"
+                backgroundColor="transparent"
+                color="$primary"
+                mx="$4"
+                mb="$4"
+                onPress={() => {
+                  setAddressSheetOpen(false);
+                  router.push('/profile/address-form');
+                }}>
+                + Tambah Alamat Baru
+              </TamaguiButton>
+            </YStack>
+          </YStack>
+        </Sheet.Frame>
+      </Sheet>
+
+      <Sheet
+        modal
+        dismissOnOverlayPress
+        dismissOnSnapToBottom
+        moveOnKeyboardChange
+        snapPoints={[60]}
+        open={shippingSheetOpen}
+        onOpenChange={setShippingSheetOpen}
+        animation="medium"
+        animationConfig={{
+          type: 'spring',
+          damping: 24,
+          mass: 0.9,
+          stiffness: 200,
+        }}>
+        <Sheet.Overlay
+          animation="lazy"
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+          backgroundColor="$sheetOverlay"
+        />
+        <Sheet.Handle />
+        <Sheet.Frame
+          backgroundColor="$surfaceSubtle"
+          borderTopLeftRadius="$6"
+          borderTopRightRadius="$6">
+          <YStack flex={1}>
+            <YStack px="$4" pt="$2" pb="$3">
+              <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading">
+                Opsi Pengiriman
+              </Text>
+            </YStack>
+
+            <Sheet.ScrollView showsVerticalScrollIndicator={false}>
+              <YStack gap="$2" px="$4" pb="$4">
+                {shippingOptions.map(option => {
+                  const optionKey = `${option.courier_code}-${option.service_code}`;
+
+                  return (
+                    <CourierOptionCard
+                      key={optionKey}
+                      option={option}
+                      optionKey={optionKey}
+                      isSelected={selectedShippingKey === optionKey}
+                      onSelect={handleSelectShippingKey}
+                      formatRupiah={formatRupiah}
+                    />
+                  );
+                })}
+              </YStack>
+            </Sheet.ScrollView>
+
+            <YStack px="$4" pt="$2" pb="$4">
+              <TamaguiButton
+                borderRadius="$3"
+                minHeight={44}
+                backgroundColor="$primary"
+                color="$surface"
+                onPress={() => setShippingSheetOpen(false)}>
+                Konfirmasi
+              </TamaguiButton>
+            </YStack>
+          </YStack>
+        </Sheet.Frame>
+      </Sheet>
 
       {cartItems.length > 0 ? (
         <StickyBottomBar

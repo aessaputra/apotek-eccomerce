@@ -158,7 +158,8 @@ function Router() {
           tabBarStyle,
           tabBarItemStyle: {
             flex: 1,
-            minWidth: 88,
+            alignItems: 'center',
+            overflow: 'visible',
             paddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
           },
           tabBarAllowFontScaling: false,
@@ -170,15 +171,13 @@ function Router() {
                 fontFamily: fonts.poppins.regular,
                 fontSize: TAB_BAR_LABEL_SIZE,
                 marginTop: TAB_BAR_LABEL_MARGIN_TOP,
+                textAlign: 'center',
+                width: '100%',
+                flexShrink: 0,
               }}>
               {children}
             </Text>
           ),
-          tabBarLabelStyle: {
-            fontFamily: fonts.poppins.regular,
-            fontSize: TAB_BAR_LABEL_SIZE,
-            marginTop: TAB_BAR_LABEL_MARGIN_TOP,
-          },
         })}>
         <Tabs.Screen
           name="index"

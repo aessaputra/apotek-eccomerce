@@ -88,10 +88,24 @@ function AddressEditSheet({
       dismissOnSnapToBottom
       moveOnKeyboardChange
       snapPoints={multiline ? [88] : [78]}
-      animation="medium">
-      <Sheet.Overlay animation="lazy" enterStyle={{ opacity: 0 }} exitStyle={{ opacity: 0 }} />
+      animation="medium"
+      animationConfig={{
+        type: 'spring',
+        damping: 24,
+        mass: 0.9,
+        stiffness: 200,
+      }}>
+      <Sheet.Overlay
+        animation="lazy"
+        enterStyle={{ opacity: 0 }}
+        exitStyle={{ opacity: 0 }}
+        backgroundColor="$sheetOverlay"
+      />
       <Sheet.Handle />
-      <Sheet.Frame backgroundColor="$surface" borderTopLeftRadius="$4" borderTopRightRadius="$4">
+      <Sheet.Frame
+        backgroundColor="$surfaceSubtle"
+        borderTopLeftRadius="$6"
+        borderTopRightRadius="$6">
         <YStack flex={1}>
           <Sheet.ScrollView
             showsVerticalScrollIndicator={false}

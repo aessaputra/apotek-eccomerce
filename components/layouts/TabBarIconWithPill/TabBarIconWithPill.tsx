@@ -51,8 +51,6 @@ export default function TabBarIconWithPill({ focused, children }: TabBarIconWith
       style={{
         alignItems: 'center',
         justifyContent: 'center',
-        width: MD3_PILL.WIDTH,
-        height: MD3_PILL.HEIGHT,
       }}>
       {/* Semi-transparent pill background (visible only when focused) */}
       <Animated.View
