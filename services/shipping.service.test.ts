@@ -3,20 +3,18 @@ import type { Address } from '@/types/address';
 import { getShippingRatesForAddress, searchBiteshipArea } from './shipping.service';
 
 const mockInvoke = jest.fn();
+const mockGetSession = jest.fn();
+const mockRefreshSession = jest.fn();
 
 jest.mock('@/utils/supabase', () => ({
   supabase: {
+    auth: {
+      getSession: (...args: unknown[]) => mockGetSession(...args),
+      refreshSession: (...args: unknown[]) => mockRefreshSession(...args),
+    },
     functions: {
       invoke: (...args: unknown[]) => mockInvoke(...args),
     },
-  },
-}));
-
-jest.mock('@/utils/config', () => ({
-  __esModule: true,
-  default: {
-    biteshipOriginAreaId: 'ORIGIN-AREA-ID',
-    biteshipCouriers: 'jne,sicepat',
   },
 }));
 
@@ -43,6 +41,27 @@ const baseAddress: Address = {
 describe('shipping.service', () => {
   beforeEach(() => {
     mockInvoke.mockReset();
+    mockGetSession.mockReset();
+    mockRefreshSession.mockReset();
+
+    const futureExpiry = Math.floor(Date.now() / 1000) + 3600;
+    mockGetSession.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'test-access-token',
+          expires_at: futureExpiry,
+        },
+      },
+    });
+    mockRefreshSession.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'refreshed-test-access-token',
+          expires_at: futureExpiry,
+        },
+      },
+      error: null,
+    });
   });
 
   test('maps rates response into shipping options', async () => {
@@ -84,9 +103,20 @@ describe('shipping.service', () => {
     });
 
     const invokePayload = mockInvoke.mock.calls[0]?.[1] as {
-      body?: { payload?: { items?: { quantity?: number }[] } };
+      body?: {
+        payload?: {
+          items?: { quantity?: number }[];
+          origin_area_id?: string;
+          couriers?: string;
+        };
+      };
     };
     expect(invokePayload.body?.payload?.items?.[0]?.quantity).toBe(1);
+    expect(invokePayload.body?.payload?.origin_area_id).toBeUndefined();
+    expect(invokePayload.body?.payload?.couriers).toBeUndefined();
+    expect(
+      (mockInvoke.mock.calls[0]?.[1] as { headers?: { Authorization?: string } }).headers,
+    ).toEqual({ Authorization: 'Bearer test-access-token' });
   });
 
   test('uses destination_postal_code when selected address has no area id mapping', async () => {
@@ -131,6 +161,25 @@ describe('shipping.service', () => {
 
     expect(data).toBeNull();
     expect(error?.message).toContain('Package weight must be greater than 0 grams.');
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+
+  test('returns validation error for non-5-digit postal code when area ids are missing', async () => {
+    const { data, error } = await getShippingRatesForAddress({
+      address: {
+        ...baseAddress,
+        city_id: null,
+        district_id: null,
+        subdistrict_id: null,
+        postal_code: '421831',
+      },
+      package_weight_grams: 500,
+    });
+
+    expect(data).toBeNull();
+    expect(error?.message).toContain(
+      'Selected address is missing destination area mapping and valid postal code.',
+    );
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 

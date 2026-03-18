@@ -131,6 +131,49 @@ export async function getLatestProductsWithImages(
   }
 }
 
+/**
+ * Search products by name using Supabase ilike pattern
+ */
+export async function searchProducts(query: string): Promise<ProductWithImages[]> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('is_active', true)
+    .gt('stock', 0)
+    .ilike('name', `%${trimmedQuery}%`)
+    .order('name', { ascending: true })
+    .limit(50);
+
+  if (error) {
+    if (__DEV__) console.warn('[HomeService] searchProducts error:', error.message);
+    throw new Error('Failed to search products. Please try again.');
+  }
+
+  if (!data || data.length === 0) return [];
+
+  const productIds = data.map(p => p.id);
+  const images = await getProductImages(productIds);
+
+  const imagesByProduct = images.reduce(
+    (acc, image) => {
+      if (!acc[image.product_id]) acc[image.product_id] = [];
+      acc[image.product_id].push({ url: image.url, sort_order: image.sort_order });
+      return acc;
+    },
+    {} as Record<string, { url: string; sort_order: number }[]>,
+  );
+
+  const productsWithImages: ProductWithImages[] = data.map(product => ({
+    ...product,
+    images: imagesByProduct[product.id] || [],
+  }));
+
+  return productsWithImages;
+}
+
 export async function getProductDetailsById(productId: string): Promise<ProductDetailsData | null> {
   const normalizedId = productId.trim();
   if (!normalizedId) return null;

@@ -29,6 +29,7 @@ import {
   getProductDetailsById,
   type ProductDetailsData,
 } from '@/services/home.service';
+import { BOTTOM_BAR_HEIGHT, BOTTOM_BAR_SHADOW } from '@/constants/ui';
 import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import QuantitySelector from '@/components/elements/QuantitySelector';
@@ -85,7 +86,7 @@ const CategoryIcon = styled(View, {
 
 const AddToCartButton = styled(Button, {
   height: 52,
-  borderRadius: '$8',
+  borderRadius: '$4',
   backgroundColor: '$primary',
   borderWidth: 1,
   borderColor: '$primary',
@@ -109,16 +110,40 @@ const SheetConfirmButton = styled(Button, {
   disabledStyle: { opacity: 0.55 },
 });
 
+const BottomActionBar = styled(YStack, {
+  position: 'absolute',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: '$surface',
+  borderTopWidth: 1,
+  borderTopColor: '$surfaceBorder',
+  px: '$4',
+  pt: '$3',
+  justifyContent: 'center',
+  elevation: 8,
+});
+
+const BottomActionBarContent = styled(YStack, {
+  width: '100%',
+  maxWidth: 560,
+  alignSelf: 'center',
+});
+
 interface LoadingStateProps {
   topPadding: number;
   horizontalPadding: '$4' | '$5';
   bottomPadding: number;
+  bottomPaddingInset: number;
+  bottomBarHeight: number;
 }
 
 function ProductDetailsLoading({
   topPadding,
   horizontalPadding,
   bottomPadding,
+  bottomPaddingInset,
+  bottomBarHeight,
 }: LoadingStateProps) {
   return (
     <ScreenRoot>
@@ -139,17 +164,23 @@ function ProductDetailsLoading({
             </XStack>
             <SkeletonBlock width={110} height={28} borderRadius="$10" />
             <SkeletonBlock width="100%" height={76} />
-
-            <XStack alignItems="center" justifyContent="space-between" gap="$4" marginTop="$4">
-              <YStack gap="$1.5">
-                <SkeletonBlock width={140} height={28} />
-                <SkeletonBlock width={70} height={14} />
-              </YStack>
-              <SkeletonBlock width={152} height={48} borderRadius="$6" />
-            </XStack>
           </YStack>
         </ContentStack>
       </ScrollView>
+
+      <BottomActionBar
+        minHeight={bottomBarHeight}
+        pb={bottomPaddingInset}
+        style={BOTTOM_BAR_SHADOW}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants">
+        <BottomActionBarContent>
+          <XStack alignItems="stretch" justifyContent="space-between" gap="$3">
+            <SkeletonBlock flex={1} height={52} borderRadius="$4" />
+            <SkeletonBlock flex={1.35} height={52} borderRadius="$4" />
+          </XStack>
+        </BottomActionBarContent>
+      </BottomActionBar>
     </ScreenRoot>
   );
 }
@@ -270,7 +301,8 @@ export default function ProductDetails() {
 
   const topPadding = (media.gtSm ? 16 : 12) + insets.top;
   const horizontalPadding: '$4' | '$5' = media.gtSm ? '$5' : '$4';
-  const contentBottomPadding = insets.bottom + 24;
+  const bottomPaddingInset = Math.max(insets.bottom, 12);
+  const bottomBarHeight = BOTTOM_BAR_HEIGHT + bottomPaddingInset;
 
   const fetchProduct = useCallback(async () => {
     if (!productId.trim()) {
@@ -374,7 +406,9 @@ export default function ProductDetails() {
       <ProductDetailsLoading
         topPadding={topPadding}
         horizontalPadding={horizontalPadding}
-        bottomPadding={contentBottomPadding}
+        bottomPadding={bottomBarHeight}
+        bottomPaddingInset={bottomPaddingInset}
+        bottomBarHeight={bottomBarHeight}
       />
     );
   }
@@ -401,6 +435,9 @@ export default function ProductDetails() {
   const formattedTotalPrice = formatPrice(product.price * quantity);
   const isOutOfStock = product.stock <= 0;
   const maxQuantity = Math.max(product.stock, 1);
+  const isSuccessFeedback = actionFeedback?.toLowerCase().includes('berhasil') ?? false;
+  const feedbackExtraPadding = actionFeedback ? 22 : 0;
+  const contentBottomPadding = bottomBarHeight + feedbackExtraPadding;
 
   return (
     <ScreenRoot>
@@ -471,70 +508,82 @@ export default function ProductDetails() {
             <Text fontSize={15} lineHeight={23} color="$colorSubtle" mt="$1">
               {descriptionLabel}
             </Text>
-
-            <XStack alignItems="stretch" justifyContent="space-between" gap="$3" mt="$4">
-              <YStack
-                flex={1}
-                flexBasis={0}
-                minWidth={0}
-                flexShrink={1}
-                justifyContent="center"
-                backgroundColor="$surface"
-                borderWidth={1}
-                borderColor="$surfaceBorder"
-                borderRadius="$6"
-                px="$3"
-                py="$2">
-                <Text
-                  fontSize={26}
-                  lineHeight={31}
-                  color="$color"
-                  fontWeight="800"
-                  letterSpacing={-0.5}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.5}>
-                  {formattedUnitPrice}
-                </Text>
-              </YStack>
-
-              <AddToCartButton
-                flex={1.35}
-                flexBasis={0}
-                minWidth={0}
-                flexShrink={1}
-                onPress={handleOpenSheet}
-                disabled={isOutOfStock}
-                justifyContent="center"
-                px="$3">
-                <XStack flex={1} alignItems="center" justifyContent="center" gap="$2" minWidth={0}>
-                  <CartIcon
-                    size={18}
-                    color={getThemeColor(theme, isOutOfStock ? 'colorDisabled' : 'white')}
-                  />
-                  <Text
-                    color={isOutOfStock ? '$colorDisabled' : '$white'}
-                    fontSize={15}
-                    fontWeight="700"
-                    flexShrink={1}
-                    minWidth={0}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.8}>
-                    {isOutOfStock ? 'Stok Habis' : 'Tambah Keranjang'}
-                  </Text>
-                </XStack>
-              </AddToCartButton>
-            </XStack>
-
-            {actionFeedback ? (
-              <Text fontSize={13} color={isOutOfStock ? '$danger' : '$primary'}>
-                {actionFeedback}
-              </Text>
-            ) : null}
           </YStack>
         </ContentStack>
       </ScrollView>
+
+      <BottomActionBar
+        minHeight={bottomBarHeight}
+        pb={bottomPaddingInset}
+        style={BOTTOM_BAR_SHADOW}>
+        <BottomActionBarContent>
+          {actionFeedback ? (
+            <Text
+              fontSize={13}
+              color={isSuccessFeedback ? '$primary' : '$danger'}
+              textAlign="center"
+              numberOfLines={2}
+              mb="$2">
+              {actionFeedback}
+            </Text>
+          ) : null}
+
+          <XStack alignItems="stretch" justifyContent="space-between" gap="$3">
+            <YStack
+              flex={1}
+              flexBasis={0}
+              minWidth={0}
+              flexShrink={1}
+              justifyContent="center"
+              backgroundColor="$surface"
+              borderWidth={1}
+              borderColor="$surfaceBorder"
+              borderRadius="$4"
+              px="$3"
+              py="$2">
+              <Text
+                fontSize={26}
+                lineHeight={31}
+                color="$color"
+                fontWeight="800"
+                letterSpacing={-0.5}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}>
+                {formattedUnitPrice}
+              </Text>
+            </YStack>
+
+            <AddToCartButton
+              flex={1.35}
+              flexBasis={0}
+              minWidth={0}
+              flexShrink={1}
+              onPress={handleOpenSheet}
+              disabled={isOutOfStock}
+              justifyContent="center"
+              px="$3">
+              <XStack flex={1} alignItems="center" justifyContent="center" gap="$2" minWidth={0}>
+                <CartIcon
+                  size={18}
+                  color={getThemeColor(theme, isOutOfStock ? 'colorDisabled' : 'white')}
+                />
+                <Text
+                  color={isOutOfStock ? '$colorDisabled' : '$white'}
+                  fontSize={15}
+                  fontWeight="700"
+                  flexShrink={1}
+                  minWidth={0}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}>
+                  {isOutOfStock ? 'Stok Habis' : 'Tambah Keranjang'}
+                </Text>
+              </XStack>
+            </AddToCartButton>
+          </XStack>
+        </BottomActionBarContent>
+      </BottomActionBar>
 
       <Sheet
         open={isSheetOpen}

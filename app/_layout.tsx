@@ -5,7 +5,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 // Tamagui web CSS - loaded for web platform
 import '@/tamagui-web.css';
-import { Platform } from 'react-native';
+import { Platform, Text } from 'react-native';
 import BottomSheetContents from '@/components/layouts/BottomSheetContents';
 import BottomSheet from '@/components/elements/BottomSheet';
 import { useTheme } from 'tamagui';
@@ -114,6 +114,7 @@ function Router() {
   const hideTabBar =
     currentGroup === '(auth)' ||
     currentGroup === 'google-auth' ||
+    currentGroup === 'cart' ||
     segments.includes('edit-profile') ||
     segments.includes('address-form') ||
     segments.includes('addresses') ||
@@ -158,6 +159,20 @@ function Router() {
           tabBarItemStyle: {
             paddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
           },
+          tabBarAllowFontScaling: false,
+          tabBarLabel: ({ color, children }) => (
+            <Text
+              numberOfLines={1}
+              allowFontScaling={false}
+              style={{
+                color,
+                fontFamily: fonts.poppins.regular,
+                fontSize: TAB_BAR_LABEL_SIZE,
+                marginTop: TAB_BAR_LABEL_MARGIN_TOP,
+              }}>
+              {children}
+            </Text>
+          ),
           tabBarLabelStyle: {
             fontFamily: fonts.poppins.regular,
             fontSize: TAB_BAR_LABEL_SIZE,

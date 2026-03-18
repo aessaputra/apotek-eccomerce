@@ -1,15 +1,33 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RefreshCw } from '@tamagui/lucide-icons';
+import {
+  YStack,
+  XStack,
+  Text,
+  useTheme,
+  Card,
+  Spinner,
+  Separator,
+  ScrollView,
+  Button as TamaguiButton,
+} from 'tamagui';
 import { WebView } from 'react-native-webview';
 import * as Crypto from 'expo-crypto';
 import { getThemeColor } from '@/utils/theme';
-import { CartIcon, MapPinIcon } from '@/components/icons';
+import { CartIcon } from '@/components/icons';
 import AddressCard from '@/components/elements/AddressCard/AddressCard';
 import Button from '@/components/elements/Button';
+import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
+import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
+import { StickyBottomBar } from '@/components/elements/StickyBottomBar/StickyBottomBar';
+import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartState';
+import { CartLoadingSkeleton } from '@/components/elements/CartLoadingSkeleton/CartLoadingSkeleton';
 import { useAppSlice } from '@/slices';
 import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
 import { getAddresses } from '@/services/address.service';
+import { getCartWithItems, updateCartItemQuantity, removeCartItem } from '@/services/cart.service';
 import { getShippingRatesForAddress } from '@/services/shipping.service';
 import {
   createCheckoutOrder,
@@ -17,18 +35,9 @@ import {
   pollOrderPaymentStatus,
 } from '@/services/checkout.service';
 import type { Address } from '@/types/address';
+import type { CartItemWithProduct, CartSnapshot } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
-import type { Tables } from '@/types/supabase';
-import { supabase } from '@/utils/supabase';
-import config from '@/utils/config';
-
-const DEFAULT_PRODUCT_WEIGHT_GRAMS = 200;
-
-interface CartSnapshot {
-  itemCount: number;
-  estimatedWeightGrams: number;
-  packageValue: number;
-}
+import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 
 interface PersistedCheckoutSession {
   fingerprint: string;
@@ -42,8 +51,12 @@ const EMPTY_CART: CartSnapshot = {
   packageValue: 0,
 };
 
+const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
+const QUANTITY_SYNC_DEBOUNCE_MS = 400;
+
 export default function Cart() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { user } = useAppSlice();
   const { getPersistData, setPersistData, removePersistData } = useDataPersist();
@@ -52,6 +65,7 @@ export default function Cart() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [cartSnapshot, setCartSnapshot] = useState<CartSnapshot>(EMPTY_CART);
+  const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
   const [loadingCart, setLoadingCart] = useState(false);
   const [loadingRates, setLoadingRates] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
@@ -64,6 +78,39 @@ export default function Cart() {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string | null>(null);
+  const quantitySyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingQuantityUpdatesRef = useRef<Map<string, number>>(new Map());
+  const confirmedQuantitiesRef = useRef<Map<string, number>>(new Map());
+  const previousSelectedAddressIdRef = useRef<string | null>(null);
+
+  const computeCartSnapshot = useCallback((items: CartItemWithProduct[]): CartSnapshot => {
+    let itemCount = 0;
+    let estimatedWeightGrams = 0;
+    let packageValue = 0;
+
+    for (const item of items) {
+      itemCount += item.quantity;
+      estimatedWeightGrams += item.quantity * (item.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS);
+      packageValue += item.quantity * item.product.price;
+    }
+
+    return {
+      itemCount,
+      estimatedWeightGrams,
+      packageValue,
+    };
+  }, []);
+
+  const updateCartState = useCallback(
+    (updater: (items: CartItemWithProduct[]) => CartItemWithProduct[]) => {
+      setCartItems(currentItems => {
+        const nextItems = updater(currentItems);
+        setCartSnapshot(computeCartSnapshot(nextItems));
+        return nextItems;
+      });
+    },
+    [computeCartSnapshot],
+  );
 
   const selectedAddress = useMemo(
     () => addresses.find(address => address.id === selectedAddressId) ?? null,
@@ -120,88 +167,126 @@ export default function Cart() {
     setSelectedAddressId(current => current ?? nextAddresses[0]?.id ?? null);
   }, [user?.id]);
 
-  const loadCartSnapshot = useCallback(async () => {
+  const loadCartData = useCallback(async () => {
     if (!user?.id) {
+      setCartItems([]);
       setCartSnapshot(EMPTY_CART);
       return;
     }
 
     setLoadingCart(true);
 
-    const { data: cartRows, error: cartError } = await supabase
-      .from('carts')
-      .select('id')
-      .eq('user_id', user.id)
-      .limit(1);
-
-    if (cartError) {
-      setLoadingCart(false);
-      setShippingError(cartError.message);
-      return;
-    }
-
-    const cartId = cartRows?.[0]?.id;
-    if (!cartId) {
-      setLoadingCart(false);
-      setCartSnapshot(EMPTY_CART);
-      return;
-    }
-
-    const { data: cartItems, error: itemError } = await supabase
-      .from('cart_items')
-      .select('product_id, quantity')
-      .eq('cart_id', cartId);
-
-    if (itemError) {
-      setLoadingCart(false);
-      setShippingError(itemError.message);
-      return;
-    }
-
-    const typedItems = (cartItems || []) as Pick<Tables<'cart_items'>, 'product_id' | 'quantity'>[];
-    const productIds = typedItems.map(item => item.product_id).filter(Boolean) as string[];
-
-    let products: Pick<Tables<'products'>, 'id' | 'price'>[] = [];
-
-    if (productIds.length > 0) {
-      const { data: productRows, error: productError } = await supabase
-        .from('products')
-        .select('id, price')
-        .in('id', productIds);
-
-      if (productError) {
-        setLoadingCart(false);
-        setShippingError(productError.message);
-        return;
-      }
-
-      products = (productRows || []) as Pick<Tables<'products'>, 'id' | 'price'>[];
-    }
-
-    const productMap = new Map(products.map(product => [product.id, product]));
-    const itemCount = typedItems.reduce((total, item) => total + item.quantity, 0);
-    const packageValue = typedItems.reduce((total, item) => {
-      if (!item.product_id) {
-        return total;
-      }
-
-      const product = productMap.get(item.product_id);
-      return total + (product?.price || 0) * item.quantity;
-    }, 0);
-
+    const { data, error } = await getCartWithItems(user.id);
     setLoadingCart(false);
-    setCartSnapshot({
-      itemCount,
-      packageValue,
-      estimatedWeightGrams: itemCount * DEFAULT_PRODUCT_WEIGHT_GRAMS,
-    });
+
+    if (error) {
+      setShippingError(error.message);
+      return;
+    }
+
+    if (data) {
+      setCartItems(data.items);
+      setCartSnapshot(data.snapshot);
+      confirmedQuantitiesRef.current = new Map(data.items.map(item => [item.id, item.quantity]));
+    }
   }, [user?.id]);
+
+  const flushPendingQuantityUpdates = useCallback(async () => {
+    const pendingUpdates = Array.from(pendingQuantityUpdatesRef.current.entries());
+    pendingQuantityUpdatesRef.current.clear();
+
+    if (pendingUpdates.length === 0) {
+      return;
+    }
+
+    const results = await Promise.all(
+      pendingUpdates.map(async ([cartItemId, quantity]) => {
+        const result = await updateCartItemQuantity(cartItemId, quantity);
+        return {
+          cartItemId,
+          quantity,
+          error: result.error,
+        };
+      }),
+    );
+
+    for (const result of results) {
+      if (result.error) {
+        const fallbackQuantity = confirmedQuantitiesRef.current.get(result.cartItemId);
+        if (fallbackQuantity != null) {
+          updateCartState(items =>
+            items.map(item =>
+              item.id === result.cartItemId ? { ...item, quantity: fallbackQuantity } : item,
+            ),
+          );
+        }
+        setShippingError(result.error.message);
+        continue;
+      }
+
+      confirmedQuantitiesRef.current.set(result.cartItemId, result.quantity);
+    }
+  }, [updateCartState]);
 
   useFocusEffect(
     useCallback(() => {
       loadAddresses();
-      loadCartSnapshot();
-    }, [loadAddresses, loadCartSnapshot]),
+      loadCartData();
+    }, [loadAddresses, loadCartData]),
+  );
+
+  const handleQuantityChange = useCallback(
+    async (cartItemId: string, newQuantity: number) => {
+      let itemExists = false;
+
+      updateCartState(items =>
+        items.map(item => {
+          if (item.id !== cartItemId) {
+            return item;
+          }
+
+          itemExists = true;
+          if (item.quantity === newQuantity) {
+            return item;
+          }
+          return { ...item, quantity: newQuantity };
+        }),
+      );
+
+      if (!itemExists) {
+        setShippingError('Produk keranjang tidak ditemukan. Silakan muat ulang halaman.');
+        return;
+      }
+
+      pendingQuantityUpdatesRef.current.set(cartItemId, newQuantity);
+      setShippingError(null);
+
+      if (quantitySyncTimerRef.current) {
+        clearTimeout(quantitySyncTimerRef.current);
+      }
+
+      quantitySyncTimerRef.current = setTimeout(() => {
+        quantitySyncTimerRef.current = null;
+        void flushPendingQuantityUpdates();
+      }, QUANTITY_SYNC_DEBOUNCE_MS);
+    },
+    [flushPendingQuantityUpdates, updateCartState],
+  );
+
+  const handleRemoveItem = useCallback(
+    async (cartItemId: string) => {
+      pendingQuantityUpdatesRef.current.delete(cartItemId);
+      confirmedQuantitiesRef.current.delete(cartItemId);
+
+      const { error } = await removeCartItem(cartItemId);
+      if (error) {
+        setShippingError(error.message);
+        return;
+      }
+
+      await loadCartData();
+    },
+    [loadCartData],
   );
 
   const formatRupiah = useCallback((amount: number): string => {
@@ -309,6 +394,19 @@ export default function Cart() {
   }, [checkoutFingerprint, removePersistData]);
 
   useEffect(() => {
+    return () => {
+      if (quantitySyncTimerRef.current) {
+        clearTimeout(quantitySyncTimerRef.current);
+        quantitySyncTimerRef.current = null;
+      }
+
+      if (pendingQuantityUpdatesRef.current.size > 0) {
+        void flushPendingQuantityUpdates();
+      }
+    };
+  }, [flushPendingQuantityUpdates]);
+
+  useEffect(() => {
     if (!selectedShippingKey) {
       return;
     }
@@ -317,6 +415,23 @@ export default function Cart() {
     setActiveOrderId(null);
     void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
   }, [removePersistData, selectedShippingKey]);
+
+  useEffect(() => {
+    if (!selectedAddressId) {
+      previousSelectedAddressIdRef.current = null;
+      return;
+    }
+
+    if (previousSelectedAddressIdRef.current === selectedAddressId) {
+      return;
+    }
+
+    previousSelectedAddressIdRef.current = selectedAddressId;
+
+    if (cartSnapshot.itemCount > 0) {
+      void handleCalculateShipping();
+    }
+  }, [cartSnapshot.itemCount, handleCalculateShipping, selectedAddressId]);
 
   const finalizePaymentFlow = useCallback(
     async (reason: 'success' | 'pending' | 'failed') => {
@@ -375,11 +490,6 @@ export default function Cart() {
       return;
     }
 
-    if (!config.biteshipOriginAreaId) {
-      setShippingError('Origin area toko belum dikonfigurasi.');
-      return;
-    }
-
     const currentIdempotencyKey = checkoutIdempotencyKey ?? Crypto.randomUUID();
     if (!checkoutIdempotencyKey) {
       setCheckoutIdempotencyKey(currentIdempotencyKey);
@@ -396,7 +506,6 @@ export default function Cart() {
     const { data: orderData, error: orderError } = await createCheckoutOrder({
       user_id: user.id,
       shipping_address_id: selectedAddress.id,
-      origin_area_id: config.biteshipOriginAreaId,
       destination_area_id: quoteDestinationAreaId ?? undefined,
       destination_postal_code: quoteDestinationPostalCode ?? undefined,
       shipping_option: selectedShippingOption,
@@ -546,207 +655,231 @@ export default function Cart() {
   }
 
   return (
-    <YStack flex={1} backgroundColor="$background" padding="$4" gap="$3">
-      <XStack alignItems="center" gap="$2">
-        <MapPinIcon size={20} color={subtleColor} />
-        <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading">
-          Hitung Ongkir Checkout
-        </Text>
-      </XStack>
-
-      <Text fontSize="$3" color="$colorPress">
-        Pilih alamat tersimpan, lalu ambil tarif kurir dari Biteship berdasarkan ringkasan
-        keranjang.
-      </Text>
-
-      <Card
-        padding="$3"
-        borderRadius="$4"
-        borderWidth={1}
-        borderColor="$surfaceBorder"
-        backgroundColor="$surface">
-        <YStack gap="$2">
-          <Text fontSize="$4" fontWeight="600" color="$color">
-            Ringkasan Paket Checkout
-          </Text>
+    <YStack flex={1} backgroundColor="$background" position="relative">
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: BOTTOM_BAR_HEIGHT + insets.bottom + 16 }}>
+        <YStack gap="$4" padding="$4">
           {loadingCart ? (
-            <XStack alignItems="center" gap="$2">
-              <Spinner size="small" color="$primary" />
-              <Text color="$colorPress">Memuat keranjang...</Text>
-            </XStack>
+            <CartLoadingSkeleton rowCount={3} />
+          ) : cartItems.length === 0 ? (
+            <EmptyCartState onBrowse={() => router.push('/')} />
           ) : (
-            <YStack gap="$1">
-              <Text color="$colorPress">Jumlah item: {cartSnapshot.itemCount}</Text>
-              <Text color="$colorPress">
-                Estimasi berat: {cartSnapshot.estimatedWeightGrams} gram
-              </Text>
-              <Text color="$colorPress">
-                Nilai paket: {formatRupiah(cartSnapshot.packageValue)}
-              </Text>
-            </YStack>
-          )}
-          <Button
-            title="Hitung Ongkir"
-            onPress={handleCalculateShipping}
-            isLoading={loadingRates}
-            disabled={loadingCart || cartSnapshot.itemCount <= 0}
-            paddingVertical="$2"
-            borderRadius="$3"
-            minHeight={44}
-            accessibilityLabel="Hitung ongkir"
-          />
-        </YStack>
-      </Card>
-
-      <XStack alignItems="center" justifyContent="space-between">
-        <Text fontSize="$5" fontWeight="700" color="$color" fontFamily="$heading">
-          Alamat Pengiriman
-        </Text>
-        <Button
-          title="Kelola"
-          backgroundColor="transparent"
-          titleStyle={{ color: '$primary', fontWeight: '600' }}
-          onPress={handleManageAddresses}
-          accessibilityLabel="Kelola alamat"
-        />
-      </XStack>
-
-      {loadingAddresses ? (
-        <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
-          <Spinner size="large" color="$primary" />
-        </YStack>
-      ) : addresses.length === 0 ? (
-        <YStack
-          borderRadius="$4"
-          borderWidth={1}
-          borderColor="$surfaceBorder"
-          padding="$4"
-          backgroundColor="$surface"
-          gap="$2">
-          <Text fontSize="$4" color="$color">
-            Belum ada alamat pengiriman.
-          </Text>
-          <Button
-            title="Tambah Alamat"
-            onPress={handleManageAddresses}
-            paddingVertical="$2"
-            borderRadius="$3"
-            minHeight={44}
-            accessibilityLabel="Tambah alamat"
-          />
-        </YStack>
-      ) : (
-        <YStack gap="$1">
-          {addresses.map(address => (
-            <Card
-              key={address.id}
-              borderWidth={address.id === selectedAddressId ? 2 : 1}
-              borderColor={address.id === selectedAddressId ? '$primary' : '$surfaceBorder'}
-              borderRadius="$4"
-              backgroundColor="$surface"
-              onPress={() => setSelectedAddressId(address.id)}>
-              <AddressCard address={address} isDefault={address.is_default ?? false} />
-            </Card>
-          ))}
-        </YStack>
-      )}
-
-      <Text fontSize="$5" fontWeight="700" color="$color" fontFamily="$heading">
-        Opsi Pengiriman
-      </Text>
-
-      {shippingError ? (
-        <Card
-          borderRadius="$4"
-          borderWidth={1}
-          borderColor="$danger"
-          padding="$3"
-          backgroundColor="$surface">
-          <Text color="$danger">{shippingError}</Text>
-        </Card>
-      ) : null}
-
-      {shippingOptions.length > 0 ? (
-        <YStack gap="$2" paddingBottom="$2">
-          {shippingOptions.map(option => (
-            <Card
-              key={`${option.courier_code}-${option.service_code}`}
-              onPress={() =>
-                setSelectedShippingKey(`${option.courier_code}-${option.service_code}`)
-              }
-              borderRadius="$4"
-              borderWidth={
-                selectedShippingKey === `${option.courier_code}-${option.service_code}` ? 2 : 1
-              }
-              borderColor={
-                selectedShippingKey === `${option.courier_code}-${option.service_code}`
-                  ? '$primary'
-                  : '$surfaceBorder'
-              }
-              padding="$3"
-              backgroundColor="$surface">
-              <XStack justifyContent="space-between" alignItems="flex-start" gap="$2">
-                <YStack flex={1} gap="$1">
-                  <Text fontSize="$4" fontWeight="700" color="$color">
-                    {option.courier_name} - {option.service_name}
+            <>
+              <Card bordered elevate size="$4">
+                <Card.Header padded>
+                  <Text fontSize="$4" fontWeight="600" color="$color">
+                    Produk ({cartSnapshot.itemCount})
                   </Text>
-                  <Text fontSize="$3" color="$colorPress">
-                    Kode: {option.courier_code.toUpperCase()} / {option.service_code}
-                  </Text>
-                  <Text fontSize="$3" color="$colorPress">
-                    Estimasi: {option.estimated_delivery}
-                  </Text>
+                </Card.Header>
+                <Separator />
+                <YStack padding="$3" gap="$3">
+                  {cartItems.map(item => (
+                    <CartItemRow
+                      key={item.id}
+                      item={item}
+                      onQuantityChange={handleQuantityChange}
+                      onRemove={handleRemoveItem}
+                    />
+                  ))}
                 </YStack>
-                <Text fontSize="$4" fontWeight="700" color="$primary">
-                  {formatRupiah(option.price)}
-                </Text>
-              </XStack>
-            </Card>
-          ))}
-        </YStack>
-      ) : (
-        <Card
-          borderRadius="$4"
-          borderWidth={1}
-          borderColor="$surfaceBorder"
-          padding="$3"
-          backgroundColor="$surface">
-          <Text color="$colorPress">
-            Belum ada tarif. Tekan &quot;Hitung Ongkir&quot; untuk memuat opsi kurir.
-          </Text>
-        </Card>
-      )}
+              </Card>
 
-      {shippingOptions.length > 0 ? (
-        <YStack gap="$2">
-          <Card
-            borderRadius="$4"
-            borderWidth={1}
-            borderColor="$surfaceBorder"
-            padding="$3"
-            backgroundColor="$surface">
-            <Text fontWeight="600" color="$color">
-              Kurir terpilih:
-            </Text>
-            <Text color="$colorPress">
-              {selectedShippingOption
-                ? `${selectedShippingOption.courier_name} - ${selectedShippingOption.service_name} (${formatRupiah(selectedShippingOption.price)})`
-                : 'Belum dipilih'}
-            </Text>
-          </Card>
-          <Button
-            title={startingCheckout ? 'Memproses Checkout...' : 'Lanjut ke Pembayaran'}
-            disabled={!selectedShippingOption || startingCheckout}
-            isLoading={startingCheckout}
-            onPress={() => {
-              void handleStartCheckout();
-            }}
-            paddingVertical="$2"
-            borderRadius="$3"
-            minHeight={44}
-            accessibilityLabel="Lanjut ke pembayaran"
-          />
+              <Card bordered elevate size="$4">
+                <Card.Header padded>
+                  <Text fontSize="$4" fontWeight="600" color="$color">
+                    Ringkasan Pesanan
+                  </Text>
+                </Card.Header>
+                <Separator />
+                <CartSummary
+                  subtotal={cartSnapshot.packageValue}
+                  shippingCost={selectedShippingOption?.price}
+                  shippingName={selectedShippingOption?.courier_name}
+                  itemCount={cartSnapshot.itemCount}
+                  isLoadingShipping={loadingRates}
+                />
+              </Card>
+
+              <XStack alignItems="center" justifyContent="space-between">
+                <Text fontSize="$5" fontWeight="700" color="$color" fontFamily="$heading">
+                  Alamat Pengiriman
+                </Text>
+                <Button
+                  title="Kelola"
+                  backgroundColor="transparent"
+                  titleStyle={{ color: '$primary', fontWeight: '600' }}
+                  onPress={handleManageAddresses}
+                  accessibilityLabel="Kelola alamat"
+                />
+              </XStack>
+
+              {loadingAddresses ? (
+                <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
+                  <Spinner size="large" color="$primary" />
+                </YStack>
+              ) : addresses.length === 0 ? (
+                <YStack
+                  borderRadius="$4"
+                  borderWidth={1}
+                  borderColor="$surfaceBorder"
+                  padding="$4"
+                  backgroundColor="$surface"
+                  gap="$2">
+                  <Text fontSize="$4" color="$color">
+                    Belum ada alamat pengiriman.
+                  </Text>
+                  <Button
+                    title="Tambah Alamat"
+                    onPress={handleManageAddresses}
+                    paddingVertical="$2"
+                    borderRadius="$3"
+                    minHeight={44}
+                    accessibilityLabel="Tambah alamat"
+                  />
+                </YStack>
+              ) : (
+                <YStack gap="$1">
+                  {addresses.map(address => (
+                    <Card
+                      key={address.id}
+                      borderWidth={address.id === selectedAddressId ? 2 : 1}
+                      borderColor={address.id === selectedAddressId ? '$primary' : '$surfaceBorder'}
+                      borderRadius="$4"
+                      backgroundColor="$surface"
+                      onPress={() => setSelectedAddressId(address.id)}>
+                      <AddressCard address={address} isDefault={address.is_default ?? false} />
+                    </Card>
+                  ))}
+                </YStack>
+              )}
+
+              <XStack alignItems="center" justifyContent="space-between">
+                <XStack alignItems="center" gap="$2">
+                  <Text fontSize="$5" fontWeight="700" color="$color" fontFamily="$heading">
+                    Opsi Pengiriman
+                  </Text>
+                  {loadingRates ? <Spinner size="small" color="$primary" /> : null}
+                </XStack>
+
+                {selectedAddressId &&
+                (shippingError || shippingOptions.length === 0) &&
+                !loadingRates ? (
+                  <TamaguiButton
+                    size="$2"
+                    circular
+                    backgroundColor="transparent"
+                    borderWidth={1}
+                    borderColor="$surfaceBorder"
+                    color="$primary"
+                    onPress={() => {
+                      void handleCalculateShipping();
+                    }}
+                    icon={<RefreshCw size={14} color="$primary" />}
+                    accessibilityLabel="Muat ulang ongkir"
+                  />
+                ) : null}
+              </XStack>
+
+              {shippingError ? (
+                <Card
+                  borderRadius="$4"
+                  borderWidth={1}
+                  borderColor="$danger"
+                  padding="$3"
+                  backgroundColor="$surface">
+                  <Text color="$danger">{shippingError}</Text>
+                </Card>
+              ) : null}
+
+              {shippingOptions.length > 0 ? (
+                <YStack gap="$2" paddingBottom="$2">
+                  {shippingOptions.map(option => (
+                    <Card
+                      key={`${option.courier_code}-${option.service_code}`}
+                      onPress={() =>
+                        setSelectedShippingKey(`${option.courier_code}-${option.service_code}`)
+                      }
+                      borderRadius="$4"
+                      borderWidth={
+                        selectedShippingKey === `${option.courier_code}-${option.service_code}`
+                          ? 2
+                          : 1
+                      }
+                      borderColor={
+                        selectedShippingKey === `${option.courier_code}-${option.service_code}`
+                          ? '$primary'
+                          : '$surfaceBorder'
+                      }
+                      padding="$3"
+                      backgroundColor="$surface">
+                      <XStack justifyContent="space-between" alignItems="flex-start" gap="$2">
+                        <YStack flex={1} gap="$1">
+                          <Text fontSize="$4" fontWeight="700" color="$color">
+                            {option.courier_name} - {option.service_name}
+                          </Text>
+                          <Text fontSize="$3" color="$colorPress">
+                            Kode: {option.courier_code.toUpperCase()} / {option.service_code}
+                          </Text>
+                          <Text fontSize="$3" color="$colorPress">
+                            Estimasi: {option.estimated_delivery}
+                          </Text>
+                        </YStack>
+                        <Text fontSize="$4" fontWeight="700" color="$primary">
+                          {formatRupiah(option.price)}
+                        </Text>
+                      </XStack>
+                    </Card>
+                  ))}
+                </YStack>
+              ) : (
+                <Card
+                  borderRadius="$4"
+                  borderWidth={1}
+                  borderColor="$surfaceBorder"
+                  padding="$3"
+                  backgroundColor="$surface">
+                  <Text color="$colorPress">
+                    {selectedAddressId
+                      ? 'Belum ada tarif ongkir untuk alamat ini.'
+                      : 'Pilih alamat untuk melihat ongkir'}
+                  </Text>
+                </Card>
+              )}
+
+              {shippingOptions.length > 0 ? (
+                <YStack gap="$2">
+                  <Card
+                    borderRadius="$4"
+                    borderWidth={1}
+                    borderColor="$surfaceBorder"
+                    padding="$3"
+                    backgroundColor="$surface">
+                    <Text fontWeight="600" color="$color">
+                      Kurir terpilih:
+                    </Text>
+                    <Text color="$colorPress">
+                      {selectedShippingOption
+                        ? `${selectedShippingOption.courier_name} - ${selectedShippingOption.service_name} (${formatRupiah(selectedShippingOption.price)})`
+                        : 'Belum dipilih'}
+                    </Text>
+                  </Card>
+                </YStack>
+              ) : null}
+            </>
+          )}
         </YStack>
+      </ScrollView>
+
+      {cartItems.length > 0 ? (
+        <StickyBottomBar
+          grandTotal={cartSnapshot.packageValue + (selectedShippingOption?.price || 0)}
+          isLoading={startingCheckout}
+          disabled={!selectedShippingOption}
+          onConfirm={handleStartCheckout}
+          confirmText="Konfirmasi"
+        />
       ) : null}
     </YStack>
   );

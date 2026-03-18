@@ -17,7 +17,12 @@ export default function HomeStackLayout() {
           headerShown: false,
         }}
       />
-      <Stack.Screen name="details" options={{ title: 'Details' }} />
+      <Stack.Screen
+        name="details"
+        options={{
+          headerShown: false,
+        }}
+      />
       <Stack.Screen
         name="product-details"
         options={{
@@ -29,6 +34,12 @@ export default function HomeStackLayout() {
         name="product-list"
         options={{
           title: 'Products',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="search"
+        options={{
           headerShown: false,
         }}
       />
