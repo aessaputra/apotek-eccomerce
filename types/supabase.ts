@@ -2,8 +2,6 @@
  * Supabase database types — generated from project "Apotek Eccomerce".
  * Regenerate via Supabase MCP: generate_typescript_types(project_id).
  */
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
-
 export type Database = {
   public: {
     Tables: {

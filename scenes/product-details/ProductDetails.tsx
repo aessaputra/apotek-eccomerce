@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -294,10 +294,7 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const productId = useMemo(() => {
-    if (Array.isArray(params.id)) return params.id[0] ?? '';
-    return params.id ?? '';
-  }, [params.id]);
+  const productId = Array.isArray(params.id) ? (params.id[0] ?? '') : (params.id ?? '');
 
   const topPadding = (media.gtSm ? 16 : 12) + insets.top;
   const horizontalPadding: '$4' | '$5' = media.gtSm ? '$5' : '$4';
@@ -592,7 +589,7 @@ export default function ProductDetails() {
         dismissOnOverlayPress
         dismissOnSnapToBottom
         moveOnKeyboardChange
-        snapPoints={[60]}
+        snapPoints={[35]}
         animation="medium"
         animationConfig={{
           type: 'spring',
@@ -643,9 +640,9 @@ export default function ProductDetails() {
               </YStack>
             </XStack>
 
-            <YStack gap="$2">
+            <XStack alignItems="center" justifyContent="space-between" gap="$3">
               <Text fontSize={14} color="$colorSubtle" fontWeight="600">
-                Quantity
+                Jumlah
               </Text>
               <QuantitySelector
                 value={quantity}
@@ -655,7 +652,7 @@ export default function ProductDetails() {
                 disabled={isOutOfStock || isAddingToCart}
                 alignSelf="flex-start"
               />
-            </YStack>
+            </XStack>
 
             <XStack alignItems="center" justifyContent="space-between" gap="$3">
               <YStack gap="$1">

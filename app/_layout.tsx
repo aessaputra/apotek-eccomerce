@@ -43,6 +43,7 @@ function Router() {
   const router = useRouter();
   const [assetsReady, setAssetsReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
+  const currentGroup = segments[0] as string | undefined;
 
   useEffect(() => {
     (async () => {
@@ -69,7 +70,6 @@ function Router() {
     // Wait until AuthProvider has finished initial session check
     if (!checked) return;
 
-    const currentGroup = segments[0] as string | undefined;
     const inAuthGroup = currentGroup === '(auth)';
     const isCallback = currentGroup === 'google-auth';
 
@@ -88,7 +88,7 @@ function Router() {
         setTimeout(() => router.replace('/login'), 0);
       }
     }
-  }, [checked, loggedIn, segments, router]);
+  }, [checked, currentGroup, loggedIn, router]);
 
   const tabBarColors = useMemo(() => {
     const background = getThemeColor(
@@ -113,7 +113,6 @@ function Router() {
     };
   }, [theme]);
 
-  const currentGroup = segments[0] as string | undefined;
   const hideTabBar =
     currentGroup === '(auth)' ||
     currentGroup === 'google-auth' ||

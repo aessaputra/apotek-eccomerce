@@ -6,12 +6,12 @@ import { Platform } from 'react-native';
 // Complete OAuth session for expo-web-browser (native only)
 WebBrowser.maybeCompleteAuthSession();
 
-export interface SignInInput {
+interface SignInInput {
   email: string;
   password: string;
 }
 
-export interface SignUpInput {
+interface SignUpInput {
   email: string;
   password: string;
   options?: {
@@ -28,7 +28,7 @@ export interface GoogleAuthError {
 }
 
 /** Consistent return type for signInWithGoogle() */
-export interface GoogleAuthResult {
+interface GoogleAuthResult {
   data: unknown;
   error: GoogleAuthError | null;
 }

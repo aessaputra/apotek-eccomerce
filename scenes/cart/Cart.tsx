@@ -500,7 +500,6 @@ export default function Cart() {
 
   useEffect(() => {
     cartMountedRef.current = true;
-    const pendingQuantityUpdates = pendingQuantityUpdatesRef.current;
 
     return () => {
       cartMountedRef.current = false;
@@ -510,7 +509,7 @@ export default function Cart() {
         quantitySyncTimerRef.current = null;
       }
 
-      if (pendingQuantityUpdates.size > 0) {
+      if (pendingQuantityUpdatesRef.current.size > 0) {
         void flushPendingQuantityUpdates({ skipStateUpdates: true });
       }
     };

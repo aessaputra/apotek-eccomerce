@@ -38,7 +38,7 @@ export default function SignUp() {
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
 
   /**
    * Handles form submission with validation

@@ -154,10 +154,6 @@ export default function Home() {
     router.push('/cart');
   };
 
-  const handleOpenDoctorDiscovery = () => {
-    router.push('/home/details');
-  };
-
   const handleOpenDetails = () => {
     router.push('/home/details');
   };
@@ -363,7 +359,7 @@ export default function Home() {
                   Explore great doctors{`\n`}for your better life
                 </Text>
                 <PillAction
-                  onPress={handleOpenDoctorDiscovery}
+                  onPress={handleOpenDetails}
                   role="button"
                   aria-label="Explore doctors"
                   aria-describedby="Open doctor discovery">

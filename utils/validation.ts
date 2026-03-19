@@ -20,7 +20,7 @@ export enum PasswordStrength {
 /**
  * Password strength result
  */
-export interface PasswordStrengthResult {
+interface PasswordStrengthResult {
   strength: PasswordStrength;
   text: string;
 }
@@ -28,7 +28,7 @@ export interface PasswordStrengthResult {
 /**
  * Password validation result
  */
-export interface PasswordValidationResult {
+interface PasswordValidationResult {
   valid: boolean;
   error?: string;
 }
