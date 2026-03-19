@@ -1,16 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ComponentRef } from 'react';
-import {
-  YStack,
-  Text,
-  useTheme,
-  Card,
-  Spinner,
-  Input,
-  Separator,
-  styled,
-  ScrollView,
-} from 'tamagui';
+import { YStack, Text, Card, Spinner, Input, Separator, styled, ScrollView } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -21,7 +11,6 @@ import Avatar from '@/components/elements/Avatar';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { updateProfile, uploadAvatar } from '@/services/profile.service';
-import { getThemeColor } from '@/utils/theme';
 import { windowWidth } from '@/utils/deviceInfo';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 
@@ -42,7 +31,6 @@ const FormContent = styled(YStack, {
 
 export default function EditProfile() {
   const router = useRouter();
-  const theme = useTheme();
   const { user, dispatch, setUser } = useAppSlice();
   const [fullName, setFullName] = useState(user?.full_name ?? user?.name ?? '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phone_number ?? '');
@@ -63,7 +51,6 @@ export default function EditProfile() {
 
   const insets = useSafeAreaInsets();
   const avatarSize = windowWidth < 375 ? 100 : 120;
-  const bgColor = getThemeColor(theme, 'background');
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   const scrollPaddingBottom = bottomBarHeight + FORM_SCROLL_PADDING.COMPACT;
 
@@ -181,7 +168,6 @@ export default function EditProfile() {
       setSuccessDialogOpen(true);
     }
   }, [
-    router,
     user,
     fullName,
     phoneNumber,
@@ -195,14 +181,14 @@ export default function EditProfile() {
 
   if (!user) {
     return (
-      <SafeAreaView style={{ backgroundColor: bgColor }} edges={['top']}>
+      <SafeAreaView edges={['top']}>
         <YStack
           flex={1}
           padding="$5"
           paddingBottom="$10"
           alignItems="center"
           justifyContent="center"
-          accessibilityLabel="Memuat profil"
+          aria-label="Memuat profil"
           accessibilityLiveRegion="polite">
           <Spinner size="large" color="$primary" />
         </YStack>
@@ -211,7 +197,7 @@ export default function EditProfile() {
   }
 
   return (
-    <SafeAreaView style={{ backgroundColor: bgColor }} edges={['top']}>
+    <SafeAreaView edges={['top']}>
       <YStack flex={1}>
         <FormScrollView
           contentContainerStyle={{
@@ -224,8 +210,8 @@ export default function EditProfile() {
             <YStack
               alignItems="center"
               gap="$3"
-              accessibilityLabel="Foto profil"
-              accessibilityHint="Ketuk untuk mengubah foto profil">
+              aria-label="Foto profil"
+              aria-describedby="Ketuk untuk mengubah foto profil">
               <Avatar
                 avatarUrl={user.avatar_url}
                 name={user.full_name || user.name || user.email}
@@ -244,10 +230,10 @@ export default function EditProfile() {
               borderColor="$surfaceBorder"
               borderRadius="$4"
               elevation={2}
-              accessibilityLabel="Form edit profil">
+              aria-label="Form edit profil">
               <YStack gap="$4.5">
                 <YStack gap="$1.5">
-                  <Text fontFamily="$heading" fontSize="$6" fontWeight="700" color="$color">
+                  <Text fontSize="$6" fontWeight="700" color="$color">
                     Informasi Profil
                   </Text>
                   <Text fontSize="$3" color="$colorSubtle" lineHeight="$4">
@@ -281,8 +267,8 @@ export default function EditProfile() {
                       returnKeyType="next"
                       blurOnSubmit={false}
                       onSubmitEditing={() => phoneInputRef.current?.focus()}
-                      accessibilityLabel="Input nama lengkap"
-                      accessibilityHint="Wajib diisi, gunakan 2-100 karakter"
+                      aria-label="Input nama lengkap"
+                      aria-describedby="Wajib diisi, gunakan 2-100 karakter"
                       error={fullNameError}
                     />
                     <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
@@ -311,8 +297,8 @@ export default function EditProfile() {
                       placeholder="08xx xxxx xxxx"
                       returnKeyType="done"
                       onSubmitEditing={handleSaveProfile}
-                      accessibilityLabel="Input nomor telepon"
-                      accessibilityHint="Wajib diisi, 8-15 digit angka"
+                      aria-label="Input nomor telepon"
+                      aria-describedby="Wajib diisi, 8-15 digit angka"
                       error={phoneNumberError}
                     />
                     <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
@@ -330,7 +316,7 @@ export default function EditProfile() {
                       color="$colorSubtle"
                       backgroundColor="$backgroundFocus"
                       borderColor="$surfaceBorder"
-                      accessibilityLabel="Email akun"
+                      aria-label="Email akun"
                     />
                     <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
                       Email dikelola melalui pengaturan autentikasi akun.
@@ -347,8 +333,8 @@ export default function EditProfile() {
           onPress={handleSaveProfile}
           isLoading={savingProfile}
           disabled={savingProfile || !isDirty}
-          accessibilityLabel="Simpan perubahan profil"
-          accessibilityHint="Menyimpan pembaruan informasi profil"
+          aria-label="Simpan perubahan profil"
+          aria-describedby="Menyimpan pembaruan informasi profil"
         />
 
         <AppAlertDialog

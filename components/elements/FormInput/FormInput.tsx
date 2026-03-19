@@ -20,9 +20,9 @@ export interface FormInputProps {
   /** Placeholder text */
   placeholder?: string;
   /** Accessibility label */
-  accessibilityLabel?: string;
+  'aria-label'?: string;
   /** Accessibility hint */
-  accessibilityHint?: string;
+  'aria-describedby'?: string;
   /** Apakah multiline input */
   multiline?: boolean;
   /** Jumlah baris untuk multiline (default: 3) */
@@ -113,8 +113,8 @@ const FormInput = forwardRef<Input, FormInputProps>(
       onFocus,
       onBlur,
       placeholder,
-      accessibilityLabel,
-      accessibilityHint,
+      'aria-label': ariaLabel,
+      'aria-describedby': ariaDescribedBy,
       multiline = false,
       numberOfLines = 3,
       keyboardType = 'default',
@@ -168,8 +168,8 @@ const FormInput = forwardRef<Input, FormInputProps>(
               setIsFocused(false);
               onBlur?.();
             }}
-            accessibilityLabel={accessibilityLabel || label || placeholder}
-            accessibilityHint={accessibilityHint}
+            aria-label={ariaLabel || label || placeholder}
+            aria-describedby={ariaDescribedBy}
             accessibilityLiveRegion={error ? 'polite' : undefined}
             underlineColorAndroid="transparent"
           />

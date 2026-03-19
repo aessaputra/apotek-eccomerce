@@ -19,7 +19,7 @@ export default function Details() {
       alignItems="center"
       justifyContent="center"
       backgroundColor="$background">
-      <Text fontSize="$7" marginBottom="$5" color="$color" fontFamily="$heading" fontWeight="700">
+      <Text fontSize="$7" marginBottom="$5" color="$color" fontWeight="700">
         Detail
       </Text>
       <GradientButton

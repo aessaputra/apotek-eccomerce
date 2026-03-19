@@ -4,6 +4,7 @@ import { XStack, useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 import { FORM_FIELD } from '@/constants/ui';
 import { EyeIcon, EyeOffIcon } from '@/components/icons';
+import { fonts } from '@/utils/fonts';
 
 export interface PasswordInputProps {
   value: string;
@@ -44,18 +45,15 @@ function PasswordInput({
 
   return (
     <XStack
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: FORM_FIELD.HORIZONTAL_PADDING,
-        overflow: 'hidden',
-        backgroundColor: surfaceColor,
-        borderWidth: isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH,
-        borderRadius: FORM_FIELD.BORDER_RADIUS,
-        borderColor: borderColorValue,
-        height: FORM_FIELD.HEIGHT,
-        opacity: disabled ? 0.6 : 1,
-      }}>
+      alignItems="center"
+      paddingHorizontal={FORM_FIELD.HORIZONTAL_PADDING}
+      overflow="hidden"
+      backgroundColor={surfaceColor}
+      borderWidth={isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH}
+      borderRadius={FORM_FIELD.BORDER_RADIUS}
+      borderColor={borderColorValue}
+      height={FORM_FIELD.HEIGHT}
+      opacity={disabled ? 0.6 : 1}>
       <TextInput
         style={{
           flex: 1,
@@ -63,7 +61,7 @@ function PasswordInput({
           padding: 0,
           margin: 0,
           fontSize: 16,
-          fontFamily: theme.bodyFont?.val || 'System',
+          fontFamily: theme.bodyFont?.val || fonts.poppins.regular,
           color: textColor,
         }}
         placeholder={placeholder}
@@ -84,7 +82,7 @@ function PasswordInput({
           setIsFocused(false);
           onBlur?.();
         }}
-        accessibilityLabel={placeholder || 'Password'}
+        aria-label={placeholder || 'Password'}
         testID="password-input"
       />
       <Pressable
@@ -94,8 +92,8 @@ function PasswordInput({
           marginLeft: FORM_FIELD.ICON_BUTTON_MARGIN_LEFT,
         }}
         disabled={disabled}
-        accessibilityLabel={isVisible ? 'Sembunyikan password' : 'Tampilkan password'}
-        accessibilityRole="button">
+        aria-label={isVisible ? 'Sembunyikan password' : 'Tampilkan password'}
+        role="button">
         {isVisible ? (
           <EyeOffIcon size={18} color={getThemeColor(theme, 'colorPress')} />
         ) : (

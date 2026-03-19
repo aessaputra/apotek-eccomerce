@@ -23,12 +23,12 @@ export const EmptyCartState: React.FC<EmptyCartStateProps> = ({ onBrowse }) => {
       <Button
         size="$4"
         backgroundColor="$primary"
-        color="white"
+        color="$white"
         borderRadius="$4"
         fontWeight="600"
         pressStyle={{ opacity: 0.85, scale: 0.98 }}
         onPress={onBrowse}
-        icon={<ShoppingBag size={18} color="white" />}>
+        icon={<ShoppingBag size={18} color="$white" />}>
         Belanja Sekarang
       </Button>
     </YStack>

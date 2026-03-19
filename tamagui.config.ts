@@ -10,6 +10,7 @@ const poppinsFont = createFont({
   letterSpacing: defaultConfig.fonts.body.letterSpacing,
   face: {
     400: { normal: 'poppins_regular', italic: 'poppins_regular_italic' },
+    500: { normal: 'poppins_semiBold', italic: 'poppins_semiBold_italic' },
     600: { normal: 'poppins_semiBold', italic: 'poppins_semiBold_italic' },
     700: { normal: 'poppins_bold', italic: 'poppins_bold_italic' },
     800: { normal: 'poppins_bold', italic: 'poppins_bold_italic' },
@@ -20,6 +21,10 @@ const poppinsFont = createFont({
 export const config = createTamagui({
   ...defaultConfig,
   themes,
+  settings: {
+    ...defaultConfig.settings,
+    defaultFont: 'body',
+  },
   fonts: {
     ...defaultConfig.fonts,
     body: poppinsFont,

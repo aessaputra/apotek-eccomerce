@@ -121,13 +121,7 @@ function ProductImageGallery({
         aspectRatio={aspectRatio}
         alignItems="center"
         justifyContent="center">
-        <Image
-          source={{ uri: item }}
-          width="100%"
-          height="100%"
-          resizeMode="contain"
-          accessibilityRole="image"
-        />
+        <Image source={{ uri: item }} width="100%" height="100%" resizeMode="contain" role="img" />
       </View>
     ),
     [containerWidth, aspectRatio],
@@ -161,8 +155,8 @@ function ProductImageGallery({
             width="100%"
             height="100%"
             resizeMode="contain"
-            accessibilityRole="image"
-            accessibilityLabel="Product image"
+            role="img"
+            aria-label="Product image"
           />
         </View>
       </ImageContainer>
@@ -190,8 +184,8 @@ function ProductImageGallery({
             maxToRenderPerBatch={2}
             windowSize={3}
             removeClippedSubviews={false}
-            accessibilityRole="adjustable"
-            accessibilityLabel="Product image gallery"
+            role="region"
+            aria-label="Product image gallery"
           />
         )}
       </ImageContainer>

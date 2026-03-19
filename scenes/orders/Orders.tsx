@@ -15,7 +15,7 @@ export default function Orders() {
       padding="$5"
       gap="$4">
       <PackageIcon size={64} color={subtleColor} />
-      <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center" fontFamily="$heading">
+      <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
         Belum Ada Pesanan
       </Text>
       <Text fontSize="$4" color="$colorPress" textAlign="center" maxWidth={300} lineHeight="$4">

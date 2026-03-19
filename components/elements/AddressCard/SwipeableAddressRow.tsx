@@ -69,9 +69,9 @@ export default function SwipeableAddressRow({
           <SwipeButton
             onPress={handleSetDefault}
             backgroundColor="$primary"
-            accessibilityRole="button"
-            accessibilityLabel="Jadikan alamat default"
-            accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default">
+            role="button"
+            aria-label="Jadikan alamat default"
+            aria-describedby="Mengatur alamat ini sebagai alamat pengiriman default">
             <StarIcon size={24} color="$white" />
           </SwipeButton>
         )}
@@ -79,18 +79,18 @@ export default function SwipeableAddressRow({
         <SwipeButton
           onPress={handleEdit}
           backgroundColor="$info"
-          accessibilityRole="button"
-          accessibilityLabel="Edit alamat"
-          accessibilityHint="Mengedit alamat pengiriman">
+          role="button"
+          aria-label="Edit alamat"
+          aria-describedby="Mengedit alamat pengiriman">
           <EditIcon size={24} color="$white" />
         </SwipeButton>
 
         <SwipeButton
           onPress={handleDelete}
           backgroundColor="$danger"
-          accessibilityRole="button"
-          accessibilityLabel="Hapus alamat"
-          accessibilityHint="Menghapus alamat pengiriman ini">
+          role="button"
+          aria-label="Hapus alamat"
+          aria-describedby="Menghapus alamat pengiriman ini">
           <DeleteIcon size={24} color="$white" />
         </SwipeButton>
       </SwipeContainer>

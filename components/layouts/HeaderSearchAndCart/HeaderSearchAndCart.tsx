@@ -28,8 +28,8 @@ export default function HeaderSearchAndCart({ onSearchPress }: HeaderSearchAndCa
         backgroundColor={searchBg}
         onPress={handleSearchPress}
         cursor="pointer"
-        accessibilityRole="search"
-        accessibilityLabel="Cari produk">
+        role="button"
+        aria-label="Cari produk">
         <SearchIcon size={20} color={placeholderColor} />
         <Text fontSize={15} color={placeholderColor}>
           Cari produk...

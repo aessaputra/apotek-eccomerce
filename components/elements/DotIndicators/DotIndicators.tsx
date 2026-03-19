@@ -33,8 +33,8 @@ function DotIndicators({
             backgroundColor={isActive ? '$primary' : '$surfaceBorder'}
             opacity={isActive ? 1 : 0.5}
             onPress={onDotPress ? () => onDotPress(index) : undefined}
-            accessibilityLabel={`Go to image ${index + 1} of ${total}`}
-            accessibilityRole="button"
+            aria-label={`Go to image ${index + 1} of ${total}`}
+            role="button"
             pressStyle={{ opacity: 0.7 }}
           />
         );

@@ -19,7 +19,7 @@ export default function NotFoundScreen() {
 
       <AlertCircleIcon size={64} color={getThemeColor(theme, 'colorPress')} />
 
-      <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading" ta="center">
+      <Text fontSize="$6" fontWeight="700" color="$color" ta="center">
         Halaman Tidak Ditemukan
       </Text>
 

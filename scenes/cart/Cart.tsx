@@ -500,6 +500,7 @@ export default function Cart() {
 
   useEffect(() => {
     cartMountedRef.current = true;
+    const pendingQuantityUpdates = pendingQuantityUpdatesRef.current;
 
     return () => {
       cartMountedRef.current = false;
@@ -509,7 +510,7 @@ export default function Cart() {
         quantitySyncTimerRef.current = null;
       }
 
-      if (pendingQuantityUpdatesRef.current.size > 0) {
+      if (pendingQuantityUpdates.size > 0) {
         void flushPendingQuantityUpdates({ skipStateUpdates: true });
       }
     };
@@ -700,7 +701,7 @@ export default function Cart() {
       <YStack flex={1} backgroundColor="$background">
         <XStack alignItems="center" justifyContent="space-between" padding="$3" gap="$2">
           <YStack flex={1} gap="$1">
-            <Text fontSize="$5" fontWeight="700" color="$color" fontFamily="$heading">
+            <Text fontSize="$5" fontWeight="700" color="$color">
               Pembayaran Midtrans
             </Text>
             <Text fontSize="$3" color="$colorPress">
@@ -714,7 +715,7 @@ export default function Cart() {
             onPress={() => {
               void finalizePaymentFlow('pending');
             }}
-            accessibilityLabel="Tutup pembayaran"
+            aria-label="Tutup pembayaran"
           />
         </XStack>
 
@@ -788,12 +789,7 @@ export default function Cart() {
         padding="$5"
         gap="$4">
         <CartIcon size={64} color={subtleColor} />
-        <Text
-          fontSize="$6"
-          fontWeight="700"
-          color="$color"
-          textAlign="center"
-          fontFamily="$heading">
+        <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
           Login Terlebih Dahulu
         </Text>
         <Text fontSize="$4" color="$colorPress" textAlign="center" maxWidth={300} lineHeight="$4">
@@ -863,7 +859,7 @@ export default function Cart() {
                   backgroundColor="$surface"
                   borderColor="$surfaceBorder"
                   onPress={() => setAddressSheetOpen(true)}
-                  accessibilityLabel="Ganti alamat pengiriman">
+                  aria-label="Ganti alamat pengiriman">
                   <XStack padding="$4" gap="$3" alignItems="center">
                     <XStack alignSelf="flex-start" marginTop="$1">
                       <MapPinIcon size={20} color="$primary" />
@@ -895,10 +891,10 @@ export default function Cart() {
                 <Card
                   borderRadius="$4"
                   borderWidth={1}
+                  borderStyle="dashed"
                   borderColor="$surfaceBorder"
                   backgroundColor="$surface"
-                  padding="$4"
-                  style={{ borderStyle: 'dashed' }}>
+                  padding="$4">
                   <YStack gap="$3">
                     <XStack alignItems="center" gap="$2">
                       <MapPinIcon size={18} color="$primary" />
@@ -908,11 +904,11 @@ export default function Cart() {
                     </XStack>
                     <TamaguiButton
                       backgroundColor="$primary"
-                      color="white"
+                      color="$white"
                       borderRadius="$3"
                       minHeight={44}
                       onPress={() => handleManageAddresses()}
-                      accessibilityLabel="Tambah alamat pengiriman">
+                      aria-label="Tambah alamat pengiriman">
                       Tambah Alamat
                     </TamaguiButton>
                   </YStack>
@@ -990,7 +986,7 @@ export default function Cart() {
                       void handleCalculateShipping();
                     }}
                     icon={<RefreshCw size={14} color="$primary" />}
-                    accessibilityLabel="Muat ulang ongkir"
+                    aria-label="Muat ulang ongkir"
                   />
                 </XStack>
               ) : null}
@@ -1038,7 +1034,7 @@ export default function Cart() {
           borderTopRightRadius="$6">
           <YStack flex={1}>
             <YStack px="$4" pt="$2" pb="$3">
-              <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading">
+              <Text fontSize="$6" fontWeight="700" color="$color">
                 Pilih Alamat
               </Text>
             </YStack>
@@ -1198,7 +1194,7 @@ export default function Cart() {
           borderTopRightRadius="$6">
           <YStack flex={1}>
             <YStack px="$4" pt="$2" pb="$3">
-              <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading">
+              <Text fontSize="$6" fontWeight="700" color="$color">
                 Opsi Pengiriman
               </Text>
             </YStack>

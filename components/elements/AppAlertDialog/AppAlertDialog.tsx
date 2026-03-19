@@ -1,5 +1,5 @@
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import { Button, Text, YStack, XStack } from 'tamagui';
+import { Modal, Pressable } from 'react-native';
+import { Button, Text, YStack, XStack, styled } from 'tamagui';
 
 export interface AppAlertDialogProps {
   /** Controlled open state */
@@ -52,6 +52,14 @@ export interface AppAlertDialogProps {
  */
 const DIALOG_WIDTH = 320;
 
+const BackdropPressable = styled(Pressable, {
+  position: 'absolute',
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+});
+
 export default function AppAlertDialog({
   open,
   onOpenChange,
@@ -76,9 +84,14 @@ export default function AppAlertDialog({
       animationType="fade"
       onRequestClose={handleClose}
       statusBarTranslucent>
-      <View style={styles.overlay}>
+      <YStack
+        flex={1}
+        backgroundColor="$sheetOverlay"
+        alignItems="center"
+        justifyContent="center"
+        padding="$5">
         {/* Backdrop — click to dismiss (sibling, not parent of dialog) */}
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+        <BackdropPressable onPress={handleClose} />
 
         {/* Dialog content — sits above backdrop, no event bubbling issues */}
         <YStack
@@ -123,17 +136,7 @@ export default function AppAlertDialog({
             </Button>
           </XStack>
         </YStack>
-      </View>
+      </YStack>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-});

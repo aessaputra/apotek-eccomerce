@@ -175,8 +175,8 @@ export default function AddressFormScreen() {
         onPress={handleSave}
         isLoading={saving}
         disabled={saving}
-        accessibilityLabel={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
-        accessibilityHint="Menyimpan data alamat pengiriman"
+        aria-label={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
+        aria-describedby="Menyimpan data alamat pengiriman"
       />
 
       <AppAlertDialog

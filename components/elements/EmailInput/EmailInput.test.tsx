@@ -80,18 +80,18 @@ describe('<EmailInput />', () => {
       <EmailInput
         value=""
         onChangeText={() => {}}
-        accessibilityLabel="Email address"
+        aria-label="Email address"
         placeholder="Email"
       />,
     );
     const input = screen.getByPlaceholderText('Email');
-    expect(input.props.accessibilityLabel).toBe('Email address');
+    expect(input.props['aria-label']).toBe('Email address');
   });
 
   test('uses default accessibility label when not provided', async () => {
     render(<EmailInput value="" onChangeText={() => {}} placeholder="Email" />);
     const input = screen.getByPlaceholderText('Email');
-    expect(input.props.accessibilityLabel).toBe('Email');
+    expect(input.props['aria-label']).toBe('Email');
   });
 
   test('respects autoCapitalize prop', async () => {

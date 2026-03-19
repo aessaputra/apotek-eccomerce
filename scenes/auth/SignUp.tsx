@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
+import { YStack, XStack, Text, Image, useMedia, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
 import { Link } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
@@ -109,15 +109,14 @@ export default function SignUp() {
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView edges={['top']}>
       <YStack
         flex={1}
         backgroundColor="$background"
         alignItems="center"
         justifyContent="center"
         padding="$4">
-        <KeyboardAvoidingView
-          style={{ flex: 1, alignSelf: 'stretch' }}
+        <KeyboardAvoidingWrapper
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
           <ScrollView
@@ -211,7 +210,7 @@ export default function SignUp() {
                       error={emailError}
                       disabled={loading}
                       keyboardType="email-address"
-                      accessibilityLabel="Email"
+                      aria-label="Email"
                       onFocus={() => setFocusedField('email')}
                       onBlur={() => setFocusedField(null)}
                     />
@@ -299,11 +298,9 @@ export default function SignUp() {
                   {/* Submit Button dengan enhanced styling dan micro-interactions */}
                   <Button
                     title="Buat Akun"
-                    style={{
-                      paddingVertical: 16,
-                      borderRadius: 14,
-                      height: 56,
-                    }}
+                    paddingVertical={16}
+                    borderRadius={14}
+                    height={56}
                     backgroundColor="$primary"
                     titleStyle={{
                       ...PRIMARY_BUTTON_TITLE_STYLE,
@@ -349,8 +346,17 @@ export default function SignUp() {
               </YStack>
             </YStack>
           </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAvoidingWrapper>
       </YStack>
     </SafeAreaView>
   );
 }
+
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+});
+
+const KeyboardAvoidingWrapper = styled(KeyboardAvoidingView, {
+  flex: 1,
+  alignSelf: 'stretch',
+});

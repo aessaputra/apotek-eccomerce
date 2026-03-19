@@ -188,12 +188,7 @@ export default function AddressList() {
     return (
       <YStack flex={1} ai="center" jc="center" py="$10" gap="$4">
         <MapPinIcon size={EMPTY_STATE_ICON_SIZE} color="$primary" />
-        <Text
-          fontSize="$6"
-          fontWeight="700"
-          color="$color"
-          textAlign="center"
-          fontFamily="$heading">
+        <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
           Belum ada alamat tersimpan
         </Text>
         <Text fontSize="$4" color="$colorPress" textAlign="center" maxWidth={300} lineHeight="$4">
@@ -209,8 +204,8 @@ export default function AddressList() {
           titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
           onPress={handleAddAddress}
           elevation={2}
-          accessibilityLabel="Tambah alamat pengiriman baru"
-          accessibilityHint="Membuka form untuk menambahkan alamat pengiriman baru"
+          aria-label="Tambah alamat pengiriman baru"
+          aria-describedby="Membuka form untuk menambahkan alamat pengiriman baru"
         />
       </YStack>
     );
@@ -247,8 +242,8 @@ export default function AddressList() {
             />
           }
           showsVerticalScrollIndicator={false}
-          accessibilityLabel="Daftar alamat pengiriman"
-          accessibilityRole="list"
+          aria-label="Daftar alamat pengiriman"
+          role="list"
         />
 
         {addresses.length > 0 && (
@@ -274,8 +269,8 @@ export default function AddressList() {
               backgroundColor="$primary"
               titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
               onPress={handleAddAddress}
-              accessibilityLabel="Tambah alamat pengiriman baru"
-              accessibilityHint="Membuka form untuk menambahkan alamat pengiriman baru"
+              aria-label="Tambah alamat pengiriman baru"
+              aria-describedby="Membuka form untuk menambahkan alamat pengiriman baru"
             />
           </YStack>
         )}

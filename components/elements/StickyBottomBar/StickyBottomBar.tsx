@@ -58,14 +58,14 @@ export const StickyBottomBar = ({
         flex={1}
         size="$5"
         backgroundColor="$primary"
-        color="white"
+        color="$white"
         borderRadius="$4"
         fontWeight="700"
         pressStyle={{ opacity: 0.85, scale: 0.98 }}
         disabled={disabled || isLoading}
         opacity={disabled || isLoading ? 0.6 : 1}
         onPress={onConfirm}
-        icon={isLoading ? <Spinner color="white" /> : undefined}>
+        icon={isLoading ? <Spinner color="$white" /> : undefined}>
         {confirmText}
       </Button>
     </XStack>

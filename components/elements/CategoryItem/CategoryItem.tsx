@@ -199,9 +199,9 @@ function CategoryItem({
       paddingHorizontal={sizeConfig.horizontalPadding}
       paddingVertical={sizeConfig.verticalPadding}
       onPress={onPress}
-      accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? `${category.name} category` : undefined}
-      accessibilityHint={onPress ? `Explore ${category.name} products` : undefined}>
+      role={onPress ? 'button' : undefined}
+      aria-label={onPress ? `${category.name} category` : undefined}
+      aria-describedby={onPress ? `Explore ${category.name} products` : undefined}>
       <XStack alignItems="center" justifyContent="flex-start" gap="$2.5" minHeight={44}>
         {category.logo_url ? (
           <Card

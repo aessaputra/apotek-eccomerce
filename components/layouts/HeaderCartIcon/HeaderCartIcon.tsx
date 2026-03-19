@@ -35,8 +35,8 @@ export default function HeaderCartIcon({
         onPress={() => router.push('/cart')}
         hitSlop={12}
         cursor="pointer"
-        accessibilityRole="button"
-        accessibilityLabel="Keranjang">
+        role="button"
+        aria-label="Keranjang">
         <CartIcon size={ICON_SIZES.BUTTON} color={color} />
       </XStack>
     </XStack>

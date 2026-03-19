@@ -120,13 +120,13 @@ describe('<PasswordInput />', () => {
   test('has correct accessibility label', async () => {
     render(<PasswordInput value="" onChangeText={() => {}} placeholder="Password" />);
     const input = screen.getByPlaceholderText('Password');
-    expect(input.props.accessibilityLabel).toBe('Password');
+    expect(input.props['aria-label']).toBe('Password');
   });
 
   test('uses default accessibility label when placeholder not provided', async () => {
     render(<PasswordInput value="" onChangeText={() => {}} />);
     const input = screen.getByTestId('password-input');
-    expect(input.props.accessibilityLabel).toBe('Password');
+    expect(input.props['aria-label']).toBe('Password');
   });
 
   test('always uses autoCapitalize="none"', async () => {

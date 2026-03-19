@@ -41,10 +41,10 @@ function AddressField({
       <Card
         onPress={handleOpen}
         disabled={disabled}
-        accessibilityRole="button"
+        role="button"
         accessibilityState={{ disabled }}
-        accessibilityLabel={`Edit ${label}. Nilai saat ini: ${value || 'belum diisi'}`}
-        accessibilityHint={error ? `Error: ${error}` : `Buka sheet untuk mengubah ${label}`}
+        aria-label={`Edit ${label}. Nilai saat ini: ${value || 'belum diisi'}`}
+        aria-describedby={error ? `Error: ${error}` : `Buka sheet untuk mengubah ${label}`}
         padding="$3"
         backgroundColor="$background"
         borderWidth={1}

@@ -23,9 +23,9 @@ export interface BottomActionBarProps {
   /** Whether the button is disabled */
   disabled?: boolean;
   /** Accessibility label for screen readers */
-  accessibilityLabel: string;
+  'aria-label': string;
   /** Accessibility hint providing additional context for screen readers */
-  accessibilityHint: string;
+  'aria-describedby': string;
 }
 
 /**
@@ -46,8 +46,8 @@ export default function BottomActionBar({
   onPress,
   isLoading = false,
   disabled = false,
-  accessibilityLabel,
-  accessibilityHint,
+  'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedBy,
 }: BottomActionBarProps) {
   const insets = useSafeAreaInsets();
 
@@ -63,9 +63,9 @@ export default function BottomActionBar({
       pt="$2"
       pb={innerPaddingBottom}
       elevation={8}
-      accessibilityRole="toolbar"
-      accessibilityLabel="Bottom action bar"
-      accessibilityHint="Action bar with primary action button">
+      role="toolbar"
+      aria-label="Bottom action bar"
+      aria-describedby="Action bar with primary action button">
       <Button
         title={buttonTitle}
         width="100%"
@@ -76,8 +76,8 @@ export default function BottomActionBar({
         onPress={onPress}
         isLoading={isLoading}
         disabled={disabled}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityHint={accessibilityHint}
+        aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
         accessibilityState={{
           disabled: disabled || isLoading,
           busy: isLoading,

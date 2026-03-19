@@ -112,7 +112,7 @@ function AddressEditSheet({
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive">
             <ScrollContent gap="$3">
-              <Text fontSize="$6" fontWeight="700" color="$color" fontFamily="$heading">
+              <Text fontSize="$6" fontWeight="700" color="$color">
                 {title}
               </Text>
 
@@ -135,8 +135,8 @@ function AddressEditSheet({
                 editable={!disabled}
                 returnKeyType={multiline ? undefined : 'done'}
                 onSubmitEditing={multiline ? undefined : handleSave}
-                accessibilityLabel={`Input ${title}`}
-                accessibilityHint={`Masukkan nilai untuk ${title}`}
+                aria-label={`Input ${title}`}
+                aria-describedby={`Masukkan nilai untuk ${title}`}
               />
             </ScrollContent>
           </Sheet.ScrollView>
@@ -147,8 +147,8 @@ function AddressEditSheet({
               onPress={handleSave}
               disabled={disabled}
               titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
-              accessibilityLabel={`Simpan ${title}`}
-              accessibilityHint={`Menyimpan perubahan ${title}`}
+              aria-label={`Simpan ${title}`}
+              aria-describedby={`Menyimpan perubahan ${title}`}
             />
           </YStack>
         </YStack>

@@ -210,10 +210,10 @@ export default function CartAddressPicker() {
       <Card
         borderRadius="$4"
         borderWidth={1}
+        borderStyle="dashed"
         borderColor="$surfaceBorder"
         backgroundColor="$surface"
-        padding="$4"
-        style={{ borderStyle: 'dashed' }}>
+        padding="$4">
         <YStack gap="$3" alignItems="center">
           <MapPinIcon size={28} color="$primary" />
           <Text color="$color" fontWeight="600">
@@ -221,7 +221,7 @@ export default function CartAddressPicker() {
           </Text>
           <Button
             backgroundColor="$primary"
-            color="white"
+            color="$white"
             borderRadius="$3"
             minHeight={44}
             onPress={handleAddAddress}>

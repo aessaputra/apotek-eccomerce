@@ -65,7 +65,7 @@ describe('<OAuthButton />', () => {
   test('has correct accessibility label for Google', async () => {
     render(<OAuthButton provider="google" />);
     const button = screen.getByLabelText('Masuk dengan Google');
-    expect(button.props.accessibilityLabel).toBe('Masuk dengan Google');
+    expect(button.props['aria-label']).toBe('Masuk dengan Google');
   });
 
   test('sets disabled accessibility state when loading', async () => {

@@ -108,12 +108,7 @@ export default function ProductSearch() {
     if (error) {
       return (
         <YStack flex={1} alignItems="center" justifyContent="center" paddingHorizontal="$4">
-          <Text
-            fontSize="$5"
-            color="$color"
-            fontFamily="$body"
-            textAlign="center"
-            marginBottom="$3">
+          <Text fontSize="$5" color="$color" textAlign="center" marginBottom="$3">
             {error}
           </Text>
           <Button
@@ -122,7 +117,7 @@ export default function ProductSearch() {
             paddingVertical="$2"
             borderRadius="$3"
             onPress={handleRetry}>
-            <Text color="$white" fontSize="$4" fontFamily="$body" fontWeight="600">
+            <Text color="$white" fontSize="$4" fontWeight="600">
               Retry
             </Text>
           </Button>
@@ -134,12 +129,7 @@ export default function ProductSearch() {
       return (
         <YStack flex={1} alignItems="center" justifyContent="center" paddingHorizontal="$4">
           <SearchIcon size={64} color={placeholderColor} />
-          <Text
-            fontSize="$5"
-            color="$colorSubtle"
-            fontFamily="$body"
-            textAlign="center"
-            marginTop="$4">
+          <Text fontSize="$5" color="$colorSubtle" textAlign="center" marginTop="$4">
             Start typing to search
           </Text>
         </YStack>
@@ -149,15 +139,10 @@ export default function ProductSearch() {
     if (results.length === 0) {
       return (
         <YStack flex={1} alignItems="center" justifyContent="center" paddingHorizontal="$4">
-          <Text
-            fontSize="$5"
-            color="$color"
-            fontFamily="$body"
-            textAlign="center"
-            marginBottom="$2">
+          <Text fontSize="$5" color="$color" textAlign="center" marginBottom="$2">
             No products found
           </Text>
-          <Text fontSize="$4" color="$colorSubtle" fontFamily="$body" textAlign="center">
+          <Text fontSize="$4" color="$colorSubtle" textAlign="center">
             Try different keywords
           </Text>
         </YStack>
@@ -184,8 +169,8 @@ export default function ProductSearch() {
             justifyContent="center"
             onPress={handleBack}
             cursor="pointer"
-            accessibilityRole="button"
-            accessibilityLabel="Go back">
+            role="button"
+            aria-label="Go back">
             <ChevronLeftIcon size={24} color={iconColor} />
           </XStack>
 
@@ -208,7 +193,6 @@ export default function ProductSearch() {
               paddingVertical="$2"
               fontSize="$4"
               color="$color"
-              fontFamily="$body"
               autoFocus={true}
               autoCorrect={false}
               autoCapitalize="none"

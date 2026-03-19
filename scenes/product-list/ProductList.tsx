@@ -248,10 +248,7 @@ export default function ProductList() {
         ListHeaderComponent={
           <ContentStack pt={topPadding} px={horizontalPadding} pb="$3">
             <XStack alignItems="center" justifyContent="space-between" gap="$3">
-              <HeaderButton
-                onPress={handleBack}
-                accessibilityRole="button"
-                accessibilityLabel="Back">
+              <HeaderButton onPress={handleBack} role="button" aria-label="Back">
                 <ChevronLeftIcon size={20} color={getThemeColor(theme, 'color')} />
               </HeaderButton>
               <Text

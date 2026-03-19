@@ -65,9 +65,9 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
       gap="$2"
       pressStyle={{ opacity: 0.95, scale: 0.98 }}
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name} product`}
-      accessibilityHint={`View details for ${item.name}`}>
+      role="button"
+      aria-label={`${item.name} product`}
+      aria-describedby={`View details for ${item.name}`}>
       <YStack
         width="100%"
         height={96}
@@ -101,9 +101,9 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
           justifyContent="center"
           pressStyle={{ opacity: 0.9, scale: 0.95 }}
           onPress={handleAddToCart}
-          accessibilityRole="button"
-          accessibilityLabel={`Add ${item.name} to cart`}
-          accessibilityHint="Adds product to shopping cart">
+          role="button"
+          aria-label={`Add ${item.name} to cart`}
+          aria-describedby="Adds product to shopping cart">
           <CartIcon size={16} color="$white" />
         </XStack>
       </XStack>

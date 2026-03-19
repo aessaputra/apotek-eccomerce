@@ -65,7 +65,7 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
         <YStack gap="$4">
           <XStack gap="$2" alignItems="center" marginBottom="$2">
             <MapPinIcon size={20} color="$primary" />
-            <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
+            <Text fontSize="$5" fontWeight="600" color="$color">
               Alamat Pengiriman
             </Text>
           </XStack>
@@ -86,8 +86,8 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
               numberOfLines={3}
               returnKeyType="next"
               onSubmitEditing={() => refs.cityRef.current?.focus()}
-              accessibilityLabel="Alamat lengkap"
-              accessibilityHint="Masukkan alamat lengkap termasuk jalan, RT/RW, dan nomor rumah"
+              aria-label="Alamat lengkap"
+              aria-describedby="Masukkan alamat lengkap termasuk jalan, RT/RW, dan nomor rumah"
             />
 
             <XStack gap="$3">
@@ -104,8 +104,8 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
                   editable={!isSaving}
                   returnKeyType="next"
                   onSubmitEditing={() => refs.postalCodeRef.current?.focus()}
-                  accessibilityLabel="Kota"
-                  accessibilityHint="Masukkan nama kota"
+                  aria-label="Kota"
+                  aria-describedby="Masukkan nama kota"
                 />
               </YStack>
               <YStack flex={1}>
@@ -122,8 +122,8 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
                   editable={!isSaving}
                   returnKeyType="next"
                   onSubmitEditing={() => refs.provinceRef.current?.focus()}
-                  accessibilityLabel="Kode pos"
-                  accessibilityHint="Masukkan kode pos 5 digit"
+                  aria-label="Kode pos"
+                  aria-describedby="Masukkan kode pos 5 digit"
                 />
               </YStack>
             </XStack>
@@ -136,8 +136,8 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
               autoCapitalize="words"
               editable={!isSaving}
               returnKeyType="done"
-              accessibilityLabel="Provinsi"
-              accessibilityHint="Masukkan nama provinsi (opsional)"
+              aria-label="Provinsi"
+              aria-describedby="Masukkan nama provinsi (opsional)"
             />
           </YStack>
         </YStack>

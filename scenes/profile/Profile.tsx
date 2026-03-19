@@ -1,8 +1,8 @@
 import { type ComponentType, useCallback, memo, useState } from 'react';
 import { ScrollView, Platform, Dimensions } from 'react-native';
-import { YStack, XStack, Text, useTheme, Card, Spinner } from 'tamagui';
+import { YStack, XStack, Text, useTheme, Card, Spinner, styled } from 'tamagui';
 import { useRouter } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Avatar from '@/components/elements/Avatar';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
@@ -18,20 +18,25 @@ import {
   type IconProps,
 } from '@/components/icons';
 
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+  backgroundColor: '$background',
+});
+
 interface MenuItemProps {
   label: string;
   icon: ComponentType<IconProps>;
   onPress: () => void;
-  accessibilityLabel: string;
-  accessibilityHint: string;
+  'aria-label': string;
+  'aria-describedby': string;
 }
 
 const MenuItem = memo(function MenuItem({
   label,
   icon: Icon,
   onPress,
-  accessibilityLabel,
-  accessibilityHint,
+  'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedBy,
 }: MenuItemProps) {
   const theme = useTheme();
   const iconColor = getThemeColor(theme, 'colorPress');
@@ -50,10 +55,8 @@ const MenuItem = memo(function MenuItem({
         if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
-      accessibilityLabel={accessibilityLabel}
-      {...(Platform.OS === 'web'
-        ? { 'aria-description': accessibilityHint }
-        : { accessibilityHint })}>
+      aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}>
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap="$3" flex={1}>
           <Icon size={22} color={iconColor} />
@@ -69,15 +72,12 @@ const MenuItem = memo(function MenuItem({
 
 export default function Profile() {
   const router = useRouter();
-  const theme = useTheme();
   const { user } = useAppSlice();
   const { removePersistData } = useDataPersist();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const insets = useSafeAreaInsets();
   const avatarSize = Dimensions.get('window').width < 375 ? 100 : 120;
-  // Use theme-aware background with light mode default fallback (#FFFFFF)
-  const bgColor = getThemeColor(theme, 'background');
   const scrollPaddingBottom = 80 + insets.bottom;
 
   const formatMemberSince = useCallback((dateString?: string): string => {
@@ -110,14 +110,14 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+      <SafeAreaView edges={['top']}>
         <YStack
           flex={1}
           padding="$5"
           paddingBottom="$10"
           alignItems="center"
           justifyContent="center"
-          accessibilityLabel="Memuat profil"
+          aria-label="Memuat profil"
           accessibilityLiveRegion="polite">
           <Spinner size="large" color="$primary" />
         </YStack>
@@ -126,7 +126,7 @@ export default function Profile() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['top']}>
+    <SafeAreaView edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -136,7 +136,7 @@ export default function Profile() {
         }}
         showsVerticalScrollIndicator={false}>
         {/* Avatar, Nama lengkap, Bergabung */}
-        <YStack alignItems="center" marginBottom="$5" gap="$3" accessibilityLabel="Foto profil">
+        <YStack alignItems="center" marginBottom="$5" gap="$3" aria-label="Foto profil">
           <Avatar
             avatarUrl={user.avatar_url}
             name={user.full_name || user.name || user.email}
@@ -144,12 +144,7 @@ export default function Profile() {
             editable={false}
           />
           {/* Nama lengkap di bawah avatar */}
-          <Text
-            fontSize="$6"
-            fontWeight="700"
-            color="$color"
-            fontFamily="$heading"
-            textAlign="center">
+          <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
             {user.full_name || user.name || 'Pengguna'}
           </Text>
           {/* Bergabung dengan badge */}
@@ -173,22 +168,22 @@ export default function Profile() {
           label="Profile Saya"
           icon={UserIcon}
           onPress={() => router.push('/profile/edit-profile')}
-          accessibilityLabel="Profile Saya"
-          accessibilityHint="Edit informasi profil Anda"
+          aria-label="Profile Saya"
+          aria-describedby="Edit informasi profil Anda"
         />
         <MenuItem
           label="Alamat"
           icon={MapPinIcon}
           onPress={() => router.push('/profile/addresses')}
-          accessibilityLabel="Alamat pengiriman"
-          accessibilityHint="Kelola alamat pengiriman Anda"
+          aria-label="Alamat pengiriman"
+          aria-describedby="Kelola alamat pengiriman Anda"
         />
         <MenuItem
           label="Dukungan"
           icon={CircleHelpIcon}
           onPress={() => router.push('/profile/support')}
-          accessibilityLabel="Dukungan"
-          accessibilityHint="Hubungi tim dukungan"
+          aria-label="Dukungan"
+          aria-describedby="Hubungi tim dukungan"
         />
 
         {/* Sign Out - red button, full-width touch target ≥44px */}
@@ -207,10 +202,8 @@ export default function Profile() {
             setLogoutDialogOpen(true);
           }}
           {...(Platform.OS === 'web' ? { style: { cursor: 'pointer' } } : {})}
-          accessibilityLabel="Keluar dari akun"
-          {...(Platform.OS === 'web'
-            ? { 'aria-description': 'Keluar dari aplikasi dan kembali ke halaman login' }
-            : { accessibilityHint: 'Keluar dari aplikasi dan kembali ke halaman login' })}>
+          aria-label="Keluar dari akun"
+          aria-describedby="Keluar dari aplikasi dan kembali ke halaman login">
           <Text fontSize="$5" color="$danger" fontWeight="600" textAlign="center">
             Keluar
           </Text>

@@ -52,7 +52,7 @@ const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
         <YStack gap="$4">
           <XStack gap="$2" alignItems="center" marginBottom="$2">
             <UserIcon size={20} color="$primary" />
-            <Text fontSize="$5" fontWeight="600" color="$color" fontFamily="$heading">
+            <Text fontSize="$5" fontWeight="600" color="$color">
               Informasi Penerima
             </Text>
           </XStack>
@@ -70,8 +70,8 @@ const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
               editable={!isSaving}
               returnKeyType="next"
               onSubmitEditing={onFocusStreetAddress}
-              accessibilityLabel="Nama penerima"
-              accessibilityHint="Masukkan nama lengkap penerima paket"
+              aria-label="Nama penerima"
+              aria-describedby="Masukkan nama lengkap penerima paket"
             />
             <FormInput
               ref={phoneNumberRef}
@@ -85,8 +85,8 @@ const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
               keyboardType="phone-pad"
               editable={!isSaving}
               returnKeyType="next"
-              accessibilityLabel="Nomor telepon"
-              accessibilityHint="Masukkan nomor telepon penerima"
+              aria-label="Nomor telepon"
+              aria-describedby="Masukkan nomor telepon penerima"
             />
           </YStack>
         </YStack>

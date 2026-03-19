@@ -60,7 +60,7 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
       disabled={isLoading}
       cursor={isLoading ? 'not-allowed' : 'pointer'}
       role="button"
-      accessibilityLabel={label}
+      aria-label={label}
       accessibilityState={{ disabled: isLoading }}
       {...others}>
       {isLoading ? (

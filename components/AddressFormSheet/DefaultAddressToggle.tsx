@@ -45,10 +45,10 @@ function DefaultAddressToggle({ isDefault, isSaving, onToggle }: DefaultAddressT
       onPress={handlePress}
       disabled={isSaving}
       minHeight={MIN_TOUCH_TARGET}
-      accessibilityRole="checkbox"
+      role="checkbox"
       accessibilityState={{ checked: isDefault }}
-      accessibilityLabel="Jadikan alamat default"
-      accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default yang akan digunakan otomatis saat checkout"
+      aria-label="Jadikan alamat default"
+      aria-describedby="Mengatur alamat ini sebagai alamat pengiriman default yang akan digunakan otomatis saat checkout"
       pressStyle={{ opacity: PRESS_OPACITY }}>
       <XStack gap="$3" alignItems="center">
         <Checkbox

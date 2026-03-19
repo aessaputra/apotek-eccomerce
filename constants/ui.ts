@@ -145,6 +145,8 @@ export const MD3_PILL = {
  * 12px is the standard label size for bottom navigation (iOS HIG & Material Design).
  */
 export const TAB_BAR_LABEL_SIZE = 12;
+export const TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN = '$1';
+export const TAB_BAR_LABEL_MARGIN_TOP_TOKEN = '$1';
 
 /** Tab bar container height (matches WhatsApp-style bottom nav). */
 export const TAB_BAR_HEIGHT = 80;

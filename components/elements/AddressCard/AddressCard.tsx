@@ -54,9 +54,9 @@ export default function AddressCard({ address, isDefault = false, onPress }: Add
       isDefault={isDefault}
       onPress={onPress}
       disabled={!onPress}
-      accessibilityRole={onPress ? 'button' : 'none'}
-      accessibilityLabel={onPress ? `Alamat ${address.receiver_name}` : undefined}
-      accessibilityHint={onPress ? 'Tekan untuk melihat detail alamat' : undefined}
+      role={onPress ? 'button' : 'none'}
+      aria-label={onPress ? `Alamat ${address.receiver_name}` : undefined}
+      aria-describedby={onPress ? 'Tekan untuk melihat detail alamat' : undefined}
       pressStyle={{ opacity: PRESS_OPACITY }}>
       <YStack gap="$2">
         <XStack justifyContent="space-between" alignItems="flex-start">
@@ -66,7 +66,7 @@ export default function AddressCard({ address, isDefault = false, onPress }: Add
                 {address.receiver_name}
               </Text>
               {isDefault && (
-                <DefaultBadge accessibilityLabel="Alamat default" accessibilityRole="text">
+                <DefaultBadge aria-label="Alamat default" role="note">
                   <Text fontSize="$1" fontWeight="600" color="$white">
                     Default
                   </Text>

@@ -668,8 +668,8 @@ export default function ProductDetails() {
               </YStack>
 
               <SheetConfirmButton
-                accessibilityLabel="Konfirmasi tambah ke keranjang"
-                accessibilityHint="Menambahkan produk ke keranjang lalu membuka halaman keranjang"
+                aria-label="Konfirmasi tambah ke keranjang"
+                aria-describedby="Menambahkan produk ke keranjang lalu membuka halaman keranjang"
                 onPress={handleConfirmFromSheet}
                 disabled={isAddingToCart || isOutOfStock}>
                 <CartIcon size={22} color={getThemeColor(theme, 'white')} />

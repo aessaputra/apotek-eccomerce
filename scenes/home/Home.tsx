@@ -230,9 +230,9 @@ export default function Home() {
             <XStack gap="$2" alignItems="center">
               <SurfaceIconButton
                 onPress={handleOpenOrders}
-                accessibilityRole="button"
-                accessibilityLabel="Cart"
-                accessibilityHint="Open cart page">
+                role="button"
+                aria-label="Cart"
+                aria-describedby="Open cart page">
                 <CartIcon size={16} color={iconColor} />
               </SurfaceIconButton>
             </XStack>
@@ -245,15 +245,15 @@ export default function Home() {
               lineHeight={media.gtSm ? 48 : 42}
               fontWeight="800"
               letterSpacing={-0.8}
-              maxWidth={320}>
+              maxWidth={media.gtSm ? 320 : '100%'}>
               Sehat jadi mudah
             </Text>
 
             <SearchShell
               onPress={handleOpenDetails}
-              accessibilityRole="button"
-              accessibilityLabel="Search products"
-              accessibilityHint="Open product discovery details">
+              role="button"
+              aria-label="Search products"
+              aria-describedby="Open product discovery details">
               <Text flex={1} color="$placeholderColor" fontSize={14} fontWeight="500" pl="$1">
                 Search by product name
               </Text>
@@ -269,9 +269,9 @@ export default function Home() {
                 </Text>
                 <PillAction
                   onPress={handleOpenOrders}
-                  accessibilityRole="button"
-                  accessibilityLabel="Track last order"
-                  accessibilityHint="Open order tracking details">
+                  role="button"
+                  aria-label="Track last order"
+                  aria-describedby="Open order tracking details">
                   <Text color="$primary" fontSize={11} fontWeight="700">
                     Track now
                   </Text>
@@ -364,9 +364,9 @@ export default function Home() {
                 </Text>
                 <PillAction
                   onPress={handleOpenDoctorDiscovery}
-                  accessibilityRole="button"
-                  accessibilityLabel="Explore doctors"
-                  accessibilityHint="Open doctor discovery">
+                  role="button"
+                  aria-label="Explore doctors"
+                  aria-describedby="Open doctor discovery">
                   <Text color="$primary" fontSize={12} fontWeight="700">
                     Explore life
                   </Text>

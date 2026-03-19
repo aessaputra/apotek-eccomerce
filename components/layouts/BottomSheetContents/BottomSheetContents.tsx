@@ -20,7 +20,6 @@ export default function BottomSheetContents({ onClose }: WelcomeBottomSheetConte
       backgroundColor="$background">
       <Text
         fontSize={16}
-        fontFamily="$body"
         fontWeight="700"
         color="$color"
         marginTop={16}
@@ -29,36 +28,34 @@ export default function BottomSheetContents({ onClose }: WelcomeBottomSheetConte
         textAlign="center">
         🎉 Selamat datang!{' '}
       </Text>
-      <Text fontSize={14} fontFamily="$body" width="100%" color="$color" marginBottom={32}>
+      <Text fontSize={14} width="100%" color="$color" marginBottom={32}>
         Aplikasi Apotek Eccomerce berjalan di environment
         <Text fontWeight="700">{` ${config.env} `}</Text>🚀
       </Text>
-      <Text fontSize={14} fontFamily="$body" width="100%" color="$color" marginBottom={8}>
+      <Text fontSize={14} width="100%" color="$color" marginBottom={8}>
         Variabel environment yang dimuat:
       </Text>
       {Object.entries(config).map(([key, value]) => (
         <XStack key={key} alignItems="center" width="100%" gap="$1">
           <Text fontSize={14} fontWeight="700" color="$color">{`✅ ${key}: `}</Text>
-          <Text fontSize={14} fontFamily="$body" color="$color">
+          <Text fontSize={14} color="$color">
             {value}
           </Text>
         </XStack>
       ))}
-      <Text fontSize={14} fontFamily="$body" width="100%" color="$color" marginVertical={32}>
+      <Text fontSize={14} width="100%" color="$color" marginVertical={32}>
         {`Setup selesai. Selamat berbelanja di Apotek Eccomerce.\n\nHappy coding!`}
       </Text>
       <GradientButton
         title="OK"
         titleStyle={{ color: getThemeColor(theme, 'background'), textAlign: 'center' }}
-        style={{
-          justifyContent: 'center',
-          alignItems: 'center',
-          borderRadius: 22,
-          height: 44,
-          width: windowWidth / 2,
-          backgroundColor: getThemeColor(theme, 'color'),
-          marginBottom: 40,
-        }}
+        justifyContent="center"
+        alignItems="center"
+        borderRadius={22}
+        height={44}
+        width={windowWidth / 2}
+        backgroundColor={getThemeColor(theme, 'color')}
+        marginBottom={40}
         gradientBackgroundProps={{
           colors: [getThemeColor(theme, 'color'), getThemeColor(theme, 'color5')],
           start: { x: 0, y: 1 },

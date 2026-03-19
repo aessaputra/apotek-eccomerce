@@ -1,37 +1,40 @@
-// Import tamagui config to ensure TypeScript module augmentation is loaded
-import '@/tamagui.config';
-
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-// Tamagui web CSS - loaded for web platform
-import '@/tamagui-web.css';
-import { Platform, Text } from 'react-native';
-import BottomSheetContents from '@/components/layouts/BottomSheetContents';
-import BottomSheet from '@/components/elements/BottomSheet';
-import { useTheme } from 'tamagui';
-import { getThemeColor } from '@/utils/theme';
-import { fonts, loadFonts } from '@/utils/fonts';
-import { loadImages } from '@/utils/images';
-import { Tabs, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useAppSlice } from '@/slices';
+import { Tabs, useRouter, useSegments } from 'expo-router';
+import { getTokens, Text, useTheme } from 'tamagui';
+
+import BottomSheet from '@/components/elements/BottomSheet';
+import BottomSheetContents from '@/components/layouts/BottomSheetContents';
+import TabBarIconWithPill from '@/components/layouts/TabBarIconWithPill';
+import { HomeIcon, PackageIcon, UserIcon } from '@/components/icons';
 import Provider, { AuthProvider } from '@/providers';
+import { useAppSlice } from '@/slices';
 import { DEFAULT_THEME_VALUES } from '@/themes';
 import {
+  BOTTOM_BAR_SHADOW,
   ICON_SIZES,
   TAB_BAR_HEIGHT,
+  TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN,
   TAB_BAR_LABEL_SIZE,
+  TAB_BAR_LABEL_MARGIN_TOP_TOKEN,
   TAB_BAR_PADDING_BOTTOM,
   TAB_BAR_PADDING_TOP,
 } from '@/constants/ui';
-import TabBarIconWithPill from '@/components/layouts/TabBarIconWithPill';
-import { HomeIcon, PackageIcon, UserIcon } from '@/components/icons';
+import { getThemeColor } from '@/utils/theme';
+import { loadFonts } from '@/utils/fonts';
+import { loadImages } from '@/utils/images';
+
+import '@/tamagui-web.css';
 
 SplashScreen.preventAutoHideAsync();
 
-const TAB_BAR_ITEM_PADDING_VERTICAL = 4;
-const TAB_BAR_LABEL_MARGIN_TOP = 2;
 const VISIBLE_TAB_ROUTES = new Set(['home', 'orders', 'profile']);
+
+const spaceTokens = getTokens().space;
+const TAB_BAR_ITEM_PADDING_VERTICAL = spaceTokens[TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN]?.val ?? 4;
+const TAB_BAR_LABEL_MARGIN_TOP = spaceTokens[TAB_BAR_LABEL_MARGIN_TOP_TOKEN]?.val ?? 4;
 
 function Router() {
   const theme = useTheme();
@@ -131,15 +134,8 @@ function Router() {
       borderTopColor: tabBarColors.borderColor,
     };
     return Platform.OS === 'web'
-      ? { ...base, boxShadow: '0px -2px 4px rgba(0,0,0,0.1)' }
-      : {
-          ...base,
-          elevation: 8,
-          shadowColor: tabBarColors.shadowColor,
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        };
+      ? { ...base, ...BOTTOM_BAR_SHADOW }
+      : { ...base, ...BOTTOM_BAR_SHADOW, shadowColor: tabBarColors.shadowColor, elevation: 8 };
   }, [hideTabBar, tabBarColors]);
 
   // Get header background color for StatusBar consistency
@@ -160,24 +156,20 @@ function Router() {
             flex: 1,
             alignItems: 'center',
             justifyContent: 'center',
-            minWidth: 70,
             paddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
           },
-          tabBarAllowFontScaling: false,
           tabBarLabel: ({ color, children }) => (
             <Text
               allowFontScaling={false}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              style={{
-                color,
-                fontFamily: fonts.poppins.regular,
-                fontSize: TAB_BAR_LABEL_SIZE,
-                marginTop: TAB_BAR_LABEL_MARGIN_TOP,
-                textAlign: 'center',
-                width: '100%',
-                includeFontPadding: false,
-              }}>
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              ellipsizeMode="clip"
+              fontSize={TAB_BAR_LABEL_SIZE}
+              marginTop={TAB_BAR_LABEL_MARGIN_TOP}
+              textAlign="center"
+              width="100%"
+              style={{ color, includeFontPadding: false }}>
               {children}
             </Text>
           ),
