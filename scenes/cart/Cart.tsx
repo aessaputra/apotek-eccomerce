@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RefreshCw } from '@tamagui/lucide-icons';
 import {
@@ -24,9 +24,10 @@ import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
 import { StickyBottomBar } from '@/components/elements/StickyBottomBar/StickyBottomBar';
 import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartState';
 import { CartLoadingSkeleton } from '@/components/elements/CartLoadingSkeleton/CartLoadingSkeleton';
+import AddressCard from '@/components/elements/AddressCard';
 import { useAppSlice } from '@/slices';
 import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
-import { getAddresses } from '@/services/address.service';
+import { getAddress, getPreferredAddress, getAddresses } from '@/services/address.service';
 import { getCartWithItems, updateCartItemQuantity, removeCartItem } from '@/services/cart.service';
 import { getShippingRatesForAddress } from '@/services/shipping.service';
 import {
@@ -34,6 +35,7 @@ import {
   createSnapToken,
   pollOrderPaymentStatus,
 } from '@/services/checkout.service';
+import { formatAddress, resolveBadgeText } from '@/utils/address';
 import type { Address } from '@/types/address';
 import type { CartItemWithProduct, CartSnapshot } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
@@ -81,6 +83,8 @@ const CourierOptionCard = React.memo(function CourierOptionCard({
   return (
     <Card
       onPress={handlePress}
+      role="button"
+      aria-label={`${option.courier_name} ${option.service_name} ${formatRupiah(option.price)}`}
       animation="quick"
       animateOnly={COURIER_CARD_ANIMATE_ONLY}
       pressStyle={COURIER_CARD_PRESS_STYLE}
@@ -106,17 +110,41 @@ const CourierOptionCard = React.memo(function CourierOptionCard({
   );
 });
 
+interface AddressCardSheetProps {
+  address: Address;
+  isSelected: boolean;
+  onSelect: (addressId: string) => void;
+}
+
+const AddressCardSheet = React.memo(function AddressCardSheet({
+  address,
+  isSelected,
+  onSelect,
+}: AddressCardSheetProps) {
+  const handlePress = React.useCallback(() => {
+    onSelect(address.id);
+  }, [address.id, onSelect]);
+
+  return (
+    <AddressCard
+      address={address}
+      selected={isSelected}
+      badgeText={resolveBadgeText(address)}
+      onPress={handlePress}
+    />
+  );
+});
+
 export default function Cart() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ selectedId?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { user } = useAppSlice();
   const { getPersistData, setPersistData, removePersistData } = useDataPersist();
   const subtleColor = getThemeColor(theme, 'colorPress');
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [loadingSelectedAddress, setLoadingSelectedAddress] = useState(false);
   const [cartSnapshot, setCartSnapshot] = useState<CartSnapshot>(EMPTY_CART);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
   const [loadingCart, setLoadingCart] = useState(false);
@@ -124,8 +152,10 @@ export default function Cart() {
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShippingKey, setSelectedShippingKey] = useState<string | null>(null);
-  const [addressSheetOpen, setAddressSheetOpen] = useState(false);
   const [shippingSheetOpen, setShippingSheetOpen] = useState(false);
+  const [addressSheetOpen, setAddressSheetOpen] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [availableAddresses, setAvailableAddresses] = useState<Address[]>([]);
   const [quoteDestinationAreaId, setQuoteDestinationAreaId] = useState<string | null>(null);
   const [quoteDestinationPostalCode, setQuoteDestinationPostalCode] = useState<number | null>(null);
   const [startingCheckout, setStartingCheckout] = useState(false);
@@ -170,11 +200,6 @@ export default function Cart() {
     [computeCartSnapshot],
   );
 
-  const selectedAddress = useMemo(
-    () => addresses.find(address => address.id === selectedAddressId) ?? null,
-    [addresses, selectedAddressId],
-  );
-
   const selectedShippingOption = useMemo(
     () =>
       shippingOptions.find(
@@ -188,23 +213,16 @@ export default function Cart() {
       return '';
     }
 
-    return [
-      selectedAddress.street_address,
-      selectedAddress.city,
-      selectedAddress.province,
-      selectedAddress.postal_code,
-    ]
-      .filter(Boolean)
-      .join(', ');
+    return formatAddress(selectedAddress);
   }, [selectedAddress]);
 
-  const selectedAddressParam = useMemo(() => {
-    if (!params.selectedId) {
-      return null;
-    }
-
-    return Array.isArray(params.selectedId) ? params.selectedId[0] : params.selectedId;
-  }, [params.selectedId]);
+  const resetShippingSelection = useCallback(() => {
+    shouldOpenShippingSheetRef.current = false;
+    setSelectedShippingKey(null);
+    setShippingOptions([]);
+    setQuoteDestinationAreaId(null);
+    setQuoteDestinationPostalCode(null);
+  }, []);
 
   const checkoutFingerprint = useMemo(
     () =>
@@ -225,28 +243,6 @@ export default function Cart() {
       user?.id,
     ],
   );
-
-  const loadAddresses = useCallback(async () => {
-    if (!user?.id) {
-      setAddresses([]);
-      setSelectedAddressId(null);
-      return;
-    }
-
-    setLoadingAddresses(true);
-
-    const { data, error } = await getAddresses(user.id);
-    setLoadingAddresses(false);
-
-    if (error) {
-      setShippingError(error.message);
-      return;
-    }
-
-    const nextAddresses = data ?? [];
-    setAddresses(nextAddresses);
-    setSelectedAddressId(current => current ?? nextAddresses[0]?.id ?? null);
-  }, [user?.id]);
 
   const loadCartData = useCallback(async () => {
     if (!user?.id) {
@@ -270,6 +266,25 @@ export default function Cart() {
       setCartSnapshot(data.snapshot);
       confirmedQuantitiesRef.current = new Map(data.items.map(item => [item.id, item.quantity]));
     }
+  }, [user?.id]);
+
+  const loadAddressesForSheet = useCallback(async () => {
+    if (!user?.id) {
+      setAvailableAddresses([]);
+      setLoadingAddresses(false);
+      return;
+    }
+
+    setLoadingAddresses(true);
+    const { data, error } = await getAddresses(user.id);
+    setLoadingAddresses(false);
+
+    if (error) {
+      setShippingError(`Gagal memuat alamat: ${error.message}`);
+      return;
+    }
+
+    setAvailableAddresses(data ?? []);
   }, [user?.id]);
 
   const flushPendingQuantityUpdates = useCallback(
@@ -320,18 +335,86 @@ export default function Cart() {
 
   useFocusEffect(
     useCallback(() => {
-      loadAddresses();
       loadCartData();
-    }, [loadAddresses, loadCartData]),
+    }, [loadCartData]),
   );
 
   useEffect(() => {
-    if (!selectedAddressParam) {
-      return;
-    }
+    let isMounted = true;
 
-    setSelectedAddressId(selectedAddressParam);
-  }, [selectedAddressParam]);
+    const hydrateSelectedAddress = async () => {
+      if (!user?.id || selectedAddressId) {
+        return;
+      }
+
+      setLoadingSelectedAddress(true);
+      const { data, error } = await getPreferredAddress(user.id);
+
+      if (!isMounted) {
+        return;
+      }
+
+      setLoadingSelectedAddress(false);
+
+      if (error) {
+        setShippingError(error.message);
+        return;
+      }
+
+      if (!data?.id) {
+        setSelectedAddress(null);
+        resetShippingSelection();
+        return;
+      }
+
+      setSelectedAddressId(data.id);
+    };
+
+    void hydrateSelectedAddress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [resetShippingSelection, selectedAddressId, user?.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSelectedAddress = async () => {
+      if (!selectedAddressId) {
+        if (!isMounted) {
+          return;
+        }
+        setSelectedAddress(null);
+        resetShippingSelection();
+        return;
+      }
+
+      setLoadingSelectedAddress(true);
+      const { data, error } = await getAddress(selectedAddressId);
+
+      if (!isMounted) {
+        return;
+      }
+
+      setLoadingSelectedAddress(false);
+
+      if (error || !data) {
+        setSelectedAddress(null);
+        resetShippingSelection();
+        setShippingError(error?.message ?? 'Alamat pengiriman tidak ditemukan.');
+        return;
+      }
+
+      setSelectedAddress(data);
+    };
+
+    void loadSelectedAddress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [resetShippingSelection, selectedAddressId]);
 
   const handleQuantityChange = useCallback(
     (cartItemId: string, newQuantity: number) => {
@@ -434,18 +517,15 @@ export default function Cart() {
     selectedAddress,
   ]);
 
-  const handleManageAddresses = useCallback(
-    (selectedId?: string) => {
-      router.push({
-        pathname: '/cart/addresses',
-        params:
-          (selectedId ?? selectedAddressId)
-            ? { selectedId: selectedId ?? selectedAddressId ?? undefined }
-            : undefined,
-      });
-    },
-    [router, selectedAddressId],
-  );
+  const handleOpenAddressSheet = useCallback(() => {
+    void loadAddressesForSheet();
+    setAddressSheetOpen(true);
+  }, [loadAddressesForSheet]);
+
+  const handleSelectAddress = useCallback((addressId: string) => {
+    setSelectedAddressId(addressId);
+    setAddressSheetOpen(false);
+  }, []);
 
   const handleSelectShippingKey = useCallback((shippingKey: string) => {
     setSelectedShippingKey(currentKey => (currentKey === shippingKey ? currentKey : shippingKey));
@@ -526,23 +606,24 @@ export default function Cart() {
   }, [removePersistData, selectedShippingKey]);
 
   useEffect(() => {
-    if (!selectedAddressId) {
+    if (!selectedAddress?.id) {
       previousSelectedAddressIdRef.current = null;
+      resetShippingSelection();
       return;
     }
 
-    if (previousSelectedAddressIdRef.current === selectedAddressId) {
+    if (previousSelectedAddressIdRef.current === selectedAddress.id) {
       return;
     }
 
-    previousSelectedAddressIdRef.current = selectedAddressId;
+    previousSelectedAddressIdRef.current = selectedAddress.id;
 
-    setSelectedShippingKey(null);
+    resetShippingSelection();
 
     if (cartSnapshot.itemCount > 0) {
       void handleCalculateShipping();
     }
-  }, [cartSnapshot.itemCount, handleCalculateShipping, selectedAddressId]);
+  }, [cartSnapshot.itemCount, handleCalculateShipping, resetShippingSelection, selectedAddress]);
 
   useEffect(() => {
     if (loadingRates || !shouldOpenShippingSheetRef.current) {
@@ -846,7 +927,7 @@ export default function Cart() {
                 />
               </Card>
 
-              {loadingAddresses ? (
+              {loadingSelectedAddress ? (
                 <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
                   <Spinner size="large" color="$primary" />
                 </YStack>
@@ -857,7 +938,7 @@ export default function Cart() {
                   size="$4"
                   backgroundColor="$surface"
                   borderColor="$surfaceBorder"
-                  onPress={() => setAddressSheetOpen(true)}
+                  onPress={handleOpenAddressSheet}
                   aria-label="Ganti alamat pengiriman">
                   <XStack padding="$4" gap="$3" alignItems="center">
                     <XStack alignSelf="flex-start" marginTop="$1">
@@ -906,7 +987,7 @@ export default function Cart() {
                       color="$white"
                       borderRadius="$3"
                       minHeight={44}
-                      onPress={() => handleManageAddresses()}
+                      onPress={handleOpenAddressSheet}
                       aria-label="Tambah alamat pengiriman">
                       Tambah Alamat
                     </TamaguiButton>
@@ -1005,166 +1086,7 @@ export default function Cart() {
         </YStack>
       </ScrollView>
 
-      <Sheet
-        modal
-        dismissOnOverlayPress
-        dismissOnSnapToBottom
-        moveOnKeyboardChange
-        snapPoints={[60]}
-        open={addressSheetOpen}
-        onOpenChange={setAddressSheetOpen}
-        animation="medium"
-        animationConfig={{
-          type: 'spring',
-          damping: 24,
-          mass: 0.9,
-          stiffness: 200,
-        }}>
-        <Sheet.Overlay
-          animation="lazy"
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="$sheetOverlay"
-        />
-        <Sheet.Handle />
-        <Sheet.Frame
-          backgroundColor="$surfaceSubtle"
-          borderTopLeftRadius="$6"
-          borderTopRightRadius="$6">
-          <YStack flex={1}>
-            <YStack px="$4" pt="$2" pb="$3">
-              <Text fontSize="$6" fontWeight="700" color="$color">
-                Pilih Alamat
-              </Text>
-            </YStack>
-
-            <Sheet.ScrollView showsVerticalScrollIndicator={false}>
-              <YStack pb="$4">
-                {addresses.map((address, index) => {
-                  const isSelected = selectedAddressId === address.id;
-                  const fullAddressText = [
-                    address.street_address,
-                    address.city,
-                    address.province,
-                    address.postal_code,
-                  ]
-                    .filter(Boolean)
-                    .join(', ');
-
-                  let addressLabel: string | null = null;
-                  if (
-                    'label' in address &&
-                    typeof address.label === 'string' &&
-                    address.label.trim().length > 0
-                  ) {
-                    addressLabel = address.label.trim();
-                  }
-
-                  const badgeText = address.is_default ? 'Utama' : addressLabel;
-
-                  return (
-                    <React.Fragment key={address.id}>
-                      <XStack
-                        px="$4"
-                        py="$3"
-                        gap="$3"
-                        alignItems="flex-start"
-                        onPress={() => {
-                          setSelectedAddressId(address.id);
-                          setAddressSheetOpen(false);
-                        }}>
-                        <XStack
-                          width={20}
-                          height={20}
-                          borderRadius={10}
-                          marginTop={2}
-                          borderWidth={2}
-                          borderColor={isSelected ? '$primary' : '$colorSubtle'}
-                          backgroundColor={isSelected ? '$primary' : 'transparent'}
-                          alignItems="center"
-                          justifyContent="center">
-                          {isSelected ? (
-                            <XStack
-                              width={8}
-                              height={8}
-                              borderRadius={4}
-                              backgroundColor="$surface"
-                            />
-                          ) : null}
-                        </XStack>
-
-                        <YStack flex={1} gap="$1">
-                          <XStack gap="$2" alignItems="center">
-                            <Text fontWeight="700" color="$color" fontSize="$4">
-                              {address.receiver_name}
-                            </Text>
-                            <Text color="$colorSubtle" fontSize="$3">
-                              ({address.phone_number})
-                            </Text>
-                          </XStack>
-                          <Text color="$colorSubtle" fontSize="$3" numberOfLines={3}>
-                            {fullAddressText}
-                          </Text>
-                          {badgeText ? (
-                            <XStack
-                              alignSelf="flex-start"
-                              borderWidth={1}
-                              borderColor="$primary"
-                              borderRadius="$2"
-                              px="$2"
-                              py="$0.5">
-                              <Text fontSize={11} color="$primary" fontWeight="600">
-                                {badgeText}
-                              </Text>
-                            </XStack>
-                          ) : null}
-                        </YStack>
-
-                        <TamaguiButton
-                          size="$2"
-                          chromeless
-                          color="$primary"
-                          fontWeight="600"
-                          onPress={event => {
-                            event.stopPropagation();
-                            setAddressSheetOpen(false);
-                            router.push({
-                              pathname: '/profile/address-form',
-                              params: { id: address.id },
-                            });
-                          }}>
-                          Ubah
-                        </TamaguiButton>
-                      </XStack>
-
-                      {index < addresses.length - 1 ? <Separator /> : null}
-                    </React.Fragment>
-                  );
-                })}
-              </YStack>
-            </Sheet.ScrollView>
-
-            <YStack px="$4" pt="$2" pb="$4">
-              <TamaguiButton
-                borderRadius="$3"
-                minHeight={44}
-                borderWidth={1}
-                borderColor="$primary"
-                backgroundColor="transparent"
-                color="$primary"
-                mx="$4"
-                mb="$4"
-                onPress={() => {
-                  setAddressSheetOpen(false);
-                  router.push('/profile/address-form');
-                }}>
-                + Tambah Alamat Baru
-              </TamaguiButton>
-            </YStack>
-          </YStack>
-        </Sheet.Frame>
-      </Sheet>
-
+      {/* Shipping Options Sheet */}
       <Sheet
         modal
         dismissOnOverlayPress
@@ -1227,6 +1149,80 @@ export default function Cart() {
                 Konfirmasi
               </TamaguiButton>
             </YStack>
+          </YStack>
+        </Sheet.Frame>
+      </Sheet>
+
+      {/* Address Picker Sheet */}
+      <Sheet
+        modal
+        dismissOnOverlayPress
+        dismissOnSnapToBottom
+        moveOnKeyboardChange
+        snapPoints={[60]}
+        open={addressSheetOpen}
+        onOpenChange={setAddressSheetOpen}
+        animation="medium"
+        animationConfig={{
+          type: 'spring',
+          damping: 24,
+          mass: 0.9,
+          stiffness: 200,
+        }}>
+        <Sheet.Overlay
+          animation="lazy"
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+          backgroundColor="$sheetOverlay"
+        />
+        <Sheet.Handle />
+        <Sheet.Frame
+          backgroundColor="$surfaceSubtle"
+          borderTopLeftRadius="$6"
+          borderTopRightRadius="$6">
+          <YStack flex={1}>
+            <YStack px="$4" pt="$2" pb="$3">
+              <Text fontSize="$6" fontWeight="700" color="$color">
+                Pilih Alamat
+              </Text>
+            </YStack>
+
+            {loadingAddresses ? (
+              <YStack flex={1} alignItems="center" justifyContent="center">
+                <Spinner size="large" color="$primary" />
+              </YStack>
+            ) : availableAddresses.length === 0 ? (
+              <YStack flex={1} alignItems="center" justifyContent="center" px="$4">
+                <Card
+                  borderRadius="$4"
+                  borderWidth={1}
+                  borderStyle="dashed"
+                  borderColor="$surfaceBorder"
+                  backgroundColor="$surface"
+                  padding="$4"
+                  width="100%">
+                  <YStack gap="$3" alignItems="center">
+                    <MapPinIcon size={28} color="$primary" />
+                    <Text color="$color" fontWeight="600" textAlign="center">
+                      Belum ada alamat
+                    </Text>
+                  </YStack>
+                </Card>
+              </YStack>
+            ) : (
+              <Sheet.ScrollView showsVerticalScrollIndicator={false}>
+                <YStack gap="$2" px="$4" pb="$4">
+                  {availableAddresses.map(address => (
+                    <AddressCardSheet
+                      key={address.id}
+                      address={address}
+                      isSelected={address.id === selectedAddressId}
+                      onSelect={handleSelectAddress}
+                    />
+                  ))}
+                </YStack>
+              </Sheet.ScrollView>
+            )}
           </YStack>
         </Sheet.Frame>
       </Sheet>

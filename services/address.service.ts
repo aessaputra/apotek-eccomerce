@@ -112,6 +112,26 @@ export async function getAddress(
   }
 }
 
+export async function getPreferredAddress(
+  profileId: string,
+): Promise<{ data: Address | null; error: Error | null }> {
+  try {
+    const { data, error } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('profile_id', profileId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) return { data: null, error: error as unknown as Error };
+    return { data: (data as Address | null) ?? null, error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
+  }
+}
+
 /**
  * Create a new address
  * If is_default is true, unset other default addresses first

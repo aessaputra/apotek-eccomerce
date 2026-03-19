@@ -172,7 +172,6 @@ function ProductDetailsLoading({
         minHeight={bottomBarHeight}
         pb={bottomPaddingInset}
         style={BOTTOM_BAR_SHADOW}
-        accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants">
         <BottomActionBarContent>
           <XStack alignItems="stretch" justifyContent="space-between" gap="$3">
@@ -608,7 +607,7 @@ export default function ProductDetails() {
           backgroundColor="$surfaceSubtle"
           borderTopLeftRadius="$6"
           borderTopRightRadius="$6">
-          <YStack px="$4" pt="$3" pb={Math.max(insets.bottom + 10, 18)} gap="$4">
+          <YStack px="$4" pt="$3" pb={Math.max(insets.bottom + 12, 20)} gap="$4">
             <XStack alignItems="center" gap="$3">
               {imageUrl ? (
                 <Image

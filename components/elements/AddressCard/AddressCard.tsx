@@ -5,7 +5,10 @@ import { DEFAULT_ACCENT_BORDER_WIDTH, PRESS_OPACITY } from '@/constants/address'
 export interface AddressCardProps {
   address: Address;
   isDefault?: boolean;
+  selected?: boolean;
   onPress?: () => void;
+  onEdit?: () => void;
+  badgeText?: string | null;
 }
 
 const StyledCard = styled(Card, {
@@ -14,6 +17,7 @@ const StyledCard = styled(Card, {
   bw: 1,
   br: '$5',
   elevation: 2,
+  animation: 'quick',
 
   variants: {
     isDefault: {
@@ -28,18 +32,24 @@ const StyledCard = styled(Card, {
         borderColor: '$surfaceBorder',
       },
     },
+    selected: {
+      true: {
+        borderWidth: 2,
+        borderColor: '$primary',
+      },
+      false: {},
+    },
   } as const,
 });
 
-const DefaultBadge = styled(XStack, {
-  px: '$2',
-  py: '$1',
-  br: '$10',
-  backgroundColor: '$primary',
-  alignItems: 'center',
-});
-
-export default function AddressCard({ address, isDefault = false, onPress }: AddressCardProps) {
+export default function AddressCard({
+  address,
+  isDefault = false,
+  selected = false,
+  onPress,
+  onEdit,
+  badgeText,
+}: AddressCardProps) {
   const formattedAddress = [
     address.street_address,
     address.city,
@@ -49,39 +59,59 @@ export default function AddressCard({ address, isDefault = false, onPress }: Add
     .filter(Boolean)
     .join(', ');
 
+  const displayBadge = badgeText ?? (isDefault ? 'Default' : null);
+
   return (
     <StyledCard
       isDefault={isDefault}
+      selected={selected}
       onPress={onPress}
       disabled={!onPress}
       role={onPress ? 'button' : 'none'}
       aria-label={onPress ? `Alamat ${address.receiver_name}` : undefined}
-      aria-describedby={onPress ? 'Tekan untuk melihat detail alamat' : undefined}
       pressStyle={{ opacity: PRESS_OPACITY }}>
       <YStack gap="$2">
-        <XStack justifyContent="space-between" alignItems="flex-start">
-          <YStack flex={1} gap="$1">
-            <XStack gap="$2" alignItems="center">
-              <Text fontSize="$5" fontWeight="700" color="$color">
-                {address.receiver_name}
-              </Text>
-              {isDefault && (
-                <DefaultBadge aria-label="Alamat default" role="note">
-                  <Text fontSize="$1" fontWeight="600" color="$white">
-                    Default
-                  </Text>
-                </DefaultBadge>
-              )}
-            </XStack>
-            <Text fontSize="$3" fontWeight="500" color="$colorSubtle">
+        <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
+          <YStack flex={1} minWidth={0} gap="$1">
+            <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={1}>
+              {address.receiver_name}
+            </Text>
+            <Text fontSize="$3" color="$colorSubtle" numberOfLines={1}>
               {address.phone_number}
             </Text>
           </YStack>
+
+          {onEdit && (
+            <Text
+              fontSize="$3"
+              color="$primary"
+              fontWeight="600"
+              onPress={e => {
+                e.stopPropagation();
+                onEdit();
+              }}>
+              Ubah
+            </Text>
+          )}
         </XStack>
 
-        <Text fontSize="$3" color="$colorPress" lineHeight="$5">
+        <Text fontSize="$3" color="$colorSubtle" numberOfLines={3}>
           {formattedAddress}
         </Text>
+
+        {displayBadge && (
+          <XStack
+            alignSelf="flex-start"
+            borderWidth={1}
+            borderColor="$primary"
+            borderRadius="$2"
+            px="$2"
+            py="$0.5">
+            <Text fontSize="$2" color="$primary" fontWeight="600">
+              {displayBadge}
+            </Text>
+          </XStack>
+        )}
       </YStack>
     </StyledCard>
   );
