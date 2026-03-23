@@ -107,7 +107,7 @@ Deno.serve(async req => {
     const adminClient = getSupabaseAdminClient();
     const { data: order, error: orderError } = await adminClient
       .from('orders')
-      .select('id, status, waybill_number, biteship_order_id')
+      .select('id, status, waybill_number, biteship_order_id, tracking_id')
       .eq('id', body.orderId)
       .single();
 
@@ -202,8 +202,8 @@ Deno.serve(async req => {
     }
 
     if (body.action === 'sync_tracking') {
-      if (!order.biteship_order_id) {
-        return new Response(JSON.stringify({ error: 'Order has no biteship_order_id' }), {
+      if (!order.tracking_id) {
+        return new Response(JSON.stringify({ error: 'Order has no tracking_id' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -214,16 +214,13 @@ Deno.serve(async req => {
         throw new Error('Missing BITESHIP_API_KEY');
       }
 
-      const trackingResp = await fetch(
-        `${BITESHIP_BASE_URL}/trackings/${order.biteship_order_id}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${biteshipKey}`,
-          },
+      const trackingResp = await fetch(`${BITESHIP_BASE_URL}/trackings/${order.tracking_id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          authorization: biteshipKey,
         },
-      );
+      });
 
       if (!trackingResp.ok) {
         const errorBody = await trackingResp.text();
@@ -238,7 +235,7 @@ Deno.serve(async req => {
 
       const trackingData = (await trackingResp.json()) as Record<string, unknown>;
       const trackingStatus = String(trackingData.status || '');
-      const waybill = String(trackingData.waybill || trackingData.waybill_id || '') || null;
+      const waybill = String(trackingData.waybill_id || '') || null;
       const nextStatus = mapBiteshipStatus(trackingStatus, order.status);
 
       const { data: updated, error: updateError } = await adminClient
@@ -264,7 +261,7 @@ Deno.serve(async req => {
         actor_id: userId,
         actor_type: 'admin',
         metadata: {
-          biteship_order_id: order.biteship_order_id,
+          tracking_id: order.tracking_id,
           biteship_status: trackingStatus,
           waybill,
         },

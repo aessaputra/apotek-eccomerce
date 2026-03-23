@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useState, useId } from 'react';
 import { Input, XStack, YStack, Text, styled } from 'tamagui';
 import { XCircleIcon } from '@/components/icons';
 
@@ -9,6 +9,8 @@ export interface FormInputProps {
   required?: boolean;
   /** Error message untuk ditampilkan di bawah input */
   error?: string | null;
+  /** Helper text untuk ditampilkan di bawah input (panduan pengisian) */
+  helperText?: string;
   /** Apakah input disabled */
   disabled?: boolean;
   /** Callback saat value berubah */
@@ -19,9 +21,8 @@ export interface FormInputProps {
   onBlur?: () => void;
   /** Placeholder text */
   placeholder?: string;
-  /** Accessibility label */
+  /** Accessibility label - override label/placeholder default */
   'aria-label'?: string;
-  /** Accessibility hint */
   'aria-describedby'?: string;
   /** Apakah multiline input */
   multiline?: boolean;
@@ -107,6 +108,7 @@ const FormInput = forwardRef<Input, FormInputProps>(
       label,
       required = false,
       error,
+      helperText,
       disabled = false,
       value,
       onChangeText,
@@ -114,7 +116,7 @@ const FormInput = forwardRef<Input, FormInputProps>(
       onBlur,
       placeholder,
       'aria-label': ariaLabel,
-      'aria-describedby': ariaDescribedBy,
+      'aria-describedby': externalAriaDescribedBy,
       multiline = false,
       numberOfLines = 3,
       keyboardType = 'default',
@@ -129,6 +131,12 @@ const FormInput = forwardRef<Input, FormInputProps>(
   ) => {
     const [isFocused, setIsFocused] = useState(false);
     const isDisabled = disabled || !editable;
+    const uniqueId = useId();
+    const helperId = helperText ? `${uniqueId}-helper` : undefined;
+    const errorId = error ? `${uniqueId}-error` : undefined;
+
+    const ariaDescribedBy =
+      externalAriaDescribedBy ?? ([helperId, errorId].filter(Boolean).join(' ') || undefined);
 
     return (
       <YStack>
@@ -175,8 +183,14 @@ const FormInput = forwardRef<Input, FormInputProps>(
           />
         </InputContainer>
 
+        {helperText && !error && (
+          <Text id={helperId} fontSize="$2" color="$colorSubtle" marginTop="$1">
+            {helperText}
+          </Text>
+        )}
+
         {error && (
-          <XStack gap="$1" alignItems="center" marginTop="$1">
+          <XStack id={errorId} gap="$1" alignItems="center" marginTop="$1">
             <XCircleIcon size={14} color="$danger" />
             <Text fontSize="$2" color="$danger">
               {error}

@@ -4,7 +4,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { getSupabaseAdminClient } from '../_shared/supabase.ts';
 
 interface BiteshipProxyRequest {
-  action: 'rates' | 'orders' | 'track' | 'maps' | 'draft_order' | 'create_order' | 'couriers';
+  action: 'rates' | 'track' | 'maps' | 'draft_order' | 'create_order' | 'couriers';
   payload?: Record<string, unknown>;
 }
 
@@ -12,12 +12,14 @@ const BITESHIP_API_KEY = Deno.env.get('BITESHIP_API_KEY');
 if (!BITESHIP_API_KEY) throw new Error('Missing BITESHIP_API_KEY environment variable');
 const BITESHIP_API_URL = 'https://api.biteship.com';
 const DEFAULT_ORIGIN_POSTAL_CODE = 42183;
-const DEFAULT_COURIERS = 'jne,jnt,sicepat,anteraja,pos';
+const DEFAULT_COURIERS = 'jne,jnt,sicepat,anteraja,pos,gojek,grab,lalamove';
 const BITESHIP_ORIGIN_POSTAL_CODE = Number.parseInt(
   Deno.env.get('BITESHIP_ORIGIN_POSTAL_CODE') || '',
   10,
 );
 const BITESHIP_COURIERS = (Deno.env.get('BITESHIP_COURIERS') || '').trim() || DEFAULT_COURIERS;
+const BITESHIP_ORIGIN_LATITUDE = Deno.env.get('BITESHIP_ORIGIN_LATITUDE');
+const BITESHIP_ORIGIN_LONGITUDE = Deno.env.get('BITESHIP_ORIGIN_LONGITUDE');
 const SHOP_SHIPPER_NAME = (Deno.env.get('SHOP_SHIPPER_NAME') || '').trim();
 const SHOP_SHIPPER_PHONE = (Deno.env.get('SHOP_SHIPPER_PHONE') || '').trim();
 const SHOP_SHIPPER_EMAIL = (Deno.env.get('SHOP_SHIPPER_EMAIL') || '').trim();
@@ -184,35 +186,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 5. Validate payload for actions that require order_id
-    if (action === 'orders' && payload?.order_id) {
-      // Verify order ownership
-      const adminClient = getSupabaseAdminClient();
-      const { data: order, error: orderError } = await adminClient
-        .from('orders')
-        .select('user_id')
-        .eq('id', payload.order_id)
-        .single();
-
-      if (orderError || !order) {
-        return new Response(JSON.stringify({ error: 'Order not found' }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Only allow users to access their own orders
-      if (order.user_id !== userId) {
-        return new Response(
-          JSON.stringify({ error: 'Forbidden: You can only access your own orders' }),
-          {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          },
-        );
-      }
-    }
-
     if (action === 'create_order') {
       if (!isRecord(payload) || !payload.order_id) {
         return new Response(JSON.stringify({ error: 'order_id is required for create_order' }), {
@@ -246,11 +219,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 6. Validate waybill_id format to prevent URL manipulation
-    if (action === 'track' && payload?.waybill_id) {
-      const waybillId = String(payload.waybill_id);
-      if (!isValidTrackingId(waybillId)) {
-        return new Response(JSON.stringify({ error: 'Invalid waybill_id format' }), {
+    // 6. Validate tracking_id format to prevent URL manipulation
+    if (action === 'track' && payload?.tracking_id) {
+      const trackingId = String(payload.tracking_id);
+      if (!isValidTrackingId(trackingId)) {
+        return new Response(JSON.stringify({ error: 'Invalid tracking_id format' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -297,6 +270,12 @@ Deno.serve(async (req: Request) => {
         ...ratesPayload,
         origin_postal_code: ratesPayload.origin_postal_code ?? ORIGIN_POSTAL_CODE,
         couriers: ratesPayload.couriers ?? BITESHIP_COURIERS,
+        ...(BITESHIP_ORIGIN_LATITUDE && BITESHIP_ORIGIN_LONGITUDE
+          ? {
+              origin_latitude: Number(BITESHIP_ORIGIN_LATITUDE),
+              origin_longitude: Number(BITESHIP_ORIGIN_LONGITUDE),
+            }
+          : {}),
       };
     }
 
@@ -346,9 +325,6 @@ Deno.serve(async (req: Request) => {
       case 'rates':
         endpoint = '/v1/rates/couriers';
         break;
-      case 'orders':
-        endpoint = '/v1/orders';
-        break;
       case 'draft_order':
         endpoint = '/v1/draft_orders';
         break;
@@ -356,7 +332,7 @@ Deno.serve(async (req: Request) => {
         endpoint = '/v1/orders';
         break;
       case 'track':
-        endpoint = `/v1/trackings/${payload?.waybill_id}`;
+        endpoint = `/v1/trackings/${payload?.tracking_id}`;
         method = 'GET';
         break;
       case 'maps': {
@@ -368,7 +344,7 @@ Deno.serve(async (req: Request) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        endpoint = `/v1/maps/areas?input=${encodeURIComponent(validation.sanitized!)}`;
+        endpoint = `/v1/maps/areas?input=${encodeURIComponent(validation.sanitized!)}&type=single`;
         method = 'GET';
         break;
       }

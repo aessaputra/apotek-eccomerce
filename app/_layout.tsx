@@ -32,6 +32,18 @@ SplashScreen.preventAutoHideAsync();
 
 const VISIBLE_TAB_ROUTES = new Set(['home', 'orders', 'profile']);
 
+// Route groups where the tab bar should be hidden (matched against segments[0])
+const HIDDEN_GROUPS = new Set(['(auth)', 'google-auth', 'cart']);
+// Screen names where the tab bar should be hidden (matched against any segment)
+const HIDDEN_SCREENS = new Set([
+  'edit-profile',
+  'address-form',
+  'addresses',
+  'product-details',
+  'search',
+  'details',
+]);
+
 const spaceTokens = getTokens().space;
 const TAB_BAR_ITEM_PADDING_VERTICAL = spaceTokens[TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN]?.val ?? 4;
 const TAB_BAR_LABEL_MARGIN_TOP = spaceTokens[TAB_BAR_LABEL_MARGIN_TOP_TOKEN]?.val ?? 4;
@@ -113,14 +125,9 @@ function Router() {
     };
   }, [theme]);
 
+  // Exact segment sets to avoid false positives from future routes reusing the same names
   const hideTabBar =
-    currentGroup === '(auth)' ||
-    currentGroup === 'google-auth' ||
-    currentGroup === 'cart' ||
-    segments.includes('edit-profile') ||
-    segments.includes('address-form') ||
-    segments.includes('addresses') ||
-    segments.includes('product-details');
+    HIDDEN_GROUPS.has(currentGroup ?? '') || segments.some(s => HIDDEN_SCREENS.has(s));
 
   const tabBarStyle = useMemo(() => {
     const base = {

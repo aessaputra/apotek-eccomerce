@@ -911,22 +911,6 @@ export default function Cart() {
                 </YStack>
               </Card>
 
-              <Card bordered elevate size="$4">
-                <Card.Header padded>
-                  <Text fontSize="$4" fontWeight="600" color="$color">
-                    Ringkasan Pesanan
-                  </Text>
-                </Card.Header>
-                <Separator />
-                <CartSummary
-                  subtotal={cartSnapshot.packageValue}
-                  shippingCost={selectedShippingOption?.price}
-                  shippingName={selectedShippingOption?.courier_name}
-                  itemCount={cartSnapshot.itemCount}
-                  isLoadingShipping={loadingRates}
-                />
-              </Card>
-
               {loadingSelectedAddress ? (
                 <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
                   <Spinner size="large" color="$primary" />
@@ -1051,6 +1035,22 @@ export default function Cart() {
                     </Text>
                   )}
                 </XStack>
+              </Card>
+
+              <Card bordered elevate size="$4">
+                <Card.Header padded>
+                  <Text fontSize="$4" fontWeight="600" color="$color">
+                    Ringkasan Pesanan
+                  </Text>
+                </Card.Header>
+                <Separator />
+                <CartSummary
+                  subtotal={cartSnapshot.packageValue}
+                  shippingCost={selectedShippingOption?.price}
+                  shippingName={selectedShippingOption?.courier_name}
+                  itemCount={cartSnapshot.itemCount}
+                  isLoadingShipping={loadingRates}
+                />
               </Card>
 
               {shippingError && shippingOptions.length === 0 && !loadingRates ? (

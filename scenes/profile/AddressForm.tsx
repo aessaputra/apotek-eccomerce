@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { YStack, Spinner, styled, ScrollView } from 'tamagui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AddressFieldsForm from '@/components/AddressFormSheet/AddressForm';
 import DefaultAddressToggle from '@/components/AddressFormSheet/DefaultAddressToggle';
@@ -12,8 +12,9 @@ import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { useAddressForm } from '@/hooks/useAddressForm';
 import { useAddressData } from '@/hooks/useAddressData';
+import { buildAddressPayload } from '@/services/address.service';
 import type { AddressInsert } from '@/types/address';
-import { FORM_SCROLL_PADDING } from '@/constants/ui';
+import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -27,7 +28,6 @@ const FormScrollView = styled(ScrollView, {
 const FormContent = styled(YStack, {
   paddingHorizontal: '$4',
   paddingTop: '$3',
-  paddingBottom: FORM_SCROLL_PADDING.SPACIOUS,
   flexGrow: 1,
 });
 
@@ -37,20 +37,20 @@ export default function AddressFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const insets = useSafeAreaInsets();
+  const scrollPaddingBottom = BOTTOM_BAR_HEIGHT + insets.bottom + FORM_SCROLL_PADDING.SPACIOUS;
 
   const {
     values,
     errors,
-    isLoading: formLoading,
-    isSaving: formSaving,
     generalError,
-    setIsLoading,
-    setIsSaving,
     setGeneralError,
     setFieldValue,
     validateField,
     validateAll,
     populateFromAddress,
+    setArea,
+    clearArea,
     refs,
   } = useAddressForm();
 
@@ -60,21 +60,8 @@ export default function AddressFormScreen() {
     error: dataError,
     loadAddress,
     saveAddress,
+    clearError: clearDataError,
   } = useAddressData();
-
-  useEffect(() => {
-    setIsLoading(dataLoading);
-  }, [dataLoading, setIsLoading]);
-
-  useEffect(() => {
-    setIsSaving(dataSaving);
-  }, [dataSaving, setIsSaving]);
-
-  useEffect(() => {
-    if (dataError) {
-      setGeneralError(dataError);
-    }
-  }, [dataError, setGeneralError]);
 
   useEffect(() => {
     if (!isEdit || !id || !user?.id) return;
@@ -90,8 +77,31 @@ export default function AddressFormScreen() {
     });
   }, [id, isEdit, user?.id, loadAddress, populateFromAddress, router]);
 
-  const loading = formLoading || dataLoading;
-  const saving = formSaving || dataSaving;
+  const loading = dataLoading;
+  const saving = dataSaving;
+  const displayedError = generalError ?? dataError;
+
+  const handleFieldCommitted = useCallback(() => {
+    if (generalError) {
+      setGeneralError(null);
+    }
+    if (dataError) {
+      clearDataError();
+    }
+  }, [clearDataError, dataError, generalError, setGeneralError]);
+
+  const handleDefaultToggle = useCallback(
+    (value: boolean) => {
+      setFieldValue('isDefault', value);
+      handleFieldCommitted();
+    },
+    [handleFieldCommitted, setFieldValue],
+  );
+
+  const handleDismissError = useCallback(() => {
+    setGeneralError(null);
+    clearDataError();
+  }, [clearDataError, setGeneralError]);
 
   const handleSave = useCallback(async () => {
     if (!user?.id) return;
@@ -106,15 +116,20 @@ export default function AddressFormScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const payload: AddressInsert = {
+    const basePayload = {
       receiver_name: values.receiverName.trim(),
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
+      area_id: values.areaId,
+      subdistrict_id: values.subdistrictId || values.areaId || null,
+      area_name: values.areaName || null,
       city: values.city.trim(),
       postal_code: values.postalCode.trim(),
       province: values.province.trim() || null,
       is_default: values.isDefault,
     };
+
+    const payload = buildAddressPayload(basePayload, values.latitude, values.longitude);
 
     const success = await saveAddress({
       userId: user.id,
@@ -125,7 +140,7 @@ export default function AddressFormScreen() {
     if (success) {
       setSuccessDialogOpen(true);
     }
-  }, [id, isEdit, router, saveAddress, setGeneralError, user?.id, validateAll, values]);
+  }, [id, saveAddress, setGeneralError, user?.id, validateAll, values]);
 
   if (loading) {
     return (
@@ -140,15 +155,14 @@ export default function AddressFormScreen() {
   return (
     <SafeAreaView edges={['top']}>
       <FormScrollView
+        contentContainerStyle={{
+          paddingBottom: scrollPaddingBottom,
+        }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag">
         <FormContent gap="$4">
-          <ErrorMessage
-            message={generalError}
-            onDismiss={() => setGeneralError(null)}
-            marginBottom="$0"
-          />
+          <ErrorMessage message={displayedError} onDismiss={handleDismissError} marginBottom="$0" />
 
           <AddressFieldsForm
             values={values}
@@ -157,15 +171,15 @@ export default function AddressFormScreen() {
             refs={refs}
             onFieldSave={setFieldValue}
             onFieldValidate={validateField}
-            onFieldCommitted={() => {
-              setGeneralError(null);
-            }}
+            onFieldCommitted={handleFieldCommitted}
+            onAreaSelect={setArea}
+            onAreaClear={clearArea}
           />
 
           <DefaultAddressToggle
             isDefault={values.isDefault}
             isSaving={saving}
-            onToggle={value => setFieldValue('isDefault', value)}
+            onToggle={handleDefaultToggle}
           />
         </FormContent>
       </FormScrollView>

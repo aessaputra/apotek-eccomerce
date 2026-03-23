@@ -20,6 +20,7 @@ const baseAddress: Address = {
   province_id: null,
   district_id: null,
   subdistrict_id: null,
+  area_name: null,
   postal_code: ' 12345 ',
   is_default: false,
   country_code: null,

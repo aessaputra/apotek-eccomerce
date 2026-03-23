@@ -54,11 +54,25 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       apiUrl: process.env.API_URL ?? '',
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '',
+      originLatitude: process.env.EXPO_PUBLIC_ORIGIN_LATITUDE
+        ? Number(process.env.EXPO_PUBLIC_ORIGIN_LATITUDE)
+        : -6.2146,
+      originLongitude: process.env.EXPO_PUBLIC_ORIGIN_LONGITUDE
+        ? Number(process.env.EXPO_PUBLIC_ORIGIN_LONGITUDE)
+        : 106.8451,
     },
     plugins: [
+      'expo-dev-client',
       'expo-router',
       'expo-asset',
       'expo-secure-store',
+      [
+        'react-native-maps',
+        {
+          androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
+          iosGoogleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
+        },
+      ],
       [
         'expo-splash-screen',
         {

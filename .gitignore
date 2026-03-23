@@ -9,7 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Native — CNG: EAS Build runs expo prebuild automatically
+/android
+/ios
 *.orig.*
 *.jks
 *.keystore
@@ -48,3 +50,4 @@ app-example
 # Agent
 .agent/
 #.agents/
+run-gradlew-logs.txt

@@ -7,6 +7,7 @@ export interface AddressFormErrors {
   receiverName: string | null;
   phoneNumber: string | null;
   streetAddress: string | null;
+  areaId: string | null;
   city: string | null;
   postalCode: string | null;
 }
@@ -15,26 +16,37 @@ export interface AddressFormValues {
   receiverName: string;
   phoneNumber: string;
   streetAddress: string;
+  areaId: string;
+  subdistrictId: string;
+  areaName: string;
   city: string;
   postalCode: string;
   province: string;
   isDefault: boolean;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export const initialFormValues: AddressFormValues = {
   receiverName: '',
   phoneNumber: '',
   streetAddress: '',
+  areaId: '',
+  subdistrictId: '',
+  areaName: '',
   city: '',
   postalCode: '',
   province: '',
   isDefault: false,
+  latitude: null,
+  longitude: null,
 };
 
 export const initialFormErrors: AddressFormErrors = {
   receiverName: null,
   phoneNumber: null,
   streetAddress: null,
+  areaId: null,
   city: null,
   postalCode: null,
 };
@@ -142,16 +154,32 @@ export function validatePostalCode(value: string): string | null {
 }
 
 /**
+ * Validates area ID
+ * - Required field
+ * - Must be selected from available areas
+ */
+export function validateAreaId(value: string): string | null {
+  if (!value || value.trim().length === 0) {
+    return 'Area pengiriman wajib dipilih';
+  }
+  return null;
+}
+
+/**
  * Validates all form fields and returns errors object
  * Returns null if all fields are valid
  */
 export function validateAllFields(
-  values: Omit<AddressFormValues, 'province' | 'isDefault'>,
+  values: Omit<
+    AddressFormValues,
+    'province' | 'isDefault' | 'areaName' | 'subdistrictId' | 'latitude' | 'longitude'
+  >,
 ): AddressFormErrors | null {
   const errors: AddressFormErrors = {
     receiverName: validateReceiverName(values.receiverName),
     phoneNumber: validatePhoneNumber(values.phoneNumber),
     streetAddress: validateStreetAddress(values.streetAddress),
+    areaId: validateAreaId(values.areaId),
     city: validateCity(values.city),
     postalCode: validatePostalCode(values.postalCode),
   };

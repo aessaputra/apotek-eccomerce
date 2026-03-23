@@ -37,12 +37,6 @@ export default function HomeStackLayout() {
           headerShown: false,
         }}
       />
-      <Stack.Screen
-        name="search"
-        options={{
-          headerShown: false,
-        }}
-      />
     </Stack>
   );
 }

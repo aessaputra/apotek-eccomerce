@@ -8,6 +8,7 @@ export type Database = {
       addresses: {
         Row: {
           area_id: string | null;
+          area_name: string | null;
           city: string;
           city_id: string | null;
           country_code: string | null;
@@ -15,8 +16,8 @@ export type Database = {
           district_id: string | null;
           id: string;
           is_default: boolean | null;
-          latitude: string | null;
-          longitude: string | null;
+          latitude: number | null;
+          longitude: number | null;
           phone_number: string;
           postal_code: string;
           profile_id: string;
@@ -28,6 +29,7 @@ export type Database = {
         };
         Insert: {
           area_id?: string | null;
+          area_name?: string | null;
           city: string;
           city_id?: string | null;
           country_code?: string | null;
@@ -35,8 +37,8 @@ export type Database = {
           district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
-          latitude?: string | null;
-          longitude?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           phone_number: string;
           postal_code: string;
           profile_id: string;
@@ -48,6 +50,7 @@ export type Database = {
         };
         Update: {
           area_id?: string | null;
+          area_name?: string | null;
           city?: string;
           city_id?: string | null;
           country_code?: string | null;
@@ -55,8 +58,8 @@ export type Database = {
           district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
-          latitude?: string | null;
-          longitude?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           phone_number?: string;
           postal_code?: string;
           profile_id?: string;

@@ -39,14 +39,28 @@ function parseCoordinate(value: number | string | null | undefined): number | nu
     if (!normalized) {
       return null;
     }
-
-    const parsed = Number.parseFloat(normalized);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
   return null;
+}
+
+/**
+ * Build address insert payload with coordinates
+ * Ensures latitude/longitude are properly formatted for storage
+ */
+export function buildAddressPayload(
+  basePayload: Omit<AddressInsert, 'latitude' | 'longitude'>,
+  latitude: number | null,
+  longitude: number | null,
+): AddressInsert {
+  const payload: AddressInsert = { ...basePayload };
+
+  payload.latitude = latitude ?? null;
+  payload.longitude = longitude ?? null;
+
+  return payload;
 }
 
 export function toByteshipShippingAddress(address: Address): ByteshipShippingAddress {

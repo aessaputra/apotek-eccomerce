@@ -39,7 +39,7 @@ export default function TabBarIconWithPill({ focused, children }: TabBarIconWith
     pillScaleX.value = withTiming(focused ? 1 : MD3_PILL.INACTIVE_SCALE_X, {
       duration: MD3_PILL.ANIMATION_SCALE_MS,
     });
-  }, [focused, pillOpacity, pillScaleX]);
+  }, [focused]);
 
   const pillAnimatedStyle = useAnimatedStyle(() => ({
     opacity: pillOpacity.value,

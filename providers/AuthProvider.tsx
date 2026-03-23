@@ -12,6 +12,9 @@ export interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+/** Max time (ms) to wait for auth init before unblocking the splash screen. */
+const INIT_TIMEOUT_MS = 15_000;
+
 export default function AuthProvider({ children }: AuthProviderProps) {
   const { dispatch, setUser, setLoggedIn, setChecked, reset } = useAppSlice();
 
@@ -71,28 +74,39 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     [dispatchAuth, showAlert],
   );
 
-  // Initial session load
+  // Initial session load (with timeout fallback for offline/slow network)
   useEffect(() => {
     let mounted = true;
+    let initTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     async function init() {
+      let dispatched = false;
+
+      initTimeoutId = setTimeout(() => {
+        if (!dispatched && mounted) {
+          dispatched = true;
+          if (__DEV__) console.warn('[AuthProvider] init timeout — proceeding as unauthenticated');
+          dispatchAuth(undefined, false);
+        }
+      }, INIT_TIMEOUT_MS);
+
       try {
-        // Web: process OAuth redirect tokens before getCurrentUser
         const hashResult = await handleOAuthHashTokens();
-        if (hashResult) return; // onAuthStateChange will handle state
+        if (hashResult) return;
 
         const result = await getCurrentUser({ createIfMissing: true });
-        if (!mounted) return;
+        if (!mounted || dispatched) return;
 
         if (!result) {
+          dispatched = true;
           dispatchAuth(undefined, false);
           return;
         }
 
-        // Admin check uses reset() instead of dispatchAuth for init
         if (result.profile.role === 'admin') {
           await authSignOut();
-          if (mounted) {
+          if (mounted && !dispatched) {
+            dispatched = true;
             dispatch(reset());
             dispatch(setChecked(true));
             showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
@@ -100,16 +114,25 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        await validateAndDispatch(result.user, result.profile, mounted);
+        if (!dispatched) {
+          dispatched = true;
+          await validateAndDispatch(result.user, result.profile, mounted);
+        }
       } catch (error) {
         if (__DEV__) console.warn('[AuthProvider] init error:', error);
-        if (mounted) dispatchAuth(undefined, false);
+        if (mounted && !dispatched) {
+          dispatched = true;
+          dispatchAuth(undefined, false);
+        }
+      } finally {
+        clearTimeout(initTimeoutId);
       }
     }
 
     init();
     return () => {
       mounted = false;
+      clearTimeout(initTimeoutId);
     };
   }, [dispatch, setChecked, reset, showAlert, dispatchAuth, validateAndDispatch]);
 

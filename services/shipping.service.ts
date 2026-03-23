@@ -1,4 +1,5 @@
 import { supabase } from '@/utils/supabase';
+import config from '@/utils/config';
 import type { Address } from '@/types/address';
 import type {
   BiteshipArea,
@@ -7,7 +8,6 @@ import type {
   ShippingQuoteParams,
   ShippingQuoteResult,
 } from '@/types/shipping';
-import { toByteshipShippingAddress } from './address.service';
 
 interface BiteshipProxyResponse<T> {
   data?: T;
@@ -149,8 +149,26 @@ function toStringValue(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+const ORIGIN_LATITUDE = config.originLatitude;
+const ORIGIN_LONGITUDE = config.originLongitude;
+
 function normalizeAreaId(address: Address): string | null {
-  return address.subdistrict_id || address.district_id || address.city_id || address.province_id;
+  return (
+    address.area_id ||
+    address.subdistrict_id ||
+    address.district_id ||
+    address.city_id ||
+    address.province_id
+  );
+}
+
+function parseCoord(value: number | string | null | undefined): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const n = Number.parseFloat(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
 }
 
 function normalizeDeliveryEstimate(rate: Record<string, unknown>): string {
@@ -220,6 +238,34 @@ export async function searchBiteshipArea(
     return { data: areas, error: null };
   } catch (error) {
     return { data: [], error: error as Error };
+  }
+}
+
+export async function getAreaById(
+  areaId: string,
+): Promise<{ data: BiteshipArea | null; error: Error | null }> {
+  try {
+    const { data, error } = await invokeBiteship({
+      action: 'maps',
+      payload: { input: areaId },
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    const response = (data || {}) as BiteshipProxyResponse<BiteshipArea[]>;
+    const areas = Array.isArray(response.areas)
+      ? response.areas
+      : Array.isArray(response.data as unknown[] | undefined)
+        ? ((response.data as unknown[]).filter(Boolean) as BiteshipArea[])
+        : [];
+
+    // Only return exact ID match, not fallback to first result
+    const area = areas.find(a => a.id === areaId) || null;
+    return { data: area, error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
   }
 }
 
@@ -298,10 +344,14 @@ export async function getShippingRatesForAddress(
       };
     }
 
-    const normalized = toByteshipShippingAddress(params.address);
+    const recipientName =
+      typeof params.address.receiver_name === 'string' ? params.address.receiver_name.trim() : '';
     const packageName =
-      params.package_name ||
-      (normalized.recipient_name ? `Order for ${normalized.recipient_name}` : 'Pharmacy order');
+      params.package_name || (recipientName ? `Order for ${recipientName}` : 'Pharmacy order');
+
+    const destLat = parseCoord(params.address.latitude);
+    const destLng = parseCoord(params.address.longitude);
+    const hasDestCoords = destLat !== null && destLng !== null;
 
     const { data, error } = await invokeBiteship({
       action: 'rates',
@@ -309,6 +359,14 @@ export async function getShippingRatesForAddress(
         ...(destinationAreaId
           ? { destination_area_id: destinationAreaId }
           : { destination_postal_code: destinationPostalCode }),
+        ...(hasDestCoords
+          ? {
+              destination_latitude: destLat,
+              destination_longitude: destLng,
+              origin_latitude: ORIGIN_LATITUDE,
+              origin_longitude: ORIGIN_LONGITUDE,
+            }
+          : {}),
         ...(params.couriers ? { couriers: params.couriers } : {}),
         items: [
           {

@@ -7,6 +7,8 @@ const extra = Constants.expoConfig?.extra as
       apiUrl?: string;
       supabaseUrl?: string;
       supabasePublishableKey?: string;
+      originLatitude?: number;
+      originLongitude?: number;
     }
   | undefined;
 
@@ -15,11 +17,15 @@ const config = {
   apiUrl: extra?.apiUrl ?? '',
   supabaseUrl: extra?.supabaseUrl ?? '',
   supabasePublishableKey: extra?.supabasePublishableKey ?? '',
+  originLatitude: extra?.originLatitude ?? -6.2146,
+  originLongitude: extra?.originLongitude ?? 106.8451,
 } as const satisfies {
   env: Env;
   apiUrl: string;
   supabaseUrl: string;
   supabasePublishableKey: string;
+  originLatitude: number;
+  originLongitude: number;
 };
 
 export default config;

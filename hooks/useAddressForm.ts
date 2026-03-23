@@ -9,6 +9,7 @@ import {
   validateReceiverName,
   validatePhoneNumber,
   validateStreetAddress,
+  validateAreaId,
   validateCity,
   validatePostalCode,
   validateAllFields,
@@ -19,9 +20,6 @@ export interface UseAddressFormReturn {
   values: AddressFormValues;
   // Form errors
   errors: AddressFormErrors;
-  // Loading and saving states
-  isLoading: boolean;
-  isSaving: boolean;
   // General error message
   generalError: string | null;
   // Refs for focus management
@@ -34,10 +32,17 @@ export interface UseAddressFormReturn {
     provinceRef: React.RefObject<RNTextInput | null>;
   };
   // Actions
-  setIsLoading: (loading: boolean) => void;
-  setIsSaving: (saving: boolean) => void;
   setGeneralError: (error: string | null) => void;
   setFieldValue: <K extends keyof AddressFormValues>(field: K, value: AddressFormValues[K]) => void;
+  setArea: (area: {
+    id: string;
+    subdistrictId: string;
+    name: string;
+    city: string;
+    province: string;
+    postalCode: string;
+  }) => void;
+  clearArea: () => void;
   validateField: (field: keyof AddressFormErrors, value: string) => boolean;
   validateAll: () => boolean;
   resetForm: () => void;
@@ -55,10 +60,6 @@ export function useAddressForm(): UseAddressFormReturn {
 
   // Form errors state
   const [errors, setErrors] = useState<AddressFormErrors>(initialFormErrors);
-
-  // Loading and saving states
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
 
   // General error message
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -89,6 +90,49 @@ export function useAddressForm(): UseAddressFormReturn {
   }, []);
 
   /**
+   * Clear area selection when dependent fields are manually edited
+   */
+  const clearArea = useCallback(() => {
+    setValues(prev => ({
+      ...prev,
+      areaId: '',
+      subdistrictId: '',
+      areaName: '',
+    }));
+    // Clear area error since user is now manually entering data
+    clearFieldError('areaId');
+  }, [clearFieldError]);
+
+  /**
+   * Set area from area picker selection
+   */
+  const setArea = useCallback(
+    (area: {
+      id: string;
+      subdistrictId: string;
+      name: string;
+      city: string;
+      province: string;
+      postalCode: string;
+    }) => {
+      setValues(prev => ({
+        ...prev,
+        areaId: area.id,
+        subdistrictId: area.subdistrictId,
+        areaName: area.name,
+        city: area.city,
+        province: area.province,
+        postalCode: area.postalCode,
+      }));
+      // Clear errors for all auto-populated fields
+      clearFieldError('areaId');
+      clearFieldError('city');
+      clearFieldError('postalCode');
+    },
+    [clearFieldError],
+  );
+
+  /**
    * Validate a single field and update error state
    */
   const validateField = useCallback((field: keyof AddressFormErrors, value: string): boolean => {
@@ -103,6 +147,9 @@ export function useAddressForm(): UseAddressFormReturn {
         break;
       case 'streetAddress':
         error = validateStreetAddress(value);
+        break;
+      case 'areaId':
+        error = validateAreaId(value);
         break;
       case 'city':
         error = validateCity(value);
@@ -124,6 +171,7 @@ export function useAddressForm(): UseAddressFormReturn {
       receiverName: values.receiverName,
       phoneNumber: values.phoneNumber,
       streetAddress: values.streetAddress,
+      areaId: values.areaId,
       city: values.city,
       postalCode: values.postalCode,
     });
@@ -143,22 +191,34 @@ export function useAddressForm(): UseAddressFormReturn {
     setValues(initialFormValues);
     setErrors(initialFormErrors);
     setGeneralError(null);
-    setIsLoading(false);
-    setIsSaving(false);
   }, []);
 
   /**
    * Populate form from existing address data
    */
   const populateFromAddress = useCallback((address: Address) => {
+    const parseCoord = (v: number | string | null | undefined): number | null => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string') {
+        const n = Number.parseFloat(v);
+        return Number.isFinite(n) ? n : null;
+      }
+      return null;
+    };
+
     setValues({
       receiverName: address.receiver_name,
       phoneNumber: address.phone_number,
       streetAddress: address.street_address,
+      areaId: address.area_id || address.subdistrict_id || '',
+      subdistrictId: address.subdistrict_id || '',
+      areaName: address.area_name || '',
       city: address.city,
       postalCode: address.postal_code,
       province: address.province || '',
       isDefault: address.is_default ?? false,
+      latitude: parseCoord(address.latitude),
+      longitude: parseCoord(address.longitude),
     });
     setErrors(initialFormErrors);
     setGeneralError(null);
@@ -167,8 +227,6 @@ export function useAddressForm(): UseAddressFormReturn {
   return {
     values,
     errors,
-    isLoading,
-    isSaving,
     generalError,
     refs: {
       receiverNameRef,
@@ -178,10 +236,10 @@ export function useAddressForm(): UseAddressFormReturn {
       postalCodeRef,
       provinceRef,
     },
-    setIsLoading,
-    setIsSaving,
     setGeneralError,
     setFieldValue,
+    setArea,
+    clearArea,
     validateField,
     validateAll,
     resetForm,

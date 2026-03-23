@@ -10,8 +10,12 @@ export type AddressInsert = Omit<TablesInsert<'addresses'>, 'profile_id'>;
 export type AddressUpdate = Omit<TablesUpdate<'addresses'>, 'profile_id'>;
 
 // Row type (returned from .select())
-export type Address = Omit<Tables<'addresses'>, 'latitude' | 'longitude' | 'area_id'> & {
+export type Address = Omit<
+  Tables<'addresses'>,
+  'latitude' | 'longitude' | 'area_id' | 'area_name'
+> & {
   area_id?: string | null;
-  latitude: number | string | null;
-  longitude: number | string | null;
+  area_name?: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
