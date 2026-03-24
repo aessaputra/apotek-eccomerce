@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { Sheet, YStack, XStack, Text } from 'tamagui';
-import { MapPin } from '@tamagui/lucide-icons';
+import { MapPin, X } from '@tamagui/lucide-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import Button from '@/components/elements/Button';
@@ -127,9 +127,9 @@ function MapPinSheet({ isOpen, onClose, onConfirm, initialCoords }: MapPinSheetP
       open={isOpen}
       onOpenChange={handleOpenChange}
       modal
-      dismissOnOverlayPress
-      dismissOnSnapToBottom
-      snapPoints={[95]}
+      dismissOnSnapToBottom={false}
+      disableDrag
+      snapPoints={[100]}
       animation="medium">
       <Sheet.Overlay
         animation="lazy"
@@ -137,18 +137,8 @@ function MapPinSheet({ isOpen, onClose, onConfirm, initialCoords }: MapPinSheetP
         exitStyle={{ opacity: 0 }}
         backgroundColor="$sheetOverlay"
       />
-      <Sheet.Handle />
-      <Sheet.Frame backgroundColor="$background" borderTopLeftRadius="$6" borderTopRightRadius="$6">
+      <Sheet.Frame backgroundColor="$background">
         <YStack flex={1}>
-          <YStack paddingHorizontal="$4" paddingTop="$3" paddingBottom="$2">
-            <Text fontSize="$6" fontWeight="700" color="$color">
-              Pilih Lokasi di Peta
-            </Text>
-            <Text fontSize="$3" color="$colorMuted" marginTop="$1">
-              Ketuk peta atau seret pin untuk menentukan lokasi
-            </Text>
-          </YStack>
-
           <YStack flex={1} overflow="hidden">
             {MapView && Marker ? (
               <MapView
@@ -173,6 +163,22 @@ function MapPinSheet({ isOpen, onClose, onConfirm, initialCoords }: MapPinSheetP
                 </Text>
               </YStack>
             )}
+
+            <XStack
+              position="absolute"
+              top={insets.top + 12}
+              left={12}
+              zIndex={100}
+              width={40}
+              height={40}
+              borderRadius={20}
+              backgroundColor="rgba(0,0,0,0.5)"
+              alignItems="center"
+              justifyContent="center"
+              pressStyle={{ opacity: 0.7 }}
+              onPress={onClose}>
+              <X size={20} color="white" />
+            </XStack>
           </YStack>
 
           <YStack
