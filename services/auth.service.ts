@@ -1,5 +1,7 @@
 import { supabase } from '@/utils/supabase';
 import { makeRedirectUri } from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
@@ -75,35 +77,82 @@ async function exchangeCode(
   }
 }
 
-/**
- * Create session from OAuth redirect URL (native PKCE flow).
- * Extracts ?code= param and exchanges it via exchangeCode().
- */
-async function createSessionFromUrl(url: string) {
-  const parsed = new URL(url);
-  const errorCode =
-    parsed.searchParams.get('error_code') ?? parsed.searchParams.get('error') ?? null;
+// Concurrent callers share the same exchange promise; evicted on failure for retry.
+const _exchangePromises = new Map<
+  string,
+  Promise<{ data: unknown; error: GoogleAuthError | null }>
+>();
 
-  if (errorCode) {
-    return {
-      data: null,
-      error: { message: errorCode, name: 'OAuthCallbackError' },
-    };
-  }
+export async function createSessionFromUrl(url: string) {
+  try {
+    const { params, errorCode } = QueryParams.getQueryParams(url);
 
-  const code = parsed.searchParams.get('code');
+    if (__DEV__) {
+      console.log('[auth.service] createSessionFromUrl params:', {
+        hasCode: Boolean(params?.code),
+        errorCode,
+      });
+    }
 
-  if (!code) {
+    if (errorCode) {
+      return {
+        data: null,
+        error: { message: errorCode, name: 'OAuthCallbackError' } as GoogleAuthError,
+      };
+    }
+
+    const callbackError = params?.error_code ?? params?.error;
+    if (callbackError) {
+      return {
+        data: null,
+        error: { message: callbackError, name: 'OAuthCallbackError' } as GoogleAuthError,
+      };
+    }
+
+    const code = params?.code;
+
+    if (!code) {
+      return {
+        data: null,
+        error: {
+          message: 'Authorization code tidak ditemukan di redirect URL',
+          name: 'AuthCodeError',
+        } as GoogleAuthError,
+      };
+    }
+
+    const existing = _exchangePromises.get(code);
+    if (existing) {
+      if (__DEV__) {
+        console.log('[auth.service] Code exchange already in flight, joining');
+      }
+      return existing;
+    }
+
+    const promise = exchangeCode(code).then(result => {
+      if (result.error) {
+        _exchangePromises.delete(code);
+      }
+      return result;
+    });
+    _exchangePromises.set(code, promise);
+
+    return promise;
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+
+    if (__DEV__) {
+      console.log('[auth.service] createSessionFromUrl exception:', message);
+    }
+
     return {
       data: null,
       error: {
-        message: 'Authorization code tidak ditemukan di redirect URL',
-        name: 'AuthCodeError',
-      },
+        message: `Gagal memproses callback OAuth: ${message}`,
+        name: 'OAuthCallbackParseError',
+      } as GoogleAuthError,
     };
   }
-
-  return exchangeCode(code);
 }
 
 /**
@@ -132,15 +181,65 @@ export async function handleOAuthHashTokens(): Promise<{
  * Web: full-page redirect. Native: in-app browser via expo-web-browser.
  */
 export async function signInWithGoogle(): Promise<GoogleAuthResult> {
-  // Web: full-page redirect (avoids COOP popup issue)
-  if (Platform.OS === 'web') {
-    const webRedirectTo = typeof window !== 'undefined' ? window.location.origin : '';
+  let linkingSubscription: ReturnType<typeof Linking.addEventListener> | null = null;
+  let resolveLinkingUrl: ((url: string) => void) | null = null;
 
-    const webResult = await supabase.auth.signInWithOAuth({
+  try {
+    if (Platform.OS === 'web') {
+      const webRedirectTo = typeof window !== 'undefined' ? window.location.origin : '';
+
+      const webResult = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: webRedirectTo,
+          skipBrowserRedirect: false,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      return {
+        data: webResult.data,
+        error: webResult.error
+          ? { message: webResult.error.message, name: webResult.error.name }
+          : null,
+      };
+    }
+
+    const isAndroid = Platform.OS === 'android';
+    let linkingPromise: Promise<string> | null = null;
+    const redirectTo = makeRedirectUri({
+      path: 'google-auth',
+    });
+
+    if (__DEV__) {
+      console.log('[auth.service] Google native redirectTo:', redirectTo);
+    }
+
+    // Android only: independent Linking listener as fallback for singleTask race
+    // condition where openAuthSessionAsync returns 'dismiss' even on success
+    // (expo/expo PR #34160). iOS handles this natively — no listener needed.
+    if (isAndroid) {
+      linkingPromise = new Promise<string>(resolve => {
+        resolveLinkingUrl = resolve;
+      });
+      linkingSubscription = Linking.addEventListener('url', event => {
+        if (__DEV__) {
+          console.log('[auth.service] Linking callback received:', event.url);
+        }
+        if (event.url.startsWith(redirectTo)) {
+          resolveLinkingUrl?.(event.url);
+        }
+      });
+    }
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: webRedirectTo,
-        skipBrowserRedirect: false,
+        redirectTo,
+        skipBrowserRedirect: true,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -148,52 +247,87 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
       },
     });
 
-    return {
-      data: webResult.data,
-      error: webResult.error
-        ? { message: webResult.error.message, name: webResult.error.name }
-        : null,
-    };
-  }
+    if (error) {
+      return { data: null, error };
+    }
 
-  // Native: in-app browser via WebBrowser
-  const redirectTo = makeRedirectUri({
-    path: 'google-auth',
-  });
+    if (__DEV__) {
+      console.log('[auth.service] Google OAuth URL exists:', Boolean(data?.url));
+    }
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo,
-      skipBrowserRedirect: true,
-      queryParams: {
-        access_type: 'offline',
-        prompt: 'consent',
-      },
-    },
-  });
+    if (!data?.url) {
+      return {
+        data: null,
+        error: { message: 'OAuth URL tidak tersedia', name: 'AuthError' },
+      };
+    }
 
-  if (error) {
-    return { data: null, error };
-  }
+    const browserOptions: WebBrowser.WebBrowserOpenOptions = isAndroid
+      ? { createTask: false }
+      : { showInRecents: true };
 
-  if (!data?.url) {
-    return {
-      data: null,
-      error: { message: 'OAuth URL tidak tersedia', name: 'AuthError' },
-    };
-  }
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, browserOptions);
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
-    showInRecents: true,
-  });
+    if (__DEV__) {
+      console.log('[auth.service] openAuthSessionAsync result:', result);
+    }
 
-  if (result.type !== 'success') {
+    if (result.type === 'success') {
+      return createSessionFromUrl(result.url);
+    }
+
+    // Android fallback: wait for Linking event with bounded timeout.
+    // On 'dismiss', deep link may still arrive — wait up to 2s for it.
+    if (isAndroid && linkingPromise) {
+      if (__DEV__) {
+        console.log('[auth.service] Android dismiss — waiting for Linking callback...');
+      }
+
+      const LINKING_WAIT_MS = 2_000;
+      const callbackUrl = await Promise.race([
+        linkingPromise,
+        new Promise<null>(resolve => setTimeout(() => resolve(null), LINKING_WAIT_MS)),
+      ]);
+
+      if (__DEV__) {
+        console.log('[auth.service] Android fallback URL:', callbackUrl);
+      }
+
+      if (callbackUrl) {
+        return createSessionFromUrl(callbackUrl);
+      }
+    }
+
+    if (result.type === 'locked') {
+      return {
+        data: null,
+        error: {
+          message: 'Sesi login Google sedang berjalan. Coba lagi sebentar.',
+          name: 'AuthLockedError',
+        },
+      };
+    }
+
     return {
       data: null,
       error: { message: 'Login Google dibatalkan', name: 'AuthCancelError' },
     };
-  }
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
 
-  return createSessionFromUrl(result.url);
+    if (__DEV__) {
+      console.log('[auth.service] signInWithGoogle native exception:', message);
+    }
+
+    return {
+      data: null,
+      error: {
+        message: `Gagal menjalankan login Google: ${message}`,
+        name: 'AuthGoogleError',
+      },
+    };
+  } finally {
+    resolveLinkingUrl = null;
+    linkingSubscription?.remove();
+  }
 }

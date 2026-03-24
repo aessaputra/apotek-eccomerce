@@ -75,13 +75,31 @@ export default function Login() {
     try {
       const { error: err } = await signInWithGoogle();
       if (err) {
+        if (err.name === 'AuthCancelError') return;
         setError(err.message ?? 'Login dengan Google gagal.');
         return;
       }
       // Setelah setSession berhasil, AuthProvider.onAuthStateChange
       // akan menangani role/ban check dan update Redux state.
-    } catch {
-      setError('Terjadi kesalahan saat login dengan Google.');
+    } catch (thrown: unknown) {
+      if (__DEV__) {
+        console.log('[Login] handleGoogleLogin exception:', thrown);
+      }
+
+      const errorName =
+        typeof thrown === 'object' && thrown !== null && 'name' in thrown
+          ? String((thrown as { name: unknown }).name)
+          : '';
+
+      const errorMessage = thrown instanceof Error ? thrown.message : String(thrown ?? '');
+      const isCancellation =
+        errorName === 'AuthCancelError' ||
+        errorMessage.toLowerCase().includes('cancel') ||
+        errorMessage.toLowerCase().includes('dibatalkan');
+
+      if (!isCancellation) {
+        setError('Terjadi kesalahan saat login dengan Google. Silakan coba lagi.');
+      }
     } finally {
       setOauthLoading(false);
     }
