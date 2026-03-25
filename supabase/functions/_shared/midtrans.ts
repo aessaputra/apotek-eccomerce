@@ -7,6 +7,12 @@ import type {
   SnapItemDetail,
 } from './types.ts';
 
+declare const Deno: {
+  env: {
+    get: (key: string) => string | undefined;
+  };
+};
+
 export const verifyMidtransSignature = async (
   orderId: string,
   statusCode: string,
@@ -54,7 +60,7 @@ export const verifyMidtransTransaction = async (
 export const mapMidtransStatus = (
   transactionStatus: string,
   fraudStatus: string,
-  currentPaymentStatus: string,
+  currentPaymentStatus: MidtransStatusMapping['newPaymentStatus'],
   currentOrderStatus: string,
 ): MidtransStatusMapping => {
   let newPaymentStatus = currentPaymentStatus;
@@ -62,37 +68,57 @@ export const mapMidtransStatus = (
   let shouldReduceStock = false;
 
   if (transactionStatus === 'capture') {
-    if (fraudStatus === 'challenge') {
+    if (fraudStatus === 'deny') {
+      newPaymentStatus = 'deny';
+      newOrderStatus = 'cancelled';
+    } else if (fraudStatus === 'challenge') {
       newPaymentStatus = 'pending';
     } else if (fraudStatus === 'accept') {
-      newPaymentStatus = 'success';
+      newPaymentStatus = 'settlement';
       newOrderStatus = 'awaiting_shipment';
-      shouldReduceStock = true;
+      shouldReduceStock = currentPaymentStatus !== 'settlement';
     }
   } else if (transactionStatus === 'settlement') {
-    newPaymentStatus = 'success';
+    newPaymentStatus = 'settlement';
     newOrderStatus = 'awaiting_shipment';
-    shouldReduceStock = true;
+    shouldReduceStock = currentPaymentStatus !== 'settlement';
   } else if (['cancel', 'deny', 'expire'].includes(transactionStatus)) {
-    newPaymentStatus = 'failed';
+    newPaymentStatus = transactionStatus as MidtransStatusMapping['newPaymentStatus'];
     newOrderStatus = 'cancelled';
+  } else if (transactionStatus === 'refund') {
+    newPaymentStatus = 'refund';
+  } else if (transactionStatus === 'partial_refund') {
+    newPaymentStatus = 'partial_refund';
+  } else if (transactionStatus === 'chargeback') {
+    newPaymentStatus = 'chargeback';
+  } else if (transactionStatus === 'partial_chargeback') {
+    newPaymentStatus = 'partial_chargeback';
+  } else if (transactionStatus === 'authorize') {
+    newPaymentStatus = 'authorize';
   } else if (transactionStatus === 'pending') {
     newPaymentStatus = 'pending';
+  } else if (transactionStatus === 'failure') {
+    newPaymentStatus = 'deny';
+    newOrderStatus = 'cancelled';
   }
 
   return { newPaymentStatus, newOrderStatus, shouldReduceStock };
 };
 
 export const buildSnapPayload = (order: Order, user: AuthUser): SnapPayload => {
+  if (!order.midtrans_order_id) {
+    throw new Error('Order does not have midtrans_order_id');
+  }
+
   let calculatedGrossAmount = 0;
 
-  const itemDetails: SnapItemDetail[] = (order.order_items || []).map(item => {
+  const itemDetails: SnapItemDetail[] = (order.order_items || []).map((item, index) => {
     const price = Math.round(Number(item.price_at_purchase));
     const quantity = Number(item.quantity);
     calculatedGrossAmount += price * quantity;
 
     return {
-      id: item.product_id,
+      id: item.product_id || `ITEM-${index + 1}`,
       price: price,
       quantity: quantity,
       name: item.products?.name?.slice(0, 50) || 'Product',
@@ -121,7 +147,7 @@ export const buildSnapPayload = (order: Order, user: AuthUser): SnapPayload => {
 
   return {
     transaction_details: {
-      order_id: order.midtrans_order_id!,
+      order_id: order.midtrans_order_id,
       gross_amount: calculatedGrossAmount,
     },
     item_details: itemDetails,

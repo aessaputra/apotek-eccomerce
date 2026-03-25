@@ -1,274 +1,780 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { getSupabaseAdminClient } from '../_shared/supabase.ts';
+import { createBiteshipOrder } from '../_shared/biteship.ts';
 import {
+  mapMidtransStatus,
   verifyMidtransSignature,
   verifyMidtransTransaction,
-  mapMidtransStatus,
 } from '../_shared/midtrans.ts';
-import { createBiteshipOrder } from '../_shared/biteship.ts';
-import type { MidtransWebhookPayload, Order, BiteshipOrderResponse } from '../_shared/types.ts';
+import { getSupabaseAdminClient } from '../_shared/supabase.ts';
+import type {
+  BiteshipOrderResponse,
+  MidtransStatusResponse,
+  MidtransWebhookPayload,
+  Order,
+  PaymentStatus,
+} from '../_shared/types.ts';
 
-Deno.serve(async req => {
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+declare const Deno: {
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void;
+  env: {
+    get: (key: string) => string | undefined;
+  };
+};
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const SIDE_EFFECT_LEASE_MS = 10 * 60 * 1000;
+const BITESHIP_CALL_TIMEOUT_MS = 45_000;
+
+const PAYMENT_TYPE_ALLOWLIST = new Set([
+  'credit_card',
+  'bank_transfer',
+  'echannel',
+  'gopay',
+  'shopeepay',
+  'qris',
+  'akulaku',
+  'kredivo',
+  'indomaret',
+  'alfamart',
+  'bca_klikbca',
+  'bca_klikpay',
+  'bri_epay',
+  'cimb_clicks',
+  'danamon_online',
+  'uob_ezpay',
+  'other',
+]);
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: JSON_HEADERS,
+  });
+}
+
+function toNumericAmount(value: string | number | null | undefined): number {
+  if (value == null) return 0;
+  return Number.parseFloat(String(value));
+}
+
+function normalizePaymentType(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return PAYMENT_TYPE_ALLOWLIST.has(value) ? value : 'other';
+}
+
+function buildWebhookEventKey(payload: MidtransWebhookPayload): string {
+  // Include fraud_status to differentiate capture+challenge from capture+accept
+  const fraudStatus = payload.fraud_status || '';
+  return [
+    payload.transaction_id || payload.order_id,
+    payload.transaction_status,
+    payload.status_code,
+    payload.gross_amount,
+    fraudStatus,
+  ].join(':');
+}
+
+function getPaidAt(nextPaymentStatus: PaymentStatus): string | null {
+  return nextPaymentStatus === 'settlement' ? new Date().toISOString() : null;
+}
+
+function pickNotificationDate(value?: string): string | null {
+  if (!value) return null;
+  return value;
+}
+
+async function persistRawNotificationEarly(
+  adminClient: ReturnType<typeof getSupabaseAdminClient>,
+  payload: MidtransWebhookPayload,
+): Promise<void> {
+  const rawRecord = {
+    midtrans_order_id: payload.order_id,
+    midtrans_transaction_id: payload.transaction_id || null,
+    transaction_status: payload.transaction_status || null,
+    fraud_status: payload.fraud_status || null,
+    status_code: payload.status_code || null,
+    gross_amount: toNumericAmount(payload.gross_amount),
+    currency: payload.currency || 'IDR',
+    raw_notification: payload,
+  };
+
+  const { error } = await adminClient
+    .from('payments')
+    .upsert(rawRecord, { onConflict: 'midtrans_order_id' });
+
+  if (error) {
+    console.error('[midtrans-webhook] Failed to persist raw notification:', error.message);
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
 
   try {
-    const bodyText = await req.text();
-    let payload: MidtransWebhookPayload;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        reject(new Error(timeoutMessage));
+      }, timeoutMs);
+    });
+
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutHandle !== undefined) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
+async function verifyMidtransTransactionWithRetry(
+  orderId: string,
+  serverKey: string,
+  attempts = 3,
+): Promise<MidtransStatusResponse> {
+  let lastError: unknown;
+
+  for (let index = 0; index < attempts; index += 1) {
     try {
-      payload = JSON.parse(bodyText);
-    } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), { status: 400 });
+      return await verifyMidtransTransaction(orderId, serverKey);
+    } catch (error) {
+      lastError = error;
+      if (index < attempts - 1) {
+        await sleep(300 * (index + 1));
+      }
     }
-    console.log('[webhook] Received notification for order:', payload.order_id);
+  }
 
-    const serverKey = Deno.env.get('MIDTRANS_SERVER_KEY');
-    const biteshipKey = Deno.env.get('BITESHIP_API_KEY');
-    if (!serverKey) throw new Error('Midtrans server key not configured');
+  throw lastError instanceof Error ? lastError : new Error('Midtrans verification failed');
+}
 
-    const {
-      order_id,
-      status_code,
-      gross_amount,
-      signature_key,
-      transaction_status,
-      fraud_status,
-      transaction_id,
-      payment_type,
-    } = payload;
+async function getOrderWithRetry(
+  adminClient: ReturnType<typeof getSupabaseAdminClient>,
+  midtransOrderId: string,
+  attempts = 3,
+): Promise<{ data: unknown; error: unknown }> {
+  let latestResult: { data: unknown; error: unknown } = { data: null, error: null };
 
-    // 1. Verify Signature
-    const isValidSignature = await verifyMidtransSignature(
-      order_id,
-      status_code,
-      gross_amount,
-      serverKey,
-      signature_key,
-    );
-    if (!isValidSignature) {
-      console.error(`Invalid signature. Got: ${signature_key}`);
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401 });
-    }
-
-    // 2. Double-verify via Midtrans GET Status API
-    const verifiedStatus = await verifyMidtransTransaction(order_id, serverKey);
-    const actualTransactionStatus = verifiedStatus.transaction_status;
-    const actualFraudStatus = verifiedStatus.fraud_status;
-
-    if (actualTransactionStatus !== transaction_status) {
-      console.warn(
-        `[webhook] Status mismatch! Webhook says '${transaction_status}', ` +
-          `but GET Status API says '${actualTransactionStatus}'. Using API value.`,
-      );
-    }
-
-    // 3. Idempotency check
-    const adminClient = getSupabaseAdminClient();
-    const { data: existing } = await adminClient
-      .from('webhook_idempotency')
-      .select('*')
-      .eq('provider', 'midtrans')
-      .eq('external_id', transaction_id || order_id)
-      .single();
-
-    if (existing) {
-      console.log(`[webhook] Already processed ${transaction_id || order_id}, skipping`);
-      return new Response(JSON.stringify({ status: 'already_processed' }), { status: 200 });
-    }
-
-    // 4. Fetch the corresponding order WITH RELATIONS
-    const { data: order, error: orderError } = await adminClient
+  for (let index = 0; index < attempts; index += 1) {
+    const { data, error } = await adminClient
       .from('orders')
       .select(
         `
-                *,
-                profiles (full_name, phone_number),
-                addresses (*),
-                order_items (
-                    *,
-                    products (*)
-                )
-            `,
+        *,
+        profiles (full_name, phone_number),
+        addresses (*),
+        order_items (
+          *,
+          products (*)
+        )
+      `,
       )
-      .eq('midtrans_order_id', order_id)
+      .eq('midtrans_order_id', midtransOrderId)
       .single();
 
-    if (orderError || !order) {
-      console.warn(`Order ${order_id} not found. Ignoring.`);
-      return new Response(JSON.stringify({ status: 'ok', message: 'Order not found, ignored' }), {
-        status: 200,
-      });
+    latestResult = { data, error };
+    if (data && !error) {
+      return latestResult;
     }
 
-    const typedOrder = order as unknown as Order;
+    if (index < attempts - 1) {
+      await sleep(300 * (index + 1));
+    }
+  }
 
-    // 3b. Validate amount - prevent manipulation attack
-    const expectedAmount = Math.round(Number(typedOrder.total_amount));
-    const webhookAmount = parseInt(gross_amount);
-    if (webhookAmount !== expectedAmount) {
-      console.error(
-        `Amount mismatch! Webhook says ${webhookAmount}, but order total is ${expectedAmount}`,
-      );
-      return new Response(JSON.stringify({ error: 'Amount mismatch - possible fraud detected' }), {
-        status: 400,
-      });
+  return latestResult;
+}
+
+async function upsertPaymentRecord(
+  order: Order,
+  payload: MidtransWebhookPayload,
+  verifiedStatus: MidtransStatusResponse,
+  status: PaymentStatus,
+): Promise<void> {
+  const adminClient = getSupabaseAdminClient();
+
+  const effectivePaymentType = normalizePaymentType(
+    verifiedStatus.payment_type || payload.payment_type || order.payment_type,
+  );
+
+  const { data: existingPayment } = await adminClient
+    .from('payments')
+    .select('paid_at')
+    .eq('midtrans_order_id', payload.order_id)
+    .maybeSingle();
+
+  const paymentPayload = {
+    order_id: order.id,
+    user_id: order.user_id ?? null,
+    checkout_idempotency_key: order.checkout_idempotency_key ?? null,
+    midtrans_order_id: payload.order_id,
+    midtrans_transaction_id: verifiedStatus.transaction_id || payload.transaction_id || null,
+    status,
+    payment_type: effectivePaymentType,
+    transaction_status: verifiedStatus.transaction_status || payload.transaction_status || null,
+    fraud_status: verifiedStatus.fraud_status || payload.fraud_status || null,
+    status_code: verifiedStatus.status_code || payload.status_code || null,
+    status_message: verifiedStatus.status_message || payload.status_message || null,
+    currency: verifiedStatus.currency || payload.currency || 'IDR',
+    gross_amount: toNumericAmount(verifiedStatus.gross_amount || payload.gross_amount),
+    signature_key: payload.signature_key,
+    merchant_id: verifiedStatus.merchant_id || payload.merchant_id || null,
+    transaction_time: pickNotificationDate(
+      verifiedStatus.transaction_time || payload.transaction_time,
+    ),
+    settlement_time: pickNotificationDate(
+      verifiedStatus.settlement_time || payload.settlement_time,
+    ),
+    expiry_time: pickNotificationDate(verifiedStatus.expiry_time || payload.expiry_time),
+    paid_at: existingPayment?.paid_at || getPaidAt(status),
+    payment_code: verifiedStatus.payment_code || payload.payment_code || null,
+    store: verifiedStatus.store || payload.store || null,
+    va_numbers: verifiedStatus.va_numbers || payload.va_numbers || [],
+    biller_code: verifiedStatus.biller_code || payload.biller_code || null,
+    bill_key: verifiedStatus.bill_key || payload.bill_key || null,
+    bank: verifiedStatus.bank || payload.bank || null,
+    acquirer: verifiedStatus.acquirer || payload.acquirer || null,
+    issuer: verifiedStatus.issuer || payload.issuer || null,
+    card_type: verifiedStatus.card_type || payload.card_type || null,
+    masked_card: verifiedStatus.masked_card || payload.masked_card || null,
+    approval_code: verifiedStatus.approval_code || payload.approval_code || null,
+    eci: verifiedStatus.eci || payload.eci || null,
+    channel_response_code:
+      verifiedStatus.channel_response_code || payload.channel_response_code || null,
+    channel_response_message:
+      verifiedStatus.channel_response_message || payload.channel_response_message || null,
+    redirect_url: verifiedStatus.redirect_url || payload.redirect_url || null,
+    raw_notification: payload,
+  };
+
+  const { error } = await adminClient
+    .from('payments')
+    .upsert(paymentPayload, { onConflict: 'midtrans_order_id' });
+
+  if (error) {
+    throw new Error(`Failed to upsert payment record: ${error.message}`);
+  }
+}
+
+interface SideEffectTask {
+  needs_stock: boolean;
+  needs_biteship: boolean;
+  retry_count: number;
+  updated_at: string;
+  lease_until: string | null;
+  pending_biteship_order_id: string | null;
+  pending_waybill_number: string | null;
+}
+
+async function getSideEffectTask(
+  adminClient: ReturnType<typeof getSupabaseAdminClient>,
+  orderId: string,
+): Promise<SideEffectTask | null> {
+  const { data, error } = await adminClient
+    .from('webhook_side_effect_tasks')
+    .select(
+      'needs_stock, needs_biteship, retry_count, updated_at, lease_until, pending_biteship_order_id, pending_waybill_number',
+    )
+    .eq('order_id', orderId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as SideEffectTask;
+}
+
+async function saveSideEffectTask(
+  adminClient: ReturnType<typeof getSupabaseAdminClient>,
+  orderId: string,
+  needsStock: boolean,
+  needsBiteship: boolean,
+  lastError: string | null,
+  pendingBiteshipOrderId: string | null = null,
+  pendingWaybillNumber: string | null = null,
+): Promise<void> {
+  if (!needsStock && !needsBiteship) {
+    const { error } = await adminClient
+      .from('webhook_side_effect_tasks')
+      .delete()
+      .eq('order_id', orderId);
+    if (error) {
+      throw new Error(`Failed to delete side effect task: ${error.message}`);
+    }
+    return;
+  }
+
+  const existingTask = await getSideEffectTask(adminClient, orderId);
+  const nextRetryCount = existingTask?.retry_count ?? 0;
+
+  const { error } = await adminClient.from('webhook_side_effect_tasks').upsert(
+    {
+      order_id: orderId,
+      needs_stock: needsStock,
+      needs_biteship: needsBiteship,
+      last_error: lastError,
+      updated_at: new Date().toISOString(),
+      retry_count: nextRetryCount,
+      claimed_at: null,
+      lease_until: null,
+      pending_biteship_order_id: pendingBiteshipOrderId,
+      pending_waybill_number: pendingWaybillNumber,
+    },
+    { onConflict: 'order_id' },
+  );
+
+  if (error) {
+    throw new Error(`Failed to upsert side effect task: ${error.message}`);
+  }
+}
+
+async function claimSideEffectTask(
+  adminClient: ReturnType<typeof getSupabaseAdminClient>,
+  orderId: string,
+  currentTask: SideEffectTask,
+): Promise<boolean> {
+  if (currentTask.lease_until && Date.parse(currentTask.lease_until) > Date.now()) {
+    return false;
+  }
+
+  const nowIso = new Date().toISOString();
+  const leaseUntilIso = new Date(Date.now() + SIDE_EFFECT_LEASE_MS).toISOString();
+
+  const { data, error } = await adminClient
+    .from('webhook_side_effect_tasks')
+    .update({
+      retry_count: currentTask.retry_count + 1,
+      updated_at: nowIso,
+      claimed_at: nowIso,
+      lease_until: leaseUntilIso,
+    })
+    .eq('order_id', orderId)
+    .eq('updated_at', currentTask.updated_at)
+    .select('order_id')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to claim side effect task: ${error.message}`);
+  }
+
+  return !!data;
+}
+
+async function renewSideEffectTaskLease(
+  adminClient: ReturnType<typeof getSupabaseAdminClient>,
+  orderId: string,
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const leaseUntilIso = new Date(Date.now() + SIDE_EFFECT_LEASE_MS).toISOString();
+
+  const { error } = await adminClient
+    .from('webhook_side_effect_tasks')
+    .update({
+      claimed_at: nowIso,
+      lease_until: leaseUntilIso,
+      updated_at: nowIso,
+    })
+    .eq('order_id', orderId);
+
+  if (error) {
+    throw new Error(`Failed to renew side effect lease: ${error.message}`);
+  }
+}
+
+async function persistPendingBiteshipResult(
+  adminClient: ReturnType<typeof getSupabaseAdminClient>,
+  orderId: string,
+  biteshipOrderId: string,
+  waybillNumber: string | null,
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const leaseUntilIso = new Date(Date.now() + SIDE_EFFECT_LEASE_MS).toISOString();
+
+  const { error } = await adminClient
+    .from('webhook_side_effect_tasks')
+    .update({
+      pending_biteship_order_id: biteshipOrderId,
+      pending_waybill_number: waybillNumber,
+      updated_at: nowIso,
+      lease_until: leaseUntilIso,
+    })
+    .eq('order_id', orderId);
+
+  if (error) {
+    throw new Error(`Failed to persist pending Biteship result: ${error.message}`);
+  }
+}
+
+Deno.serve(async req => {
+  if (req.method !== 'POST') {
+    // Return 200 even for method mismatch - Midtrans expects 200 always
+    console.error('[midtrans-webhook] Invalid method:', req.method);
+    return jsonResponse({ status: 'ok', message: 'Invalid method' }, 200);
+  }
+
+  let payload: MidtransWebhookPayload | null = null;
+  let adminClient: ReturnType<typeof getSupabaseAdminClient> | null = null;
+
+  try {
+    const bodyText = await req.text();
+
+    try {
+      payload = JSON.parse(bodyText) as MidtransWebhookPayload;
+    } catch (parseError) {
+      // Return 200 even for invalid JSON - Midtrans expects 200 always
+      console.error('[midtrans-webhook] Invalid JSON:', parseError);
+      return jsonResponse({ status: 'ok', message: 'Invalid JSON payload' }, 200);
     }
 
-    // 4. Idempotency Check - use atomic WHERE clause to prevent race condition
-    const { data: idempotencyResult, error: idempotencyError } = await adminClient
-      .from('orders')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', typedOrder.id)
-      .eq('payment_status', 'unpaid')
-      .eq('status', 'pending')
-      .select();
-
-    if (idempotencyError || !idempotencyResult || idempotencyResult.length === 0) {
-      console.log(`Order ${typedOrder.id} already processed or in invalid state. Ignoring.`);
-      return new Response(
-        JSON.stringify({ status: 'ok', message: 'Already processed or invalid state' }),
-        { status: 200 },
-      );
+    if (
+      !payload.order_id ||
+      !payload.status_code ||
+      !payload.gross_amount ||
+      !payload.signature_key
+    ) {
+      // Return 200 even for invalid payload - Midtrans expects 200 always
+      console.error('[midtrans-webhook] Invalid payload: missing required fields');
+      return jsonResponse({ status: 'ok', message: 'Invalid payload' }, 200);
     }
 
-    // 5. Map Status
-    const { newPaymentStatus, newOrderStatus, shouldReduceStock } = mapMidtransStatus(
-      actualTransactionStatus,
-      actualFraudStatus,
-      typedOrder.payment_status,
-      typedOrder.status,
+    const serverKey = Deno.env.get('MIDTRANS_SERVER_KEY');
+    if (!serverKey) {
+      // Return 200 even for config error - Midtrans expects 200 always
+      console.error('[midtrans-webhook] Missing MIDTRANS_SERVER_KEY');
+      return jsonResponse({ status: 'ok', message: 'Server key not configured' }, 200);
+    }
+
+    const isValidSignature = await verifyMidtransSignature(
+      payload.order_id,
+      payload.status_code,
+      payload.gross_amount,
+      serverKey,
+      payload.signature_key,
     );
-    console.log(`[webhook] Mapped -> payment: '${newPaymentStatus}', order: '${newOrderStatus}'`);
 
-    // 6. Update Order status
-    const { error: updateError } = await adminClient
-      .from('orders')
+    if (!isValidSignature) {
+      // Return 200 even for invalid signature - Midtrans expects 200 always
+      // Log internally for security review but don't reveal to caller
+      console.error('[midtrans-webhook] Invalid signature for order:', payload.order_id);
+      return jsonResponse({ status: 'ok', message: 'Invalid signature' }, 200);
+    }
+
+    adminClient = getSupabaseAdminClient();
+
+    const { error: reconcileError } = await adminClient.rpc(
+      'reconcile_midtrans_orphan_notifications',
+      { p_limit: 5 },
+    );
+    if (reconcileError) {
+      console.error('[midtrans-webhook] Orphan reconciliation RPC error:', reconcileError.message);
+    }
+
+    // Persist raw notification immediately after signature validation for audit trail
+    // This ensures we have the payload even if order not found or amount mismatch
+    await persistRawNotificationEarly(adminClient, payload);
+
+    const webhookEventKey = buildWebhookEventKey(payload);
+
+    // Verify transaction status with Midtrans API for accurate state.
+    let verifiedStatus: MidtransStatusResponse;
+    try {
+      verifiedStatus = await verifyMidtransTransactionWithRetry(payload.order_id, serverKey);
+    } catch (verificationError) {
+      const message =
+        verificationError instanceof Error
+          ? verificationError.message
+          : 'Unknown verification error';
+      console.error('[midtrans-webhook] Status verification failed:', message);
+      return jsonResponse(
+        { status: 'ok', message: 'Status verification failed, will reconcile later' },
+        200,
+      );
+    }
+
+    const { data: rawOrder, error: orderError } = await getOrderWithRetry(
+      adminClient,
+      payload.order_id,
+    );
+
+    if (orderError || !rawOrder) {
+      console.warn('[midtrans-webhook] Order not found for:', payload.order_id);
+      return jsonResponse({ status: 'ok', message: 'Order not found, notification stored' }, 200);
+    }
+
+    const order = rawOrder as unknown as Order;
+
+    const { error: reconcileOrphanError } = await adminClient
+      .from('payments')
       .update({
-        payment_status: newPaymentStatus,
-        status: newOrderStatus,
-        midtrans_transaction_id: verifiedStatus.transaction_id || transaction_id,
-        payment_type: verifiedStatus.payment_type || payment_type,
+        order_id: order.id,
+        user_id: order.user_id ?? null,
       })
-      .eq('id', typedOrder.id);
+      .eq('midtrans_order_id', payload.order_id)
+      .is('order_id', null);
 
-    if (updateError) throw updateError;
+    if (reconcileOrphanError) {
+      console.error(
+        '[midtrans-webhook] Failed to reconcile orphan payment:',
+        reconcileOrphanError.message,
+      );
+    }
 
-    // Log to audit trail
-    await adminClient.from('order_activities').insert({
-      order_id: typedOrder.id,
-      action: shouldReduceStock ? 'payment_success' : 'payment_updated',
-      old_status: typedOrder.status,
-      new_status: newOrderStatus,
-      actor_type: 'system',
-      metadata: { payment_type: payment_type, transaction_id: transaction_id },
-    });
+    const expectedAmount = Math.round(
+      Number(order.gross_amount ?? order.total_amount + Number(order.shipping_cost ?? 0)),
+    );
+    const webhookAmount = Math.round(
+      toNumericAmount(verifiedStatus.gross_amount || payload.gross_amount),
+    );
 
-    // 7. Action on Success
-    if (shouldReduceStock) {
-      // A. Reduce Stock - fail completely if ANY item fails
-      if (typedOrder.order_items && typedOrder.order_items.length > 0) {
-        const stockReductionErrors: string[] = [];
+    if (webhookAmount !== expectedAmount) {
+      // Return 200 for amount mismatch - log internally for fraud review
+      console.error(
+        '[midtrans-webhook] Amount mismatch for order:',
+        payload.order_id,
+        'expected:',
+        expectedAmount,
+        'got:',
+        webhookAmount,
+      );
+      return jsonResponse({ status: 'ok', message: 'Amount mismatch recorded' }, 200);
+    }
 
-        for (const item of typedOrder.order_items) {
-          if (!item.product_id) continue;
+    const { newPaymentStatus, newOrderStatus, shouldReduceStock } = mapMidtransStatus(
+      verifiedStatus.transaction_status,
+      verifiedStatus.fraud_status || payload.fraud_status || '',
+      order.payment_status,
+      order.status,
+    );
 
-          const { error: rpcError } = await adminClient.rpc('reduce_product_stock', {
+    const paymentType = normalizePaymentType(
+      verifiedStatus.payment_type || payload.payment_type || order.payment_type,
+    );
+
+    const { data: transitionResult, error: transitionError } = await adminClient.rpc(
+      'apply_midtrans_webhook_transition',
+      {
+        p_provider: 'midtrans',
+        p_event_key: webhookEventKey,
+        p_order_id: order.id,
+        p_next_payment_status: newPaymentStatus,
+        p_next_order_status: newOrderStatus,
+        p_midtrans_transaction_id: verifiedStatus.transaction_id || payload.transaction_id || null,
+        p_payment_type: paymentType,
+      },
+    );
+
+    if (transitionError) {
+      console.error('[midtrans-webhook] Transition error:', transitionError.message);
+      return jsonResponse({ status: 'ok', message: 'Transition error logged' }, 200);
+    }
+
+    const transition = Array.isArray(transitionResult) ? transitionResult[0] : transitionResult;
+    const applied = transition?.applied ?? false;
+
+    // Always persist raw_notification for audit trail, regardless of transition result
+    await upsertPaymentRecord(order, payload, verifiedStatus, newPaymentStatus);
+
+    if (applied) {
+      await adminClient.from('order_activities').insert({
+        order_id: order.id,
+        action: shouldReduceStock ? 'payment_success' : 'payment_updated',
+        old_status: order.status,
+        new_status: newOrderStatus,
+        actor_type: 'system',
+        metadata: {
+          payment_status: newPaymentStatus,
+          payment_type: paymentType,
+          transaction_id: verifiedStatus.transaction_id || payload.transaction_id || null,
+        },
+      });
+    }
+
+    let existingSideEffectTask = await getSideEffectTask(adminClient, order.id);
+
+    if (applied && shouldReduceStock && !existingSideEffectTask) {
+      await saveSideEffectTask(
+        adminClient,
+        order.id,
+        true,
+        !order.biteship_order_id,
+        'Created side effect task from settlement transition',
+      );
+      existingSideEffectTask = await getSideEffectTask(adminClient, order.id);
+    }
+
+    const shouldRunFulfillment = applied || !!existingSideEffectTask;
+
+    if (!shouldRunFulfillment) {
+      if (!applied) {
+        return jsonResponse(
+          { status: 'ok', message: 'Transition already applied or invalid' },
+          200,
+        );
+      }
+
+      return jsonResponse({ status: 'ok' }, 200);
+    }
+
+    let needsStock = existingSideEffectTask?.needs_stock ?? (applied && shouldReduceStock);
+    let needsBiteship =
+      existingSideEffectTask?.needs_biteship ??
+      (applied && shouldReduceStock && !order.biteship_order_id);
+    needsBiteship = needsBiteship && !order.biteship_order_id;
+    let lastError: string | null = null;
+    let pendingBiteshipOrderId = existingSideEffectTask?.pending_biteship_order_id ?? null;
+    let pendingWaybillNumber = existingSideEffectTask?.pending_waybill_number ?? null;
+
+    if (existingSideEffectTask) {
+      const claimed = await claimSideEffectTask(adminClient, order.id, existingSideEffectTask);
+      if (!claimed) {
+        return jsonResponse({ status: 'ok', message: 'Side effect task already claimed' }, 200);
+      }
+    }
+
+    if (needsStock && order.order_items && order.order_items.length > 0) {
+      let stockFailed = false;
+
+      for (const item of order.order_items) {
+        if (!item.product_id) continue;
+        await renewSideEffectTaskLease(adminClient, order.id);
+
+        let stockReduced = false;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const { error: rpcError } = await adminClient.rpc('apply_order_item_stock_deduction', {
+            p_order_id: order.id,
             p_product_id: item.product_id,
             p_quantity: item.quantity || 0,
           });
 
-          if (rpcError) {
-            stockReductionErrors.push(`Product ${item.product_id}: ${rpcError.message}`);
+          if (!rpcError) {
+            stockReduced = true;
+            break;
+          }
+
+          if (attempt === 2) {
+            console.error(
+              '[midtrans-webhook] Stock reduction failed for',
+              item.product_id,
+              ':',
+              rpcError.message,
+            );
+          } else {
+            await sleep(250 * (attempt + 1));
           }
         }
 
-        // If ANY stock reduction failed, rollback the payment
-        if (stockReductionErrors.length > 0) {
-          console.error('Stock reduction failed, rolling back payment:', stockReductionErrors);
-
-          await adminClient
-            .from('orders')
-            .update({
-              payment_status: 'unpaid',
-              status: 'pending',
-            })
-            .eq('id', typedOrder.id);
-
-          await adminClient.from('order_activities').insert({
-            order_id: typedOrder.id,
-            action: 'payment_updated',
-            old_status: newOrderStatus,
-            new_status: 'pending',
-            actor_type: 'system',
-            metadata: {
-              rollback_reason: 'stock_reduction_failed',
-              stock_errors: stockReductionErrors,
-            },
-          });
-
-          return new Response(
-            JSON.stringify({
-              error: 'Payment processing failed: stock reduction error',
-              details: stockReductionErrors,
-            }),
-            { status: 500 },
-          );
+        if (!stockReduced) {
+          stockFailed = true;
+          lastError = 'Failed to reduce stock after retries';
         }
       }
 
-      // B. Create Biteship Order (Shipping)
-      if (biteshipKey) {
-        try {
-          const biteshipResponse: BiteshipOrderResponse = await createBiteshipOrder(
-            typedOrder,
-            biteshipKey,
-          );
+      needsStock = stockFailed;
+    }
 
-          await adminClient
-            .from('orders')
-            .update({
-              biteship_order_id: biteshipResponse.id,
-              waybill_number: biteshipResponse.courier?.waybill_id || null,
-              waybill_source: 'system',
-              status: 'processing',
-            })
-            .eq('id', typedOrder.id);
+    const biteshipKey = Deno.env.get('BITESHIP_API_KEY');
 
-          // Log shipping creation
-          await adminClient.from('order_activities').insert({
-            order_id: typedOrder.id,
-            action: 'shipping_created',
-            old_status: 'awaiting_shipment',
-            new_status: 'processing',
-            actor_type: 'system',
-            metadata: {
-              biteship_order_id: biteshipResponse.id,
-              waybill: biteshipResponse.courier?.waybill_id,
-            },
-          });
+    if (needsBiteship && pendingBiteshipOrderId) {
+      const { error: persistPendingError } = await adminClient
+        .from('orders')
+        .update({
+          biteship_order_id: pendingBiteshipOrderId,
+          waybill_number: pendingWaybillNumber,
+        })
+        .eq('id', order.id);
 
-          console.log('[webhook] Biteship order created:', biteshipResponse.id);
-        } catch (bsErr: unknown) {
-          const bsMsg = bsErr instanceof Error ? bsErr.message : 'Unknown Biteship error';
-          console.error('Biteship automation failed:', bsMsg);
-        }
+      if (persistPendingError) {
+        lastError = `Failed to persist pending Biteship result: ${persistPendingError.message}`;
+      } else {
+        needsBiteship = false;
+        pendingBiteshipOrderId = null;
+        pendingWaybillNumber = null;
       }
     }
 
-    // Mark webhook as processed
-    await adminClient.from('webhook_idempotency').upsert(
-      {
-        provider: 'midtrans',
-        external_id: transaction_id || order_id,
-      },
-      { onConflict: 'provider,external_id' },
+    if (needsBiteship && biteshipKey) {
+      await renewSideEffectTaskLease(adminClient, order.id);
+      let biteshipResponse: BiteshipOrderResponse | null = null;
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          await renewSideEffectTaskLease(adminClient, order.id);
+          type BiteshipOrderInput = Parameters<typeof createBiteshipOrder>[0];
+          biteshipResponse = (await withTimeout(
+            createBiteshipOrder(order as unknown as BiteshipOrderInput, biteshipKey),
+            BITESHIP_CALL_TIMEOUT_MS,
+            'Biteship request timeout',
+          )) as BiteshipOrderResponse;
+          break;
+        } catch (biteshipError: unknown) {
+          const message =
+            biteshipError instanceof Error ? biteshipError.message : 'Unknown Biteship error';
+          if (attempt === 2) {
+            console.error('[midtrans-webhook] Biteship automation failed:', message);
+          } else {
+            await sleep(350 * (attempt + 1));
+          }
+        }
+      }
+
+      if (biteshipResponse) {
+        await persistPendingBiteshipResult(
+          adminClient,
+          order.id,
+          biteshipResponse.id,
+          biteshipResponse.courier?.waybill_id || null,
+        );
+
+        const { error: updateOrderError } = await adminClient
+          .from('orders')
+          .update({
+            biteship_order_id: biteshipResponse.id,
+            waybill_number: biteshipResponse.courier?.waybill_id || null,
+          })
+          .eq('id', order.id);
+
+        if (updateOrderError) {
+          needsBiteship = true;
+          lastError = `Failed to persist Biteship result: ${updateOrderError.message}`;
+          pendingBiteshipOrderId = biteshipResponse.id;
+          pendingWaybillNumber = biteshipResponse.courier?.waybill_id || null;
+        } else {
+          needsBiteship = false;
+          pendingBiteshipOrderId = null;
+          pendingWaybillNumber = null;
+        }
+      } else {
+        needsBiteship = true;
+        if (!lastError) {
+          lastError = 'Failed to create biteship order after retries';
+        }
+      }
+    } else if (needsBiteship && !biteshipKey && !lastError) {
+      lastError = 'BITESHIP_API_KEY is not configured';
+    }
+
+    await saveSideEffectTask(
+      adminClient,
+      order.id,
+      needsStock,
+      needsBiteship,
+      lastError,
+      pendingBiteshipOrderId,
+      pendingWaybillNumber,
     );
 
-    return new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Webhook error:', message);
-    return new Response(JSON.stringify({ error: message }), { status: 500 });
+    return jsonResponse({ status: 'ok' }, 200);
+  } catch (error: unknown) {
+    // Return 200 for all errors - Midtrans expects 200 always
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[midtrans-webhook] Internal error:', message);
+    return jsonResponse({ status: 'ok', message: 'Error logged' }, 200);
   }
 });

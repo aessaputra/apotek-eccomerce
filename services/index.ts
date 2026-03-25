@@ -6,3 +6,4 @@ export * from './address.service';
 export * from './shipping.service';
 export * from './checkout.service';
 export * from './home.service';
+export * from './order.service';

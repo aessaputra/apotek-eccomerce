@@ -60,6 +60,9 @@ create table if not exists public.webhook_idempotency (
   unique (provider, event_key)
 );
 
+alter table public.webhook_idempotency
+  add column if not exists created_at timestamptz default timezone('utc'::text, now());
+
 create index if not exists webhook_idempotency_provider_created_idx
   on public.webhook_idempotency (provider, created_at desc);
 

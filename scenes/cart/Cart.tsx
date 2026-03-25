@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackHandler, Linking } from 'react-native';
 import { RefreshCw } from '@tamagui/lucide-icons';
 import {
   YStack,
@@ -16,6 +17,7 @@ import {
 } from 'tamagui';
 import { WebView } from 'react-native-webview';
 import * as Crypto from 'expo-crypto';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { getThemeColor } from '@/utils/theme';
 import { CartIcon, ChevronRightIcon, MapPinIcon } from '@/components/icons';
 import Button from '@/components/elements/Button';
@@ -28,7 +30,12 @@ import AddressCard from '@/components/elements/AddressCard';
 import { useAppSlice } from '@/slices';
 import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
 import { getAddress, getPreferredAddress, getAddresses } from '@/services/address.service';
-import { getCartWithItems, updateCartItemQuantity, removeCartItem } from '@/services/cart.service';
+import {
+  getCartWithItems,
+  updateCartItemQuantity,
+  removeCartItem,
+  clearCart,
+} from '@/services/cart.service';
 import { getShippingRatesForAddress } from '@/services/shipping.service';
 import {
   createCheckoutOrder,
@@ -38,6 +45,7 @@ import {
 import { formatAddress, resolveBadgeText } from '@/utils/address';
 import type { Address } from '@/types/address';
 import type { CartItemWithProduct, CartSnapshot } from '@/types/cart';
+import type { PaymentResult } from '@/types/payment';
 import type { ShippingOption } from '@/types/shipping';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 
@@ -60,6 +68,61 @@ const COURIER_CARD_PRESS_STYLE = {
   opacity: 0.9,
 } as const;
 const COURIER_CARD_ANIMATE_ONLY = ['transform', 'opacity'];
+const PAYMENT_SUCCESS_STATUSES = ['settlement', 'capture'];
+const PAYMENT_PENDING_STATUSES = ['pending', 'authorize'];
+const PAYMENT_FAILED_STATUSES = ['deny', 'cancel', 'expire', 'failure'];
+
+const DEEP_LINK_PATTERNS = [
+  'gojek://',
+  'shopeeid://',
+  'gopay://',
+  '//wsa.wallet.airpay.co.id/',
+  'simulator.sandbox.midtrans.com',
+];
+
+function isDeepLink(url: string): boolean {
+  const lowerUrl = url.toLowerCase();
+  return DEEP_LINK_PATTERNS.some(pattern => lowerUrl.includes(pattern));
+}
+
+function translateCheckoutError(message: string | undefined, fallback: string): string {
+  const normalized = (message || '').toLowerCase();
+
+  if (
+    normalized.includes('timeout') ||
+    normalized.includes('timed out') ||
+    normalized.includes('abort')
+  ) {
+    return 'Permintaan timeout. Pastikan koneksi stabil lalu coba lagi.';
+  }
+
+  if (
+    normalized.includes('network') ||
+    normalized.includes('fetch') ||
+    normalized.includes('offline') ||
+    normalized.includes('koneksi')
+  ) {
+    return 'Koneksi internet bermasalah. Silakan cek jaringan Anda lalu coba lagi.';
+  }
+
+  if (
+    normalized.includes('midtrans') ||
+    normalized.includes('snap') ||
+    normalized.includes('payment')
+  ) {
+    return 'Layanan pembayaran sedang bermasalah. Silakan coba beberapa saat lagi.';
+  }
+
+  if (
+    normalized.includes('database') ||
+    normalized.includes('duplicate') ||
+    normalized.includes('constraint')
+  ) {
+    return 'Terjadi kendala data saat checkout. Mohon ulangi beberapa saat lagi.';
+  }
+
+  return message?.trim() || fallback;
+}
 
 interface CourierOptionCardProps {
   option: ShippingOption;
@@ -162,6 +225,9 @@ export default function Cart() {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [confirmCloseDialogOpen, setConfirmCloseDialogOpen] = useState(false);
+  const [webviewLoading, setWebviewLoading] = useState(true);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string | null>(null);
   const quantitySyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingQuantityUpdatesRef = useRef<Map<string, number>>(new Map());
@@ -170,6 +236,7 @@ export default function Cart() {
   const shouldOpenShippingSheetRef = useRef(false);
   const cartMountedRef = useRef(true);
   const finalizeOnceRef = useRef(false);
+  const checkoutInProgressRef = useRef(false);
 
   const computeCartSnapshot = useCallback((items: CartItemWithProduct[]): CartSnapshot => {
     let itemCount = 0;
@@ -657,8 +724,21 @@ export default function Cart() {
     }
   }, [shippingOptions, selectedShippingKey]);
 
+  useEffect(() => {
+    if (!paymentUrl) {
+      return;
+    }
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      setConfirmCloseDialogOpen(true);
+      return true;
+    });
+
+    return () => backHandler.remove();
+  }, [paymentUrl]);
+
   const finalizePaymentFlow = useCallback(
-    async (reason: 'success' | 'pending' | 'failed') => {
+    async (_reason: PaymentResult['status']) => {
       if (finalizeOnceRef.current) {
         return;
       }
@@ -671,51 +751,77 @@ export default function Cart() {
         return;
       }
 
-      if (reason === 'failed') {
-        setShippingError('Pembayaran dibatalkan atau gagal. Anda bisa coba lagi.');
-        setCheckoutIdempotencyKey(null);
-        setActiveOrderId(null);
-        void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-        router.push('/orders');
-        return;
-      }
-
+      // Always poll server status - redirect URLs are not authoritative
       setConfirmingPayment(true);
       const { data, error } = await pollOrderPaymentStatus(activeOrderId, 12, 2000);
       setConfirmingPayment(false);
 
-      if (error) {
-        setShippingError(error.message);
-      } else if (data?.payment_status === 'failed') {
-        setShippingError('Pembayaran terdeteksi gagal. Silakan ulangi pembayaran.');
-      } else if (data?.payment_status === 'success') {
-        setShippingError(null);
-      }
-
+      // Clear session regardless of result
       setCheckoutIdempotencyKey(null);
       setActiveOrderId(null);
       void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
 
+      if (error) {
+        setShippingError(
+          translateCheckoutError(
+            error.message,
+            'Status pembayaran belum dapat dipastikan. Silakan cek halaman pesanan.',
+          ),
+        );
+        router.push('/orders');
+        return;
+      }
+
+      const paymentStatus = data?.payment_status ?? '';
+      const terminalFailedStates = ['deny', 'cancel', 'expire'];
+
+      if (terminalFailedStates.includes(paymentStatus)) {
+        setShippingError('Pembayaran terdeteksi gagal atau dibatalkan. Silakan ulangi pembayaran.');
+        router.push('/orders');
+        return;
+      }
+
+      if (paymentStatus === 'settlement') {
+        setShippingError(null);
+        setCartItems([]);
+        if (user?.id) {
+          await clearCart(user.id).catch(() => {});
+        }
+        router.push('/orders');
+        return;
+      }
+
+      // Pending or authorize - payment still processing
+      setShippingError('Pembayaran masih diproses. Silakan cek status pesanan Anda.');
       router.push('/orders');
     },
-    [activeOrderId, removePersistData, router],
+    [activeOrderId, removePersistData, router, user?.id],
   );
 
   const handleStartCheckout = useCallback(async () => {
+    if (checkoutInProgressRef.current) {
+      return;
+    }
+    checkoutInProgressRef.current = true;
+
     setShippingError(null);
+    setPaymentError(null);
 
     if (!user?.id) {
       setShippingError('Silakan login terlebih dahulu.');
+      checkoutInProgressRef.current = false;
       return;
     }
 
     if (!selectedAddress) {
       setShippingError('Pilih alamat pengiriman terlebih dahulu.');
+      checkoutInProgressRef.current = false;
       return;
     }
 
     if (!selectedShippingOption) {
       setShippingError('Pilih kurir sebelum melanjutkan pembayaran.');
+      checkoutInProgressRef.current = false;
       return;
     }
 
@@ -743,14 +849,21 @@ export default function Cart() {
 
     if (orderError || !orderData) {
       setStartingCheckout(false);
-      setShippingError(orderError?.message ?? 'Gagal membuat order checkout.');
+      checkoutInProgressRef.current = false;
+      setShippingError(
+        translateCheckoutError(
+          orderError?.message,
+          'Gagal membuat order checkout. Silakan coba lagi.',
+        ),
+      );
       return;
     }
 
+    setCheckoutIdempotencyKey(orderData.checkout_idempotency_key);
     setActiveOrderId(orderData.order_id);
     await setPersistData<PersistedCheckoutSession>(DataPersistKeys.CHECKOUT_SESSION, {
       fingerprint: checkoutFingerprint,
-      idempotency_key: currentIdempotencyKey,
+      idempotency_key: orderData.checkout_idempotency_key,
       order_id: orderData.order_id,
     });
 
@@ -758,12 +871,20 @@ export default function Cart() {
     setStartingCheckout(false);
 
     if (snapError || !snapData) {
-      setShippingError(snapError?.message ?? 'Gagal memproses token pembayaran.');
+      checkoutInProgressRef.current = false;
+      const errorMessage = translateCheckoutError(
+        snapError?.message,
+        'Gagal memproses pembayaran. Silakan coba lagi beberapa saat lagi.',
+      );
+      setPaymentError(errorMessage);
+      setShippingError(errorMessage);
       return;
     }
 
+    checkoutInProgressRef.current = false;
     finalizeOnceRef.current = false;
-    setPaymentUrl(snapData.redirect_url);
+    setWebviewLoading(true);
+    setPaymentUrl(snapData.redirectUrl);
   }, [
     activeOrderId,
     checkoutFingerprint,
@@ -775,6 +896,44 @@ export default function Cart() {
     setPersistData,
     user?.id,
   ]);
+
+  const handlePaymentNavigation = useCallback((url?: string): PaymentResult['status'] | null => {
+    const safeUrl = (url || '').toLowerCase();
+    if (!safeUrl) {
+      return null;
+    }
+
+    const transactionStatusMatch = safeUrl.match(/transaction_status=([^&]+)/);
+    const transactionStatus =
+      transactionStatusMatch && transactionStatusMatch[1]
+        ? decodeURIComponent(transactionStatusMatch[1])
+        : '';
+
+    if (PAYMENT_SUCCESS_STATUSES.some(status => transactionStatus.includes(status))) {
+      return 'success';
+    }
+
+    if (PAYMENT_FAILED_STATUSES.some(status => transactionStatus.includes(status))) {
+      return 'cancel';
+    }
+
+    if (PAYMENT_PENDING_STATUSES.some(status => transactionStatus.includes(status))) {
+      return 'pending';
+    }
+
+    const reachedFinish =
+      safeUrl.includes('/finish') || safeUrl.includes('/unfinish') || safeUrl.includes('/error');
+
+    if (reachedFinish) {
+      if (safeUrl.includes('/error') || safeUrl.includes('/unfinish')) {
+        return 'cancel';
+      }
+
+      return 'pending';
+    }
+
+    return null;
+  }, []);
 
   if (paymentUrl) {
     return (
@@ -793,7 +952,7 @@ export default function Cart() {
             backgroundColor="transparent"
             titleStyle={{ color: '$primary', fontWeight: '600' }}
             onPress={() => {
-              void finalizePaymentFlow('pending');
+              setConfirmCloseDialogOpen(true);
             }}
             aria-label="Tutup pembayaran"
           />
@@ -807,54 +966,139 @@ export default function Cart() {
             </Text>
           </YStack>
         ) : (
-          <WebView
-            source={{ uri: paymentUrl }}
-            style={{ flex: 1 }}
-            onShouldStartLoadWithRequest={request => {
-              const url = request.url || '';
-              if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                return false;
-              }
+          <YStack flex={1} position="relative">
+            <WebView
+              source={{ uri: paymentUrl }}
+              style={{ flex: 1 }}
+              onLoadStart={() => setWebviewLoading(true)}
+              onLoadEnd={() => setWebviewLoading(false)}
+              onShouldStartLoadWithRequest={request => {
+                const url = request.url || '';
 
-              const hasSettlement =
-                url.includes('transaction_status=settlement') ||
-                url.includes('transaction_status=capture');
-              const hasPending = url.includes('transaction_status=pending');
-              const hasFailed =
-                url.includes('transaction_status=deny') ||
-                url.includes('transaction_status=cancel') ||
-                url.includes('transaction_status=expire');
-              const reachedFinish =
-                url.includes('example.com') ||
-                url.includes('/finish') ||
-                url.includes('/unfinish') ||
-                url.includes('/error');
+                // Handle deep links for e-wallets (GoPay, ShopeePay, etc.)
+                if (isDeepLink(url)) {
+                  void Linking.canOpenURL(url)
+                    .then(canOpen => {
+                      if (canOpen) {
+                        return Linking.openURL(url);
+                      }
 
-              if (reachedFinish || hasSettlement || hasPending || hasFailed) {
-                if (hasFailed) {
-                  void finalizePaymentFlow('failed');
-                } else if (hasSettlement) {
-                  void finalizePaymentFlow('success');
-                } else {
-                  void finalizePaymentFlow('pending');
+                      setShippingError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
+                      return Promise.resolve();
+                    })
+                    .catch(() => {
+                      setShippingError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
+                    });
+                  return false;
                 }
 
-                return false;
-              }
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                  return false;
+                }
 
-              return true;
-            }}
-            onNavigationStateChange={navState => {
-              const url = navState.url || '';
-              if (
-                url.includes('transaction_status=settlement') ||
-                url.includes('transaction_status=capture')
-              ) {
-                void finalizePaymentFlow('success');
-              }
-            }}
-          />
+                const navigationStatus = handlePaymentNavigation(url);
+
+                if (navigationStatus) {
+                  void finalizePaymentFlow(navigationStatus);
+
+                  return false;
+                }
+
+                return true;
+              }}
+              onNavigationStateChange={navState => {
+                const navigationStatus = handlePaymentNavigation(navState.url);
+                if (navigationStatus) {
+                  void finalizePaymentFlow(navigationStatus);
+                }
+              }}
+              onError={() => {
+                setShippingError('Koneksi pembayaran terputus. Kami akan cek status order Anda.');
+                void finalizePaymentFlow('pending');
+              }}
+              onHttpError={() => {
+                setShippingError(
+                  'Halaman pembayaran tidak dapat dimuat. Kami cek status pembayaran Anda.',
+                );
+                void finalizePaymentFlow('pending');
+              }}
+            />
+
+            {webviewLoading && (
+              <YStack
+                position="absolute"
+                top={0}
+                left={0}
+                right={0}
+                bottom={0}
+                alignItems="center"
+                justifyContent="center"
+                backgroundColor="$background"
+                gap="$3"
+                padding="$4">
+                <Spinner size="large" color="$primary" />
+                <Text textAlign="center" color="$colorPress">
+                  Memuat halaman pembayaran...
+                </Text>
+              </YStack>
+            )}
+          </YStack>
         )}
+
+        <AppAlertDialog
+          open={confirmCloseDialogOpen}
+          onOpenChange={setConfirmCloseDialogOpen}
+          title="Tutup Pembayaran?"
+          description="Jika Anda tutup sekarang, status pembayaran akan dicek otomatis. Yakin ingin tutup?"
+          confirmText="Ya, Tutup"
+          cancelText="Lanjut Bayar"
+          confirmColor="$danger"
+          onConfirm={() => {
+            void finalizePaymentFlow('pending');
+          }}
+        />
+      </YStack>
+    );
+  }
+
+  if (paymentError) {
+    return (
+      <YStack
+        flex={1}
+        backgroundColor="$background"
+        alignItems="center"
+        justifyContent="center"
+        padding="$5"
+        gap="$4">
+        <Card
+          borderRadius="$4"
+          borderWidth={1}
+          borderColor="$danger"
+          padding="$4"
+          backgroundColor="$surface"
+          maxWidth={400}
+          width="100%">
+          <YStack gap="$3" alignItems="center">
+            <Text fontSize="$5" fontWeight="700" color="$danger" textAlign="center">
+              Gagal Memproses Pembayaran
+            </Text>
+            <Text fontSize="$4" color="$color" textAlign="center">
+              {paymentError}
+            </Text>
+            <TamaguiButton
+              backgroundColor="$primary"
+              color="$white"
+              borderRadius="$3"
+              minHeight={44}
+              onPress={() => {
+                setPaymentError(null);
+                void handleStartCheckout();
+              }}
+              aria-label="Coba lagi pembayaran">
+              Coba Lagi
+            </TamaguiButton>
+          </YStack>
+        </Card>
       </YStack>
     );
   }

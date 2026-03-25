@@ -1,103 +1,210 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createRemoteJWKSet, jwtVerify } from 'npm:jose@5';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getSupabaseAdminClient } from '../_shared/supabase.ts';
 import { buildSnapPayload } from '../_shared/midtrans.ts';
+import { getSupabaseAdminClient } from '../_shared/supabase.ts';
+import type { AuthUser, Order, SnapResponse } from '../_shared/types.ts';
 
-Deno.serve(async req => {
-  // 1. Handle CORS preflight
+const JSON_HEADERS = { ...corsHeaders, 'Content-Type': 'application/json' };
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+
+const JWKS = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
+const JWT_ISSUER = `${supabaseUrl}/auth/v1`;
+
+class HttpError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'HttpError';
+  }
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: JSON_HEADERS,
+  });
+}
+
+function ensureMidtransOrderId(order: Order): string {
+  if (order.midtrans_order_id) {
+    return order.midtrans_order_id;
+  }
+
+  const shortId = order.id.replace(/-/g, '').slice(0, 8).toUpperCase();
+  const timestamp = Date.now();
+  return `APT-${shortId}-${timestamp}`;
+}
+
+type MidtransSnapError = {
+  error_messages?: string[];
+  status_message?: string;
+};
+
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // Reject non-POST methods
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Method Not Allowed' }, 405);
   }
 
   try {
-    // 2. Validate JWT
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Missing Authorization header');
-
-    const token = authHeader.replace('Bearer ', '');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-    if (!supabaseUrl || !supabaseAnonKey)
-      throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY');
-
-    const supabaseMem = createClient(supabaseUrl, supabaseAnonKey);
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseMem.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid JWT' }), {
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // 3. Parse Request
-    const { order_id } = await req.json();
-    if (!order_id) throw new Error('order_id is required');
+    const token = authHeader.slice(7).trim();
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    // 4. Fetch Order & Validate
+    let userId: string;
+    let userEmail: string;
+    try {
+      const { payload } = await jwtVerify(token, JWKS, {
+        issuer: JWT_ISSUER,
+        audience: 'authenticated',
+      });
+      userId = payload.sub ?? '';
+      userEmail = ((payload as Record<string, unknown>).email as string) ?? '';
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = (await req.json()) as { order_id?: string };
+    const orderId = body.order_id?.trim();
+    if (!orderId) {
+      throw new HttpError(400, 'order_id is required');
+    }
+
     const adminClient = getSupabaseAdminClient();
-    const { data: order, error: orderError } = await adminClient
+    const { data: rawOrder, error: orderError } = await adminClient
       .from('orders')
       .select(
-        '*, order_items(*, products(name, categories(name))), profiles(full_name, phone_number, id)',
+        '*, order_items(*, products(name, categories(name))), profiles(id, full_name, phone_number)',
       )
-      .eq('id', order_id)
+      .eq('id', orderId)
       .single();
 
-    if (orderError || !order)
-      return new Response(JSON.stringify({ error: 'Order not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    if (order.user_id !== user.id)
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    if (order.status !== 'pending' || order.payment_status !== 'unpaid') {
-      return new Response(JSON.stringify({ error: 'Order state invalid for payment' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (orderError || !rawOrder) {
+      throw new HttpError(404, 'Order not found');
+    }
+
+    const order = rawOrder as unknown as Order;
+    if (order.user_id !== userId) {
+      throw new HttpError(403, 'Forbidden');
+    }
+
+    if (order.status !== 'pending' || order.payment_status !== 'pending') {
+      throw new HttpError(400, 'Order state invalid for payment');
+    }
+
+    const SNAP_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+    const isTokenExpired = (createdAt: string | null | undefined): boolean => {
+      if (!createdAt) return true;
+      return Date.now() - new Date(createdAt).getTime() > SNAP_TOKEN_TTL_MS;
+    };
+
+    if (
+      order.snap_token &&
+      order.snap_redirect_url &&
+      !isTokenExpired(order.snap_token_created_at)
+    ) {
+      return jsonResponse({
+        snap_token: order.snap_token,
+        redirect_url: order.snap_redirect_url,
       });
     }
 
-    // 5. Prepare Order ID
-    if (!order.midtrans_order_id) {
-      const shortId = order.id.split('-')[0];
-      const ts = new Date().getTime().toString().slice(-6);
-      order.midtrans_order_id = `APT-${shortId}-${ts}`;
-
-      await adminClient
+    if (order.checkout_idempotency_key) {
+      const { data: idempotentOrder } = await adminClient
         .from('orders')
-        .update({ midtrans_order_id: order.midtrans_order_id })
-        .eq('id', order_id);
+        .select('id, user_id, snap_token, snap_redirect_url, snap_token_created_at')
+        .eq('checkout_idempotency_key', order.checkout_idempotency_key)
+        .eq('user_id', userId)
+        .not('snap_token', 'is', null)
+        .not('snap_redirect_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (
+        idempotentOrder?.snap_token &&
+        idempotentOrder?.snap_redirect_url &&
+        !isTokenExpired(idempotentOrder.snap_token_created_at)
+      ) {
+        if (idempotentOrder.id !== order.id) {
+          await adminClient
+            .from('orders')
+            .update({
+              snap_token: idempotentOrder.snap_token,
+              snap_redirect_url: idempotentOrder.snap_redirect_url,
+              snap_token_created_at: idempotentOrder.snap_token_created_at,
+            })
+            .eq('id', order.id);
+        }
+
+        return jsonResponse({
+          snap_token: idempotentOrder.snap_token,
+          redirect_url: idempotentOrder.snap_redirect_url,
+        });
+      }
     }
 
-    // 6. Build Payload (Extracted)
-    const payload = buildSnapPayload(order, user);
+    const midtransOrderId = ensureMidtransOrderId(order);
+    if (!order.midtrans_order_id) {
+      const { error: updateOrderIdError } = await adminClient
+        .from('orders')
+        .update({ midtrans_order_id: midtransOrderId })
+        .eq('id', order.id);
 
-    // 7. Request Snap Token
-    const isProduction = Deno.env.get('MIDTRANS_IS_PRODUCTION') === 'true';
+      if (updateOrderIdError) {
+        throw new HttpError(500, 'Failed to persist midtrans_order_id');
+      }
+    }
+
+    const payload = buildSnapPayload(
+      {
+        ...order,
+        midtrans_order_id: midtransOrderId,
+      },
+      {
+        id: userId,
+        email: userEmail,
+      } as AuthUser,
+    );
+
     const serverKey = Deno.env.get('MIDTRANS_SERVER_KEY');
-    if (!serverKey) throw new Error('Midtrans server key not configured');
+    if (!serverKey) {
+      throw new HttpError(500, 'Midtrans server key not configured');
+    }
 
+    const isProduction = Deno.env.get('MIDTRANS_IS_PRODUCTION') === 'true';
     const midtransApiUrl = isProduction
       ? 'https://app.midtrans.com/snap/v1/transactions'
       : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
-
-    console.log('Sending to Midtrans:', JSON.stringify(payload, null, 2));
 
     const midtransResponse = await fetch(midtransApiUrl, {
       method: 'POST',
@@ -109,25 +216,44 @@ Deno.serve(async req => {
       body: JSON.stringify(payload),
     });
 
-    const midtransData = await midtransResponse.json();
-    if (!midtransResponse.ok) {
-      console.error('Midtrans Error:', midtransData);
-      throw new Error(midtransData.error_messages?.[0] || 'Midtrans error');
+    const midtransData = (await midtransResponse.json()) as Partial<SnapResponse> &
+      MidtransSnapError;
+    if (!midtransResponse.ok || !midtransData.token || !midtransData.redirect_url) {
+      throw new HttpError(
+        502,
+        midtransData.error_messages?.[0] ||
+          midtransData.status_message ||
+          'Midtrans token creation failed',
+      );
     }
 
-    return new Response(
-      JSON.stringify({
+    const nowIso = new Date().toISOString();
+    const { error: persistSnapError } = await adminClient
+      .from('orders')
+      .update({
+        midtrans_order_id: midtransOrderId,
         snap_token: midtransData.token,
-        redirect_url: midtransData.redirect_url,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Error:', message);
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        snap_redirect_url: midtransData.redirect_url,
+        snap_token_created_at: nowIso,
+        gross_amount: payload.transaction_details.gross_amount,
+      })
+      .eq('id', order.id);
+
+    if (persistSnapError) {
+      throw new HttpError(500, 'Failed to store snap token in order');
+    }
+
+    return jsonResponse({
+      snap_token: midtransData.token,
+      redirect_url: midtransData.redirect_url,
     });
+  } catch (error: unknown) {
+    if (error instanceof HttpError) {
+      return jsonResponse({ error: error.message }, error.status);
+    }
+
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[create-snap-token] Internal error:', message);
+    return jsonResponse({ error: 'Internal server error' }, 500);
   }
 });

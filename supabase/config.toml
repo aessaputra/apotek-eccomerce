@@ -1,0 +1,11 @@
+# Supabase Configuration
+# https://supabase.com/docs/guides/cli/config
+
+[functions.create-snap-token]
+verify_jwt = false
+
+[functions.biteship]
+verify_jwt = false
+
+[functions.midtrans-webhook]
+verify_jwt = false

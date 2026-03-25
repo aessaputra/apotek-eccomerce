@@ -239,3 +239,23 @@ export async function removeCartItem(
 
   return { data: true, error: null };
 }
+
+export async function clearCart(userId: string): Promise<{ data: boolean; error: Error | null }> {
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) {
+    return { data: false, error: new Error('User ID is required.') };
+  }
+
+  const { data: cart, error: cartError } = await getOrCreateCart(normalizedUserId);
+  if (cartError || !cart) {
+    return { data: false, error: cartError || new Error('Cart not found') };
+  }
+
+  const { error: deleteError } = await supabase.from('cart_items').delete().eq('cart_id', cart.id);
+
+  if (deleteError) {
+    return { data: false, error: deleteError as unknown as Error };
+  }
+
+  return { data: true, error: null };
+}

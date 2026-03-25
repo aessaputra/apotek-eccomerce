@@ -1,5 +1,5 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createRemoteJWKSet, jwtVerify } from 'npm:jose@5';
 import { corsHeaders } from '../_shared/cors.ts';
 import { getSupabaseAdminClient } from '../_shared/supabase.ts';
 
@@ -30,12 +30,9 @@ const ORIGIN_POSTAL_CODE = Number.isFinite(BITESHIP_ORIGIN_POSTAL_CODE)
   : DEFAULT_ORIGIN_POSTAL_CODE;
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabasePublishableKey = Deno.env.get('SB_PUBLISHABLE_KEY');
-if (!supabasePublishableKey) {
-  throw new Error('Missing SB_PUBLISHABLE_KEY environment variable');
-}
-// ES256/HS256: getClaims() verifies locally via JWKS (asymmetric) or server-side (symmetric)
-const supabaseClient = createClient(supabaseUrl, supabasePublishableKey);
+
+const JWKS = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
+const JWT_ISSUER = `${supabaseUrl}/auth/v1`;
 
 // Validate tracking_id to prevent URL manipulation
 function isValidTrackingId(id: string): boolean {
@@ -149,7 +146,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // 2. Validate JWT using getClaims() — local JWKS verification (no network call for ES256)
+    // 2. Validate JWT using jose jwtVerify with JWKS
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
@@ -166,10 +163,20 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: claimsData, error: authError } = await supabaseClient.auth.getClaims(token);
-    const userId = claimsData?.claims?.sub;
-
-    if (!userId || authError) {
+    let userId: string;
+    try {
+      const { payload } = await jwtVerify(token, JWKS, {
+        issuer: JWT_ISSUER,
+        audience: 'authenticated',
+      });
+      userId = payload.sub ?? '';
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

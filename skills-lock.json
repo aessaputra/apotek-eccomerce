@@ -10,6 +10,11 @@
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
       "computedHash": "556f3bd3b59be46990bab40f922eb6ebfb711979a11836a6f78c78d658e82a41"
+    },
+    "webhook-integration": {
+      "source": "dodopayments/skills",
+      "sourceType": "github",
+      "computedHash": "e67e26dc8c509a9dc768d2b63f5a7dc0e91be74d929e26193afb49956bf6dd1e"
     }
   }
 }

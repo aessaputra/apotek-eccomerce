@@ -7,6 +7,7 @@ import {
   Check,
   ChevronRight,
   Chrome,
+  CreditCard,
   Eye,
   EyeOff,
   Grid2x2,
@@ -21,6 +22,7 @@ import {
   ShoppingCart,
   Star,
   Trash2,
+  Truck,
   User,
   X,
   XCircle,
@@ -122,4 +124,12 @@ export function CloseIcon(props: IconProps) {
 
 export function MoreIcon(props: IconProps) {
   return <MoreHorizontal {...props} />;
+}
+
+export function CreditCardIcon(props: IconProps) {
+  return <CreditCard {...props} />;
+}
+
+export function TruckIcon(props: IconProps) {
+  return <Truck {...props} />;
 }

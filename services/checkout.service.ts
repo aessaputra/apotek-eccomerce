@@ -1,6 +1,8 @@
 import { supabase } from '@/utils/supabase';
+import * as Crypto from 'expo-crypto';
 import type { ShippingOption } from '@/types/shipping';
-import type { Tables, TablesInsert } from '@/types/supabase';
+import type { CheckoutTokenResponse } from '@/types/payment';
+import type { Database, Tables, TablesInsert } from '@/types/supabase';
 
 interface CheckoutOrderParams {
   user_id: string;
@@ -8,28 +10,107 @@ interface CheckoutOrderParams {
   destination_area_id?: string;
   destination_postal_code?: number;
   shipping_option: ShippingOption;
-  checkout_idempotency_key: string;
+  checkout_idempotency_key?: string;
 }
 
 interface CheckoutOrderResult {
   order_id: string;
   total_amount: number;
   item_count: number;
-}
-
-interface SnapTokenResponse {
-  snap_token: string;
-  redirect_url: string;
+  checkout_idempotency_key: string;
 }
 
 interface PaymentStatusSnapshot {
-  payment_status: string;
+  payment_status: Database['public']['Enums']['payment_status'];
   status: string;
 }
 
 interface CartLine {
   product_id: string;
   quantity: number;
+}
+
+const NETWORK_ERROR_MESSAGE = 'Koneksi internet bermasalah. Periksa jaringan Anda, lalu coba lagi.';
+const NETWORK_TIMEOUT_MESSAGE =
+  'Permintaan pembayaran timeout. Silakan tunggu beberapa saat lalu coba lagi.';
+const DATABASE_ERROR_MESSAGE = 'Terjadi kendala database saat checkout. Silakan coba lagi.';
+const MIDTRANS_ERROR_MESSAGE =
+  'Layanan pembayaran Midtrans sedang bermasalah. Silakan coba beberapa saat lagi.';
+const AUTH_SESSION_ERROR_MESSAGE = 'Sesi login belum siap. Silakan coba lagi dalam beberapa saat.';
+
+const SESSION_EXPIRY_SAFETY_WINDOW_SECONDS = 60;
+
+async function getValidAccessToken(): Promise<string | null> {
+  const {
+    data: { session: cachedSession },
+  } = await supabase.auth.getSession();
+
+  if (!cachedSession?.access_token) {
+    return null;
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const expiresAt = cachedSession.expires_at ?? 0;
+  const isExpiredOrNearExpiry = expiresAt <= nowSeconds + SESSION_EXPIRY_SAFETY_WINDOW_SECONDS;
+
+  if (!isExpiredOrNearExpiry) {
+    return cachedSession.access_token;
+  }
+
+  const {
+    data: { session: refreshedSession },
+    error: refreshError,
+  } = await supabase.auth.refreshSession();
+
+  if (refreshError || !refreshedSession?.access_token) {
+    return null;
+  }
+
+  return refreshedSession.access_token;
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error('Terjadi kesalahan yang tidak diketahui.');
+}
+
+function normalizeErrorMessage(error: unknown): string {
+  const fallback = toError(error);
+  const message = fallback.message.toLowerCase();
+
+  if (
+    message.includes('network') ||
+    message.includes('fetch') ||
+    message.includes('failed to fetch') ||
+    message.includes('connection') ||
+    message.includes('offline')
+  ) {
+    return NETWORK_ERROR_MESSAGE;
+  }
+
+  if (message.includes('timeout') || message.includes('timed out') || message.includes('abort')) {
+    return NETWORK_TIMEOUT_MESSAGE;
+  }
+
+  const maybeCode =
+    typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : '';
+  if (typeof maybeCode === 'string' && maybeCode.startsWith('23')) {
+    return DATABASE_ERROR_MESSAGE;
+  }
+
+  if (message.includes('midtrans') || message.includes('snap') || message.includes('payment')) {
+    return MIDTRANS_ERROR_MESSAGE;
+  }
+
+  return fallback.message;
+}
+
+function toUserError(error: unknown, fallbackMessage: string): Error {
+  const normalizedMessage = normalizeErrorMessage(error).trim();
+  return new Error(normalizedMessage || fallbackMessage);
+}
+
+function generateCheckoutIdempotencyKey(): string {
+  return Crypto.randomUUID();
 }
 
 async function getOrCreateCartId(
@@ -81,17 +162,15 @@ async function getCartLines(cartId: string): Promise<{ data: CartLine[]; error: 
 export async function createCheckoutOrder(
   params: CheckoutOrderParams,
 ): Promise<{ data: CheckoutOrderResult | null; error: Error | null }> {
-  const idempotencyKey = params.checkout_idempotency_key.trim();
-  if (!idempotencyKey) {
-    return {
-      data: null,
-      error: new Error('Missing checkout idempotency key.'),
-    };
-  }
+  const idempotencyKey =
+    params.checkout_idempotency_key?.trim() || generateCheckoutIdempotencyKey();
 
   const { data: cartId, error: cartIdError } = await getOrCreateCartId(params.user_id);
   if (cartIdError || !cartId) {
-    return { data: null, error: cartIdError ?? new Error('Unable to initialize cart.') };
+    return {
+      data: null,
+      error: toUserError(cartIdError, 'Gagal menyiapkan keranjang checkout. Silakan coba lagi.'),
+    };
   }
 
   const { data: existingOrder, error: existingOrderError } = await supabase
@@ -103,7 +182,10 @@ export async function createCheckoutOrder(
     .maybeSingle();
 
   if (existingOrderError) {
-    return { data: null, error: existingOrderError as unknown as Error };
+    return {
+      data: null,
+      error: toUserError(existingOrderError, DATABASE_ERROR_MESSAGE),
+    };
   }
 
   if (existingOrder) {
@@ -113,7 +195,10 @@ export async function createCheckoutOrder(
       .eq('order_id', existingOrder.id);
 
     if (existingItemsError) {
-      return { data: null, error: existingItemsError as unknown as Error };
+      return {
+        data: null,
+        error: toUserError(existingItemsError, DATABASE_ERROR_MESSAGE),
+      };
     }
 
     const existingItemCount = (existingItems ?? []).reduce((sum, item) => sum + item.quantity, 0);
@@ -123,6 +208,7 @@ export async function createCheckoutOrder(
         order_id: existingOrder.id,
         total_amount: existingOrder.total_amount,
         item_count: existingItemCount,
+        checkout_idempotency_key: idempotencyKey,
       },
       error: null,
     };
@@ -136,7 +222,7 @@ export async function createCheckoutOrder(
   if (cartLines.length === 0) {
     return {
       data: null,
-      error: new Error('Cart is empty. Add products before continuing to payment.'),
+      error: new Error('Keranjang kosong. Tambahkan produk sebelum melanjutkan pembayaran.'),
     };
   }
 
@@ -147,7 +233,7 @@ export async function createCheckoutOrder(
     .in('id', productIds);
 
   if (productError) {
-    return { data: null, error: productError as unknown as Error };
+    return { data: null, error: toUserError(productError, DATABASE_ERROR_MESSAGE) };
   }
 
   const productMap = new Map(
@@ -168,14 +254,14 @@ export async function createCheckoutOrder(
     if (!product || product.is_active === false) {
       return {
         data: null,
-        error: new Error('One or more products are no longer available.'),
+        error: new Error('Ada produk yang sudah tidak tersedia. Silakan perbarui keranjang.'),
       };
     }
 
     if (line.quantity > product.stock) {
       return {
         data: null,
-        error: new Error(`Insufficient stock for product ${product.name}.`),
+        error: new Error(`Stok produk ${product.name} tidak mencukupi.`),
       };
     }
 
@@ -196,7 +282,7 @@ export async function createCheckoutOrder(
     shipping_address_id: params.shipping_address_id,
     total_amount: totalAmount,
     status: 'pending',
-    payment_status: 'unpaid',
+    payment_status: 'pending',
     shipping_cost: shippingOption.price,
     shipping_etd: shippingOption.estimated_delivery,
     courier_code: shippingOption.courier_code,
@@ -224,7 +310,7 @@ export async function createCheckoutOrder(
         .single();
 
       if (duplicateOrderError) {
-        return { data: null, error: duplicateOrderError as unknown as Error };
+        return { data: null, error: toUserError(duplicateOrderError, DATABASE_ERROR_MESSAGE) };
       }
 
       const { data: duplicateItems, error: duplicateItemsError } = await supabase
@@ -233,7 +319,7 @@ export async function createCheckoutOrder(
         .eq('order_id', duplicateOrder.id);
 
       if (duplicateItemsError) {
-        return { data: null, error: duplicateItemsError as unknown as Error };
+        return { data: null, error: toUserError(duplicateItemsError, DATABASE_ERROR_MESSAGE) };
       }
 
       const duplicateItemCount = (duplicateItems ?? []).reduce(
@@ -246,12 +332,13 @@ export async function createCheckoutOrder(
           order_id: duplicateOrder.id,
           total_amount: duplicateOrder.total_amount,
           item_count: duplicateItemCount,
+          checkout_idempotency_key: idempotencyKey,
         },
         error: null,
       };
     }
 
-    return { data: null, error: orderError as unknown as Error };
+    return { data: null, error: toUserError(orderError, DATABASE_ERROR_MESSAGE) };
   }
 
   const orderId = order.id;
@@ -262,7 +349,7 @@ export async function createCheckoutOrder(
   if (orderItemsError) {
     await supabase.from('orders').delete().eq('id', orderId);
 
-    return { data: null, error: orderItemsError as unknown as Error };
+    return { data: null, error: toUserError(orderItemsError, DATABASE_ERROR_MESSAGE) };
   }
 
   return {
@@ -270,6 +357,7 @@ export async function createCheckoutOrder(
       order_id: orderId,
       total_amount: totalAmount,
       item_count: itemCount,
+      checkout_idempotency_key: idempotencyKey,
     },
     error: null,
   };
@@ -277,62 +365,104 @@ export async function createCheckoutOrder(
 
 export async function createSnapToken(
   orderId: string,
-): Promise<{ data: SnapTokenResponse | null; error: Error | null }> {
+): Promise<{ data: CheckoutTokenResponse | null; error: Error | null }> {
   try {
+    const accessToken = await getValidAccessToken();
+    if (!accessToken) {
+      return {
+        data: null,
+        error: new Error(AUTH_SESSION_ERROR_MESSAGE),
+      };
+    }
+
     const { data, error } = await supabase.functions.invoke('create-snap-token', {
       body: { order_id: orderId },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
     if (error) {
-      return { data: null, error: error as unknown as Error };
+      return { data: null, error: toUserError(error, MIDTRANS_ERROR_MESSAGE) };
     }
 
-    const response = (data ?? {}) as Partial<SnapTokenResponse>;
+    const response = (data ?? {}) as {
+      snap_token?: unknown;
+      snap_redirect_url?: unknown;
+      redirect_url?: unknown;
+      snapToken?: unknown;
+      redirectUrl?: unknown;
+    };
 
-    if (!response.redirect_url || !response.snap_token) {
+    const snapToken =
+      typeof response.snap_token === 'string'
+        ? response.snap_token
+        : typeof response.snapToken === 'string'
+          ? response.snapToken
+          : '';
+
+    const redirectUrl =
+      typeof response.snap_redirect_url === 'string'
+        ? response.snap_redirect_url
+        : typeof response.redirect_url === 'string'
+          ? response.redirect_url
+          : typeof response.redirectUrl === 'string'
+            ? response.redirectUrl
+            : '';
+
+    if (!redirectUrl || !snapToken) {
       return {
         data: null,
-        error: new Error('Invalid snap-token response from payment server.'),
+        error: new Error('Respons token pembayaran tidak valid. Silakan coba lagi.'),
       };
     }
 
     return {
       data: {
-        snap_token: response.snap_token,
-        redirect_url: response.redirect_url,
+        snapToken,
+        redirectUrl,
       },
       error: null,
     };
   } catch (error) {
-    return { data: null, error: error as Error };
+    return { data: null, error: toUserError(error, MIDTRANS_ERROR_MESSAGE) };
   }
 }
 
 export async function getOrderPaymentStatus(
   orderId: string,
 ): Promise<{ data: PaymentStatusSnapshot | null; error: Error | null }> {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('payment_status, status')
-    .eq('id', orderId)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('payment_status, status')
+      .eq('id', orderId)
+      .single();
 
-  if (error) {
-    return { data: null, error: error as unknown as Error };
+    if (error) {
+      return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
+    }
+
+    return {
+      data: data as PaymentStatusSnapshot,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: toUserError(error, 'Gagal memeriksa status pembayaran. Silakan coba lagi.'),
+    };
   }
-
-  return {
-    data: data as PaymentStatusSnapshot,
-    error: null,
-  };
 }
 
 export async function pollOrderPaymentStatus(
   orderId: string,
-  maxAttempts = 10,
+  maxAttempts = 12,
   delayMs = 2000,
 ): Promise<{ data: PaymentStatusSnapshot | null; error: Error | null }> {
-  for (let index = 0; index < maxAttempts; index += 1) {
+  const safeMaxAttempts = Math.min(Math.max(1, maxAttempts), 12);
+
+  for (let index = 0; index < safeMaxAttempts; index += 1) {
     const { data, error } = await getOrderPaymentStatus(orderId);
 
     if (error) {
@@ -340,7 +470,8 @@ export async function pollOrderPaymentStatus(
     }
 
     const paymentStatus = data?.payment_status ?? '';
-    if (paymentStatus === 'success' || paymentStatus === 'failed') {
+    const terminalStates = ['settlement', 'cancel', 'deny', 'expire'];
+    if (terminalStates.includes(paymentStatus)) {
       return { data, error: null };
     }
 
@@ -349,6 +480,8 @@ export async function pollOrderPaymentStatus(
 
   return {
     data: null,
-    error: new Error('Payment confirmation is still pending. Please check your orders tab.'),
+    error: new Error(
+      'Status pembayaran masih diproses. Silakan cek halaman pesanan Anda beberapa saat lagi.',
+    ),
   };
 }
