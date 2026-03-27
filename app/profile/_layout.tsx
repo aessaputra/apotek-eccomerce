@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 import { useTheme } from 'tamagui';
 import { getStackHeaderOptions } from '@/utils/theme';
+import { withAuthGuard } from '@/hooks/withAuthGuard';
 
-export default function ProfileStackLayout() {
+function ProfileStackLayout() {
   const theme = useTheme();
   return (
     <Stack screenOptions={getStackHeaderOptions(theme)}>
@@ -23,8 +24,14 @@ export default function ProfileStackLayout() {
       <Stack.Screen
         name="address-form"
         options={({ route }) => {
-          const params = route.params as { id?: string } | undefined;
-          const isEdit = !!params?.id;
+          const id =
+            route.params &&
+            typeof route.params === 'object' &&
+            'id' in route.params &&
+            typeof route.params.id === 'string'
+              ? route.params.id
+              : undefined;
+          const isEdit = typeof id === 'string' && id.length > 0;
           return {
             title: isEdit ? 'Edit Alamat' : 'Tambah Alamat',
             headerTitleAlign: 'center',
@@ -49,3 +56,5 @@ export default function ProfileStackLayout() {
     </Stack>
   );
 }
+
+export default withAuthGuard(ProfileStackLayout);

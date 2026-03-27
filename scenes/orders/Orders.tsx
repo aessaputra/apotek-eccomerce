@@ -186,6 +186,12 @@ export default function Orders() {
     setLoading(false);
 
     if (fetchError) {
+      if (__DEV__) {
+        console.error('[Orders] Failed to fetch orders:', {
+          message: fetchError.message,
+          userId: user.id,
+        });
+      }
       setError(fetchError.message);
       return;
     }

@@ -141,7 +141,7 @@ const FormInput = forwardRef<Input, FormInputProps>(
     return (
       <YStack>
         {label && (
-          <Text fontSize="$3" color="$colorPress" marginBottom="$1.5" fontWeight="500">
+          <Text fontSize="$3" color="$color" marginBottom="$1.5" fontWeight="500">
             {label}
             {required && <Text color="$danger"> *</Text>}
           </Text>
@@ -156,7 +156,7 @@ const FormInput = forwardRef<Input, FormInputProps>(
           <StyledInput
             ref={ref}
             placeholder={placeholder}
-            placeholderTextColor="$colorSubtle"
+            placeholderTextColor="$placeholderColor"
             value={value}
             onChangeText={onChangeText}
             keyboardType={keyboardType}

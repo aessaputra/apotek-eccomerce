@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
 import { ChevronLeftIcon } from '@/components/icons';
+import type { RouteParams } from '@/types/routes.types';
 import ProductCard from '@/components/elements/ProductCard';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import {
@@ -92,7 +93,7 @@ export default function ProductList() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<RouteParams<'home/product-list'>>();
   const { user } = useAppSlice();
   const [products, setProducts] = useState<ProductWithImages[]>([]);
   const [isLoading, setIsLoading] = useState(true);

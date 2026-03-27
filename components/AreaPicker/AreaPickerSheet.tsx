@@ -78,7 +78,7 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
               color="$color"
               minHeight={56}
               placeholder="Cari kecamatan/kelurahan..."
-              placeholderTextColor="$colorSubtle"
+              placeholderTextColor="$placeholderColor"
               value={query}
               onChangeText={setQuery}
             />

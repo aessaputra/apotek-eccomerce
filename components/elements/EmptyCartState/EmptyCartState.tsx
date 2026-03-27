@@ -9,7 +9,7 @@ export interface EmptyCartStateProps {
 export const EmptyCartState: React.FC<EmptyCartStateProps> = ({ onBrowse }) => {
   return (
     <YStack flex={1} justifyContent="center" alignItems="center" padding="$6" gap="$4">
-      <ShoppingCart size={64} color="$colorPress" />
+      <ShoppingCart size={64} color="$primary" />
 
       <YStack alignItems="center" gap="$1" marginBottom="$2">
         <Text fontSize="$5" fontWeight="700" color="$color">

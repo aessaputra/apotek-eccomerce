@@ -13,6 +13,7 @@ import {
   Grid2x2,
   Heart,
   Home,
+  Lock,
   MapPin,
   MoreHorizontal,
   Package,
@@ -120,6 +121,10 @@ export function GoogleIcon(props: IconProps) {
 
 export function CloseIcon(props: IconProps) {
   return <X {...props} />;
+}
+
+export function LockIcon(props: IconProps) {
+  return <Lock {...props} />;
 }
 
 export function MoreIcon(props: IconProps) {

@@ -1,18 +1,30 @@
 import { Stack } from 'expo-router';
 import { useTheme } from 'tamagui';
 import { getStackHeaderOptions } from '@/utils/theme';
+import { withAuthGuard } from '@/hooks/withAuthGuard';
 
-export default function CartStackLayout() {
+function CartStackLayout() {
   const theme = useTheme();
   return (
-    <Stack screenOptions={getStackHeaderOptions(theme)}>
+    <Stack>
       <Stack.Screen
         name="index"
         options={{
-          title: 'Keranjang',
+          title: 'Keranjang Saya',
           headerTitleAlign: 'center',
+          ...getStackHeaderOptions(theme),
+        }}
+      />
+      <Stack.Screen
+        name="payment"
+        options={{
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          gestureEnabled: false,
         }}
       />
     </Stack>
   );
 }
+
+export default withAuthGuard(CartStackLayout);

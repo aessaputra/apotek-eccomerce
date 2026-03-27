@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BackHandler, Linking } from 'react-native';
 import { RefreshCw } from '@tamagui/lucide-icons';
 import {
   YStack,
@@ -15,12 +14,9 @@ import {
   Sheet,
   Button as TamaguiButton,
 } from 'tamagui';
-import { WebView } from 'react-native-webview';
 import * as Crypto from 'expo-crypto';
-import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { getThemeColor } from '@/utils/theme';
 import { CartIcon, ChevronRightIcon, MapPinIcon } from '@/components/icons';
-import Button from '@/components/elements/Button';
 import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
 import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
 import { StickyBottomBar } from '@/components/elements/StickyBottomBar/StickyBottomBar';
@@ -30,22 +26,12 @@ import AddressCard from '@/components/elements/AddressCard';
 import { useAppSlice } from '@/slices';
 import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
 import { getAddress, getPreferredAddress, getAddresses } from '@/services/address.service';
-import {
-  getCartWithItems,
-  updateCartItemQuantity,
-  removeCartItem,
-  clearCart,
-} from '@/services/cart.service';
+import { getCartWithItems, updateCartItemQuantity, removeCartItem } from '@/services/cart.service';
 import { getShippingRatesForAddress } from '@/services/shipping.service';
-import {
-  createCheckoutOrder,
-  createSnapToken,
-  pollOrderPaymentStatus,
-} from '@/services/checkout.service';
+import { createCheckoutOrder, createSnapToken } from '@/services/checkout.service';
 import { formatAddress, resolveBadgeText } from '@/utils/address';
 import type { Address } from '@/types/address';
 import type { CartItemWithProduct, CartSnapshot } from '@/types/cart';
-import type { PaymentResult } from '@/types/payment';
 import type { ShippingOption } from '@/types/shipping';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 
@@ -68,22 +54,6 @@ const COURIER_CARD_PRESS_STYLE = {
   opacity: 0.9,
 } as const;
 const COURIER_CARD_ANIMATE_ONLY = ['transform', 'opacity'];
-const PAYMENT_SUCCESS_STATUSES = ['settlement', 'capture'];
-const PAYMENT_PENDING_STATUSES = ['pending', 'authorize'];
-const PAYMENT_FAILED_STATUSES = ['deny', 'cancel', 'expire', 'failure'];
-
-const DEEP_LINK_PATTERNS = [
-  'gojek://',
-  'shopeeid://',
-  'gopay://',
-  '//wsa.wallet.airpay.co.id/',
-  'simulator.sandbox.midtrans.com',
-];
-
-function isDeepLink(url: string): boolean {
-  const lowerUrl = url.toLowerCase();
-  return DEEP_LINK_PATTERNS.some(pattern => lowerUrl.includes(pattern));
-}
 
 function translateCheckoutError(message: string | undefined, fallback: string): string {
   const normalized = (message || '').toLowerCase();
@@ -222,11 +192,7 @@ export default function Cart() {
   const [quoteDestinationAreaId, setQuoteDestinationAreaId] = useState<string | null>(null);
   const [quoteDestinationPostalCode, setQuoteDestinationPostalCode] = useState<number | null>(null);
   const [startingCheckout, setStartingCheckout] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [confirmingPayment, setConfirmingPayment] = useState(false);
-  const [confirmCloseDialogOpen, setConfirmCloseDialogOpen] = useState(false);
-  const [webviewLoading, setWebviewLoading] = useState(true);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string | null>(null);
   const quantitySyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -235,7 +201,6 @@ export default function Cart() {
   const previousSelectedAddressIdRef = useRef<string | null>(null);
   const shouldOpenShippingSheetRef = useRef(false);
   const cartMountedRef = useRef(true);
-  const finalizeOnceRef = useRef(false);
   const checkoutInProgressRef = useRef(false);
 
   const computeCartSnapshot = useCallback((items: CartItemWithProduct[]): CartSnapshot => {
@@ -332,6 +297,7 @@ export default function Cart() {
       setCartItems(data.items);
       setCartSnapshot(data.snapshot);
       confirmedQuantitiesRef.current = new Map(data.items.map(item => [item.id, item.quantity]));
+      return;
     }
   }, [user?.id]);
 
@@ -598,52 +564,44 @@ export default function Cart() {
     setSelectedShippingKey(currentKey => (currentKey === shippingKey ? currentKey : shippingKey));
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const hydrateCheckoutSession = async () => {
-      if (!user?.id) {
-        if (!isMounted) {
-          return;
-        }
-
-        setCheckoutIdempotencyKey(null);
-        setActiveOrderId(null);
-        await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-        return;
-      }
-
-      const persisted = await getPersistData<PersistedCheckoutSession>(
-        DataPersistKeys.CHECKOUT_SESSION,
-      );
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (!persisted) {
-        setCheckoutIdempotencyKey(null);
-        setActiveOrderId(null);
-        return;
-      }
-
-      if (persisted.fingerprint === checkoutFingerprint) {
-        setCheckoutIdempotencyKey(persisted.idempotency_key);
-        setActiveOrderId(persisted.order_id);
-        return;
-      }
-
+  const syncCheckoutSession = useCallback(async () => {
+    if (!user?.id) {
       setCheckoutIdempotencyKey(null);
       setActiveOrderId(null);
       await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-    };
+      return;
+    }
 
-    void hydrateCheckoutSession();
+    const persisted = await getPersistData<PersistedCheckoutSession>(
+      DataPersistKeys.CHECKOUT_SESSION,
+    );
 
-    return () => {
-      isMounted = false;
-    };
+    if (!persisted) {
+      setCheckoutIdempotencyKey(null);
+      setActiveOrderId(null);
+      return;
+    }
+
+    if (persisted.fingerprint === checkoutFingerprint) {
+      setCheckoutIdempotencyKey(persisted.idempotency_key);
+      setActiveOrderId(persisted.order_id);
+      return;
+    }
+
+    setCheckoutIdempotencyKey(null);
+    setActiveOrderId(null);
+    await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
   }, [checkoutFingerprint, getPersistData, removePersistData, user?.id]);
+
+  useEffect(() => {
+    void syncCheckoutSession();
+  }, [syncCheckoutSession]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void syncCheckoutSession();
+    }, [syncCheckoutSession]),
+  );
 
   useEffect(() => {
     cartMountedRef.current = true;
@@ -723,80 +681,6 @@ export default function Cart() {
       setSelectedShippingKey(jne.courier_code + '-' + jne.service_code);
     }
   }, [shippingOptions, selectedShippingKey]);
-
-  useEffect(() => {
-    if (!paymentUrl) {
-      return;
-    }
-
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      setConfirmCloseDialogOpen(true);
-      return true;
-    });
-
-    return () => backHandler.remove();
-  }, [paymentUrl]);
-
-  const finalizePaymentFlow = useCallback(
-    async (_reason: PaymentResult['status']) => {
-      if (finalizeOnceRef.current) {
-        return;
-      }
-
-      finalizeOnceRef.current = true;
-      setPaymentUrl(null);
-
-      if (!activeOrderId) {
-        router.push('/orders');
-        return;
-      }
-
-      // Always poll server status - redirect URLs are not authoritative
-      setConfirmingPayment(true);
-      const { data, error } = await pollOrderPaymentStatus(activeOrderId, 12, 2000);
-      setConfirmingPayment(false);
-
-      // Clear session regardless of result
-      setCheckoutIdempotencyKey(null);
-      setActiveOrderId(null);
-      void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-
-      if (error) {
-        setShippingError(
-          translateCheckoutError(
-            error.message,
-            'Status pembayaran belum dapat dipastikan. Silakan cek halaman pesanan.',
-          ),
-        );
-        router.push('/orders');
-        return;
-      }
-
-      const paymentStatus = data?.payment_status ?? '';
-      const terminalFailedStates = ['deny', 'cancel', 'expire'];
-
-      if (terminalFailedStates.includes(paymentStatus)) {
-        setShippingError('Pembayaran terdeteksi gagal atau dibatalkan. Silakan ulangi pembayaran.');
-        router.push('/orders');
-        return;
-      }
-
-      if (paymentStatus === 'settlement') {
-        setShippingError(null);
-        setCartItems([]);
-        if (user?.id) {
-          await clearCart(user.id).catch(() => {});
-        }
-        router.push('/orders');
-        return;
-      }
-
-      // Pending or authorize - payment still processing
-      setShippingError('Pembayaran masih diproses. Silakan cek status pesanan Anda.');
-      router.push('/orders');
-    },
-    [activeOrderId, removePersistData, router, user?.id],
-  );
 
   const handleStartCheckout = useCallback(async () => {
     if (checkoutInProgressRef.current) {
@@ -882,243 +766,76 @@ export default function Cart() {
     }
 
     checkoutInProgressRef.current = false;
-    finalizeOnceRef.current = false;
-    setWebviewLoading(true);
-    setPaymentUrl(snapData.redirectUrl);
+    router.push({
+      pathname: '/cart/payment',
+      params: {
+        paymentUrl: snapData.redirectUrl,
+        orderId: orderData.order_id,
+      },
+    });
   }, [
     activeOrderId,
     checkoutFingerprint,
     checkoutIdempotencyKey,
     quoteDestinationAreaId,
     quoteDestinationPostalCode,
+    router,
     selectedAddress,
     selectedShippingOption,
     setPersistData,
     user?.id,
   ]);
 
-  const handlePaymentNavigation = useCallback((url?: string): PaymentResult['status'] | null => {
-    const safeUrl = (url || '').toLowerCase();
-    if (!safeUrl) {
-      return null;
-    }
-
-    const transactionStatusMatch = safeUrl.match(/transaction_status=([^&]+)/);
-    const transactionStatus =
-      transactionStatusMatch && transactionStatusMatch[1]
-        ? decodeURIComponent(transactionStatusMatch[1])
-        : '';
-
-    if (PAYMENT_SUCCESS_STATUSES.some(status => transactionStatus.includes(status))) {
-      return 'success';
-    }
-
-    if (PAYMENT_FAILED_STATUSES.some(status => transactionStatus.includes(status))) {
-      return 'cancel';
-    }
-
-    if (PAYMENT_PENDING_STATUSES.some(status => transactionStatus.includes(status))) {
-      return 'pending';
-    }
-
-    const reachedFinish =
-      safeUrl.includes('/finish') || safeUrl.includes('/unfinish') || safeUrl.includes('/error');
-
-    if (reachedFinish) {
-      if (safeUrl.includes('/error') || safeUrl.includes('/unfinish')) {
-        return 'cancel';
-      }
-
-      return 'pending';
-    }
-
-    return null;
-  }, []);
-
-  if (paymentUrl) {
-    return (
-      <YStack flex={1} backgroundColor="$background">
-        <XStack alignItems="center" justifyContent="space-between" padding="$3" gap="$2">
-          <YStack flex={1} gap="$1">
-            <Text fontSize="$5" fontWeight="700" color="$color">
-              Pembayaran Midtrans
-            </Text>
-            <Text fontSize="$3" color="$colorPress">
-              Selesaikan pembayaran lalu tunggu konfirmasi order secara otomatis.
-            </Text>
-          </YStack>
-          <Button
-            title="Tutup"
-            backgroundColor="transparent"
-            titleStyle={{ color: '$primary', fontWeight: '600' }}
-            onPress={() => {
-              setConfirmCloseDialogOpen(true);
-            }}
-            aria-label="Tutup pembayaran"
-          />
-        </XStack>
-
-        {confirmingPayment ? (
-          <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$4">
-            <Spinner size="large" color="$primary" />
-            <Text textAlign="center" color="$colorPress">
-              Memastikan status pembayaran dari server. Mohon tunggu...
-            </Text>
-          </YStack>
-        ) : (
-          <YStack flex={1} position="relative">
-            <WebView
-              source={{ uri: paymentUrl }}
-              style={{ flex: 1 }}
-              onLoadStart={() => setWebviewLoading(true)}
-              onLoadEnd={() => setWebviewLoading(false)}
-              onShouldStartLoadWithRequest={request => {
-                const url = request.url || '';
-
-                // Handle deep links for e-wallets (GoPay, ShopeePay, etc.)
-                if (isDeepLink(url)) {
-                  void Linking.canOpenURL(url)
-                    .then(canOpen => {
-                      if (canOpen) {
-                        return Linking.openURL(url);
-                      }
-
-                      setShippingError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
-                      return Promise.resolve();
-                    })
-                    .catch(() => {
-                      setShippingError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
-                    });
-                  return false;
-                }
-
-                if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                  return false;
-                }
-
-                const navigationStatus = handlePaymentNavigation(url);
-
-                if (navigationStatus) {
-                  void finalizePaymentFlow(navigationStatus);
-
-                  return false;
-                }
-
-                return true;
-              }}
-              onNavigationStateChange={navState => {
-                const navigationStatus = handlePaymentNavigation(navState.url);
-                if (navigationStatus) {
-                  void finalizePaymentFlow(navigationStatus);
-                }
-              }}
-              onError={() => {
-                setShippingError('Koneksi pembayaran terputus. Kami akan cek status order Anda.');
-                void finalizePaymentFlow('pending');
-              }}
-              onHttpError={() => {
-                setShippingError(
-                  'Halaman pembayaran tidak dapat dimuat. Kami cek status pembayaran Anda.',
-                );
-                void finalizePaymentFlow('pending');
-              }}
-            />
-
-            {webviewLoading && (
-              <YStack
-                position="absolute"
-                top={0}
-                left={0}
-                right={0}
-                bottom={0}
-                alignItems="center"
-                justifyContent="center"
-                backgroundColor="$background"
-                gap="$3"
-                padding="$4">
-                <Spinner size="large" color="$primary" />
-                <Text textAlign="center" color="$colorPress">
-                  Memuat halaman pembayaran...
-                </Text>
-              </YStack>
-            )}
-          </YStack>
-        )}
-
-        <AppAlertDialog
-          open={confirmCloseDialogOpen}
-          onOpenChange={setConfirmCloseDialogOpen}
-          title="Tutup Pembayaran?"
-          description="Jika Anda tutup sekarang, status pembayaran akan dicek otomatis. Yakin ingin tutup?"
-          confirmText="Ya, Tutup"
-          cancelText="Lanjut Bayar"
-          confirmColor="$danger"
-          onConfirm={() => {
-            void finalizePaymentFlow('pending');
-          }}
-        />
-      </YStack>
-    );
-  }
-
   if (paymentError) {
     return (
-      <YStack
-        flex={1}
-        backgroundColor="$background"
-        alignItems="center"
-        justifyContent="center"
-        padding="$5"
-        gap="$4">
-        <Card
-          borderRadius="$4"
-          borderWidth={1}
-          borderColor="$danger"
-          padding="$4"
-          backgroundColor="$surface"
-          maxWidth={400}
-          width="100%">
-          <YStack gap="$3" alignItems="center">
-            <Text fontSize="$5" fontWeight="700" color="$danger" textAlign="center">
-              Gagal Memproses Pembayaran
-            </Text>
-            <Text fontSize="$4" color="$color" textAlign="center">
-              {paymentError}
-            </Text>
-            <TamaguiButton
-              backgroundColor="$primary"
-              color="$white"
-              borderRadius="$3"
-              minHeight={44}
-              onPress={() => {
-                setPaymentError(null);
-                void handleStartCheckout();
-              }}
-              aria-label="Coba lagi pembayaran">
-              Coba Lagi
-            </TamaguiButton>
-          </YStack>
-        </Card>
+      <YStack flex={1} backgroundColor="$background">
+        <YStack flex={1} alignItems="center" justifyContent="center" padding="$5" gap="$4">
+          <Card
+            borderRadius="$4"
+            borderWidth={1}
+            borderColor="$danger"
+            padding="$4"
+            backgroundColor="$surface"
+            maxWidth={400}
+            width="100%">
+            <YStack gap="$3" alignItems="center">
+              <Text fontSize="$5" fontWeight="700" color="$danger" textAlign="center">
+                Gagal Memproses Pembayaran
+              </Text>
+              <Text fontSize="$4" color="$color" textAlign="center">
+                {paymentError}
+              </Text>
+              <TamaguiButton
+                backgroundColor="$primary"
+                color="$white"
+                borderRadius="$3"
+                minHeight={44}
+                onPress={() => {
+                  setPaymentError(null);
+                  void handleStartCheckout();
+                }}
+                aria-label="Coba lagi pembayaran">
+                Coba Lagi
+              </TamaguiButton>
+            </YStack>
+          </Card>
+        </YStack>
       </YStack>
     );
   }
 
   if (!user) {
     return (
-      <YStack
-        flex={1}
-        alignItems="center"
-        justifyContent="center"
-        backgroundColor="$background"
-        padding="$5"
-        gap="$4">
-        <CartIcon size={64} color={subtleColor} />
-        <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
-          Login Terlebih Dahulu
-        </Text>
-        <Text fontSize="$4" color="$colorPress" textAlign="center" maxWidth={300} lineHeight="$4">
-          Masuk ke akun Anda untuk menghitung ongkir berdasarkan alamat tersimpan.
-        </Text>
+      <YStack flex={1} backgroundColor="$background">
+        <YStack flex={1} alignItems="center" justifyContent="center" padding="$5" gap="$4">
+          <CartIcon size={64} color={subtleColor} />
+          <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
+            Login Terlebih Dahulu
+          </Text>
+          <Text fontSize="$4" color="$colorPress" textAlign="center" maxWidth={300} lineHeight="$4">
+            Masuk ke akun Anda untuk menghitung ongkir berdasarkan alamat tersimpan.
+          </Text>
+        </YStack>
       </YStack>
     );
   }

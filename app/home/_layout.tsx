@@ -1,8 +1,9 @@
 import { useTheme } from 'tamagui';
 import { Stack } from 'expo-router';
 import { getStackHeaderOptions } from '@/utils/theme';
+import { withAuthGuard } from '@/hooks/withAuthGuard';
 
-export default function HomeStackLayout() {
+function HomeStackLayout() {
   const theme = useTheme();
 
   return (
@@ -40,3 +41,5 @@ export default function HomeStackLayout() {
     </Stack>
   );
 }
+
+export default withAuthGuard(HomeStackLayout);

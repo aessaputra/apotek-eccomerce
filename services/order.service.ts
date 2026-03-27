@@ -12,8 +12,13 @@ export type OrderWithItems = Order & {
     products?: {
       id: string;
       name: string;
-      image_url: string | null;
       price: number;
+      slug: string;
+      weight: number;
+      product_images?: {
+        url: string;
+        sort_order: number;
+      }[];
     } | null;
   }[];
   profiles?: {
@@ -24,7 +29,10 @@ export type OrderWithItems = Order & {
     id: string;
     receiver_name: string;
     phone_number: string;
-    full_address: string;
+    street_address: string;
+    city: string;
+    province: string | null;
+    postal_code: string;
   } | null;
 };
 
@@ -39,6 +47,22 @@ export interface OrderDetailResult {
 }
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
+
+function logSupabaseError(context: string, error: unknown): void {
+  if (!__DEV__) {
+    return;
+  }
+
+  if (error instanceof Error) {
+    console.error(`[order.service] ${context}:`, {
+      message: error.message,
+      name: error.name,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n'),
+    });
+  } else {
+    console.error(`[order.service] ${context}:`, error);
+  }
+}
 
 function toUserError(error: unknown, fallback: string): Error {
   if (error instanceof Error) {
@@ -66,23 +90,38 @@ export async function getUserOrders(userId: string): Promise<OrderListResult> {
           products (
             id,
             name,
-            image_url,
-            price
+            price,
+            slug,
+            weight,
+            product_images (
+              url,
+              sort_order
+            )
           )
         ),
         profiles (full_name, phone_number),
-        addresses (id, receiver_name, phone_number, full_address)
+        addresses (
+          id,
+          receiver_name,
+          phone_number,
+          street_address,
+          city,
+          province,
+          postal_code
+        )
       `,
       )
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
+      logSupabaseError('getUserOrders query failed', error);
       return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
     }
 
     return { data: data as unknown as OrderWithItems[], error: null };
   } catch (error) {
+    logSupabaseError('getUserOrders unexpected error', error);
     return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
   }
 }
@@ -106,23 +145,38 @@ export async function getOrderById(orderId: string): Promise<OrderDetailResult> 
           products (
             id,
             name,
-            image_url,
-            price
+            price,
+            slug,
+            weight,
+            product_images (
+              url,
+              sort_order
+            )
           )
         ),
         profiles (full_name, phone_number),
-        addresses (id, receiver_name, phone_number, full_address)
+        addresses (
+          id,
+          receiver_name,
+          phone_number,
+          street_address,
+          city,
+          province,
+          postal_code
+        )
       `,
       )
       .eq('id', orderId)
       .single();
 
     if (error) {
+      logSupabaseError('getOrderById query failed', error);
       return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
     }
 
     return { data: data as unknown as OrderWithItems, error: null };
   } catch (error) {
+    logSupabaseError('getOrderById unexpected error', error);
     return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
   }
 }
@@ -133,6 +187,7 @@ export async function getOrderById(orderId: string): Promise<OrderDetailResult> 
 export function getPaymentStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     pending: 'Menunggu Pembayaran',
+    capture: 'Pembayaran Dikonfirmasi',
     settlement: 'Pembayaran Berhasil',
     deny: 'Pembayaran Ditolak',
     expire: 'Pembayaran Kadaluarsa',
@@ -153,6 +208,7 @@ export function getPaymentStatusLabel(status: string): string {
 export function getOrderStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     draft: 'Draft',
+    pending: 'Menunggu Konfirmasi',
     processing: 'Diproses',
     awaiting_shipment: 'Menunggu Pengiriman',
     shipped: 'Dikirim',

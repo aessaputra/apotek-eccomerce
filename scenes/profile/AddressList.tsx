@@ -12,6 +12,7 @@ import SwipeableAddressRow from '@/components/elements/AddressCard/SwipeableAddr
 import { useAppSlice } from '@/slices';
 import { getAddresses, deleteAddress, setDefaultAddress } from '@/services/address.service';
 import type { Address } from '@/types/address';
+import type { TypedHref } from '@/types/routes.types';
 import {
   MIN_TOUCH_TARGET,
   BOTTOM_BAR_HEIGHT,
@@ -112,7 +113,11 @@ export default function AddressList() {
   const handleEdit = useCallback(
     (addressId: string) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      router.push(`/profile/address-form?id=${addressId}`);
+      const addressFormHref: TypedHref = {
+        pathname: '/profile/address-form',
+        params: { id: addressId },
+      };
+      router.push(addressFormHref);
     },
     [router],
   );

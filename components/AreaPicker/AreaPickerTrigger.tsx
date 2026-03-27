@@ -21,7 +21,7 @@ function AreaPickerTrigger({
 
   return (
     <YStack gap="$1">
-      <Text fontSize="$2" color="$colorPress" marginBottom="$1.5" fontWeight="500">
+      <Text fontSize="$2" color="$color" marginBottom="$1.5" fontWeight="500">
         Area Pengiriman
         <Text color="$error"> *</Text>
       </Text>

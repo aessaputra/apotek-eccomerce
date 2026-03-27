@@ -13,7 +13,7 @@ import { useAppSlice } from '@/slices';
 import { useAddressForm } from '@/hooks/useAddressForm';
 import { useAddressData } from '@/hooks/useAddressData';
 import { buildAddressPayload } from '@/services/address.service';
-import type { AddressInsert } from '@/types/address';
+import type { RouteParams } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 
 const SafeAreaView = styled(RNSafeAreaView, {
@@ -34,7 +34,7 @@ const FormContent = styled(YStack, {
 export default function AddressFormScreen() {
   const router = useRouter();
   const { user } = useAppSlice();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id } = useLocalSearchParams<RouteParams<'profile/address-form'>>();
   const isEdit = !!id;
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const insets = useSafeAreaInsets();

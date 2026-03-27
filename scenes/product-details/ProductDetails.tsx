@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { RouteParams } from '@/types/routes.types';
 import {
   Button,
   Card,
@@ -279,7 +280,7 @@ function ProductErrorState({
 
 export default function ProductDetails() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<RouteParams<'home/product-details'>>();
   const media = useMedia();
   const theme = useTheme();
   const { user } = useAppSlice();

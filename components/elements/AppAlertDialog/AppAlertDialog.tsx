@@ -1,142 +1,107 @@
-import { Modal, Pressable } from 'react-native';
-import { Button, Text, YStack, XStack, styled } from 'tamagui';
+import { AlertDialog, Button, YStack } from 'tamagui';
 
 export interface AppAlertDialogProps {
-  /** Controlled open state */
   open: boolean;
-  /** Callback when open state changes */
   onOpenChange: (open: boolean) => void;
-  /** Dialog title */
   title: string;
-  /** Dialog description/message */
   description: string;
-  /** Confirm button text (default: 'OK') */
   confirmText?: string;
-  /** Cancel button text — when provided, shows a cancel button */
   cancelText?: string;
-  /** Callback fired when confirm button is pressed (before closing) */
   onConfirm?: () => void;
-  /** Confirm button color token (default: '$primary') */
   confirmColor?: string;
+  confirmTextColor?: string;
+  confirmBorderColor?: string;
+  onCancel?: () => void;
+  cancelColor?: string;
+  cancelTextColor?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
-
-/**
- * Reusable alert dialog menggunakan React Native Modal + Tamagui styled content.
- * Menggunakan RN Modal untuk kompatibilitas penuh di native (iOS/Android/Web),
- * dengan konten yang di-style menggunakan Tamagui design tokens.
- *
- * Uses a SIBLING layout pattern (backdrop + dialog as siblings) instead of
- * nested Pressables to avoid click event propagation issues on web.
- *
- * @example
- * // Single button (info)
- * <AppAlertDialog
- *   open={alertOpen}
- *   onOpenChange={setAlertOpen}
- *   title="Akses Ditolak"
- *   description="Hanya customer yang boleh login."
- * />
- *
- * @example
- * // Two buttons (destructive confirm)
- * <AppAlertDialog
- *   open={logoutOpen}
- *   onOpenChange={setLogoutOpen}
- *   title="Keluar"
- *   description="Anda yakin ingin keluar?"
- *   cancelText="Batal"
- *   confirmText="Keluar"
- *   confirmColor="$danger"
- *   onConfirm={handleLogout}
- * />
- */
-const DIALOG_WIDTH = 320;
-
-const BackdropPressable = styled(Pressable, {
-  position: 'absolute',
-  top: 0,
-  right: 0,
-  bottom: 0,
-  left: 0,
-});
 
 export default function AppAlertDialog({
   open,
   onOpenChange,
   title,
   description,
-  confirmText = 'OK',
+  confirmText,
   cancelText,
   onConfirm,
   confirmColor = '$primary',
+  confirmTextColor = '$white',
+  confirmBorderColor = 'transparent',
+  onCancel,
+  cancelColor = '$background',
+  cancelTextColor = '$colorSubtle',
+  confirmLabel,
+  cancelLabel,
 }: AppAlertDialogProps) {
-  const handleClose = () => onOpenChange(false);
+  const resolvedConfirmText = confirmLabel ?? confirmText ?? 'OK';
+  const resolvedCancelText = cancelLabel ?? cancelText;
 
   const handleConfirm = () => {
     onConfirm?.();
-    onOpenChange(false);
+  };
+
+  const handleCancel = () => {
+    onCancel?.();
   };
 
   return (
-    <Modal
-      visible={open}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-      statusBarTranslucent>
-      <YStack
-        flex={1}
-        backgroundColor="$sheetOverlay"
-        alignItems="center"
-        justifyContent="center"
-        padding="$5">
-        {/* Backdrop — click to dismiss (sibling, not parent of dialog) */}
-        <BackdropPressable onPress={handleClose} />
-
-        {/* Dialog content — sits above backdrop, no event bubbling issues */}
-        <YStack
-          backgroundColor="$surface"
-          borderRadius="$4"
-          padding="$5"
-          width={DIALOG_WIDTH}
-          maxWidth="90%"
-          elevation={8}
-          gap="$3"
-          zIndex={1}>
-          <Text fontSize={18} fontWeight="700" color="$color">
+    <AlertDialog modal native={false} open={open} onOpenChange={onOpenChange}>
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay
+          key="overlay"
+          animation="quick"
+          opacity={0.5}
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+        />
+        <AlertDialog.Content
+          key="content"
+          bordered
+          elevate
+          width="90%"
+          maxWidth="$20"
+          animation={['quick', { opacity: { overshootClamping: true } }]}
+          animateOnly={['transform', 'opacity']}
+          enterStyle={{ y: -20, opacity: 0, scale: 0.96 }}
+          exitStyle={{ y: 10, opacity: 0, scale: 0.98 }}
+          padding="$4">
+          <AlertDialog.Title fontSize="$6" fontWeight="700">
             {title}
-          </Text>
-          <Text fontSize={14} color="$colorSubtle" lineHeight={20}>
+          </AlertDialog.Title>
+          <AlertDialog.Description fontSize="$3" color="$colorSubtle" marginTop="$2">
             {description}
-          </Text>
-          <XStack justifyContent="flex-end" paddingTop="$2" gap="$2">
-            {cancelText && (
+          </AlertDialog.Description>
+
+          <YStack gap="$2" width="100%" marginTop="$3">
+            {resolvedCancelText ? (
+              <AlertDialog.Cancel asChild>
+                <Button
+                  width="100%"
+                  backgroundColor={cancelColor}
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  color={cancelTextColor}
+                  onPress={handleCancel}>
+                  {resolvedCancelText}
+                </Button>
+              </AlertDialog.Cancel>
+            ) : null}
+            <AlertDialog.Action asChild>
               <Button
-                backgroundColor="transparent"
-                borderRadius="$3"
-                paddingHorizontal="$4"
-                paddingVertical="$2"
-                pressStyle={{ opacity: 0.7 }}
-                onPress={handleClose}>
-                <Text color="$colorSubtle" fontWeight="600">
-                  {cancelText}
-                </Text>
+                width="100%"
+                backgroundColor={confirmColor}
+                borderWidth={1}
+                borderColor={confirmBorderColor}
+                color={confirmTextColor}
+                onPress={handleConfirm}>
+                {resolvedConfirmText}
               </Button>
-            )}
-            <Button
-              backgroundColor={confirmColor}
-              borderRadius="$3"
-              paddingHorizontal="$4"
-              paddingVertical="$2"
-              pressStyle={{ opacity: 0.8 }}
-              onPress={handleConfirm}>
-              <Text color="$white" fontWeight="600">
-                {confirmText}
-              </Text>
-            </Button>
-          </XStack>
-        </YStack>
-      </YStack>
-    </Modal>
+            </AlertDialog.Action>
+          </YStack>
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog>
   );
 }

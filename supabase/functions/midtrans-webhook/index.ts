@@ -510,22 +510,6 @@ Deno.serve(async req => {
 
     const order = rawOrder as unknown as Order;
 
-    const { error: reconcileOrphanError } = await adminClient
-      .from('payments')
-      .update({
-        order_id: order.id,
-        user_id: order.user_id ?? null,
-      })
-      .eq('midtrans_order_id', payload.order_id)
-      .is('order_id', null);
-
-    if (reconcileOrphanError) {
-      console.error(
-        '[midtrans-webhook] Failed to reconcile orphan payment:',
-        reconcileOrphanError.message,
-      );
-    }
-
     const expectedAmount = Math.round(
       Number(order.gross_amount ?? order.total_amount + Number(order.shipping_cost ?? 0)),
     );
@@ -594,6 +578,27 @@ Deno.serve(async req => {
           transaction_id: verifiedStatus.transaction_id || payload.transaction_id || null,
         },
       });
+    }
+
+    // Clear cart on settlement regardless of 'applied' to ensure retry on failure
+    // This prevents cart items persisting if first webhook succeeds but cart deletion fails
+    if (newPaymentStatus === 'settlement' && order.user_id) {
+      const { data: userCart } = await adminClient
+        .from('carts')
+        .select('id')
+        .eq('user_id', order.user_id)
+        .maybeSingle();
+
+      if (userCart?.id) {
+        const { error: cartClearError } = await adminClient
+          .from('cart_items')
+          .delete()
+          .eq('cart_id', userCart.id);
+
+        if (cartClearError) {
+          console.error('[midtrans-webhook] Failed to clear cart:', cartClearError.message);
+        }
+      }
     }
 
     let existingSideEffectTask = await getSideEffectTask(adminClient, order.id);

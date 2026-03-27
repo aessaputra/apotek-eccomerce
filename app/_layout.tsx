@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform, Pressable } from 'react-native';
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { Tabs, useRouter, useSegments } from 'expo-router';
@@ -97,7 +98,7 @@ function Router() {
       const protectedRoutes = ['home', 'orders', 'profile', 'cart'];
       const inProtectedRoute = !!currentGroup && protectedRoutes.includes(currentGroup);
       if (inProtectedRoute) {
-        setTimeout(() => router.replace('/login'), 0);
+        setTimeout(() => router.replace('/(auth)/login'), 0);
       }
     }
   }, [checked, currentGroup, loggedIn, router]);
@@ -147,6 +148,109 @@ function Router() {
   // Get header background color for StatusBar consistency
   const headerBg = getThemeColor(theme, 'headerBackground', getThemeColor(theme, 'brandPrimary'));
 
+  // Memoized tab bar icon render functions to prevent recreation on each render
+  const renderHomeIcon = useCallback(
+    ({ color, focused }: { color: string; focused: boolean }) => (
+      <TabBarIconWithPill focused={focused}>
+        <HomeIcon size={ICON_SIZES.BUTTON} color={color} />
+      </TabBarIconWithPill>
+    ),
+    [],
+  );
+
+  const renderOrdersIcon = useCallback(
+    ({ color, focused }: { color: string; focused: boolean }) => (
+      <TabBarIconWithPill focused={focused}>
+        <PackageIcon size={ICON_SIZES.BUTTON} color={color} />
+      </TabBarIconWithPill>
+    ),
+    [],
+  );
+
+  const renderProfileIcon = useCallback(
+    ({ color, focused }: { color: string; focused: boolean }) => (
+      <TabBarIconWithPill focused={focused}>
+        <UserIcon size={ICON_SIZES.BUTTON} color={color} />
+      </TabBarIconWithPill>
+    ),
+    [],
+  );
+
+  const renderHomeTabButton = useCallback(
+    ({
+      onPress,
+      onLongPress,
+      accessibilityLabel,
+      accessibilityState,
+      testID,
+      children,
+      style,
+    }: BottomTabBarButtonProps) => (
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={accessibilityState}
+        testID={testID}
+        style={style}
+        accessibilityRole="tab"
+        accessibilityHint="Buka halaman beranda">
+        {children}
+      </Pressable>
+    ),
+    [],
+  );
+
+  const renderOrdersTabButton = useCallback(
+    ({
+      onPress,
+      onLongPress,
+      accessibilityLabel,
+      accessibilityState,
+      testID,
+      children,
+      style,
+    }: BottomTabBarButtonProps) => (
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={accessibilityState}
+        testID={testID}
+        style={style}
+        accessibilityRole="tab"
+        accessibilityHint="Buka halaman pesanan">
+        {children}
+      </Pressable>
+    ),
+    [],
+  );
+
+  const renderProfileTabButton = useCallback(
+    ({
+      onPress,
+      onLongPress,
+      accessibilityLabel,
+      accessibilityState,
+      testID,
+      children,
+      style,
+    }: BottomTabBarButtonProps) => (
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={accessibilityState}
+        testID={testID}
+        style={style}
+        accessibilityRole="tab"
+        accessibilityHint="Buka halaman akun">
+        {children}
+      </Pressable>
+    ),
+    [],
+  );
+
   return (
     <Fragment>
       <Tabs
@@ -190,33 +294,27 @@ function Router() {
           name="home"
           options={{
             title: 'Beranda',
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIconWithPill focused={focused}>
-                <HomeIcon size={ICON_SIZES.BUTTON} color={color} />
-              </TabBarIconWithPill>
-            ),
+            tabBarAccessibilityLabel: 'Navigasi ke Beranda',
+            tabBarButton: renderHomeTabButton,
+            tabBarIcon: renderHomeIcon,
           }}
         />
         <Tabs.Screen
           name="orders"
           options={{
             title: 'Pesanan',
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIconWithPill focused={focused}>
-                <PackageIcon size={ICON_SIZES.BUTTON} color={color} />
-              </TabBarIconWithPill>
-            ),
+            tabBarAccessibilityLabel: 'Navigasi ke Pesanan',
+            tabBarButton: renderOrdersTabButton,
+            tabBarIcon: renderOrdersIcon,
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
             title: 'Akun',
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIconWithPill focused={focused}>
-                <UserIcon size={ICON_SIZES.BUTTON} color={color} />
-              </TabBarIconWithPill>
-            ),
+            tabBarAccessibilityLabel: 'Navigasi ke Akun',
+            tabBarButton: renderProfileTabButton,
+            tabBarIcon: renderProfileIcon,
           }}
         />
         <Tabs.Screen

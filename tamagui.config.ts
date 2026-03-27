@@ -24,6 +24,7 @@ export const config = createTamagui({
   settings: {
     ...defaultConfig.settings,
     defaultFont: 'body',
+    styleCompat: 'react-native',
   },
   fonts: {
     ...defaultConfig.fonts,

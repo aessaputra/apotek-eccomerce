@@ -7,12 +7,14 @@ export interface AppState {
   checked: boolean;
   loggedIn: boolean;
   user?: User;
+  cartClearedAt: number | null;
 }
 
 const initialState: AppState = {
   checked: false,
   loggedIn: false,
   user: undefined,
+  cartClearedAt: null,
 };
 
 const slice = createSlice({
@@ -29,6 +31,9 @@ const slice = createSlice({
     },
     setUser: (state: AppState, { payload }: PayloadAction<User | undefined>) => {
       state.user = payload;
+    },
+    markCartCleared: (state: AppState, { payload }: PayloadAction<number>) => {
+      state.cartClearedAt = payload;
     },
     reset: () => initialState,
   },

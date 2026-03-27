@@ -17,17 +17,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   }
   const expoConfig: ExpoConfig = {
     ...config,
-    slug: process.env.EXPO_SLUG ?? 'apotek-eccomerce',
-    name: process.env.EXPO_NAME ?? 'Apotek Eccomerce',
-    scheme: 'apotek-eccomerce', // Deep linking scheme untuk OAuth redirect
+    slug: process.env.EXPO_SLUG ?? 'apotek-ecommerce',
+    name: process.env.EXPO_NAME ?? 'Apotek Ecommerce',
+    scheme: 'apotek-ecommerce', // Deep linking scheme untuk OAuth redirect
     icon: './assets/images/logo.png', // App icon untuk semua platform
     ios: {
       ...config.ios,
-      bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekeccomerce',
+      bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekecommerce',
     },
     android: {
       ...config.android,
-      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekeccomerce',
+      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekecommerce',
       // Use 'resize' mode for consistent keyboard handling with KeyboardAvoidingView.
       // This allows the container to resize when keyboard appears, enabling
       // bottom action buttons to stay above keyboard.

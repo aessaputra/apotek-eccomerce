@@ -1,6 +1,7 @@
 import { blue, green, red, yellow } from '@tamagui/colors';
 
-const brandPalette = {
+// Light mode palette (default)
+const lightPalette = {
   background: '#FFFFFF',
   backgroundHover: '#F9FAFB',
   backgroundPress: '#F3F4F6',
@@ -13,6 +14,24 @@ const brandPalette = {
   borderColorHover: '#D1D5DB',
   borderColorFocus: 'hsla(175, 66%, 46%, 1)',
   shadowColor: 'rgba(0,0,0,0.06)',
+  colorMuted: '#64748B',
+};
+
+// Dark mode palette
+const darkPalette = {
+  background: '#0A0A0A',
+  backgroundHover: '#141414',
+  backgroundPress: '#1A1A1A',
+  color: '#F2F5F7',
+  colorHover: '#EEF2F6',
+  colorPress: '#E6EBF0',
+  colorFocus: '#F2F5F7',
+  colorTransparent: 'rgba(250,250,250,0)',
+  borderColor: '#262626',
+  borderColorHover: '#404040',
+  borderColorFocus: 'hsla(175, 66%, 46%, 1)',
+  shadowColor: 'rgba(0,0,0,0.3)',
+  colorMuted: '#98A4B3',
 };
 
 const accentBrand = {
@@ -21,14 +40,21 @@ const accentBrand = {
   accent4: 'hsla(175, 66%, 46%, 1)',
 };
 
+const accentBrandDark = {
+  accent1: 'hsla(175, 72%, 45%, 1)',
+  accent3: 'hsla(175, 68%, 50%, 1)',
+  accent4: 'hsla(175, 66%, 55%, 1)',
+};
+
 const accentBrandAlpha = {
-  pillBg: 'hsla(175, 66%, 46%, 0.12)',
+  pillBgLight: 'hsla(175, 66%, 46%, 0.12)',
+  pillBgDark: 'hsla(175, 66%, 46%, 0.20)',
   focusRing: 'hsla(175, 66%, 46%, 0.3)',
 };
 
 export const themes = {
   brand: {
-    ...brandPalette,
+    ...lightPalette,
     white: '#FFFFFF',
     red10: red.red10,
     primary: accentBrand.accent4,
@@ -50,8 +76,9 @@ export const themes = {
     dangerSoft: red.red3,
     headerBackground: accentBrand.accent1,
     colorSubtle: '#4B5563',
+    colorMuted: '#64748B',
     tabBarInactive: '#4B5563',
-    tabBarPillBackground: accentBrandAlpha.pillBg,
+    tabBarPillBackground: accentBrandAlpha.pillBgLight,
     placeholderColor: '#6B7280',
     colorDisabled: '#9CA3AF',
     backgroundDisabled: '#F3F4F6',
@@ -61,6 +88,42 @@ export const themes = {
     info: blue.blue9,
     infoSoft: blue.blue3,
     sheetOverlay: 'rgba(0,0,0,0.4)',
+  },
+  brand_dark: {
+    ...darkPalette,
+    white: '#0A0A0A',
+    red10: red.red5,
+    primary: accentBrandDark.accent4,
+    accent: accentBrandDark.accent4,
+    error: '#FF8F8F',
+    brandPrimary: accentBrandDark.accent4,
+    brandPrimarySoft: accentBrandDark.accent3,
+    brandAccent: yellow.yellow5,
+    brandAccentSoft: yellow.yellow1,
+    surface: '#141414',
+    surfaceSubtle: '#1A1A1A',
+    surfaceElevated: '#262626',
+    surfaceBorder: '#404040',
+    success: green.green5,
+    successSoft: green.green1,
+    warning: yellow.yellow5,
+    warningSoft: yellow.yellow1,
+    danger: '#FF8F8F',
+    dangerSoft: red.red1,
+    headerBackground: accentBrandDark.accent1,
+    colorSubtle: '#AAB4C2',
+    colorMuted: '#98A4B3',
+    tabBarInactive: '#AAB4C2',
+    tabBarPillBackground: accentBrandAlpha.pillBgDark,
+    placeholderColor: '#98A4B3',
+    colorDisabled: '#8A94A3',
+    backgroundDisabled: '#262626',
+    borderColorDisabled: '#404040',
+    outlineColor: accentBrandAlpha.focusRing,
+    backgroundFocus: '#1A1A1A',
+    info: blue.blue5,
+    infoSoft: blue.blue1,
+    sheetOverlay: 'rgba(0,0,0,0.6)',
   },
 } as const;
 
@@ -88,6 +151,6 @@ export const DEFAULT_THEME_VALUES = {
   danger: red.red10,
   info: blue.blue9,
   infoSoft: blue.blue3,
-  tabBarPillBackground: accentBrandAlpha.pillBg,
+  tabBarPillBackground: accentBrandAlpha.pillBgLight,
   tabBarInactive: '#4B5563',
 } as const;

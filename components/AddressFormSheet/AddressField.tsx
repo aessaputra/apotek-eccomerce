@@ -55,11 +55,11 @@ function AddressField({
         pressStyle={{ opacity: 0.8 }}>
         <XStack alignItems="center" justifyContent="space-between" gap="$3">
           <YStack flex={1} gap="$1">
-            <Text fontSize="$3" color="$colorPress" fontWeight="500">
+            <Text fontSize="$3" color="$color" fontWeight="500">
               {label}
               {required ? ' *' : ''}
             </Text>
-            <Text fontSize="$4" color={value ? '$color' : '$colorPress'}>
+            <Text fontSize="$4" color={value ? '$color' : '$placeholderColor'}>
               {value || placeholder}
             </Text>
             {error ? (
@@ -68,7 +68,7 @@ function AddressField({
               </Text>
             ) : null}
           </YStack>
-          <ChevronRightIcon size={18} color="$colorPress" />
+          <ChevronRightIcon size={18} color="$colorMuted" />
         </XStack>
       </Card>
 
