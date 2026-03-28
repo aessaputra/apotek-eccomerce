@@ -4,6 +4,55 @@ import type { Tables } from '@/types/supabase';
 export type CategoryRow = Tables<'categories'>;
 export type ProductRow = Tables<'products'>;
 export type ProductImageRow = Tables<'product_images'>;
+export const PRODUCTS_PAGE_SIZE = 24;
+export const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const PRODUCT_LIST_SELECT = `
+  id,
+  name,
+  price,
+  category_id,
+  created_at,
+  product_images (
+    url,
+    sort_order
+  )
+`;
+
+export interface ProductListImage {
+  url: string;
+  sort_order: number;
+}
+
+export interface ProductListItem {
+  id: string;
+  name: string;
+  price: number;
+  category_id: string | null;
+  created_at: string;
+  images: ProductListImage[];
+}
+
+export interface ProductListResult {
+  data: ProductListItem[] | null;
+  error: Error | null;
+  metrics: ProductListMetrics | null;
+}
+
+export interface ProductListMetrics {
+  durationMs: number;
+  payloadBytes: number;
+  fetchedAt: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface GetProductsOptimizedParams {
+  offset?: number;
+  limit?: number;
+  signal?: AbortSignal;
+}
 
 export interface ProductWithImages extends ProductRow {
   images: { url: string; sort_order: number }[];
@@ -16,6 +65,51 @@ export interface ProductDetailsData extends ProductWithImages {
 
 interface CartMutationResult {
   error: Error | null;
+}
+
+function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+function getPayloadBytes(value: unknown): number {
+  return JSON.stringify(value).length;
+}
+
+function toUserError(error: unknown, fallback: string): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error(fallback);
+}
+
+function logHomeServiceError(context: string, error: unknown): void {
+  if (!__DEV__ || isAbortError(error)) {
+    return;
+  }
+
+  if (error instanceof Error) {
+    console.warn(`[HomeService] ${context}:`, error.message);
+    return;
+  }
+
+  console.warn(`[HomeService] ${context}:`, error);
+}
+
+function normalizeProductListRow(
+  product: ProductRow & { product_images?: ProductListImage[] | null },
+): ProductListItem {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    category_id: product.category_id,
+    created_at: product.created_at,
+    images: (product.product_images ?? []).map(image => ({
+      url: image.url,
+      sort_order: image.sort_order,
+    })),
+  };
 }
 
 /**
@@ -63,6 +157,86 @@ export async function getLatestProducts(limit: number = 10): Promise<ProductRow[
   } catch (error) {
     if (__DEV__) console.warn('[HomeService] getLatestProducts error:', error);
     return [];
+  }
+}
+
+export async function getProductsOptimized(
+  categoryId: string,
+  params: GetProductsOptimizedParams = {},
+): Promise<ProductListResult> {
+  const normalizedCategoryId = categoryId.trim();
+  const offset = params.offset ?? 0;
+  const requestedLimit = Math.max(params.limit ?? PRODUCTS_PAGE_SIZE, 1);
+  const startedAt = Date.now();
+
+  if (!normalizedCategoryId) {
+    return {
+      data: [],
+      error: null,
+      metrics: {
+        durationMs: 0,
+        payloadBytes: 0,
+        fetchedAt: Date.now(),
+        offset,
+        limit: requestedLimit,
+        hasMore: false,
+      },
+    };
+  }
+
+  try {
+    let query = supabase
+      .from('products')
+      .select(PRODUCT_LIST_SELECT)
+      .eq('category_id', normalizedCategoryId)
+      .eq('is_active', true)
+      .gt('stock', 0)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + requestedLimit);
+
+    if (params.signal) {
+      query = query.abortSignal(params.signal);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      logHomeServiceError('getProductsOptimized query failed', error);
+      return {
+        data: null,
+        error: toUserError(error, 'Failed to load products. Please try again.'),
+        metrics: null,
+      };
+    }
+
+    const rows = (
+      (data ?? []) as unknown as Array<ProductRow & { product_images?: ProductListImage[] | null }>
+    ).map(normalizeProductListRow);
+    const hasMore = rows.length > requestedLimit;
+    const normalizedData = hasMore ? rows.slice(0, requestedLimit) : rows;
+    const fetchedAt = Date.now();
+
+    return {
+      data: normalizedData,
+      error: null,
+      metrics: {
+        durationMs: fetchedAt - startedAt,
+        payloadBytes: getPayloadBytes(normalizedData),
+        fetchedAt,
+        offset,
+        limit: requestedLimit,
+        hasMore,
+      },
+    };
+  } catch (error) {
+    logHomeServiceError('getProductsOptimized unexpected error', error);
+    return {
+      data: null,
+      error: isAbortError(error)
+        ? error
+        : toUserError(error, 'Failed to load products. Please try again.'),
+      metrics: null,
+    };
   }
 }
 

@@ -39,15 +39,15 @@ export function getThemeColor(theme: unknown, key: string, fallback?: string): s
 
 export function getStackHeaderOptions(theme: unknown) {
   return {
-    headerTintColor: getThemeColor(theme, 'white'),
+    headerTintColor: getThemeColor(theme, 'color'),
     headerStyle: {
-      backgroundColor: getThemeColor(
-        theme,
-        'headerBackground',
-        getThemeColor(theme, 'brandPrimary'),
-      ),
+      backgroundColor: 'transparent',
     },
-    headerTitleStyle: { fontSize: 18, fontWeight: '600' as const },
+    headerTitleStyle: {
+      fontSize: 18,
+      fontWeight: '600' as const,
+      color: getThemeColor(theme, 'color'),
+    },
     headerShadowVisible: false,
   };
 }

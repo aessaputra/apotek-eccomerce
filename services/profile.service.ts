@@ -116,6 +116,18 @@ function validateImageFile(uri: string, fileSize?: number): { valid: boolean; er
   return { valid: true };
 }
 
+function getSafeFilename(uri: string): string {
+  const parts = uri.split('/');
+  const originalName = parts[parts.length - 1] || 'image';
+  const nameWithoutExt = originalName.split('.').slice(0, -1).join('.') || 'image';
+  const sanitized = nameWithoutExt
+    .replace(/[^a-zA-Z0-9\s-_]/g, '')
+    .replace(/\s+/g, '_')
+    .substring(0, 50);
+
+  return sanitized || 'image';
+}
+
 /**
  * Upload avatar image ke Supabase Storage dan return public URL
  * Menggunakan expo-file-system dengan base64 untuk React Native compatibility
@@ -143,11 +155,11 @@ export async function uploadAvatar(
     // Convert base64 ke ArrayBuffer (required untuk Supabase Storage di React Native)
     const arrayBuffer = decode(base64);
 
-    // Generate unique filename
     const timestamp = Date.now();
     const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${userId}/${timestamp}.${fileExt}`;
-    const filePath = fileName; // Path relatif dalam bucket
+    const safeFilename = `${getSafeFilename(imageUri)}.${fileExt}`;
+    const fileName = `${userId}-${timestamp}-${safeFilename}`;
+    const filePath = `avatars/${fileName}`;
 
     // Determine content type
     const contentTypeMap: Record<string, string> = {
@@ -158,9 +170,9 @@ export async function uploadAvatar(
     };
     const contentType = contentTypeMap[fileExt] || 'image/jpeg';
 
-    // Upload ke Supabase Storage bucket 'avatars'
+    // Upload ke Supabase Storage bucket 'media' (path: avatars/)
     const { error: uploadError } = await supabase.storage
-      .from('avatars')
+      .from('media')
       .upload(filePath, arrayBuffer, {
         contentType,
         upsert: true, // Replace existing file if exists
@@ -170,10 +182,10 @@ export async function uploadAvatar(
       return { url: null, error: uploadError as unknown as Error };
     }
 
-    // Get public URL
+    // Get public URL from 'media' bucket
     const {
       data: { publicUrl },
-    } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    } = supabase.storage.from('media').getPublicUrl(filePath);
 
     return { url: publicUrl, error: null };
   } catch (error) {

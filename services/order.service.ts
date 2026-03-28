@@ -2,6 +2,91 @@ import { supabase } from './supabase.service';
 import type { Database } from '@/types/supabase';
 
 export type Order = Database['public']['Tables']['orders']['Row'];
+export const ORDERS_PAGE_SIZE = 20;
+export const ORDERS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const ORDER_LIST_SELECT = `
+  id,
+  created_at,
+  midtrans_order_id,
+  gross_amount,
+  total_amount,
+  courier_service,
+  payment_status,
+  status,
+  order_items (
+    id,
+    order_id,
+    product_id,
+    quantity,
+    price_at_purchase,
+    products (
+      id,
+      name,
+      slug
+    )
+  )
+`;
+
+const ORDER_DETAIL_SELECT = `
+  *,
+  order_items (
+    id,
+    order_id,
+    product_id,
+    quantity,
+    price_at_purchase,
+    products (
+      id,
+      name,
+      price,
+      slug,
+      weight,
+      product_images (
+        url,
+        sort_order
+      )
+    )
+  ),
+  profiles (full_name, phone_number),
+  addresses (
+    id,
+    receiver_name,
+    phone_number,
+    street_address,
+    city,
+    province,
+    postal_code
+  )
+`;
+
+export interface OrderListProduct {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface OrderListOrderItem {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  quantity: number;
+  price_at_purchase: number;
+  products: OrderListProduct | null;
+}
+
+export interface OrderListItem {
+  id: string;
+  created_at: string;
+  midtrans_order_id: string | null;
+  gross_amount: number | null;
+  total_amount: number;
+  courier_service: string | null;
+  payment_status: string;
+  status: string;
+  order_items: OrderListOrderItem[];
+}
+
 export type OrderWithItems = Order & {
   order_items: {
     id: string;
@@ -37,8 +122,9 @@ export type OrderWithItems = Order & {
 };
 
 export interface OrderListResult {
-  data: OrderWithItems[] | null;
+  data: OrderListItem[] | null;
   error: Error | null;
+  metrics: OrderListMetrics | null;
 }
 
 export interface OrderDetailResult {
@@ -46,10 +132,37 @@ export interface OrderDetailResult {
   error: Error | null;
 }
 
+export interface OrderListMetrics {
+  durationMs: number;
+  payloadBytes: number;
+  fetchedAt: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface GetUserOrdersParams {
+  offset?: number;
+  limit?: number;
+  signal?: AbortSignal;
+}
+
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
+
+function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+function getPayloadBytes(value: unknown): number {
+  return JSON.stringify(value).length;
+}
 
 function logSupabaseError(context: string, error: unknown): void {
   if (!__DEV__) {
+    return;
+  }
+
+  if (isAbortError(error)) {
     return;
   }
 
@@ -72,58 +185,68 @@ function toUserError(error: unknown, fallback: string): Error {
 }
 
 /**
- * Get all orders for a user, sorted by creation date (newest first)
+ * Get paginated, list-optimized orders for a user, sorted by creation date (newest first)
  */
-export async function getUserOrders(userId: string): Promise<OrderListResult> {
-  try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(
-        `
-        *,
-        order_items (
-          id,
-          order_id,
-          product_id,
-          quantity,
-          price_at_purchase,
-          products (
-            id,
-            name,
-            price,
-            slug,
-            weight,
-            product_images (
-              url,
-              sort_order
-            )
-          )
-        ),
-        profiles (full_name, phone_number),
-        addresses (
-          id,
-          receiver_name,
-          phone_number,
-          street_address,
-          city,
-          province,
-          postal_code
-        )
-      `,
-      )
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+export async function getOrdersOptimized(
+  userId: string,
+  params: GetUserOrdersParams = {},
+): Promise<OrderListResult> {
+  const offset = params.offset ?? 0;
+  const limit = params.limit ?? ORDERS_PAGE_SIZE;
+  const requestedLimit = Math.max(limit, 1);
+  const startedAt = Date.now();
 
-    if (error) {
-      logSupabaseError('getUserOrders query failed', error);
-      return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
+  try {
+    let query = supabase
+      .from('orders')
+      .select(ORDER_LIST_SELECT)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + requestedLimit);
+
+    if (params.signal) {
+      query = query.abortSignal(params.signal);
     }
 
-    return { data: data as unknown as OrderWithItems[], error: null };
+    const { data, error } = await query;
+
+    if (error) {
+      logSupabaseError('getOrdersOptimized query failed', error);
+      return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE), metrics: null };
+    }
+
+    const rows = (data ?? []) as unknown as OrderListItem[];
+    const hasMore = rows.length > requestedLimit;
+    const normalizedData = hasMore ? rows.slice(0, requestedLimit) : rows;
+    const fetchedAt = Date.now();
+
+    return {
+      data: normalizedData,
+      error: null,
+      metrics: {
+        durationMs: fetchedAt - startedAt,
+        payloadBytes: getPayloadBytes(normalizedData),
+        fetchedAt,
+        offset,
+        limit: requestedLimit,
+        hasMore,
+      },
+    };
   } catch (error) {
-    logSupabaseError('getUserOrders unexpected error', error);
-    return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
+    logSupabaseError('getOrdersOptimized unexpected error', error);
+    return {
+      data: null,
+      error: isAbortError(error) ? error : toUserError(error, DATABASE_ERROR_MESSAGE),
+      metrics: null,
+    };
   }
+}
+
+export async function getUserOrders(
+  userId: string,
+  params: GetUserOrdersParams = {},
+): Promise<OrderListResult> {
+  return getOrdersOptimized(userId, params);
 }
 
 /**
@@ -133,39 +256,7 @@ export async function getOrderById(orderId: string): Promise<OrderDetailResult> 
   try {
     const { data, error } = await supabase
       .from('orders')
-      .select(
-        `
-        *,
-        order_items (
-          id,
-          order_id,
-          product_id,
-          quantity,
-          price_at_purchase,
-          products (
-            id,
-            name,
-            price,
-            slug,
-            weight,
-            product_images (
-              url,
-              sort_order
-            )
-          )
-        ),
-        profiles (full_name, phone_number),
-        addresses (
-          id,
-          receiver_name,
-          phone_number,
-          street_address,
-          city,
-          province,
-          postal_code
-        )
-      `,
-      )
+      .select(ORDER_DETAIL_SELECT)
       .eq('id', orderId)
       .single();
 

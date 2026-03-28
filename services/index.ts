@@ -7,3 +7,4 @@ export * from './shipping.service';
 export * from './checkout.service';
 export * from './home.service';
 export * from './order.service';
+export * from './cart.service';

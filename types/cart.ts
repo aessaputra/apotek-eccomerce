@@ -47,6 +47,55 @@ export interface CartSnapshot {
 }
 
 /**
+ * Minimal cart item fields needed for paginated list display.
+ * Subsets CartProductDetails to reduce payload size while preserving UI-critical fields.
+ */
+export interface CartListItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  created_at: string;
+  product: Pick<
+    CartProductDetails,
+    'id' | 'name' | 'price' | 'stock' | 'weight' | 'slug' | 'is_active'
+  >;
+  images: Pick<CartProductImage, 'id' | 'url'>[];
+}
+
+/**
+ * Performance and pagination metrics for cart list fetching.
+ */
+export interface CartListMetrics {
+  durationMs: number;
+  payloadBytes: number;
+  fetchedAt: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+/**
+ * Service return type for paginated cart list fetch.
+ */
+export interface CartListResult {
+  data: {
+    items: CartListItem[];
+    snapshot: CartSnapshot;
+  } | null;
+  error: Error | null;
+  metrics: CartListMetrics | null;
+}
+
+/**
+ * Parameters for fetching paginated cart items.
+ */
+export interface GetCartItemsParams {
+  offset?: number;
+  limit?: number;
+  signal?: AbortSignal;
+}
+
+/**
  * Cart with items and totals
  */
 export interface CartWithItems {

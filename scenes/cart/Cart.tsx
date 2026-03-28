@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RefreshCw } from '@tamagui/lucide-icons';
 import {
@@ -10,14 +11,13 @@ import {
   Card,
   Spinner,
   Separator,
-  ScrollView,
   Sheet,
   Button as TamaguiButton,
 } from 'tamagui';
 import * as Crypto from 'expo-crypto';
 import { getThemeColor } from '@/utils/theme';
 import { CartIcon, ChevronRightIcon, MapPinIcon } from '@/components/icons';
-import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
+import { CartItemCard } from '@/components/elements/CartItemCard';
 import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
 import { StickyBottomBar } from '@/components/elements/StickyBottomBar/StickyBottomBar';
 import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartState';
@@ -25,13 +25,14 @@ import { CartLoadingSkeleton } from '@/components/elements/CartLoadingSkeleton/C
 import AddressCard from '@/components/elements/AddressCard';
 import { useAppSlice } from '@/slices';
 import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
+import { useCartPaginated } from '@/hooks/useCartPaginated';
 import { getAddress, getPreferredAddress, getAddresses } from '@/services/address.service';
-import { getCartWithItems, updateCartItemQuantity, removeCartItem } from '@/services/cart.service';
+import { updateCartItemQuantity, removeCartItem } from '@/services/cart.service';
 import { getShippingRatesForAddress } from '@/services/shipping.service';
 import { createCheckoutOrder, createSnapToken } from '@/services/checkout.service';
 import { formatAddress, resolveBadgeText } from '@/utils/address';
 import type { Address } from '@/types/address';
-import type { CartItemWithProduct, CartSnapshot } from '@/types/cart';
+import type { CartItemWithProduct } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 
@@ -41,19 +42,55 @@ interface PersistedCheckoutSession {
   order_id: string | null;
 }
 
-const EMPTY_CART: CartSnapshot = {
-  itemCount: 0,
-  estimatedWeightGrams: 0,
-  packageValue: 0,
-};
-
-const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 const QUANTITY_SYNC_DEBOUNCE_MS = 400;
 const COURIER_CARD_PRESS_STYLE = {
   scale: 0.98,
   opacity: 0.9,
 } as const;
 const COURIER_CARD_ANIMATE_ONLY = ['transform', 'opacity'];
+
+type ErrorBannerType = 'warning' | 'danger';
+
+interface ErrorBannerProps {
+  message: string;
+  onRetry?: () => void;
+  type?: ErrorBannerType;
+}
+
+function ErrorBanner({ message, onRetry, type = 'danger' }: ErrorBannerProps) {
+  const isWarning = type === 'warning';
+
+  return (
+    <Card
+      borderRadius="$4"
+      borderWidth={1}
+      borderColor={isWarning ? '$primary' : '$danger'}
+      padding="$3"
+      backgroundColor={isWarning ? '$surfaceSubtle' : '$surface'}>
+      <YStack gap="$2">
+        <Text color={isWarning ? '$primary' : '$danger'} fontWeight="700">
+          {isWarning ? 'Menampilkan data keranjang tersimpan.' : 'Gagal memuat keranjang.'}
+        </Text>
+        <Text color={isWarning ? '$colorSubtle' : '$danger'}>{message}</Text>
+        {onRetry ? (
+          <XStack justifyContent="flex-end">
+            <TamaguiButton
+              size="$2"
+              circular
+              backgroundColor="transparent"
+              borderWidth={1}
+              borderColor={isWarning ? '$primary' : '$danger'}
+              color={isWarning ? '$primary' : '$danger'}
+              onPress={onRetry}
+              icon={<RefreshCw size={14} color={isWarning ? '$primary' : '$danger'} />}
+              aria-label="Muat ulang keranjang"
+            />
+          </XStack>
+        ) : null}
+      </YStack>
+    </Card>
+  );
+}
 
 function translateCheckoutError(message: string | undefined, fallback: string): string {
   const normalized = (message || '').toLowerCase();
@@ -178,9 +215,7 @@ export default function Cart() {
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingSelectedAddress, setLoadingSelectedAddress] = useState(false);
-  const [cartSnapshot, setCartSnapshot] = useState<CartSnapshot>(EMPTY_CART);
-  const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
-  const [loadingCart, setLoadingCart] = useState(false);
+  const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const [loadingRates, setLoadingRates] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -197,40 +232,26 @@ export default function Cart() {
   const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string | null>(null);
   const quantitySyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingQuantityUpdatesRef = useRef<Map<string, number>>(new Map());
-  const confirmedQuantitiesRef = useRef<Map<string, number>>(new Map());
   const previousSelectedAddressIdRef = useRef<string | null>(null);
   const shouldOpenShippingSheetRef = useRef(false);
   const cartMountedRef = useRef(true);
   const checkoutInProgressRef = useRef(false);
 
-  const computeCartSnapshot = useCallback((items: CartItemWithProduct[]): CartSnapshot => {
-    let itemCount = 0;
-    let estimatedWeightGrams = 0;
-    let packageValue = 0;
-
-    for (const item of items) {
-      itemCount += item.quantity;
-      estimatedWeightGrams += item.quantity * (item.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS);
-      packageValue += item.quantity * item.product.price;
-    }
-
-    return {
-      itemCount,
-      estimatedWeightGrams,
-      packageValue,
-    };
-  }, []);
-
-  const updateCartState = useCallback(
-    (updater: (items: CartItemWithProduct[]) => CartItemWithProduct[]) => {
-      setCartItems(currentItems => {
-        const nextItems = updater(currentItems);
-        setCartSnapshot(computeCartSnapshot(nextItems));
-        return nextItems;
-      });
-    },
-    [computeCartSnapshot],
-  );
+  const {
+    items,
+    snapshot,
+    error,
+    hasMore,
+    isLoading,
+    isRefreshing,
+    isFetchingMore,
+    isRevalidating,
+    isUsingCachedData,
+    refresh,
+    refreshIfNeeded,
+    loadMore,
+    metrics,
+  } = useCartPaginated(user?.id);
 
   const selectedShippingOption = useMemo(
     () =>
@@ -262,44 +283,19 @@ export default function Cart() {
         user?.id ?? '',
         selectedAddressId ?? '',
         selectedShippingKey ?? '',
-        cartSnapshot.itemCount,
-        cartSnapshot.estimatedWeightGrams,
-        cartSnapshot.packageValue,
+        snapshot.itemCount,
+        snapshot.estimatedWeightGrams,
+        snapshot.packageValue,
       ].join('|'),
     [
-      cartSnapshot.estimatedWeightGrams,
-      cartSnapshot.itemCount,
-      cartSnapshot.packageValue,
+      snapshot.estimatedWeightGrams,
+      snapshot.itemCount,
+      snapshot.packageValue,
       selectedAddressId,
       selectedShippingKey,
       user?.id,
     ],
   );
-
-  const loadCartData = useCallback(async () => {
-    if (!user?.id) {
-      setCartItems([]);
-      setCartSnapshot(EMPTY_CART);
-      return;
-    }
-
-    setLoadingCart(true);
-
-    const { data, error } = await getCartWithItems(user.id);
-    setLoadingCart(false);
-
-    if (error) {
-      setShippingError(error.message);
-      return;
-    }
-
-    if (data) {
-      setCartItems(data.items);
-      setCartSnapshot(data.snapshot);
-      confirmedQuantitiesRef.current = new Map(data.items.map(item => [item.id, item.quantity]));
-      return;
-    }
-  }, [user?.id]);
 
   const loadAddressesForSheet = useCallback(async () => {
     if (!user?.id) {
@@ -340,19 +336,23 @@ export default function Cart() {
         }),
       );
 
+      const pendingIds = pendingUpdates.map(([cartItemId]) => cartItemId);
+      if (!skipStateUpdates && cartMountedRef.current) {
+        setUpdatingItems(current => {
+          const next = new Set(current);
+          for (const id of pendingIds) {
+            next.delete(id);
+          }
+          return next;
+        });
+      }
+
+      let hasSuccess = false;
+
       for (const result of results) {
         const allowStateUpdates = cartMountedRef.current && !skipStateUpdates;
 
         if (result.error) {
-          const fallbackQuantity = confirmedQuantitiesRef.current.get(result.cartItemId);
-          if (fallbackQuantity != null && allowStateUpdates) {
-            updateCartState(items =>
-              items.map(item =>
-                item.id === result.cartItemId ? { ...item, quantity: fallbackQuantity } : item,
-              ),
-            );
-          }
-
           if (allowStateUpdates) {
             setShippingError(result.error.message);
           }
@@ -360,16 +360,20 @@ export default function Cart() {
           continue;
         }
 
-        confirmedQuantitiesRef.current.set(result.cartItemId, result.quantity);
+        hasSuccess = true;
+      }
+
+      if (hasSuccess) {
+        await refresh();
       }
     },
-    [updateCartState],
+    [refresh],
   );
 
   useFocusEffect(
     useCallback(() => {
-      loadCartData();
-    }, [loadCartData]),
+      void refreshIfNeeded();
+    }, [refreshIfNeeded]),
   );
 
   useEffect(() => {
@@ -451,28 +455,24 @@ export default function Cart() {
 
   const handleQuantityChange = useCallback(
     (cartItemId: string, newQuantity: number) => {
-      let itemExists = false;
-
-      updateCartState(items =>
-        items.map(item => {
-          if (item.id !== cartItemId) {
-            return item;
-          }
-
-          itemExists = true;
-          if (item.quantity === newQuantity) {
-            return item;
-          }
-          return { ...item, quantity: newQuantity };
-        }),
-      );
-
-      if (!itemExists) {
+      const item = items.find(currentItem => currentItem.id === cartItemId);
+      if (!item) {
         setShippingError('Produk keranjang tidak ditemukan. Silakan muat ulang halaman.');
         return;
       }
 
+      if (item.quantity === newQuantity) {
+        return;
+      }
+
       pendingQuantityUpdatesRef.current.set(cartItemId, newQuantity);
+
+      setUpdatingItems(current => {
+        const next = new Set(current);
+        next.add(cartItemId);
+        return next;
+      });
+
       setShippingError(null);
 
       if (quantitySyncTimerRef.current) {
@@ -484,23 +484,35 @@ export default function Cart() {
         void flushPendingQuantityUpdates();
       }, QUANTITY_SYNC_DEBOUNCE_MS);
     },
-    [flushPendingQuantityUpdates, updateCartState],
+    [flushPendingQuantityUpdates, items],
   );
 
   const handleRemoveItem = useCallback(
     async (cartItemId: string) => {
       pendingQuantityUpdatesRef.current.delete(cartItemId);
-      confirmedQuantitiesRef.current.delete(cartItemId);
+
+      setUpdatingItems(current => {
+        const next = new Set(current);
+        next.add(cartItemId);
+        return next;
+      });
 
       const { error } = await removeCartItem(cartItemId);
+
+      setUpdatingItems(current => {
+        const next = new Set(current);
+        next.delete(cartItemId);
+        return next;
+      });
+
       if (error) {
         setShippingError(error.message);
         return;
       }
 
-      await loadCartData();
+      await refresh();
     },
-    [loadCartData],
+    [refresh],
   );
 
   const formatRupiah = useCallback((amount: number): string => {
@@ -516,7 +528,7 @@ export default function Cart() {
       return;
     }
 
-    if (cartSnapshot.estimatedWeightGrams <= 0 || cartSnapshot.itemCount <= 0) {
+    if (snapshot.estimatedWeightGrams <= 0 || snapshot.itemCount <= 0) {
       setShippingError('Keranjang kosong. Tambahkan produk sebelum menghitung ongkir.');
       return;
     }
@@ -524,9 +536,9 @@ export default function Cart() {
     setLoadingRates(true);
     const { data, error } = await getShippingRatesForAddress({
       address: selectedAddress,
-      package_weight_grams: cartSnapshot.estimatedWeightGrams,
-      package_value: cartSnapshot.packageValue,
-      package_name: `Checkout package (${cartSnapshot.itemCount} item)`,
+      package_weight_grams: snapshot.estimatedWeightGrams,
+      package_value: snapshot.packageValue,
+      package_name: `Checkout package (${snapshot.itemCount} item)`,
     });
     setLoadingRates(false);
 
@@ -543,12 +555,7 @@ export default function Cart() {
     if (options.length === 0) {
       setShippingError('Tidak ada layanan kurir yang tersedia untuk alamat ini.');
     }
-  }, [
-    cartSnapshot.estimatedWeightGrams,
-    cartSnapshot.itemCount,
-    cartSnapshot.packageValue,
-    selectedAddress,
-  ]);
+  }, [snapshot.estimatedWeightGrams, snapshot.itemCount, snapshot.packageValue, selectedAddress]);
 
   const handleOpenAddressSheet = useCallback(() => {
     void loadAddressesForSheet();
@@ -645,10 +652,10 @@ export default function Cart() {
 
     resetShippingSelection();
 
-    if (cartSnapshot.itemCount > 0) {
+    if (snapshot.itemCount > 0) {
       void handleCalculateShipping();
     }
-  }, [cartSnapshot.itemCount, handleCalculateShipping, resetShippingSelection, selectedAddress]);
+  }, [snapshot.itemCount, handleCalculateShipping, resetShippingSelection, selectedAddress]);
 
   useEffect(() => {
     if (loadingRates || !shouldOpenShippingSheetRef.current) {
@@ -786,6 +793,14 @@ export default function Cart() {
     user?.id,
   ]);
 
+  const handleCartRefresh = useCallback(() => {
+    void refresh();
+  }, [refresh]);
+
+  const handleCartLoadMore = useCallback(() => {
+    void loadMore();
+  }, [loadMore]);
+
   if (paymentError) {
     return (
       <YStack flex={1} backgroundColor="$background">
@@ -842,35 +857,64 @@ export default function Cart() {
 
   return (
     <YStack flex={1} backgroundColor="$background" position="relative">
-      <ScrollView
-        style={{ flex: 1 }}
+      <FlatList
+        data={items}
+        renderItem={({ item }: { item: CartItemWithProduct }) => (
+          <CartItemCard
+            item={item}
+            onQuantityChange={handleQuantityChange}
+            onRemove={handleRemoveItem}
+            isUpdating={updatingItems.has(item.id)}
+          />
+        )}
+        keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: BOTTOM_BAR_HEIGHT + insets.bottom + 16 }}>
-        <YStack gap="$4" padding="$4">
-          {loadingCart ? (
-            <CartLoadingSkeleton rowCount={3} />
-          ) : cartItems.length === 0 ? (
-            <EmptyCartState onBrowse={() => router.push('/')} />
-          ) : (
-            <>
-              <Card bordered elevate size="$4">
-                <Card.Header padded>
-                  <Text fontSize="$4" fontWeight="600" color="$color">
-                    Produk ({cartSnapshot.itemCount})
+        contentContainerStyle={{
+          padding: 16,
+          gap: 12,
+          paddingBottom: BOTTOM_BAR_HEIGHT + insets.bottom + 16,
+        }}
+        ListHeaderComponent={
+          <YStack gap="$3">
+            {isUsingCachedData && error ? (
+              <ErrorBanner message={error} onRetry={handleCartRefresh} type="warning" />
+            ) : null}
+
+            {error && !isUsingCachedData ? (
+              <ErrorBanner message={error} onRetry={handleCartRefresh} />
+            ) : null}
+
+            <Card bordered elevate size="$4">
+              <Card.Header padded>
+                <Text fontSize="$4" fontWeight="600" color="$color">
+                  Produk ({snapshot.itemCount})
+                </Text>
+              </Card.Header>
+            </Card>
+
+            {isLoading ? <CartLoadingSkeleton rowCount={3} /> : null}
+          </YStack>
+        }
+        ListEmptyComponent={
+          !isLoading ? (
+            <YStack marginTop="$1">
+              <EmptyCartState onBrowse={() => router.push('/')} />
+            </YStack>
+          ) : null
+        }
+        ListFooterComponent={
+          items.length > 0 && !isLoading ? (
+            <YStack gap="$4" paddingTop="$1">
+              {isFetchingMore || isRevalidating ? (
+                <YStack alignItems="center" justifyContent="center" gap="$2" py="$2">
+                  <Spinner size="small" color="$primary" />
+                  <Text fontSize="$2" color="$colorSubtle">
+                    {isFetchingMore
+                      ? 'Memuat produk keranjang berikutnya...'
+                      : 'Menyegarkan cache keranjang...'}
                   </Text>
-                </Card.Header>
-                <Separator />
-                <YStack padding="$3" gap="$3">
-                  {cartItems.map(item => (
-                    <CartItemRow
-                      key={item.id}
-                      item={item}
-                      onQuantityChange={handleQuantityChange}
-                      onRemove={handleRemoveItem}
-                    />
-                  ))}
                 </YStack>
-              </Card>
+              ) : null}
 
               {loadingSelectedAddress ? (
                 <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
@@ -1006,10 +1050,10 @@ export default function Cart() {
                 </Card.Header>
                 <Separator />
                 <CartSummary
-                  subtotal={cartSnapshot.packageValue}
+                  subtotal={snapshot.packageValue}
                   shippingCost={selectedShippingOption?.price}
                   shippingName={selectedShippingOption?.courier_name}
-                  itemCount={cartSnapshot.itemCount}
+                  itemCount={snapshot.itemCount}
                   isLoadingShipping={loadingRates}
                 />
               </Card>
@@ -1042,10 +1086,20 @@ export default function Cart() {
                   <Text color="$danger">{shippingError}</Text>
                 </Card>
               ) : null}
-            </>
-          )}
-        </YStack>
-      </ScrollView>
+
+              {__DEV__ && metrics.lastFetchDurationMs > 0 ? (
+                <Text fontSize="$1" color="$colorMuted" textAlign="right">
+                  cart {metrics.lastFetchDurationMs}ms • {metrics.lastPayloadBytes}B
+                </Text>
+              ) : null}
+            </YStack>
+          ) : null
+        }
+        onEndReached={hasMore ? handleCartLoadMore : undefined}
+        onEndReachedThreshold={0.5}
+        refreshing={isRefreshing}
+        onRefresh={handleCartRefresh}
+      />
 
       {/* Shipping Options Sheet */}
       <Sheet
@@ -1188,9 +1242,9 @@ export default function Cart() {
         </Sheet.Frame>
       </Sheet>
 
-      {cartItems.length > 0 ? (
+      {items.length > 0 ? (
         <StickyBottomBar
-          grandTotal={cartSnapshot.packageValue + (selectedShippingOption?.price || 0)}
+          grandTotal={snapshot.packageValue + (selectedShippingOption?.price || 0)}
           isLoading={startingCheckout}
           disabled={!selectedShippingOption}
           onConfirm={handleStartCheckout}

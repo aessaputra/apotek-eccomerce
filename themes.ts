@@ -27,17 +27,17 @@ const lightPaletteSteps = [
 ];
 
 const darkPaletteSteps = [
-  '#0F1419',
-  '#1A2329',
-  '#242D35',
-  '#2D3A44',
-  '#364654',
-  '#445A68',
-  '#526E7C',
-  '#608290',
-  '#6E96A4',
-  '#7CAAB8',
+  '#1A1F26', // Level 0: Warm Charcoal Deep - App canvas (was #0F1419)
+  '#252B33', // Level 1: Surface - Cards, containers
+  '#303840', // Level 2: SurfaceSubtle - Elevated cards, modals
+  '#3B454D', // Level 3: SurfaceElevated - Highest elevation, dropdowns
+  '#46515A',
+  '#515D67',
+  '#5C6974',
+  '#677581',
+  '#72818E',
   '#A8B8C4',
+  '#C4D0D8',
   '#F0F4F8',
 ];
 
@@ -119,17 +119,17 @@ const generatedThemes = createThemes({
  * - Accent: Teal/cyan spectrum (HSL 175) - professional healthcare aesthetic
  * - Surfaces: Subtle gray progression for elevation hierarchy
  *
- * DARK MODE PALETTE RATIONALE (Soft-Charcoal Hierarchy)
+ * DARK MODE PALETTE RATIONALE (Warm-Charcoal Hierarchy)
  * -----------------------------------------------------
- * The dark mode uses a "soft-charcoal" approach rather than pure black, reducing
+ * The dark mode uses a "warm-charcoal" approach rather than pure black, reducing
  * eye strain while maintaining clear visual hierarchy through elevation.
  *
  * ELEVATION MODEL (Dark Mode):
  * ┌─────────────────────────────────────────────────────────────────┐
- * │ Level 0: Background    #0F1419  (Deepest - app canvas)          │
- * │ Level 1: Surface       #1A2329  (Cards, containers)             │
- * │ Level 2: SurfaceSubtle #242D35  (Elevated cards, modals)        │
- * │ Level 3: SurfaceElevated #2D3A44 (Highest elevation, dropdowns)  │
+ * │ Level 0: Background    #1A1F26  (Deepest - app canvas)          │
+ * │ Level 1: Surface       #252B33  (Cards, containers)             │
+ * │ Level 2: SurfaceSubtle #303840  (Elevated cards, modals)        │
+ * │ Level 3: SurfaceElevated #3B454D (Highest elevation, dropdowns)  │
  * └─────────────────────────────────────────────────────────────────┘
  *
  * Each elevation level increases luminosity by ~8% to create perceptible
@@ -149,10 +149,10 @@ const generatedThemes = createThemes({
  * - Maintains pharmacy/healthcare professional aesthetic
  *
  * CONTRAST RATIOS (Static Analysis):
- * - Primary text on background: ~14.5:1 (WCAG AAA)
- * - Secondary text on background: ~8.2:1 (WCAG AAA)
- * - Tertiary text on background: ~4.8:1 (WCAG AA)
- * - Brand cyan on background: ~7.1:1 (WCAG AA+)
+ * - Primary text on background: ~14.99:1 (WCAG AAA)
+ * - Secondary text on background: ~8.14:1 (WCAG AAA)
+ * - Tertiary text on background: ~4.68:1 (WCAG AA)
+ * - Brand cyan on background: ~6.82:1 (WCAG AA)
  *
  * Note: Runtime/manual validation required for final accessibility certification.
  */
@@ -191,13 +191,13 @@ const lightPalette = {
 // ============================================================================
 
 const darkPalette = {
-  // Base backgrounds - soft-charcoal progression for elevation
-  // Level 0: App canvas (deepest)
-  background: '#0F1419',
+  // Base backgrounds - warm-charcoal progression for elevation
+  // Level 0: App canvas (deepest) - Warm Charcoal Deep
+  background: '#1A1F26',
   // Level 0.5: Hover state on canvas
-  backgroundHover: '#141B22',
+  backgroundHover: '#20262E',
   // Level 1: Press state on canvas
-  backgroundPress: '#1A2329',
+  backgroundPress: '#252B33',
 
   // Text colors - perceptible hierarchy for accessibility
   // Primary: High contrast for headings and important labels
@@ -209,7 +209,7 @@ const darkPalette = {
   colorTransparent: 'rgba(240,244,248,0)',
 
   // Border colors - subtle elevation indication
-  borderColor: '#2D3A44',
+  borderColor: '#3B454D',
   borderColorHover: '#5A7887',
   borderColorFocus: '#06B6D4', // Cyan focus ring for brand consistency
 
@@ -294,7 +294,7 @@ export const themes = {
     danger: red.red10,
     dangerSoft: red.red3,
 
-    headerBackground: accentBrand.accent1,
+    headerBackground: 'transparent',
 
     // Text hierarchy
     colorSubtle: '#4B5563',
@@ -348,13 +348,13 @@ export const themes = {
 
     // Surface hierarchy (elevation model)
     // Level 1: Base surface for cards/containers
-    surface: '#1A2329',
+    surface: '#252B33',
     // Level 2: Subtle elevation for modals/dialogs
-    surfaceSubtle: '#242D35',
+    surfaceSubtle: '#303840',
     // Level 3: Highest elevation for dropdowns/tooltips
-    surfaceElevated: '#2D3A44',
+    surfaceElevated: '#3B454D',
     // Surface border - matches elevation level 3
-    surfaceBorder: '#2D3A44',
+    surfaceBorder: '#3B454D',
 
     // Semantic colors - adjusted for dark mode
     success: '#34D399',
@@ -364,7 +364,7 @@ export const themes = {
     danger: '#FF8F8F',
     dangerSoft: red.red1,
 
-    headerBackground: accentBrandDark.accent1,
+    headerBackground: 'transparent',
 
     // Text hierarchy - perceptible contrast levels
     colorSubtle: '#A8B8C4',
@@ -378,10 +378,10 @@ export const themes = {
     placeholderColor: '#7A8A9A',
     searchPlaceholderColor: '#B0B0B0',
     colorDisabled: '#5A6A7A', // Disabled text color
-    backgroundDisabled: '#1A2329', // Surface level 1
-    borderColorDisabled: '#2D3A44', // Surface level 3
+    backgroundDisabled: '#252B33', // Surface level 1
+    borderColorDisabled: '#3B454D', // Surface level 3
     outlineColor: accentBrandAlpha.focusRingDark, // Cyan focus ring
-    backgroundFocus: '#1A2329', // Surface level 1
+    backgroundFocus: '#252B33', // Surface level 1
 
     // Info
     info: '#60A5FA',

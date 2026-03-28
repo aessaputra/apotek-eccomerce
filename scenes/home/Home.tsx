@@ -13,7 +13,7 @@ import { getThemeColor } from '@/utils/theme';
 
 const ScreenRoot = styled(YStack, {
   flex: 1,
-  backgroundColor: '$surfaceSubtle',
+  backgroundColor: '$background',
 });
 
 const ContentStack = styled(YStack, {

@@ -146,8 +146,8 @@ function Router() {
       : { ...base, ...shadowStyle, elevation: 8 };
   }, [hideTabBar, tabBarColors]);
 
-  // Get header background color for StatusBar consistency
-  const headerBg = getThemeColor(theme, 'headerBackground', getThemeColor(theme, 'brandPrimary'));
+  // Get app background color for StatusBar consistency
+  const appBg = getThemeColor(theme, 'background', DEFAULT_THEME_VALUES.background);
 
   // Memoized tab bar icon render functions to prevent recreation on each render
   const renderHomeIcon = useCallback(
@@ -343,7 +343,7 @@ function Router() {
           }}
         />
       </Tabs>
-      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
+      <StatusBar style="light" backgroundColor={appBg} translucent={false} />
       <BottomSheet
         isOpen={isOpen}
         initialOpen

@@ -1,6 +1,14 @@
 import { supabase } from '@/utils/supabase';
 import type { Tables } from '@/types/supabase';
-import type { CartItemWithProduct, CartSnapshot, CartWithItems } from '@/types/cart';
+import { CART_PAGE_SIZE } from '@/constants/cart.constants';
+import type {
+  CartItemWithProduct,
+  CartListItem,
+  CartListResult,
+  CartSnapshot,
+  CartWithItems,
+  GetCartItemsParams,
+} from '@/types/cart';
 
 type CartRow = Tables<'carts'>;
 type CartItemRow = Tables<'cart_items'>;
@@ -9,14 +17,54 @@ type ProductImageRow = Tables<'product_images'>;
 
 const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 
-async function getOrCreateCart(
+const CART_ITEMS_SELECT = `
+  id,
+  cart_id,
+  product_id,
+  quantity,
+  created_at,
+  product:products (
+    id,
+    name,
+    price,
+    stock,
+    weight,
+    slug,
+    is_active,
+    product_images (
+      id,
+      url,
+      sort_order
+    )
+  )
+`;
+
+type CartItemOptimizedRow = Pick<
+  CartItemRow,
+  'id' | 'cart_id' | 'product_id' | 'quantity' | 'created_at'
+> & {
+  product:
+    | (Pick<ProductRow, 'id' | 'name' | 'price' | 'stock' | 'weight' | 'slug' | 'is_active'> & {
+        product_images: Pick<ProductImageRow, 'id' | 'url' | 'sort_order'>[] | null;
+      })
+    | null;
+};
+
+function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+export async function getOrCreateCart(
   userId: string,
+  signal?: AbortSignal,
 ): Promise<{ data: CartRow | null; error: Error | null }> {
-  const { data: existingCarts, error: fetchError } = await supabase
-    .from('carts')
-    .select('*')
-    .eq('user_id', userId)
-    .limit(1);
+  let query = supabase.from('carts').select('*').eq('user_id', userId).limit(1);
+
+  if (signal) {
+    query = query.abortSignal(signal);
+  }
+
+  const { data: existingCarts, error: fetchError } = await query;
 
   if (fetchError) {
     return { data: null, error: fetchError as unknown as Error };
@@ -25,6 +73,10 @@ async function getOrCreateCart(
   const existingCart = existingCarts?.[0];
   if (existingCart) {
     return { data: existingCart, error: null };
+  }
+
+  if (signal?.aborted) {
+    return { data: null, error: new Error('Request aborted') };
   }
 
   const { data: newCart, error: insertError } = await supabase
@@ -38,6 +90,131 @@ async function getOrCreateCart(
   }
 
   return { data: newCart, error: null };
+}
+
+export async function getCartItemsOptimized(
+  cartId: string,
+  params: GetCartItemsParams = {},
+): Promise<CartListResult> {
+  const offset = Math.max(params.offset ?? 0, 0);
+  const limit = Math.max(params.limit ?? CART_PAGE_SIZE, 1);
+
+  if (!cartId) {
+    return {
+      data: null,
+      error: new Error('Cart ID is required.'),
+      metrics: {
+        durationMs: 0,
+        payloadBytes: 0,
+        fetchedAt: Date.now(),
+        offset,
+        limit,
+        hasMore: false,
+      },
+    };
+  }
+
+  try {
+    const requestedLimit = limit + 1;
+    const startedAt = Date.now();
+
+    let query = supabase
+      .from('cart_items')
+      .select(CART_ITEMS_SELECT)
+      .eq('cart_id', cartId)
+      .eq('product.is_active', true)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + requestedLimit - 1);
+
+    if (params.signal) {
+      query = query.abortSignal(params.signal);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { data: null, error: error as unknown as Error, metrics: null };
+    }
+
+    const rows = ((data ?? []) as unknown as CartItemOptimizedRow[]) ?? [];
+    const fetchedAt = Date.now();
+    const durationMs = fetchedAt - startedAt;
+    const payloadBytes = JSON.stringify(rows).length;
+
+    const hasMore = rows.length > limit;
+    const normalizedRows = hasMore ? rows.slice(0, limit) : rows;
+
+    const transformed = normalizedRows.reduce(
+      (acc: { items: CartListItem[]; snapshot: CartSnapshot }, row: CartItemOptimizedRow) => {
+        if (!row.product) {
+          return acc;
+        }
+
+        const quantity = row.quantity;
+        const weight = row.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS;
+
+        acc.snapshot.itemCount += quantity;
+        acc.snapshot.estimatedWeightGrams += quantity * weight;
+        acc.snapshot.packageValue += quantity * row.product.price;
+
+        const sortedImages = [...(row.product.product_images ?? [])].sort(
+          (imageA, imageB) => imageA.sort_order - imageB.sort_order,
+        );
+
+        acc.items.push({
+          id: row.id,
+          product_id: row.product_id,
+          quantity,
+          created_at: row.created_at,
+          product: {
+            id: row.product.id,
+            name: row.product.name,
+            price: row.product.price,
+            stock: row.product.stock,
+            weight: row.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS,
+            slug: row.product.slug,
+            is_active: row.product.is_active ?? false,
+          },
+          images: sortedImages.map(image => ({
+            id: image.id,
+            url: image.url,
+          })),
+        });
+
+        return acc;
+      },
+      {
+        items: [] as CartListItem[],
+        snapshot: {
+          itemCount: 0,
+          estimatedWeightGrams: 0,
+          packageValue: 0,
+        } as CartSnapshot,
+      },
+    );
+
+    return {
+      data: {
+        items: transformed.items,
+        snapshot: transformed.snapshot,
+      },
+      error: null,
+      metrics: {
+        durationMs,
+        payloadBytes,
+        fetchedAt,
+        offset,
+        limit,
+        hasMore,
+      },
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: isAbortError(error) ? error : new Error('Failed to load cart items.'),
+      metrics: null,
+    };
+  }
 }
 
 export async function getCartWithItems(
@@ -259,3 +436,5 @@ export async function clearCart(userId: string): Promise<{ data: boolean; error:
 
   return { data: true, error: null };
 }
+
+export { getCartItemsOptimized as getCartOptimized };

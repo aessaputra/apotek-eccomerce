@@ -1,10 +1,18 @@
 import { memo } from 'react';
 import { Card, Image, Text, XStack, YStack } from 'tamagui';
 import { CartIcon, PillIcon } from '@/components/icons';
-import { formatPrice, getPrimaryImageUrl, type ProductWithImages } from '@/services/home.service';
+import { formatPrice } from '@/services/home.service';
+
+export interface ProductCardItem {
+  id: string;
+  name: string;
+  price: number;
+  category_id: string | null;
+  images: { url: string; sort_order: number }[];
+}
 
 export interface ProductCardProps {
-  item: ProductWithImages;
+  item: ProductCardItem;
   width: number;
   iconColor: string;
   onPress?: () => void;
@@ -45,7 +53,8 @@ export const ProductCardSkeleton = memo(function ProductCardSkeleton({
 });
 
 function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCardProps) {
-  const imageUrl = getPrimaryImageUrl(item);
+  const imageUrl =
+    [...item.images].sort((left, right) => left.sort_order - right.sort_order)[0]?.url ?? null;
   const accentColor = item.category_id ? '$warningSoft' : '$infoSoft';
 
   const handleAddToCart = (event: { stopPropagation: () => void }) => {

@@ -39,7 +39,7 @@ import ProductImageGallery from '@/components/elements/ProductImageGallery';
 
 const ScreenRoot = styled(YStack, {
   flex: 1,
-  backgroundColor: '$surfaceSubtle',
+  backgroundColor: '$background',
 });
 
 const ContentStack = styled(YStack, {
