@@ -54,7 +54,7 @@ function EmailInput({
     ? getThemeColor(theme, 'danger')
     : isFocused
       ? getThemeColor(theme, 'primary')
-      : getThemeColor(theme, 'surfaceBorder');
+      : getThemeColor(theme, 'borderColorHover');
 
   return (
     <XStack
@@ -85,7 +85,7 @@ function EmailInput({
         autoCorrect={autoCorrect}
         keyboardType={keyboardType}
         editable={editable && !disabled}
-        underlineColorAndroid="transparent"
+        underlineColorAndroid={getThemeColor(theme, 'colorTransparent')}
         textAlignVertical="center"
         onFocus={() => {
           setIsFocused(true);

@@ -248,7 +248,7 @@ export default function Payment() {
         </Text>
         <TamaguiButton
           backgroundColor="$primary"
-          color="$white"
+          color="$onPrimary"
           borderRadius="$3"
           minHeight={44}
           onPress={() => router.replace('/cart')}
@@ -312,7 +312,7 @@ export default function Payment() {
           </Text>
           <TamaguiButton
             backgroundColor="$primary"
-            color="$white"
+            color="$onPrimary"
             borderRadius="$3"
             minHeight={44}
             marginTop="$1"
@@ -407,7 +407,7 @@ export default function Payment() {
           confirmLabel="Batalkan & Keluar"
           cancelLabel="Lanjutkan Bayar"
           cancelColor="$primary"
-          cancelTextColor="$white"
+          cancelTextColor="$onPrimary"
           confirmColor="$background"
           confirmTextColor="$danger"
           confirmBorderColor="$danger"

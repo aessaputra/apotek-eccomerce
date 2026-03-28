@@ -1,6 +1,7 @@
 import { forwardRef, useState, useId } from 'react';
-import { Input, XStack, YStack, Text, styled } from 'tamagui';
+import { Input, XStack, YStack, Text, styled, useTheme } from 'tamagui';
 import { XCircleIcon } from '@/components/icons';
+import { getThemeColor } from '@/utils/theme';
 
 export interface FormInputProps {
   /** Label untuk input field */
@@ -56,7 +57,7 @@ const InputContainer = styled(XStack, {
   backgroundColor: '$background',
   borderWidth: 1.5,
   borderRadius: '$4',
-  borderColor: '$borderColor',
+  borderColor: '$borderColorHover',
   paddingHorizontal: '$4',
   minHeight: 56,
   alignItems: 'center',
@@ -92,7 +93,7 @@ const InputContainer = styled(XStack, {
 
 const StyledInput = styled(Input, {
   flex: 1,
-  backgroundColor: 'transparent',
+  backgroundColor: '$colorTransparent',
   borderWidth: 0,
   padding: 0,
   margin: 0,
@@ -130,6 +131,7 @@ const FormInput = forwardRef<Input, FormInputProps>(
     ref,
   ) => {
     const [isFocused, setIsFocused] = useState(false);
+    const theme = useTheme();
     const isDisabled = disabled || !editable;
     const uniqueId = useId();
     const helperId = helperText ? `${uniqueId}-helper` : undefined;
@@ -179,7 +181,7 @@ const FormInput = forwardRef<Input, FormInputProps>(
             aria-label={ariaLabel || label || placeholder}
             aria-describedby={ariaDescribedBy}
             accessibilityLiveRegion={error ? 'polite' : undefined}
-            underlineColorAndroid="transparent"
+            underlineColorAndroid={getThemeColor(theme, 'colorTransparent')}
           />
         </InputContainer>
 

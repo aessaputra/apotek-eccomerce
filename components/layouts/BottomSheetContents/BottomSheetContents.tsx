@@ -57,7 +57,7 @@ export default function BottomSheetContents({ onClose }: WelcomeBottomSheetConte
         backgroundColor={getThemeColor(theme, 'color')}
         marginBottom={40}
         gradientBackgroundProps={{
-          colors: [getThemeColor(theme, 'color'), getThemeColor(theme, 'color5')],
+          colors: [getThemeColor(theme, 'primary'), getThemeColor(theme, 'brandPrimarySoft')],
           start: { x: 0, y: 1 },
           end: { x: 0.8, y: 0 },
         }}

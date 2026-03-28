@@ -60,7 +60,7 @@ function DefaultAddressToggle({ isDefault, isSaving, onToggle }: DefaultAddressT
           backgroundColor={isDefault ? '$primary' : '$background'}
           borderWidth={isDefault ? 2 : 1.5}>
           <Checkbox.Indicator>
-            <CheckIcon size={16} color="$white" />
+            <CheckIcon size={16} color="$onPrimary" />
           </Checkbox.Indicator>
         </Checkbox>
         <YStack flex={1} gap="$1">

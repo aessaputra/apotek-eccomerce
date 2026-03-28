@@ -1,10 +1,21 @@
 import { test, expect } from '@jest/globals';
-import { render, screen, fireEvent } from '../../../test-utils/renderWithTheme';
+import {
+  render,
+  renderWithDarkTheme,
+  screen,
+  fireEvent,
+} from '../../../test-utils/renderWithTheme';
 import OAuthButton from './OAuthButton';
 
 describe('<OAuthButton />', () => {
   test('renders correctly with Google provider', async () => {
     render(<OAuthButton provider="google" />);
+    const button = screen.getByText(/Google/i);
+    expect(button).not.toBeNull();
+  });
+
+  test('renders correctly with Google provider in dark theme', async () => {
+    renderWithDarkTheme(<OAuthButton provider="google" />);
     const button = screen.getByText(/Google/i);
     expect(button).not.toBeNull();
   });

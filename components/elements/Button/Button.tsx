@@ -35,7 +35,7 @@ function Button({
   style,
   disabled,
   isLoading,
-  loaderColor = '$white',
+  loaderColor = '$onPrimary',
   imageStyle,
   children,
   backgroundColor = '$primary',

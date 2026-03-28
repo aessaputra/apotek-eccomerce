@@ -18,7 +18,7 @@ export default function HeaderCartIcon({
   const theme = useTheme();
   const defaultColor = forHeaderRight
     ? getThemeColor(theme, 'white', THEME_FALLBACKS.white)
-    : getThemeColor(theme, 'background', THEME_FALLBACKS.background);
+    : getThemeColor(theme, 'color', THEME_FALLBACKS.color);
   const color = colorProp ?? defaultColor;
   const router = useRouter();
   return (

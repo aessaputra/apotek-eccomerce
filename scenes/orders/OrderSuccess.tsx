@@ -12,10 +12,10 @@ export default function OrderSuccess() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const successColor = getThemeColor(theme, 'success', '#22c55e');
+  const successColor = getThemeColor(theme, 'success');
 
   const handleGoHome = () => {
-    router.replace('/home');
+    router.navigate('/home');
   };
 
   const handleViewOrders = () => {
@@ -35,7 +35,7 @@ export default function OrderSuccess() {
             width={80}
             height={80}
             borderRadius={40}
-            backgroundColor="$successBackground"
+            backgroundColor="$successSoft"
             alignItems="center"
             justifyContent="center">
             <CheckCircle size={40} color={successColor} />
@@ -73,7 +73,7 @@ export default function OrderSuccess() {
           <Button
             title="Lihat Pesanan"
             backgroundColor="$primary"
-            titleStyle={{ color: '$white', fontWeight: '600' }}
+            titleStyle={{ color: '$onPrimary', fontWeight: '600' }}
             onPress={handleViewOrders}
           />
 

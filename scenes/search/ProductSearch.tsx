@@ -22,14 +22,15 @@ export default function ProductSearch() {
   const [results, setResults] = useState<ProductWithImages[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const debouncedQuery = useDebounce(query, 300);
 
   const iconColor = getThemeColor(theme, 'color', THEME_FALLBACKS.color);
   const placeholderColor = getThemeColor(
     theme,
-    'placeholderColor',
-    THEME_FALLBACKS.placeholderColor,
+    'searchPlaceholderColor',
+    THEME_FALLBACKS.searchPlaceholderColor ?? THEME_FALLBACKS.placeholderColor,
   );
 
   const handleBack = useCallback(() => {
@@ -117,7 +118,7 @@ export default function ProductSearch() {
             paddingVertical="$2"
             borderRadius="$3"
             onPress={handleRetry}>
-            <Text color="$white" fontSize="$4" fontWeight="600">
+            <Text color="$onPrimary" fontSize="$4" fontWeight="600">
               Retry
             </Text>
           </Button>
@@ -179,7 +180,9 @@ export default function ProductSearch() {
             alignItems="center"
             backgroundColor="$surfaceElevated"
             borderRadius="$3"
-            paddingHorizontal="$3">
+            paddingHorizontal="$3"
+            borderWidth={1}
+            borderColor={isInputFocused ? '$primary' : '$borderColorHover'}>
             <SearchIcon size={20} color={placeholderColor} />
             <Input
               flex={1}
@@ -196,6 +199,8 @@ export default function ProductSearch() {
               autoFocus={true}
               autoCorrect={false}
               autoCapitalize="none"
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
             />
           </XStack>
         </XStack>

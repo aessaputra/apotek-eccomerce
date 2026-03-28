@@ -14,7 +14,6 @@ import Provider, { AuthProvider } from '@/providers';
 import { useAppSlice } from '@/slices';
 import { DEFAULT_THEME_VALUES } from '@/themes';
 import {
-  BOTTOM_BAR_SHADOW,
   ICON_SIZES,
   TAB_BAR_HEIGHT,
   TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN,
@@ -22,6 +21,7 @@ import {
   TAB_BAR_LABEL_MARGIN_TOP_TOKEN,
   TAB_BAR_PADDING_BOTTOM,
   TAB_BAR_PADDING_TOP,
+  getBottomBarShadow,
 } from '@/constants/ui';
 import { getThemeColor } from '@/utils/theme';
 import { loadFonts } from '@/utils/fonts';
@@ -89,7 +89,7 @@ function Router() {
     if (loggedIn) {
       // Authenticated user on auth/callback screens → redirect to main app
       if (inAuthGroup || isCallback) {
-        setTimeout(() => router.replace('/home'), 0);
+        setTimeout(() => router.navigate('/home'), 0);
       }
     } else {
       // Unauthenticated user on protected screens → redirect to login
@@ -140,9 +140,10 @@ function Router() {
       borderTopWidth: 1,
       borderTopColor: tabBarColors.borderColor,
     };
+    const shadowStyle = getBottomBarShadow(tabBarColors.shadowColor);
     return Platform.OS === 'web'
-      ? { ...base, ...BOTTOM_BAR_SHADOW }
-      : { ...base, ...BOTTOM_BAR_SHADOW, shadowColor: tabBarColors.shadowColor, elevation: 8 };
+      ? { ...base, ...shadowStyle }
+      : { ...base, ...shadowStyle, elevation: 8 };
   }, [hideTabBar, tabBarColors]);
 
   // Get header background color for StatusBar consistency

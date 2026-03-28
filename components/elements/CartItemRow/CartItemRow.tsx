@@ -35,10 +35,12 @@ function DeleteAction({
   progress,
   onDelete,
   backgroundColor,
+  iconColor,
 }: {
   progress: SharedValue<number>;
   onDelete: () => void;
   backgroundColor: string;
+  iconColor: string;
 }) {
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -59,7 +61,7 @@ function DeleteAction({
           alignItems: 'center',
         }}
         onPress={onDelete}>
-        <Trash2 size={24} color="white" />
+        <Trash2 size={24} color={iconColor} />
       </RectButton>
     </Animated.View>
   );
@@ -97,7 +99,8 @@ export const CartItemRow = memo(function CartItemRow({
     setShowDeleteDialog(false);
   }, [item.id, onRemove]);
 
-  const dangerColor = getThemeColor(theme, 'danger', '#EF4444');
+  const dangerColor = getThemeColor(theme, 'danger');
+  const onDangerColor = getThemeColor(theme, 'onDanger');
 
   return (
     <>
@@ -111,6 +114,7 @@ export const CartItemRow = memo(function CartItemRow({
             progress={progress}
             onDelete={handleSwipeDelete}
             backgroundColor={dangerColor}
+            iconColor={onDangerColor}
           />
         )}
         containerStyle={{
@@ -153,7 +157,7 @@ export const CartItemRow = memo(function CartItemRow({
               flexShrink={1}>
               {item.product.name}
             </Text>
-            <Text fontSize="$2" color="$color10" numberOfLines={1} ellipsizeMode="tail">
+            <Text fontSize="$2" color="$colorSubtle" numberOfLines={1} ellipsizeMode="tail">
               {formatPrice(unitPrice)}
             </Text>
           </YStack>

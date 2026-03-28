@@ -107,7 +107,7 @@ export default function Avatar({
           overflow="hidden"
           alignItems="center"
           justifyContent="center"
-          backgroundColor={showInitials ? primaryColor : 'transparent'}
+          backgroundColor={showInitials ? primaryColor : undefined}
           borderWidth={3}
           borderColor={borderColor}
           position="relative">

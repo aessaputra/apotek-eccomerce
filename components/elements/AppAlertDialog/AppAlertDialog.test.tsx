@@ -1,5 +1,10 @@
 import { test, expect, jest } from '@jest/globals';
-import { render, screen, fireEvent } from '../../../test-utils/renderWithTheme';
+import {
+  render,
+  renderWithDarkTheme,
+  screen,
+  fireEvent,
+} from '../../../test-utils/renderWithTheme';
 import AppAlertDialog from './AppAlertDialog';
 
 describe('<AppAlertDialog />', () => {
@@ -61,5 +66,22 @@ describe('<AppAlertDialog />', () => {
     fireEvent.press(screen.getByText('Batal'));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test('renders correctly in dark theme', async () => {
+    renderWithDarkTheme(<AppAlertDialog {...defaultProps} />);
+
+    expect(screen.getByText('Test Title')).toBeTruthy();
+    expect(screen.getByText('Test Description')).toBeTruthy();
+    expect(screen.getByText('OK')).toBeTruthy();
+  });
+
+  test('renders with custom colors in dark theme', async () => {
+    renderWithDarkTheme(
+      <AppAlertDialog {...defaultProps} confirmColor="$danger" confirmTextColor="$onPrimary" />,
+    );
+
+    expect(screen.getByText('Test Title')).toBeTruthy();
+    expect(screen.getByText('OK')).toBeTruthy();
   });
 });

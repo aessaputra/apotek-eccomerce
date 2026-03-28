@@ -10,14 +10,16 @@ describe('DotIndicators', () => {
     expect(dots).toHaveLength(5);
   });
 
-  it('returns null when total is 0', () => {
-    const { toJSON } = render(<DotIndicators total={0} currentIndex={0} />);
-    expect(toJSON()).toBeNull();
+  it('renders nothing when total is 0', () => {
+    render(<DotIndicators total={0} currentIndex={0} />);
+    const dots = screen.queryAllByLabelText(/Go to image/);
+    expect(dots).toHaveLength(0);
   });
 
-  it('returns null when total is 1', () => {
-    const { toJSON } = render(<DotIndicators total={1} currentIndex={0} />);
-    expect(toJSON()).toBeNull();
+  it('renders nothing when total is 1', () => {
+    render(<DotIndicators total={1} currentIndex={0} />);
+    const dots = screen.queryAllByLabelText(/Go to image/);
+    expect(dots).toHaveLength(0);
   });
 
   it('calls onDotPress when a dot is pressed', () => {

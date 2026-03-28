@@ -250,7 +250,7 @@ export default function Home() {
               role="button"
               aria-label="Search products"
               aria-describedby="Open product discovery details">
-              <Text flex={1} color="$placeholderColor" fontSize={14} fontWeight="500" pl="$1">
+              <Text flex={1} color="$searchPlaceholderColor" fontSize={14} fontWeight="500" pl="$1">
                 Search by product name
               </Text>
               <SearchIcon size={16} color={iconColor} />

@@ -9,8 +9,13 @@ export interface HeaderSearchAndCartProps {
 
 export default function HeaderSearchAndCart({ onSearchPress }: HeaderSearchAndCartProps) {
   const theme = useTheme();
-  const placeholderColor = getThemeColor(theme, 'placeholderColor');
+  const placeholderColor = getThemeColor(
+    theme,
+    'searchPlaceholderColor',
+    getThemeColor(theme, 'placeholderColor'),
+  );
   const searchBg = getThemeColor(theme, 'surfaceElevated');
+  const searchBorder = getThemeColor(theme, 'borderColorHover');
 
   const handleSearchPress = onSearchPress ?? (() => undefined);
 
@@ -24,6 +29,8 @@ export default function HeaderSearchAndCart({ onSearchPress }: HeaderSearchAndCa
         minWidth={0}
         paddingHorizontal={12}
         borderRadius={20}
+        borderWidth={1}
+        borderColor={searchBorder}
         gap={8}
         backgroundColor={searchBg}
         onPress={handleSearchPress}
@@ -35,7 +42,7 @@ export default function HeaderSearchAndCart({ onSearchPress }: HeaderSearchAndCa
           Cari produk...
         </Text>
       </XStack>
-      <HeaderCartIcon color={getThemeColor(theme, 'white')} />
+      <HeaderCartIcon />
     </XStack>
   );
 }

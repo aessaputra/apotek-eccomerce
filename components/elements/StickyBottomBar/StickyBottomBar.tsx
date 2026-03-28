@@ -1,7 +1,8 @@
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { XStack, YStack, Text, Button, Spinner } from 'tamagui';
-import { BOTTOM_BAR_HEIGHT, BOTTOM_BAR_SHADOW } from '@/constants/ui';
+import { XStack, YStack, Text, Button, Spinner, useTheme } from 'tamagui';
+import { BOTTOM_BAR_HEIGHT, getBottomBarShadow } from '@/constants/ui';
+import { getThemeColor } from '@/utils/theme';
 
 export interface StickyBottomBarProps {
   grandTotal: number;
@@ -28,6 +29,7 @@ export const StickyBottomBar = ({
   confirmText = 'Konfirmasi',
 }: StickyBottomBarProps) => {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   return (
     <XStack
@@ -44,9 +46,9 @@ export const StickyBottomBar = ({
       alignItems="center"
       gap="$3"
       elevation={8}
-      {...BOTTOM_BAR_SHADOW}>
+      {...getBottomBarShadow(getThemeColor(theme, 'shadowColor'))}>
       <YStack flex={1}>
-        <Text fontSize="$2" color="$color10">
+        <Text fontSize="$2" color="$colorSubtle">
           Total
         </Text>
         <Text fontSize="$6" fontWeight="800" color="$color">
@@ -58,14 +60,14 @@ export const StickyBottomBar = ({
         flex={1}
         size="$5"
         backgroundColor="$primary"
-        color="$white"
+        color="$onPrimary"
         borderRadius="$4"
         fontWeight="700"
         pressStyle={{ opacity: 0.85, scale: 0.98 }}
         disabled={disabled || isLoading}
         opacity={disabled || isLoading ? 0.6 : 1}
         onPress={onConfirm}
-        icon={isLoading ? <Spinner color="$white" /> : undefined}>
+        icon={isLoading ? <Spinner color="$onPrimary" /> : undefined}>
         {confirmText}
       </Button>
     </XStack>

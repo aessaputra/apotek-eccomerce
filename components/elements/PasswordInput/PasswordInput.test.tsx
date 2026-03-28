@@ -1,10 +1,21 @@
 import { test, expect } from '@jest/globals';
-import { render, screen, fireEvent } from '../../../test-utils/renderWithTheme';
+import {
+  render,
+  renderWithDarkTheme,
+  screen,
+  fireEvent,
+} from '../../../test-utils/renderWithTheme';
 import PasswordInput from './PasswordInput';
 
 describe('<PasswordInput />', () => {
   test('renders correctly with placeholder', async () => {
     render(<PasswordInput value="" onChangeText={() => {}} placeholder="Password" />);
+    const input = screen.getByPlaceholderText(/Password/i);
+    expect(input).not.toBeNull();
+  });
+
+  test('renders correctly with placeholder in dark theme', async () => {
+    renderWithDarkTheme(<PasswordInput value="" onChangeText={() => {}} placeholder="Password" />);
     const input = screen.getByPlaceholderText(/Password/i);
     expect(input).not.toBeNull();
   });

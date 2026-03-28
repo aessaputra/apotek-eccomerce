@@ -17,7 +17,7 @@ import {
   MIN_TOUCH_TARGET,
   BOTTOM_BAR_HEIGHT,
   PRIMARY_BUTTON_TITLE_STYLE,
-  BOTTOM_BAR_SHADOW,
+  getBottomBarShadow,
 } from '@/constants/ui';
 import { MapPinIcon } from '@/components/icons';
 import {
@@ -264,7 +264,7 @@ export default function AddressList() {
             elevation={8}
             borderTopWidth={1}
             borderTopColor="$borderColor"
-            style={BOTTOM_BAR_SHADOW}>
+            style={getBottomBarShadow(getThemeColor(theme, 'shadowColor'))}>
             <Button
               title="Tambah Alamat"
               width="100%"

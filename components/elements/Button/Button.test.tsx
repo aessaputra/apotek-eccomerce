@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { render, screen, waitFor } from '../../../test-utils/renderWithTheme';
+import { render, renderWithDarkTheme, screen, waitFor } from '../../../test-utils/renderWithTheme';
 import Button from './Button';
 
 describe('<Button />', () => {
@@ -8,6 +8,15 @@ describe('<Button />', () => {
 
     await waitFor(() => {
       const button = screen.getByText(/Click Me/i);
+      expect(button).not.toBeNull();
+    });
+  });
+
+  test('renders correctly in dark theme', async () => {
+    renderWithDarkTheme(<Button title="Dark Click" />);
+
+    await waitFor(() => {
+      const button = screen.getByText(/Dark Click/i);
       expect(button).not.toBeNull();
     });
   });

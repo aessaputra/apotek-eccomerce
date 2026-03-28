@@ -72,7 +72,7 @@ export default function SwipeableAddressRow({
             role="button"
             aria-label="Jadikan alamat default"
             aria-describedby="Mengatur alamat ini sebagai alamat pengiriman default">
-            <StarIcon size={24} color="$white" />
+            <StarIcon size={24} color="$onPrimary" />
           </SwipeButton>
         )}
 
@@ -82,7 +82,7 @@ export default function SwipeableAddressRow({
           role="button"
           aria-label="Edit alamat"
           aria-describedby="Mengedit alamat pengiriman">
-          <EditIcon size={24} color="$white" />
+          <EditIcon size={24} color="$onPrimary" />
         </SwipeButton>
 
         <SwipeButton
@@ -91,7 +91,7 @@ export default function SwipeableAddressRow({
           role="button"
           aria-label="Hapus alamat"
           aria-describedby="Menghapus alamat pengiriman ini">
-          <DeleteIcon size={24} color="$white" />
+          <DeleteIcon size={24} color="$onPrimary" />
         </SwipeButton>
       </SwipeContainer>
     );

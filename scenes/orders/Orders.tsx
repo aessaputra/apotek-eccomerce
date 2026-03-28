@@ -29,13 +29,13 @@ function getStatusColor(status: string): { bg: string; text: string } {
   const refundStates = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
 
   if (successStates.includes(status)) {
-    return { bg: '$successBackground', text: '$success' };
+    return { bg: '$successSoft', text: '$success' };
   }
   if (pendingStates.includes(status)) {
-    return { bg: '$warningBackground', text: '$warning' };
+    return { bg: '$warningSoft', text: '$warning' };
   }
   if (failedStates.includes(status)) {
-    return { bg: '$dangerBackground', text: '$danger' };
+    return { bg: '$dangerSoft', text: '$danger' };
   }
   if (refundStates.includes(status)) {
     return { bg: '$surface', text: '$colorSubtle' };

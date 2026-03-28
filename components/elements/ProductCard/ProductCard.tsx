@@ -104,7 +104,7 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
           role="button"
           aria-label={`Add ${item.name} to cart`}
           aria-describedby="Adds product to shopping cart">
-          <CartIcon size={16} color="$white" />
+          <CartIcon size={16} color="$onPrimary" />
         </XStack>
       </XStack>
     </Card>

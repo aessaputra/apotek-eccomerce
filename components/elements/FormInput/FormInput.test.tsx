@@ -1,10 +1,20 @@
 import { test, expect } from '@jest/globals';
-import { render, screen, fireEvent } from '../../../test-utils/renderWithTheme';
+import {
+  render,
+  renderWithDarkTheme,
+  screen,
+  fireEvent,
+} from '../../../test-utils/renderWithTheme';
 import FormInput from './FormInput';
 
 describe('<FormInput />', () => {
   test('renders with label', async () => {
     render(<FormInput label="Nama Penerima" value="" onChangeText={jest.fn()} />);
+    expect(screen.getByText('Nama Penerima')).not.toBeNull();
+  });
+
+  test('renders with label in dark theme', async () => {
+    renderWithDarkTheme(<FormInput label="Nama Penerima" value="" onChangeText={jest.fn()} />);
     expect(screen.getByText('Nama Penerima')).not.toBeNull();
   });
 

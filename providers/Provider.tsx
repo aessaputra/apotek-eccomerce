@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider } from 'react-redux';
 import { PortalProvider, TamaguiProvider } from 'tamagui';
+import { themes } from '@/themes';
 import store from '@/utils/store';
 import tamaguiConfig from '@/tamagui.config';
 import 'react-native-reanimated';
@@ -12,12 +13,12 @@ const BrandNavigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#0D9488',
-    background: '#FFFFFF',
-    card: '#FFFFFF',
-    text: '#022C22',
-    border: '#E5E7EB',
-    notification: '#DC2626',
+    primary: themes.brand.primary,
+    background: themes.brand.background,
+    card: themes.brand.surface,
+    text: themes.brand.color,
+    border: themes.brand.borderColor,
+    notification: themes.brand.danger,
   },
 };
 
@@ -25,12 +26,12 @@ const BrandNavigationDarkTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    primary: '#2DD4BF',
-    background: '#0A0A0A',
-    card: '#141414',
-    text: '#FAFAFA',
-    border: '#262626',
-    notification: '#FB7185',
+    primary: themes.brand_dark.primary,
+    background: themes.brand_dark.background,
+    card: themes.brand_dark.surface,
+    text: themes.brand_dark.color,
+    border: themes.brand_dark.borderColor,
+    notification: themes.brand_dark.danger,
   },
 };
 

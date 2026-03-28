@@ -30,7 +30,8 @@ import {
   getProductDetailsById,
   type ProductDetailsData,
 } from '@/services/home.service';
-import { BOTTOM_BAR_HEIGHT, BOTTOM_BAR_SHADOW } from '@/constants/ui';
+import { BOTTOM_BAR_HEIGHT, getBottomBarShadow } from '@/constants/ui';
+import { DEFAULT_THEME_VALUES } from '@/themes';
 import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import QuantitySelector from '@/components/elements/QuantitySelector';
@@ -172,7 +173,7 @@ function ProductDetailsLoading({
       <BottomActionBar
         minHeight={bottomBarHeight}
         pb={bottomPaddingInset}
-        style={BOTTOM_BAR_SHADOW}
+        style={getBottomBarShadow(DEFAULT_THEME_VALUES.shadowColor)}
         importantForAccessibility="no-hide-descendants">
         <BottomActionBarContent>
           <XStack alignItems="stretch" justifyContent="space-between" gap="$3">
@@ -268,7 +269,7 @@ function ProductErrorState({
             backgroundColor="$primary"
             pressStyle={{ opacity: 0.95, scale: 0.98 }}
             onPress={onRetry}>
-            <Text color="$white" fontSize={15} fontWeight="700">
+            <Text color="$onPrimary" fontSize={15} fontWeight="700">
               Coba Lagi
             </Text>
           </Button>
@@ -495,7 +496,7 @@ export default function ProductDetails() {
 
             <CategoryTag>
               <CategoryIcon>
-                <PillIcon size={12} color={getThemeColor(theme, 'white')} />
+                <PillIcon size={12} color={getThemeColor(theme, 'onPrimary')} />
               </CategoryIcon>
               <Text fontSize={13} color="$color" fontWeight="700">
                 {categoryLabel}
@@ -512,7 +513,7 @@ export default function ProductDetails() {
       <BottomActionBar
         minHeight={bottomBarHeight}
         pb={bottomPaddingInset}
-        style={BOTTOM_BAR_SHADOW}>
+        style={getBottomBarShadow(getThemeColor(theme, 'shadowColor'))}>
         <BottomActionBarContent>
           {actionFeedback ? (
             <Text
@@ -563,10 +564,10 @@ export default function ProductDetails() {
               <XStack flex={1} alignItems="center" justifyContent="center" gap="$2" minWidth={0}>
                 <CartIcon
                   size={18}
-                  color={getThemeColor(theme, isOutOfStock ? 'colorDisabled' : 'white')}
+                  color={getThemeColor(theme, isOutOfStock ? 'colorDisabled' : 'onPrimary')}
                 />
                 <Text
-                  color={isOutOfStock ? '$colorDisabled' : '$white'}
+                  color={isOutOfStock ? '$colorDisabled' : '$onPrimary'}
                   fontSize={15}
                   fontWeight="700"
                   flexShrink={1}

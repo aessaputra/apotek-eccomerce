@@ -172,12 +172,12 @@ function MapPinSheet({ isOpen, onClose, onConfirm, initialCoords }: MapPinSheetP
               width={40}
               height={40}
               borderRadius={20}
-              backgroundColor="rgba(0,0,0,0.5)"
+              backgroundColor="$surfaceElevated"
               alignItems="center"
               justifyContent="center"
               pressStyle={{ opacity: 0.7 }}
               onPress={onClose}>
-              <X size={20} color="white" />
+              <X size={20} color="$color" />
             </XStack>
           </YStack>
 

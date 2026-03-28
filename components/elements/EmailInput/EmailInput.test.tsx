@@ -1,10 +1,21 @@
 import { test, expect } from '@jest/globals';
-import { render, screen, fireEvent } from '../../../test-utils/renderWithTheme';
+import {
+  render,
+  renderWithDarkTheme,
+  screen,
+  fireEvent,
+} from '../../../test-utils/renderWithTheme';
 import EmailInput from './EmailInput';
 
 describe('<EmailInput />', () => {
   test('renders correctly with placeholder', async () => {
     render(<EmailInput value="" onChangeText={() => {}} placeholder="Email" />);
+    const input = screen.getByPlaceholderText(/Email/i);
+    expect(input).not.toBeNull();
+  });
+
+  test('renders correctly with placeholder in dark theme', async () => {
+    renderWithDarkTheme(<EmailInput value="" onChangeText={() => {}} placeholder="Email" />);
     const input = screen.getByPlaceholderText(/Email/i);
     expect(input).not.toBeNull();
   });

@@ -146,3 +146,87 @@ npm run dev:doctor             # Expo health check
 - **No E2E tests** — only unit/integration via Jest + React Testing Library
 - **Android native dir** exists for local dev builds — EAS handles production builds
 - **`app.json` owner**: `"i-have-no-company"` — update before publishing
+
+## DARK-THEME COLOR SYSTEM
+
+**Updated:** 2026-03-27
+
+### Overview
+
+The app uses a pharmacy-focused dark-mode color system with a "soft-charcoal" hierarchy instead of pure black. This reduces eye strain while maintaining clear visual hierarchy through elevation levels.
+
+### Architecture
+
+- **Theme files**: `themes.ts` exports `brand` (light) and `brand_dark` (dark) theme objects
+- **Config**: `tamagui.config.ts` uses `createTamagui({...defaultConfig, themes})`
+- **Fallbacks**: `constants/ui.ts` provides `THEME_FALLBACKS` (light) and `DARK_THEME_FALLBACKS` (dark) for non-Tamagui consumers
+- **Navigation**: `providers/Provider.tsx` defines `BrandNavigationTheme` and `BrandNavigationDarkTheme`
+
+### Dark Mode Palette (Soft-Charcoal Hierarchy)
+
+#### Elevation Model
+
+| Level | Token | Hex | Usage |
+|-------|-------|-----|-------|
+| 0 | `background` | `#0F1419` | App canvas (deepest) |
+| 0.5 | `backgroundHover` | `#141B22` | Hover state on canvas |
+| 1 | `surface` | `#1A2329` | Cards, containers |
+| 2 | `surfaceSubtle` | `#242D35` | Elevated cards, modals |
+| 3 | `surfaceElevated` | `#2D3A44` | Highest elevation, dropdowns |
+
+Each elevation level increases luminosity by ~8% for perceptible depth without harsh contrast jumps.
+
+#### Text Hierarchy
+
+| Token | Hex | Contrast Ratio | WCAG Level | Usage |
+|-------|-----|----------------|------------|-------|
+| `color` | `#F0F4F8` | ~16.75:1 | AAA | Primary text (headings, labels) |
+| `colorSubtle` | `#A8B8C4` | ~9.10:1 | AAA | Secondary text (body) |
+| `colorMuted` | `#7A8A9A` | ~5.23:1 | AA | Muted / tertiary text |
+| `placeholderColor` | `#7A8A9A` | ~5.23:1 | AA | Form hints and placeholders |
+| `searchPlaceholderColor` | `#B0B0B0` | ~8.53:1 | AAA | Search-field placeholder text |
+| `colorDisabled` | `#5A6A7A` | ~3.33:1 | - | Disabled states |
+
+#### Brand Accent (Cyan)
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `primary` | `#06B6D4` | Primary interactive elements |
+| `brandPrimary` | `#06B6D4` | Brand primary color |
+| `brandPrimarySoft` | `hsla(187, 92%, 47%, 1)` | Secondary actions |
+| `tabBarPillBackground` | `rgba(6,182,212,0.20)` | Tab bar active indicator |
+| `outlineColor` | `rgba(6,182,212,0.3)` | Focus ring |
+
+#### Border Colors
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `borderColor` | `#5A7887` | Accessible input/action borders |
+| `borderColorHover` | `#6E96A4` | Hover state borders |
+| `borderColorFocus` | `#06B6D4` | Focus state borders |
+| `surfaceBorder` | `#2D3A44` | Surface borders |
+
+### Light Mode Palette (Preserved)
+
+Light mode maintains the professional teal direction:
+
+- **Background**: `#FFFFFF` (pure white)
+- **Primary text**: `#0F2F2B` (deep teal)
+- **Accent**: `#0F766E` (brand teal)
+- **Surfaces**: Subtle gray progression (`#F9FAFB`, `#FFFFFF`)
+
+### Token Consumers
+
+Key components that consume theme tokens:
+
+- **Search inputs**: `surfaceElevated`, `borderColor`, `primary`, `searchPlaceholderColor`
+- **Category cards**: `surface`, `primary`, `color`
+- **Product cards**: `surface`, `surfaceElevated`, `color`, `colorSubtle`
+- **Tab bar**: `tabBarInactive`, `tabBarPillBackground`, `primary`
+- **Form inputs**: `background`, `borderColor`, `borderColorFocus`, `color`, `placeholderColor`
+
+### Verification Notes
+
+- **Static contrast analysis**: Ratios calculated using WCAG luminance formula
+- **Runtime validation required**: Manual testing on devices is still needed for iOS, Android, screen-reader, and authenticated-route certification
+- **WebAIM web checks completed**: See `docs/WEBAIM_VALIDATION_REPORT.md` for browser-run contrast validation of final theme pairs

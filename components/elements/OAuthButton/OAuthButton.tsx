@@ -1,15 +1,13 @@
 import { memo, useCallback } from 'react';
 import { XStack, Text, GetProps, Spinner, useMedia } from 'tamagui';
 import { GoogleIcon } from '@/components/icons';
+import { GOOGLE_BRAND_BLUE } from '@/constants/ui';
 
 export interface OAuthButtonProps extends Omit<GetProps<typeof XStack>, 'onPress'> {
   provider: 'google';
   onPress?: () => void;
   isLoading?: boolean;
 }
-
-// Brand color hardcoded karena identitas brand (sesuai Google Brand Guidelines)
-const GOOGLE_BLUE = '#4285F4';
 
 /**
  * Tombol OAuth Google dengan ikon dan styling modern Tamagui.
@@ -74,7 +72,7 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
             height={24}
             minWidth={24}
             maxWidth={24}>
-            <GoogleIcon size={20} color={GOOGLE_BLUE} />
+            <GoogleIcon size={20} color={GOOGLE_BRAND_BLUE} />
           </XStack>
           <Text fontSize={16} fontWeight="600" color="$color">
             {label}

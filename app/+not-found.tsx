@@ -39,7 +39,7 @@ export default function NotFoundScreen() {
           justifyContent="center"
           cursor="pointer"
           marginTop="$2">
-          <Text fontSize="$4" color="$white" fontWeight="600">
+          <Text fontSize="$4" color="$onPrimary" fontWeight="600">
             Ke Beranda
           </Text>
         </YStack>

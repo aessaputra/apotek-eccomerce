@@ -66,7 +66,7 @@ function ErrorMessage({
             {dismissible && onDismiss && (
               <Button
                 onPress={onDismiss}
-                backgroundColor="transparent"
+                backgroundColor="$colorTransparent"
                 padding={4}
                 aria-label="Dismiss error"
                 role="button">

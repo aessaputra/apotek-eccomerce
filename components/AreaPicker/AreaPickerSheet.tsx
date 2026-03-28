@@ -71,7 +71,7 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
             <Search size={20} color="$colorMuted" />
             <Input
               flex={1}
-              backgroundColor="transparent"
+              backgroundColor="$colorTransparent"
               borderWidth={0}
               padding={0}
               fontSize="$4"

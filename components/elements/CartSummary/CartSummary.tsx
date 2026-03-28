@@ -30,7 +30,7 @@ export const CartSummary: React.FC<CartSummaryProps> = ({
   return (
     <YStack gap="$3" padding="$4">
       <XStack justifyContent="space-between" alignItems="center">
-        <Text fontSize="$3" color="$color10">
+        <Text fontSize="$3" color="$colorSubtle">
           Subtotal ({itemCount} item{itemCount !== 1 ? 's' : ''})
         </Text>
         <Text fontSize="$3" color="$color">
@@ -39,7 +39,7 @@ export const CartSummary: React.FC<CartSummaryProps> = ({
       </XStack>
 
       <XStack justifyContent="space-between" alignItems="center">
-        <Text fontSize="$3" color="$color10">
+        <Text fontSize="$3" color="$colorSubtle">
           Ongkir
         </Text>
         {isLoadingShipping ? (
@@ -50,13 +50,13 @@ export const CartSummary: React.FC<CartSummaryProps> = ({
               {formatRupiah(shippingCost)}
             </Text>
             {shippingName && (
-              <Text fontSize="$1" color="$color10">
+              <Text fontSize="$1" color="$colorSubtle">
                 {shippingName}
               </Text>
             )}
           </YStack>
         ) : (
-          <Text fontSize="$3" color="$color10">
+          <Text fontSize="$3" color="$colorSubtle">
             Pilih kurir
           </Text>
         )}

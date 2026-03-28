@@ -807,7 +807,7 @@ export default function Cart() {
               </Text>
               <TamaguiButton
                 backgroundColor="$primary"
-                color="$white"
+                color="$onPrimary"
                 borderRadius="$3"
                 minHeight={44}
                 onPress={() => {
@@ -929,7 +929,7 @@ export default function Cart() {
                     </XStack>
                     <TamaguiButton
                       backgroundColor="$primary"
-                      color="$white"
+                      color="$onPrimary"
                       borderRadius="$3"
                       minHeight={44}
                       onPress={handleOpenAddressSheet}
