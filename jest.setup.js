@@ -1,5 +1,18 @@
 // Jest setup file untuk menangani animasi React Native
 import 'react-native-gesture-handler/jestSetup';
+import { act } from 'react-test-renderer';
+
+// Mock @react-native-community/netinfo to avoid native module errors
+jest.mock('@react-native-community/netinfo', () => ({
+  fetch: jest.fn(() =>
+    Promise.resolve({
+      isConnected: true,
+      isInternetReachable: true,
+      type: 'wifi',
+    }),
+  ),
+  addEventListener: jest.fn(() => jest.fn()), // Returns unsubscribe function
+}));
 
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
@@ -81,8 +94,12 @@ beforeAll(() => {
 afterEach(() => {
   // Run pending timers setelah setiap test untuk memastikan animasi selesai
   // Ini membantu memastikan semua animasi async selesai sebelum test berikutnya
-  jest.runOnlyPendingTimers();
-  jest.clearAllTimers();
+  if (jest.isMockFunction(setTimeout)) {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.clearAllTimers();
+  }
 });
 
 afterAll(() => {

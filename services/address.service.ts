@@ -46,6 +46,23 @@ function parseCoordinate(value: number | string | null | undefined): number | nu
   return null;
 }
 
+function withAbortSignal<T>(query: T, signal?: AbortSignal): T {
+  if (!signal) {
+    return query;
+  }
+
+  if (
+    typeof query === 'object' &&
+    query !== null &&
+    'abortSignal' in query &&
+    typeof (query as { abortSignal?: unknown }).abortSignal === 'function'
+  ) {
+    return (query as { abortSignal: (value: AbortSignal) => T }).abortSignal(signal);
+  }
+
+  return query;
+}
+
 /**
  * Build address insert payload with coordinates
  * Ensures latitude/longitude are properly formatted for storage
@@ -90,14 +107,19 @@ export function toByteshipShippingAddress(address: Address): ByteshipShippingAdd
  */
 export async function getAddresses(
   profileId: string,
+  signal?: AbortSignal,
 ): Promise<{ data: Address[] | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('addresses')
       .select('*')
       .eq('profile_id', profileId)
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false });
+
+    query = withAbortSignal(query, signal);
+
+    const { data, error } = await query;
 
     if (error) return { data: null, error: error as unknown as Error };
     return { data: data as Address[], error: null };
@@ -111,13 +133,14 @@ export async function getAddresses(
  */
 export async function getAddress(
   addressId: string,
+  signal?: AbortSignal,
 ): Promise<{ data: Address | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
-      .from('addresses')
-      .select('*')
-      .eq('id', addressId)
-      .single();
+    let query = supabase.from('addresses').select('*').eq('id', addressId).single();
+
+    query = withAbortSignal(query, signal);
+
+    const { data, error } = await query;
 
     if (error) return { data: null, error: error as unknown as Error };
     return { data: data as Address, error: null };
@@ -128,9 +151,10 @@ export async function getAddress(
 
 export async function getPreferredAddress(
   profileId: string,
+  signal?: AbortSignal,
 ): Promise<{ data: Address | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('addresses')
       .select('*')
       .eq('profile_id', profileId)
@@ -138,6 +162,10 @@ export async function getPreferredAddress(
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    query = withAbortSignal(query, signal);
+
+    const { data, error } = await query;
 
     if (error) return { data: null, error: error as unknown as Error };
     return { data: (data as Address | null) ?? null, error: null };
@@ -188,25 +216,34 @@ export async function updateAddress(
   addressId: string,
   profileId: string,
   payload: AddressUpdate,
+  signal?: AbortSignal,
 ): Promise<{ data: Address | null; error: Error | null }> {
   try {
     // If setting as default, unset other default addresses first
     if (payload.is_default) {
-      await supabase
+      let unsetDefaultQuery = supabase
         .from('addresses')
         .update({ is_default: false })
         .eq('profile_id', profileId)
         .eq('is_default', true)
         .neq('id', addressId);
+
+      unsetDefaultQuery = withAbortSignal(unsetDefaultQuery, signal);
+
+      await unsetDefaultQuery;
     }
 
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from('addresses')
       .update(payload)
       .eq('id', addressId)
       .eq('profile_id', profileId)
       .select()
       .single();
+
+    updateQuery = withAbortSignal(updateQuery, signal);
+
+    const { data, error } = await updateQuery;
 
     if (error) return { data: null, error: error as unknown as Error };
     return { data: data as Address, error: null };
@@ -221,13 +258,14 @@ export async function updateAddress(
 export async function deleteAddress(
   addressId: string,
   profileId: string,
+  signal?: AbortSignal,
 ): Promise<{ error: Error | null }> {
   try {
-    const { error } = await supabase
-      .from('addresses')
-      .delete()
-      .eq('id', addressId)
-      .eq('profile_id', profileId);
+    let query = supabase.from('addresses').delete().eq('id', addressId).eq('profile_id', profileId);
+
+    query = withAbortSignal(query, signal);
+
+    const { error } = await query;
 
     if (error) return { error: error as unknown as Error };
     return { error: null };

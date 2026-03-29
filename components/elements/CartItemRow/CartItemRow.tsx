@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useState } from 'react';
-import { Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
+import { Text, XStack, YStack, useTheme } from 'tamagui';
 import { Trash2 } from '@tamagui/lucide-icons';
 import { CartItemWithProduct } from '@/types/cart';
 import Image from '@/components/elements/Image/Image';
@@ -129,8 +129,6 @@ export const CartItemRow = memo(function CartItemRow({
           borderRadius="$3"
           borderWidth={1}
           borderColor="$surfaceBorder"
-          opacity={isUpdating ? 0.6 : 1}
-          pointerEvents={isUpdating ? 'none' : 'auto'}
           position="relative">
           <YStack
             width={80}
@@ -174,28 +172,10 @@ export const CartItemRow = memo(function CartItemRow({
               min={0}
               max={item.product.stock || 99}
               onChange={handleQuantityChange}
-              disabled={isUpdating}
               size="sm"
               disableAnimation
             />
           </YStack>
-
-          {isUpdating && (
-            <YStack
-              position="absolute"
-              top={0}
-              left={0}
-              right={0}
-              bottom={0}
-              alignItems="center"
-              justifyContent="center"
-              backgroundColor="$surface"
-              opacity={0.5}
-              borderRadius="$3"
-              zIndex={10}>
-              <Spinner size="small" color="$primary" />
-            </YStack>
-          )}
         </XStack>
       </Swipeable>
 

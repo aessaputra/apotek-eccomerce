@@ -1,6 +1,7 @@
 import { supabase } from '@/utils/supabase';
 import type { Tables } from '@/types/supabase';
 import { CART_PAGE_SIZE } from '@/constants/cart.constants';
+import { runDedupedRequest } from '@/utils/requestDeduplication';
 import type {
   CartItemWithProduct,
   CartListItem,
@@ -16,6 +17,7 @@ type ProductRow = Tables<'products'>;
 type ProductImageRow = Tables<'product_images'>;
 
 const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
+const GET_OR_CREATE_CART_REQUEST_PREFIX = 'cart:get-or-create:';
 
 const CART_ITEMS_SELECT = `
   id,
@@ -39,6 +41,17 @@ const CART_ITEMS_SELECT = `
   )
 `;
 
+const CART_TOTALS_SELECT = `
+  id,
+  quantity,
+  product:products (
+    id,
+    price,
+    weight,
+    is_active
+  )
+`;
+
 type CartItemOptimizedRow = Pick<
   CartItemRow,
   'id' | 'cart_id' | 'product_id' | 'quantity' | 'created_at'
@@ -50,21 +63,72 @@ type CartItemOptimizedRow = Pick<
     | null;
 };
 
-function isAbortError(error: unknown): error is Error {
-  return error instanceof Error && error.name === 'AbortError';
+type CartSnapshotRow = Pick<CartItemRow, 'quantity'> & {
+  product: Pick<ProductRow, 'price' | 'weight' | 'is_active'> | null;
+};
+
+function toCartSnapshot(rows: CartSnapshotRow[]): CartSnapshot {
+  return rows.reduce(
+    (snapshot, row) => {
+      if (!row.product) {
+        return snapshot;
+      }
+
+      const quantity = row.quantity;
+      const weight = row.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS;
+
+      snapshot.itemCount += quantity;
+      snapshot.estimatedWeightGrams += quantity * weight;
+      snapshot.packageValue += quantity * row.product.price;
+
+      return snapshot;
+    },
+    {
+      itemCount: 0,
+      estimatedWeightGrams: 0,
+      packageValue: 0,
+    } as CartSnapshot,
+  );
 }
 
-export async function getOrCreateCart(
-  userId: string,
-  signal?: AbortSignal,
-): Promise<{ data: CartRow | null; error: Error | null }> {
-  let query = supabase.from('carts').select('*').eq('user_id', userId).limit(1);
-
-  if (signal) {
-    query = query.abortSignal(signal);
+function isAbortError(error: unknown): error is Error {
+  if (error instanceof Error) {
+    return error.name === 'AbortError';
   }
 
-  const { data: existingCarts, error: fetchError } = await query;
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name?: unknown }).name === 'AbortError'
+  );
+}
+
+function withAbortSignal<T>(query: T, signal?: AbortSignal): T {
+  if (!signal) {
+    return query;
+  }
+
+  if (
+    typeof query === 'object' &&
+    query !== null &&
+    'abortSignal' in query &&
+    typeof (query as { abortSignal?: unknown }).abortSignal === 'function'
+  ) {
+    return (query as { abortSignal: (value: AbortSignal) => T }).abortSignal(signal);
+  }
+
+  return query;
+}
+
+async function getOrCreateCartInternal(
+  userId: string,
+): Promise<{ data: CartRow | null; error: Error | null }> {
+  const { data: existingCarts, error: fetchError } = await supabase
+    .from('carts')
+    .select('*')
+    .eq('user_id', userId)
+    .limit(1);
 
   if (fetchError) {
     return { data: null, error: fetchError as unknown as Error };
@@ -73,10 +137,6 @@ export async function getOrCreateCart(
   const existingCart = existingCarts?.[0];
   if (existingCart) {
     return { data: existingCart, error: null };
-  }
-
-  if (signal?.aborted) {
-    return { data: null, error: new Error('Request aborted') };
   }
 
   const { data: newCart, error: insertError } = await supabase
@@ -92,12 +152,30 @@ export async function getOrCreateCart(
   return { data: newCart, error: null };
 }
 
+export async function getOrCreateCart(
+  userId: string,
+): Promise<{ data: CartRow | null; error: Error | null }> {
+  const requestKey = `${GET_OR_CREATE_CART_REQUEST_PREFIX}${userId}`;
+
+  try {
+    return await runDedupedRequest(requestKey, async () => getOrCreateCartInternal(userId), {
+      policy: 'dedupe',
+    });
+  } catch (error) {
+    return {
+      data: null,
+      error: error instanceof Error ? error : new Error('Unable to initialize cart.'),
+    };
+  }
+}
+
 export async function getCartItemsOptimized(
   cartId: string,
   params: GetCartItemsParams = {},
 ): Promise<CartListResult> {
   const offset = Math.max(params.offset ?? 0, 0);
   const limit = Math.max(params.limit ?? CART_PAGE_SIZE, 1);
+  const includeFullSnapshot = params.includeFullSnapshot ?? false;
 
   if (!cartId) {
     return {
@@ -137,25 +215,15 @@ export async function getCartItemsOptimized(
     }
 
     const rows = ((data ?? []) as unknown as CartItemOptimizedRow[]) ?? [];
-    const fetchedAt = Date.now();
-    const durationMs = fetchedAt - startedAt;
-    const payloadBytes = JSON.stringify(rows).length;
-
     const hasMore = rows.length > limit;
     const normalizedRows = hasMore ? rows.slice(0, limit) : rows;
+    const pageSnapshot = toCartSnapshot(normalizedRows);
 
     const transformed = normalizedRows.reduce(
-      (acc: { items: CartListItem[]; snapshot: CartSnapshot }, row: CartItemOptimizedRow) => {
+      (acc: { items: CartListItem[] }, row: CartItemOptimizedRow) => {
         if (!row.product) {
           return acc;
         }
-
-        const quantity = row.quantity;
-        const weight = row.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS;
-
-        acc.snapshot.itemCount += quantity;
-        acc.snapshot.estimatedWeightGrams += quantity * weight;
-        acc.snapshot.packageValue += quantity * row.product.price;
 
         const sortedImages = [...(row.product.product_images ?? [])].sort(
           (imageA, imageB) => imageA.sort_order - imageB.sort_order,
@@ -164,7 +232,7 @@ export async function getCartItemsOptimized(
         acc.items.push({
           id: row.id,
           product_id: row.product_id,
-          quantity,
+          quantity: row.quantity,
           created_at: row.created_at,
           product: {
             id: row.product.id,
@@ -185,18 +253,39 @@ export async function getCartItemsOptimized(
       },
       {
         items: [] as CartListItem[],
-        snapshot: {
-          itemCount: 0,
-          estimatedWeightGrams: 0,
-          packageValue: 0,
-        } as CartSnapshot,
       },
     );
+
+    let snapshot = pageSnapshot;
+    let fullSnapshotPayloadBytes = 0;
+
+    if (includeFullSnapshot) {
+      const {
+        snapshot: fullSnapshot,
+        error: fullSnapshotError,
+        payloadBytes: snapshotPayloadBytes,
+      } = await getCartSnapshot(cartId, params.signal);
+
+      if (fullSnapshotError) {
+        return {
+          data: null,
+          error: fullSnapshotError,
+          metrics: null,
+        };
+      }
+
+      snapshot = fullSnapshot;
+      fullSnapshotPayloadBytes = snapshotPayloadBytes;
+    }
+
+    const fetchedAt = Date.now();
+    const durationMs = fetchedAt - startedAt;
+    const payloadBytes = JSON.stringify(rows).length + fullSnapshotPayloadBytes;
 
     return {
       data: {
         items: transformed.items,
-        snapshot: transformed.snapshot,
+        snapshot,
       },
       error: null,
       metrics: {
@@ -217,6 +306,65 @@ export async function getCartItemsOptimized(
   }
 }
 
+export async function getCartSnapshot(
+  cartId: string,
+  signal?: AbortSignal,
+): Promise<{ snapshot: CartSnapshot; payloadBytes: number; error: Error | null }> {
+  if (!cartId) {
+    return {
+      snapshot: {
+        itemCount: 0,
+        estimatedWeightGrams: 0,
+        packageValue: 0,
+      },
+      payloadBytes: 0,
+      error: new Error('Cart ID is required.'),
+    };
+  }
+
+  try {
+    let query = supabase
+      .from('cart_items')
+      .select(CART_TOTALS_SELECT)
+      .eq('cart_id', cartId)
+      .eq('product.is_active', true);
+
+    query = withAbortSignal(query, signal);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      return {
+        snapshot: {
+          itemCount: 0,
+          estimatedWeightGrams: 0,
+          packageValue: 0,
+        },
+        payloadBytes: 0,
+        error: error as unknown as Error,
+      };
+    }
+
+    const rows = ((data ?? []) as unknown as CartSnapshotRow[]) ?? [];
+
+    return {
+      snapshot: toCartSnapshot(rows),
+      payloadBytes: JSON.stringify(rows).length,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      snapshot: {
+        itemCount: 0,
+        estimatedWeightGrams: 0,
+        packageValue: 0,
+      },
+      payloadBytes: 0,
+      error: isAbortError(error) ? error : new Error('Failed to load cart snapshot.'),
+    };
+  }
+}
+
 export async function getCartWithItems(
   userId: string,
 ): Promise<{ data: CartWithItems | null; error: Error | null }> {
@@ -225,9 +373,34 @@ export async function getCartWithItems(
     return { data: null, error: new Error('User ID is required.') };
   }
 
-  const { data: cart, error: cartError } = await getOrCreateCart(normalizedUserId);
-  if (cartError || !cart) {
-    return { data: null, error: cartError ?? new Error('Unable to initialize cart.') };
+  const { data: existingCarts, error: fetchError } = await supabase
+    .from('carts')
+    .select('*')
+    .eq('user_id', normalizedUserId)
+    .limit(1);
+
+  if (fetchError) {
+    return { data: null, error: fetchError as unknown as Error };
+  }
+
+  let cart = existingCarts?.[0];
+
+  if (!cart) {
+    const { data: newCart, error: insertError } = await supabase
+      .from('carts')
+      .insert({ user_id: normalizedUserId })
+      .select('*')
+      .single();
+
+    if (insertError) {
+      return { data: null, error: insertError as unknown as Error };
+    }
+
+    cart = newCart;
+  }
+
+  if (!cart) {
+    return { data: null, error: new Error('Unable to initialize cart.') };
   }
 
   const { data: cartItems, error: itemsError } = await supabase
@@ -343,14 +516,14 @@ export async function getCartWithItems(
 export async function updateCartItemQuantity(
   cartItemId: string,
   newQuantity: number,
-): Promise<{ data: boolean; error: Error | null }> {
+): Promise<{ data: CartItemRow | null; error: Error | null }> {
   const normalizedCartItemId = cartItemId.trim();
   if (!normalizedCartItemId) {
-    return { data: false, error: new Error('Cart item ID is required.') };
+    return { data: null, error: new Error('Cart item ID is required.') };
   }
 
   if (newQuantity <= 0) {
-    return { data: false, error: new Error('Quantity must be greater than 0.') };
+    return { data: null, error: new Error('Quantity must be greater than 0.') };
   }
 
   const { data: cartItem, error: fetchError } = await supabase
@@ -360,11 +533,11 @@ export async function updateCartItemQuantity(
     .single();
 
   if (fetchError) {
-    return { data: false, error: fetchError as unknown as Error };
+    return { data: null, error: fetchError as unknown as Error };
   }
 
   if (!cartItem) {
-    return { data: false, error: new Error('Cart item not found.') };
+    return { data: null, error: new Error('Cart item not found.') };
   }
 
   const { data: product, error: productError } = await supabase
@@ -374,27 +547,33 @@ export async function updateCartItemQuantity(
     .single();
 
   if (productError) {
-    return { data: false, error: productError as unknown as Error };
+    return { data: null, error: productError as unknown as Error };
   }
 
   if (!product) {
-    return { data: false, error: new Error('Product not found.') };
+    return { data: null, error: new Error('Product not found.') };
   }
 
   if (newQuantity > product.stock) {
-    return { data: false, error: new Error('Stok tidak mencukupi') };
+    return { data: null, error: new Error('Stok tidak mencukupi') };
   }
 
-  const { error: updateError } = await supabase
+  const { data: updatedCartItem, error: updateError } = await supabase
     .from('cart_items')
     .update({ quantity: newQuantity })
-    .eq('id', normalizedCartItemId);
+    .eq('id', normalizedCartItemId)
+    .select('*')
+    .single();
 
   if (updateError) {
-    return { data: false, error: updateError as unknown as Error };
+    return { data: null, error: updateError as unknown as Error };
   }
 
-  return { data: true, error: null };
+  if (!updatedCartItem) {
+    return { data: null, error: new Error('Cart item not found.') };
+  }
+
+  return { data: updatedCartItem, error: null };
 }
 
 export async function removeCartItem(
@@ -438,3 +617,13 @@ export async function clearCart(userId: string): Promise<{ data: boolean; error:
 }
 
 export { getCartItemsOptimized as getCartOptimized };
+
+export function subscribeToCartChanges(
+  cartId: string,
+  onChange: (event: { type: 'INSERT' | 'UPDATE' | 'DELETE'; itemId: string }) => void,
+): () => void {
+  void cartId;
+  void onChange;
+
+  return () => {};
+}

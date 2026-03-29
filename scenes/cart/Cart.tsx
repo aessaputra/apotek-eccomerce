@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RefreshCw } from '@tamagui/lucide-icons';
@@ -14,7 +14,6 @@ import {
   Sheet,
   Button as TamaguiButton,
 } from 'tamagui';
-import * as Crypto from 'expo-crypto';
 import { getThemeColor } from '@/utils/theme';
 import { CartIcon, ChevronRightIcon, MapPinIcon } from '@/components/icons';
 import { CartItemCard } from '@/components/elements/CartItemCard';
@@ -24,25 +23,42 @@ import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartSt
 import { CartLoadingSkeleton } from '@/components/elements/CartLoadingSkeleton/CartLoadingSkeleton';
 import AddressCard from '@/components/elements/AddressCard';
 import { useAppSlice } from '@/slices';
-import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
+import { useCartAddress } from '@/hooks/useCartAddress';
+import { useCartCheckout } from '@/hooks/useCartCheckout';
 import { useCartPaginated } from '@/hooks/useCartPaginated';
-import { getAddress, getPreferredAddress, getAddresses } from '@/services/address.service';
-import { updateCartItemQuantity, removeCartItem } from '@/services/cart.service';
-import { getShippingRatesForAddress } from '@/services/shipping.service';
-import { createCheckoutOrder, createSnapToken } from '@/services/checkout.service';
+import { useCartShipping } from '@/hooks/useCartShipping';
+import { removeCartItem, updateCartItemQuantity } from '@/services/cart.service';
 import { formatAddress, resolveBadgeText } from '@/utils/address';
+import { ErrorType, translateErrorMessage, type AppError } from '@/utils/error';
 import type { Address } from '@/types/address';
 import type { CartItemWithProduct } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
-interface PersistedCheckoutSession {
-  fingerprint: string;
-  idempotency_key: string;
-  order_id: string | null;
+interface CartItemRendererProps {
+  item: CartItemWithProduct;
+  onQuantityChange: (cartItemId: string, newQuantity: number) => void;
+  onRemove: (cartItemId: string) => void;
+  disabled?: boolean;
 }
 
-const QUANTITY_SYNC_DEBOUNCE_MS = 400;
+const CartItemRenderer = memo(function CartItemRenderer({
+  item,
+  onQuantityChange,
+  onRemove,
+  disabled: _disabled,
+}: CartItemRendererProps) {
+  return (
+    <CartItemCard
+      item={item}
+      onQuantityChange={onQuantityChange}
+      onRemove={onRemove}
+      disabled={false}
+    />
+  );
+});
+
 const COURIER_CARD_PRESS_STYLE = {
   scale: 0.98,
   opacity: 0.9,
@@ -52,13 +68,16 @@ const COURIER_CARD_ANIMATE_ONLY = ['transform', 'opacity'];
 type ErrorBannerType = 'warning' | 'danger';
 
 interface ErrorBannerProps {
+  title?: string;
   message: string;
   onRetry?: () => void;
   type?: ErrorBannerType;
 }
 
-function ErrorBanner({ message, onRetry, type = 'danger' }: ErrorBannerProps) {
+function ErrorBanner({ title, message, onRetry, type = 'danger' }: ErrorBannerProps) {
   const isWarning = type === 'warning';
+  const resolvedTitle =
+    title ?? (isWarning ? 'Menampilkan data keranjang tersimpan.' : 'Gagal memuat keranjang.');
 
   return (
     <Card
@@ -69,7 +88,7 @@ function ErrorBanner({ message, onRetry, type = 'danger' }: ErrorBannerProps) {
       backgroundColor={isWarning ? '$surfaceSubtle' : '$surface'}>
       <YStack gap="$2">
         <Text color={isWarning ? '$primary' : '$danger'} fontWeight="700">
-          {isWarning ? 'Menampilkan data keranjang tersimpan.' : 'Gagal memuat keranjang.'}
+          {resolvedTitle}
         </Text>
         <Text color={isWarning ? '$colorSubtle' : '$danger'}>{message}</Text>
         {onRetry ? (
@@ -92,43 +111,49 @@ function ErrorBanner({ message, onRetry, type = 'danger' }: ErrorBannerProps) {
   );
 }
 
-function translateCheckoutError(message: string | undefined, fallback: string): string {
-  const normalized = (message || '').toLowerCase();
+interface OfflineBannerProps {
+  hasCachedData: boolean;
+}
 
-  if (
-    normalized.includes('timeout') ||
-    normalized.includes('timed out') ||
-    normalized.includes('abort')
-  ) {
-    return 'Permintaan timeout. Pastikan koneksi stabil lalu coba lagi.';
+function OfflineBanner({ hasCachedData }: OfflineBannerProps) {
+  return (
+    <Card
+      borderRadius="$4"
+      borderWidth={1}
+      borderColor="$warning"
+      padding="$3"
+      backgroundColor="$warningSoft">
+      <YStack gap="$1">
+        <Text color="$warning" fontWeight="700">
+          Koneksi internet terputus
+        </Text>
+        <Text color="$colorSubtle">
+          {hasCachedData
+            ? 'Data keranjang tersimpan tetap ditampilkan.'
+            : 'Koneksi internet terputus. Data keranjang tidak tersedia.'}
+        </Text>
+      </YStack>
+    </Card>
+  );
+}
+
+function getRecoverySuggestion(error: AppError): string | null {
+  switch (error.type) {
+    case ErrorType.NETWORK:
+    case ErrorType.TIMEOUT:
+      return 'Periksa koneksi internet Anda, lalu tekan tombol muat ulang.';
+    case ErrorType.AUTH:
+      return 'Login ulang diperlukan agar proses checkout bisa dilanjutkan.';
+    case ErrorType.SERVER:
+      return 'Coba lagi dalam beberapa menit. Jika masalah berlanjut, hubungi dukungan.';
+    case ErrorType.VALIDATION:
+      return 'Periksa alamat, kurir, dan jumlah produk sebelum mencoba lagi.';
+    case ErrorType.ABORT:
+      return 'Ulangi proses yang dibatalkan jika masih diperlukan.';
+    case ErrorType.UNKNOWN:
+    default:
+      return error.retryable ? 'Silakan coba lagi beberapa saat lagi.' : null;
   }
-
-  if (
-    normalized.includes('network') ||
-    normalized.includes('fetch') ||
-    normalized.includes('offline') ||
-    normalized.includes('koneksi')
-  ) {
-    return 'Koneksi internet bermasalah. Silakan cek jaringan Anda lalu coba lagi.';
-  }
-
-  if (
-    normalized.includes('midtrans') ||
-    normalized.includes('snap') ||
-    normalized.includes('payment')
-  ) {
-    return 'Layanan pembayaran sedang bermasalah. Silakan coba beberapa saat lagi.';
-  }
-
-  if (
-    normalized.includes('database') ||
-    normalized.includes('duplicate') ||
-    normalized.includes('constraint')
-  ) {
-    return 'Terjadi kendala data saat checkout. Mohon ulangi beberapa saat lagi.';
-  }
-
-  return message?.trim() || fallback;
 }
 
 interface CourierOptionCardProps {
@@ -210,56 +235,136 @@ export default function Cart() {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { user } = useAppSlice();
-  const { getPersistData, setPersistData, removePersistData } = useDataPersist();
+  const { isOffline } = useNetworkStatus();
+  const isNetworkUnavailable = isOffline;
   const subtleColor = getThemeColor(theme, 'colorPress');
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [loadingSelectedAddress, setLoadingSelectedAddress] = useState(false);
-  const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
-  const [loadingRates, setLoadingRates] = useState(false);
-  const [shippingError, setShippingError] = useState<string | null>(null);
-  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
-  const [selectedShippingKey, setSelectedShippingKey] = useState<string | null>(null);
-  const [shippingSheetOpen, setShippingSheetOpen] = useState(false);
-  const [addressSheetOpen, setAddressSheetOpen] = useState(false);
-  const [loadingAddresses, setLoadingAddresses] = useState(false);
-  const [availableAddresses, setAvailableAddresses] = useState<Address[]>([]);
-  const [quoteDestinationAreaId, setQuoteDestinationAreaId] = useState<string | null>(null);
-  const [quoteDestinationPostalCode, setQuoteDestinationPostalCode] = useState<number | null>(null);
-  const [startingCheckout, setStartingCheckout] = useState(false);
-  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string | null>(null);
-  const quantitySyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingQuantityUpdatesRef = useRef<Map<string, number>>(new Map());
-  const previousSelectedAddressIdRef = useRef<string | null>(null);
-  const shouldOpenShippingSheetRef = useRef(false);
-  const cartMountedRef = useRef(true);
-  const checkoutInProgressRef = useRef(false);
+  const [offlineActionMessage, setOfflineActionMessage] = useState<string | null>(null);
+  const [cartActionError, setCartActionError] = useState<string | null>(null);
+  const [delegatedError, setDelegatedError] = useState<AppError | null>(null);
+  const [addressError, setAddressError] = useState<AppError | null>(null);
+  const offlineMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { items, snapshot, error, isLoading, isRefreshing, refresh } = useCartPaginated({
+    userId: user?.id,
+  });
+
+  const onOfflineAction = useCallback((message: string) => {
+    setOfflineActionMessage(message);
+  }, []);
 
   const {
-    items,
-    snapshot,
-    error,
-    hasMore,
-    isLoading,
-    isRefreshing,
-    isFetchingMore,
-    isRevalidating,
-    isUsingCachedData,
-    refresh,
-    refreshIfNeeded,
-    loadMore,
-    metrics,
-  } = useCartPaginated(user?.id);
+    selectedAddress,
+    selectedAddressId,
+    loadingSelectedAddress,
+    availableAddresses,
+    loadingAddresses,
+    addressSheetOpen,
+    setAddressSheetOpen,
+    handleOpenAddressSheet,
+    handleSelectAddress,
+  } = useCartAddress({
+    userId: user?.id,
+    isOffline: isNetworkUnavailable,
+    onOfflineAction,
+    onError: setAddressError,
+  });
 
-  const selectedShippingOption = useMemo(
-    () =>
-      shippingOptions.find(
-        option => `${option.courier_code}-${option.service_code}` === selectedShippingKey,
-      ) ?? null,
-    [shippingOptions, selectedShippingKey],
+  const {
+    shippingOptions,
+    selectedShippingOption,
+    loadingRates,
+    shippingError,
+    setShippingError,
+    selectedShippingKey,
+    shippingSheetOpen,
+    setShippingSheetOpen,
+    handleCalculateShipping,
+    handleSelectShippingKey,
+    handleOpenShippingSheet,
+    quoteDestination,
+  } = useCartShipping({
+    selectedAddress,
+    selectedAddressId,
+    snapshot,
+    isOffline: isNetworkUnavailable,
+    onOfflineAction,
+  });
+
+  useEffect(() => {
+    if (!delegatedError) {
+      return;
+    }
+
+    setShippingError(delegatedError);
+    setDelegatedError(null);
+  }, [delegatedError, setShippingError]);
+
+  const handleQuantityChange = useCallback(
+    async (cartItemId: string, newQuantity: number) => {
+      if (isOffline) {
+        setOfflineActionMessage('Perubahan jumlah produk tidak tersedia offline.');
+        return;
+      }
+
+      setCartActionError(null);
+
+      const { error: quantityError } = await updateCartItemQuantity(cartItemId, newQuantity);
+
+      if (quantityError) {
+        setCartActionError(quantityError.message);
+        return;
+      }
+
+      await refresh({ silent: true });
+    },
+    [isOffline, refresh],
   );
+
+  const handleRemoveItem = useCallback(
+    async (cartItemId: string) => {
+      if (isOffline) {
+        setOfflineActionMessage('Hapus produk tidak tersedia offline.');
+        return;
+      }
+
+      setCartActionError(null);
+
+      const { error: removeError } = await removeCartItem(cartItemId);
+
+      if (removeError) {
+        setCartActionError(removeError.message);
+        return;
+      }
+
+      await refresh({ silent: true });
+    },
+    [isOffline, refresh],
+  );
+
+  const {
+    startingCheckout,
+    activeOrderId,
+    paymentError,
+    handleStartCheckout,
+    clearCheckoutSession,
+    resetPaymentError,
+  } = useCartCheckout({
+    userId: user?.id,
+    selectedAddress,
+    selectedAddressId,
+    selectedShippingOption,
+    selectedShippingKey,
+    quoteDestination,
+    snapshot,
+    isOffline: isNetworkUnavailable,
+    onOfflineAction,
+    onError: setDelegatedError,
+  });
+
+  useEffect(() => {
+    if (selectedAddressId || selectedAddress) {
+      setAddressError(null);
+    }
+  }, [selectedAddress, selectedAddressId]);
 
   const selectedAddressFullText = useMemo(() => {
     if (!selectedAddress) {
@@ -269,575 +374,77 @@ export default function Cart() {
     return formatAddress(selectedAddress);
   }, [selectedAddress]);
 
-  const resetShippingSelection = useCallback(() => {
-    shouldOpenShippingSheetRef.current = false;
-    setSelectedShippingKey(null);
-    setShippingOptions([]);
-    setQuoteDestinationAreaId(null);
-    setQuoteDestinationPostalCode(null);
-  }, []);
+  const hasCachedCartData = useMemo(() => {
+    return items.length > 0;
+  }, [items.length]);
 
-  const checkoutFingerprint = useMemo(
-    () =>
-      [
-        user?.id ?? '',
-        selectedAddressId ?? '',
-        selectedShippingKey ?? '',
-        snapshot.itemCount,
-        snapshot.estimatedWeightGrams,
-        snapshot.packageValue,
-      ].join('|'),
-    [
-      snapshot.estimatedWeightGrams,
-      snapshot.itemCount,
-      snapshot.packageValue,
-      selectedAddressId,
-      selectedShippingKey,
-      user?.id,
-    ],
-  );
-
-  const loadAddressesForSheet = useCallback(async () => {
-    if (!user?.id) {
-      setAvailableAddresses([]);
-      setLoadingAddresses(false);
-      return;
+  const shippingErrorMessage = useMemo(() => {
+    if (!shippingError) {
+      return null;
     }
 
-    setLoadingAddresses(true);
-    const { data, error } = await getAddresses(user.id);
-    setLoadingAddresses(false);
+    return translateErrorMessage(shippingError);
+  }, [shippingError]);
 
-    if (error) {
-      setShippingError(`Gagal memuat alamat: ${error.message}`);
-      return;
+  const addressErrorMessage = useMemo(() => {
+    if (!addressError) {
+      return null;
     }
 
-    setAvailableAddresses(data ?? []);
-  }, [user?.id]);
+    return translateErrorMessage(addressError);
+  }, [addressError]);
 
-  const flushPendingQuantityUpdates = useCallback(
-    async ({ skipStateUpdates = false }: { skipStateUpdates?: boolean } = {}) => {
-      const pendingUpdates = Array.from(pendingQuantityUpdatesRef.current.entries());
-      pendingQuantityUpdatesRef.current.clear();
+  const shippingRecoverySuggestion = useMemo(() => {
+    if (!shippingError) {
+      return null;
+    }
 
-      if (pendingUpdates.length === 0) {
-        return;
-      }
-
-      const results = await Promise.all(
-        pendingUpdates.map(async ([cartItemId, quantity]) => {
-          const result = await updateCartItemQuantity(cartItemId, quantity);
-          return {
-            cartItemId,
-            quantity,
-            error: result.error,
-          };
-        }),
-      );
-
-      const pendingIds = pendingUpdates.map(([cartItemId]) => cartItemId);
-      if (!skipStateUpdates && cartMountedRef.current) {
-        setUpdatingItems(current => {
-          const next = new Set(current);
-          for (const id of pendingIds) {
-            next.delete(id);
-          }
-          return next;
-        });
-      }
-
-      let hasSuccess = false;
-
-      for (const result of results) {
-        const allowStateUpdates = cartMountedRef.current && !skipStateUpdates;
-
-        if (result.error) {
-          if (allowStateUpdates) {
-            setShippingError(result.error.message);
-          }
-
-          continue;
-        }
-
-        hasSuccess = true;
-      }
-
-      if (hasSuccess) {
-        await refresh();
-      }
-    },
-    [refresh],
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      void refreshIfNeeded();
-    }, [refreshIfNeeded]),
-  );
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const hydrateSelectedAddress = async () => {
-      if (!user?.id || selectedAddressId) {
-        return;
-      }
-
-      setLoadingSelectedAddress(true);
-      const { data, error } = await getPreferredAddress(user.id);
-
-      if (!isMounted) {
-        return;
-      }
-
-      setLoadingSelectedAddress(false);
-
-      if (error) {
-        setShippingError(error.message);
-        return;
-      }
-
-      if (!data?.id) {
-        setSelectedAddress(null);
-        resetShippingSelection();
-        return;
-      }
-
-      setSelectedAddressId(data.id);
-    };
-
-    void hydrateSelectedAddress();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [resetShippingSelection, selectedAddressId, user?.id]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadSelectedAddress = async () => {
-      if (!selectedAddressId) {
-        if (!isMounted) {
-          return;
-        }
-        setSelectedAddress(null);
-        resetShippingSelection();
-        return;
-      }
-
-      setLoadingSelectedAddress(true);
-      const { data, error } = await getAddress(selectedAddressId);
-
-      if (!isMounted) {
-        return;
-      }
-
-      setLoadingSelectedAddress(false);
-
-      if (error || !data) {
-        setSelectedAddress(null);
-        resetShippingSelection();
-        setShippingError(error?.message ?? 'Alamat pengiriman tidak ditemukan.');
-        return;
-      }
-
-      setSelectedAddress(data);
-    };
-
-    void loadSelectedAddress();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [resetShippingSelection, selectedAddressId]);
-
-  const handleQuantityChange = useCallback(
-    (cartItemId: string, newQuantity: number) => {
-      const item = items.find(currentItem => currentItem.id === cartItemId);
-      if (!item) {
-        setShippingError('Produk keranjang tidak ditemukan. Silakan muat ulang halaman.');
-        return;
-      }
-
-      if (item.quantity === newQuantity) {
-        return;
-      }
-
-      pendingQuantityUpdatesRef.current.set(cartItemId, newQuantity);
-
-      setUpdatingItems(current => {
-        const next = new Set(current);
-        next.add(cartItemId);
-        return next;
-      });
-
-      setShippingError(null);
-
-      if (quantitySyncTimerRef.current) {
-        clearTimeout(quantitySyncTimerRef.current);
-      }
-
-      quantitySyncTimerRef.current = setTimeout(() => {
-        quantitySyncTimerRef.current = null;
-        void flushPendingQuantityUpdates();
-      }, QUANTITY_SYNC_DEBOUNCE_MS);
-    },
-    [flushPendingQuantityUpdates, items],
-  );
-
-  const handleRemoveItem = useCallback(
-    async (cartItemId: string) => {
-      pendingQuantityUpdatesRef.current.delete(cartItemId);
-
-      setUpdatingItems(current => {
-        const next = new Set(current);
-        next.add(cartItemId);
-        return next;
-      });
-
-      const { error } = await removeCartItem(cartItemId);
-
-      setUpdatingItems(current => {
-        const next = new Set(current);
-        next.delete(cartItemId);
-        return next;
-      });
-
-      if (error) {
-        setShippingError(error.message);
-        return;
-      }
-
-      await refresh();
-    },
-    [refresh],
-  );
+    return getRecoverySuggestion(shippingError);
+  }, [shippingError]);
 
   const formatRupiah = useCallback((amount: number): string => {
     return `Rp ${amount.toLocaleString('id-ID')}`;
   }, []);
 
-  const handleCalculateShipping = useCallback(async () => {
+  useEffect(() => {
+    if (offlineMessageTimerRef.current) {
+      clearTimeout(offlineMessageTimerRef.current);
+      offlineMessageTimerRef.current = null;
+    }
+
+    if (!offlineActionMessage) {
+      return;
+    }
+
+    offlineMessageTimerRef.current = setTimeout(() => {
+      setOfflineActionMessage(null);
+      offlineMessageTimerRef.current = null;
+    }, 3000);
+  }, [offlineActionMessage]);
+
+  const handleWrappedStartCheckout = useCallback(async () => {
     setShippingError(null);
-    setShippingOptions([]);
-
-    if (!selectedAddress) {
-      setShippingError('Pilih alamat pengiriman terlebih dahulu.');
-      return;
-    }
-
-    if (snapshot.estimatedWeightGrams <= 0 || snapshot.itemCount <= 0) {
-      setShippingError('Keranjang kosong. Tambahkan produk sebelum menghitung ongkir.');
-      return;
-    }
-
-    setLoadingRates(true);
-    const { data, error } = await getShippingRatesForAddress({
-      address: selectedAddress,
-      package_weight_grams: snapshot.estimatedWeightGrams,
-      package_value: snapshot.packageValue,
-      package_name: `Checkout package (${snapshot.itemCount} item)`,
-    });
-    setLoadingRates(false);
-
-    if (error) {
-      setShippingError(error.message);
-      return;
-    }
-
-    const options = data?.options ?? [];
-    setShippingOptions(options);
-    setQuoteDestinationAreaId(data?.destination_area_id ?? null);
-    setQuoteDestinationPostalCode(data?.destination_postal_code ?? null);
-
-    if (options.length === 0) {
-      setShippingError('Tidak ada layanan kurir yang tersedia untuk alamat ini.');
-    }
-  }, [snapshot.estimatedWeightGrams, snapshot.itemCount, snapshot.packageValue, selectedAddress]);
-
-  const handleOpenAddressSheet = useCallback(() => {
-    void loadAddressesForSheet();
-    setAddressSheetOpen(true);
-  }, [loadAddressesForSheet]);
-
-  const handleSelectAddress = useCallback((addressId: string) => {
-    setSelectedAddressId(addressId);
-    setAddressSheetOpen(false);
-  }, []);
-
-  const handleSelectShippingKey = useCallback((shippingKey: string) => {
-    setSelectedShippingKey(currentKey => (currentKey === shippingKey ? currentKey : shippingKey));
-  }, []);
-
-  const syncCheckoutSession = useCallback(async () => {
-    if (!user?.id) {
-      setCheckoutIdempotencyKey(null);
-      setActiveOrderId(null);
-      await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-      return;
-    }
-
-    const persisted = await getPersistData<PersistedCheckoutSession>(
-      DataPersistKeys.CHECKOUT_SESSION,
-    );
-
-    if (!persisted) {
-      setCheckoutIdempotencyKey(null);
-      setActiveOrderId(null);
-      return;
-    }
-
-    if (persisted.fingerprint === checkoutFingerprint) {
-      setCheckoutIdempotencyKey(persisted.idempotency_key);
-      setActiveOrderId(persisted.order_id);
-      return;
-    }
-
-    setCheckoutIdempotencyKey(null);
-    setActiveOrderId(null);
-    await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-  }, [checkoutFingerprint, getPersistData, removePersistData, user?.id]);
-
-  useEffect(() => {
-    void syncCheckoutSession();
-  }, [syncCheckoutSession]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void syncCheckoutSession();
-    }, [syncCheckoutSession]),
-  );
-
-  useEffect(() => {
-    cartMountedRef.current = true;
-
-    return () => {
-      cartMountedRef.current = false;
-
-      if (quantitySyncTimerRef.current) {
-        clearTimeout(quantitySyncTimerRef.current);
-        quantitySyncTimerRef.current = null;
-      }
-
-      if (pendingQuantityUpdatesRef.current.size > 0) {
-        void flushPendingQuantityUpdates({ skipStateUpdates: true });
-      }
-    };
-  }, [flushPendingQuantityUpdates]);
-
-  useEffect(() => {
-    if (!selectedShippingKey) {
-      return;
-    }
-
-    setCheckoutIdempotencyKey(null);
-    setActiveOrderId(null);
-    void removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-  }, [removePersistData, selectedShippingKey]);
-
-  useEffect(() => {
-    if (!selectedAddress?.id) {
-      previousSelectedAddressIdRef.current = null;
-      resetShippingSelection();
-      return;
-    }
-
-    if (previousSelectedAddressIdRef.current === selectedAddress.id) {
-      return;
-    }
-
-    previousSelectedAddressIdRef.current = selectedAddress.id;
-
-    resetShippingSelection();
-
-    if (snapshot.itemCount > 0) {
-      void handleCalculateShipping();
-    }
-  }, [snapshot.itemCount, handleCalculateShipping, resetShippingSelection, selectedAddress]);
-
-  useEffect(() => {
-    if (loadingRates || !shouldOpenShippingSheetRef.current) {
-      return;
-    }
-
-    if (shippingOptions.length === 0) {
-      if (shippingError) {
-        shouldOpenShippingSheetRef.current = false;
-      }
-
-      return;
-    }
-
-    shouldOpenShippingSheetRef.current = false;
-
-    setShippingSheetOpen(true);
-  }, [loadingRates, shippingError, shippingOptions.length]);
-
-  useEffect(() => {
-    if (shippingOptions.length === 0 || selectedShippingKey !== null) {
-      return;
-    }
-
-    const jne = shippingOptions.find(
-      o => o.courier_code.toLowerCase() === 'jne' && o.service_code.toLowerCase() === 'reg',
-    );
-
-    if (jne) {
-      setSelectedShippingKey(jne.courier_code + '-' + jne.service_code);
-    }
-  }, [shippingOptions, selectedShippingKey]);
-
-  const handleStartCheckout = useCallback(async () => {
-    if (checkoutInProgressRef.current) {
-      return;
-    }
-    checkoutInProgressRef.current = true;
-
-    setShippingError(null);
-    setPaymentError(null);
-
-    if (!user?.id) {
-      setShippingError('Silakan login terlebih dahulu.');
-      checkoutInProgressRef.current = false;
-      return;
-    }
-
-    if (!selectedAddress) {
-      setShippingError('Pilih alamat pengiriman terlebih dahulu.');
-      checkoutInProgressRef.current = false;
-      return;
-    }
-
-    if (!selectedShippingOption) {
-      setShippingError('Pilih kurir sebelum melanjutkan pembayaran.');
-      checkoutInProgressRef.current = false;
-      return;
-    }
-
-    const currentIdempotencyKey = checkoutIdempotencyKey ?? Crypto.randomUUID();
-    if (!checkoutIdempotencyKey) {
-      setCheckoutIdempotencyKey(currentIdempotencyKey);
-    }
-
-    await setPersistData<PersistedCheckoutSession>(DataPersistKeys.CHECKOUT_SESSION, {
-      fingerprint: checkoutFingerprint,
-      idempotency_key: currentIdempotencyKey,
-      order_id: activeOrderId,
-    });
-
-    setStartingCheckout(true);
-
-    const { data: orderData, error: orderError } = await createCheckoutOrder({
-      user_id: user.id,
-      shipping_address_id: selectedAddress.id,
-      destination_area_id: quoteDestinationAreaId ?? undefined,
-      destination_postal_code: quoteDestinationPostalCode ?? undefined,
-      shipping_option: selectedShippingOption,
-      checkout_idempotency_key: currentIdempotencyKey,
-    });
-
-    if (orderError || !orderData) {
-      setStartingCheckout(false);
-      checkoutInProgressRef.current = false;
-      setShippingError(
-        translateCheckoutError(
-          orderError?.message,
-          'Gagal membuat order checkout. Silakan coba lagi.',
-        ),
-      );
-      return;
-    }
-
-    setCheckoutIdempotencyKey(orderData.checkout_idempotency_key);
-    setActiveOrderId(orderData.order_id);
-    await setPersistData<PersistedCheckoutSession>(DataPersistKeys.CHECKOUT_SESSION, {
-      fingerprint: checkoutFingerprint,
-      idempotency_key: orderData.checkout_idempotency_key,
-      order_id: orderData.order_id,
-    });
-
-    const { data: snapData, error: snapError } = await createSnapToken(orderData.order_id);
-    setStartingCheckout(false);
-
-    if (snapError || !snapData) {
-      checkoutInProgressRef.current = false;
-      const errorMessage = translateCheckoutError(
-        snapError?.message,
-        'Gagal memproses pembayaran. Silakan coba lagi beberapa saat lagi.',
-      );
-      setPaymentError(errorMessage);
-      setShippingError(errorMessage);
-      return;
-    }
-
-    checkoutInProgressRef.current = false;
-    router.push({
-      pathname: '/cart/payment',
-      params: {
-        paymentUrl: snapData.redirectUrl,
-        orderId: orderData.order_id,
-      },
-    });
-  }, [
-    activeOrderId,
-    checkoutFingerprint,
-    checkoutIdempotencyKey,
-    quoteDestinationAreaId,
-    quoteDestinationPostalCode,
-    router,
-    selectedAddress,
-    selectedShippingOption,
-    setPersistData,
-    user?.id,
-  ]);
+    setDelegatedError(null);
+    await handleStartCheckout();
+  }, [handleStartCheckout, setShippingError]);
 
   const handleCartRefresh = useCallback(() => {
+    if (isOffline) {
+      setOfflineActionMessage('Muat ulang keranjang tidak tersedia offline.');
+      return;
+    }
+
     void refresh();
-  }, [refresh]);
+  }, [isOffline, refresh]);
 
-  const handleCartLoadMore = useCallback(() => {
-    void loadMore();
-  }, [loadMore]);
-
-  if (paymentError) {
-    return (
-      <YStack flex={1} backgroundColor="$background">
-        <YStack flex={1} alignItems="center" justifyContent="center" padding="$5" gap="$4">
-          <Card
-            borderRadius="$4"
-            borderWidth={1}
-            borderColor="$danger"
-            padding="$4"
-            backgroundColor="$surface"
-            maxWidth={400}
-            width="100%">
-            <YStack gap="$3" alignItems="center">
-              <Text fontSize="$5" fontWeight="700" color="$danger" textAlign="center">
-                Gagal Memproses Pembayaran
-              </Text>
-              <Text fontSize="$4" color="$color" textAlign="center">
-                {paymentError}
-              </Text>
-              <TamaguiButton
-                backgroundColor="$primary"
-                color="$onPrimary"
-                borderRadius="$3"
-                minHeight={44}
-                onPress={() => {
-                  setPaymentError(null);
-                  void handleStartCheckout();
-                }}
-                aria-label="Coba lagi pembayaran">
-                Coba Lagi
-              </TamaguiButton>
-            </YStack>
-          </Card>
-        </YStack>
-      </YStack>
-    );
-  }
+  useEffect(() => {
+    return () => {
+      if (offlineMessageTimerRef.current) {
+        clearTimeout(offlineMessageTimerRef.current);
+        offlineMessageTimerRef.current = null;
+      }
+    };
+  }, []);
 
   if (!user) {
     return (
@@ -855,16 +462,24 @@ export default function Cart() {
     );
   }
 
+  if (isLoading && items.length === 0) {
+    return (
+      <YStack flex={1} backgroundColor="$background" padding="$4" gap="$3">
+        <CartLoadingSkeleton rowCount={4} />
+      </YStack>
+    );
+  }
+
   return (
     <YStack flex={1} backgroundColor="$background" position="relative">
       <FlatList
         data={items}
         renderItem={({ item }: { item: CartItemWithProduct }) => (
-          <CartItemCard
+          <CartItemRenderer
             item={item}
             onQuantityChange={handleQuantityChange}
             onRemove={handleRemoveItem}
-            isUpdating={updatingItems.has(item.id)}
+            disabled={false}
           />
         )}
         keyExtractor={item => item.id}
@@ -876,23 +491,31 @@ export default function Cart() {
         }}
         ListHeaderComponent={
           <YStack gap="$3">
-            {isUsingCachedData && error ? (
-              <ErrorBanner message={error} onRetry={handleCartRefresh} type="warning" />
-            ) : null}
+            {isOffline ? <OfflineBanner hasCachedData={hasCachedCartData} /> : null}
 
-            {error && !isUsingCachedData ? (
-              <ErrorBanner message={error} onRetry={handleCartRefresh} />
-            ) : null}
-
-            <Card bordered elevate size="$4">
-              <Card.Header padded>
-                <Text fontSize="$4" fontWeight="600" color="$color">
-                  Produk ({snapshot.itemCount})
+            {offlineActionMessage ? (
+              <Card
+                borderRadius="$4"
+                borderWidth={1}
+                borderColor="$warning"
+                padding="$3"
+                backgroundColor="$surfaceSubtle">
+                <Text color="$warning" fontWeight="600">
+                  {offlineActionMessage}
                 </Text>
-              </Card.Header>
-            </Card>
+              </Card>
+            ) : null}
 
-            {isLoading ? <CartLoadingSkeleton rowCount={3} /> : null}
+            {error ? <ErrorBanner message={error} onRetry={handleCartRefresh} /> : null}
+
+            {cartActionError ? (
+              <ErrorBanner
+                title="Gagal memperbarui keranjang."
+                message={cartActionError}
+                onRetry={() => setCartActionError(null)}
+                type="warning"
+              />
+            ) : null}
           </YStack>
         }
         ListEmptyComponent={
@@ -905,17 +528,6 @@ export default function Cart() {
         ListFooterComponent={
           items.length > 0 && !isLoading ? (
             <YStack gap="$4" paddingTop="$1">
-              {isFetchingMore || isRevalidating ? (
-                <YStack alignItems="center" justifyContent="center" gap="$2" py="$2">
-                  <Spinner size="small" color="$primary" />
-                  <Text fontSize="$2" color="$colorSubtle">
-                    {isFetchingMore
-                      ? 'Memuat produk keranjang berikutnya...'
-                      : 'Menyegarkan cache keranjang...'}
-                  </Text>
-                </YStack>
-              ) : null}
-
               {loadingSelectedAddress ? (
                 <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
                   <Spinner size="large" color="$primary" />
@@ -984,25 +596,25 @@ export default function Cart() {
                 </Card>
               )}
 
+              {addressErrorMessage ? (
+                <Card
+                  borderRadius="$4"
+                  borderWidth={1}
+                  borderColor="$danger"
+                  padding="$3"
+                  backgroundColor="$surface">
+                  <Text color="$danger">{addressErrorMessage}</Text>
+                </Card>
+              ) : null}
+
               <Card
                 bordered
                 elevate
                 size="$4"
                 backgroundColor="$surface"
                 borderColor="$surfaceBorder"
-                onPress={() => {
-                  if (loadingRates || !selectedAddressId) {
-                    return;
-                  }
-
-                  if (shippingOptions.length === 0) {
-                    shouldOpenShippingSheetRef.current = true;
-                    void handleCalculateShipping();
-                    return;
-                  }
-
-                  setShippingSheetOpen(true);
-                }}>
+                opacity={isNetworkUnavailable ? 0.7 : 1}
+                onPress={handleOpenShippingSheet}>
                 <Card.Header padded>
                   <XStack alignItems="center" justifyContent="space-between" gap="$3">
                     <Text fontSize="$4" fontWeight="600" color="$color" numberOfLines={1} flex={1}>
@@ -1040,6 +652,14 @@ export default function Cart() {
                     </Text>
                   )}
                 </XStack>
+
+                {isOffline ? (
+                  <XStack px="$3" pb="$3">
+                    <Text fontSize="$2" color="$warning" fontWeight="600">
+                      Tidak tersedia offline
+                    </Text>
+                  </XStack>
+                ) : null}
               </Card>
 
               <Card bordered elevate size="$4">
@@ -1057,6 +677,54 @@ export default function Cart() {
                   isLoadingShipping={loadingRates}
                 />
               </Card>
+
+              {activeOrderId ? (
+                <Card
+                  borderRadius="$4"
+                  borderWidth={1}
+                  borderColor="$warning"
+                  padding="$3"
+                  backgroundColor="$warningSoft">
+                  <YStack gap="$2.5">
+                    <Text color="$warning" fontWeight="700">
+                      Pembayaran Tertunda
+                    </Text>
+                    <Text color="$colorSubtle" fontSize="$2">
+                      {paymentError ??
+                        'Order sudah dibuat. Lanjutkan pembayaran untuk menggunakan order yang sama tanpa membuat order baru. Pilihan kurir tidak wajib dipilih ulang saat melanjutkan pembayaran.'}
+                    </Text>
+                    <XStack justifyContent="flex-end" gap="$2">
+                      <TamaguiButton
+                        size="$2"
+                        borderRadius="$3"
+                        backgroundColor="transparent"
+                        borderWidth={1}
+                        borderColor="$surfaceBorder"
+                        color="$color"
+                        onPress={() => {
+                          void clearCheckoutSession();
+                        }}
+                        aria-label="Batalkan checkout tertunda">
+                        Batalkan
+                      </TamaguiButton>
+                      <TamaguiButton
+                        size="$2"
+                        borderRadius="$3"
+                        backgroundColor="$primary"
+                        color="$onPrimary"
+                        disabled={isNetworkUnavailable || startingCheckout}
+                        opacity={isNetworkUnavailable || startingCheckout ? 0.7 : 1}
+                        onPress={() => {
+                          resetPaymentError();
+                          void handleWrappedStartCheckout();
+                        }}
+                        aria-label="Lanjutkan pembayaran">
+                        {startingCheckout ? 'Memproses...' : 'Lanjutkan Pembayaran'}
+                      </TamaguiButton>
+                    </XStack>
+                  </YStack>
+                </Card>
+              ) : null}
 
               {shippingError && shippingOptions.length === 0 && !loadingRates ? (
                 <XStack justifyContent="flex-end" marginTop="$-2">
@@ -1083,25 +751,23 @@ export default function Cart() {
                   borderColor="$danger"
                   padding="$3"
                   backgroundColor="$surface">
-                  <Text color="$danger">{shippingError}</Text>
+                  <YStack gap="$1.5">
+                    <Text color="$danger">{shippingErrorMessage ?? 'Terjadi kesalahan.'}</Text>
+                    {shippingRecoverySuggestion ? (
+                      <Text color="$colorSubtle" fontSize="$2">
+                        {shippingRecoverySuggestion}
+                      </Text>
+                    ) : null}
+                  </YStack>
                 </Card>
-              ) : null}
-
-              {__DEV__ && metrics.lastFetchDurationMs > 0 ? (
-                <Text fontSize="$1" color="$colorMuted" textAlign="right">
-                  cart {metrics.lastFetchDurationMs}ms • {metrics.lastPayloadBytes}B
-                </Text>
               ) : null}
             </YStack>
           ) : null
         }
-        onEndReached={hasMore ? handleCartLoadMore : undefined}
-        onEndReachedThreshold={0.5}
-        refreshing={isRefreshing}
-        onRefresh={handleCartRefresh}
+        refreshing={isNetworkUnavailable ? false : isRefreshing}
+        onRefresh={isNetworkUnavailable ? undefined : handleCartRefresh}
       />
 
-      {/* Shipping Options Sheet */}
       <Sheet
         modal
         dismissOnOverlayPress
@@ -1160,15 +826,21 @@ export default function Cart() {
                 minHeight={44}
                 backgroundColor="$primary"
                 color="$surface"
+                disabled={isNetworkUnavailable}
+                opacity={isNetworkUnavailable ? 0.6 : 1}
                 onPress={() => setShippingSheetOpen(false)}>
                 Konfirmasi
               </TamaguiButton>
+              {isOffline ? (
+                <Text fontSize="$2" color="$warning" textAlign="center" marginTop="$2">
+                  Tidak tersedia offline
+                </Text>
+              ) : null}
             </YStack>
           </YStack>
         </Sheet.Frame>
       </Sheet>
 
-      {/* Address Picker Sheet */}
       <Sheet
         modal
         dismissOnOverlayPress
@@ -1242,14 +914,29 @@ export default function Cart() {
         </Sheet.Frame>
       </Sheet>
 
-      {items.length > 0 ? (
-        <StickyBottomBar
-          grandTotal={snapshot.packageValue + (selectedShippingOption?.price || 0)}
-          isLoading={startingCheckout}
-          disabled={!selectedShippingOption}
-          onConfirm={handleStartCheckout}
-          confirmText="Konfirmasi"
-        />
+      {!isLoading && items.length > 0 ? (
+        <>
+          {isOffline ? (
+            <XStack
+              position="absolute"
+              left={16}
+              right={16}
+              bottom={BOTTOM_BAR_HEIGHT + insets.bottom + 8}
+              justifyContent="center"
+              pointerEvents="none">
+              <Text fontSize="$2" color="$warning" fontWeight="600">
+                Checkout tidak tersedia offline
+              </Text>
+            </XStack>
+          ) : null}
+          <StickyBottomBar
+            grandTotal={snapshot.packageValue + (selectedShippingOption?.price || 0)}
+            isLoading={startingCheckout}
+            disabled={(!selectedShippingOption && !activeOrderId) || isNetworkUnavailable}
+            onConfirm={handleWrappedStartCheckout}
+            confirmText={activeOrderId ? 'Lanjutkan Pembayaran' : 'Konfirmasi'}
+          />
+        </>
       ) : null}
     </YStack>
   );

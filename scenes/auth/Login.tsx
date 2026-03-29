@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { YStack, XStack, Text, Image, useMedia, useTheme, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import OAuthButton from '@/components/elements/OAuthButton';
@@ -9,6 +9,11 @@ import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signInWithPassword, signInWithGoogle } from '@/services/auth.service';
+import {
+  getAuthErrorMessage,
+  isCancellationError,
+  isEmailNotVerifiedError,
+} from '@/constants/auth.errors';
 import { images } from '@/utils/images';
 import { validateEmail } from '@/utils/validation';
 import { PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
@@ -17,6 +22,7 @@ import { getThemeColor } from '@/utils/theme';
 export default function Login() {
   const media = useMedia();
   const theme = useTheme();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,19 +57,27 @@ export default function Login() {
         password,
       });
       if (err) {
-        setError(err.message ?? 'Login gagal. Periksa email dan password.');
-        const errorMessage = err.message?.toLowerCase() ?? '';
+        const errorMessage = getAuthErrorMessage(err);
+        setError(errorMessage);
+
+        if (isEmailNotVerifiedError(err)) {
+          router.push({
+            pathname: '/(auth)/verify-email',
+            params: { email: trimmedEmail },
+          });
+          return;
+        }
+
+        const lowerMessage = err.message?.toLowerCase() ?? '';
         if (
-          errorMessage.includes('email') ||
-          errorMessage.includes('invalid login credentials') ||
-          errorMessage.includes('user not found')
+          lowerMessage.includes('email') ||
+          lowerMessage.includes('invalid login credentials') ||
+          lowerMessage.includes('user not found')
         ) {
           setEmailError(true);
         }
         return;
       }
-      // Setelah login berhasil, AuthProvider.onAuthStateChange
-      // akan menangani role/ban check dan set Redux state.
     } catch {
       setError('Terjadi kesalahan saat login. Silakan coba lagi.');
     } finally {
@@ -77,29 +91,18 @@ export default function Login() {
     try {
       const { error: err } = await signInWithGoogle();
       if (err) {
-        if (err.name === 'AuthCancelError') return;
-        setError(err.message ?? 'Login dengan Google gagal.');
+        if (isCancellationError(err)) return;
+        const errorMessage = getAuthErrorMessage(err);
+        setError(errorMessage);
         return;
       }
-      // Setelah setSession berhasil, AuthProvider.onAuthStateChange
-      // akan menangani role/ban check dan update Redux state.
     } catch (thrown: unknown) {
       if (__DEV__) {
         console.log('[Login] handleGoogleLogin exception:', thrown);
       }
 
-      const errorName =
-        typeof thrown === 'object' && thrown !== null && 'name' in thrown
-          ? String((thrown as { name: unknown }).name)
-          : '';
-
       const errorMessage = thrown instanceof Error ? thrown.message : String(thrown ?? '');
-      const isCancellation =
-        errorName === 'AuthCancelError' ||
-        errorMessage.toLowerCase().includes('cancel') ||
-        errorMessage.toLowerCase().includes('dibatalkan');
-
-      if (!isCancellation) {
+      if (!isCancellationError({ message: errorMessage })) {
         setError('Terjadi kesalahan saat login dengan Google. Silakan coba lagi.');
       }
     } finally {

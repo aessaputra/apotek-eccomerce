@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react';
 import { YStack, XStack, Text, Image, useMedia, useTheme, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signUp } from '@/services/auth.service';
+import { getAuthErrorMessage, isUserAlreadyExistsError } from '@/constants/auth.errors';
 import { images } from '@/utils/images';
 import { PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
 import { getThemeColor } from '@/utils/theme';
@@ -34,6 +35,7 @@ import {
 export default function SignUp() {
   const media = useMedia();
   const theme = useTheme();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -80,25 +82,22 @@ export default function SignUp() {
       const { data, error: err } = await signUp({
         email: trimmedEmail,
         password,
-        // full_name can be collected later in profile page for better conversion rate
       });
       if (err) {
-        setError(err.message ?? 'Pendaftaran gagal. Coba lagi.');
-        // Only set emailError if error is email-related
-        const errorMessage = err.message?.toLowerCase() ?? '';
-        if (
-          errorMessage.includes('email') ||
-          errorMessage.includes('user already registered') ||
-          errorMessage.includes('invalid login credentials')
-        ) {
+        const errorMessage = getAuthErrorMessage(err);
+        setError(errorMessage);
+
+        if (isUserAlreadyExistsError(err)) {
           setEmailError(true);
         }
         return;
       }
       if (data?.session) {
-        // AuthProvider.onAuthStateChange akan handle navigation via Redux
       } else if (data?.user && !data.session) {
-        setError('Periksa email Anda untuk tautan konfirmasi.');
+        router.push({
+          pathname: '/(auth)/verify-email',
+          params: { email: trimmedEmail },
+        });
       }
     } catch {
       setError('Terjadi kesalahan saat mendaftar. Silakan coba lagi.');

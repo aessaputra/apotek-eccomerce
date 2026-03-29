@@ -54,6 +54,69 @@ export async function signOut() {
   return supabase.auth.signOut();
 }
 
+interface VerifyEmailOtpInput {
+  tokenHash: string;
+  type: 'email' | 'signup' | 'recovery' | 'invite' | 'email_change';
+}
+
+interface ResendVerificationInput {
+  email: string;
+  type?: 'signup' | 'email_change';
+}
+
+/**
+ * Verify email OTP using token hash from deep link.
+ * Used for email confirmation, password recovery, etc.
+ */
+export async function verifyEmailOtp(input: VerifyEmailOtpInput) {
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      token_hash: input.tokenHash,
+      type: input.type,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return {
+      data: null,
+      error: { message, name: 'VerifyOtpError' } as GoogleAuthError,
+    };
+  }
+}
+
+/**
+ * Resend verification email to user.
+ * Only works for 'signup' and 'email_change' types.
+ */
+export async function resendVerificationEmail(
+  email: string,
+  type: 'signup' | 'email_change' = 'signup',
+) {
+  try {
+    const { data, error } = await supabase.auth.resend({
+      type,
+      email,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return {
+      data: null,
+      error: { message, name: 'ResendEmailError' } as GoogleAuthError,
+    };
+  }
+}
+
 /**
  * Exchange PKCE authorization code for session.
  * Shared by native (createSessionFromUrl) and web (handleOAuthHashTokens) flows.

@@ -93,6 +93,8 @@ export interface GetCartItemsParams {
   offset?: number;
   limit?: number;
   signal?: AbortSignal;
+  replace?: boolean;
+  includeFullSnapshot?: boolean;
 }
 
 /**

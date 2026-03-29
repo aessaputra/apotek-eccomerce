@@ -6,6 +6,9 @@ export { useHomeData } from './useHomeData';
 export { useOrdersPaginated } from './useOrdersPaginated';
 export { useProductsPaginated } from './useProductsPaginated';
 export { useDebounce } from './useDebounce';
+export { useCartAddress } from './useCartAddress';
+export { useCartShipping } from './useCartShipping';
+export { useCartCheckout } from './useCartCheckout';
 export { withAuthGuard } from './withAuthGuard';
 export type { UseAddressFormReturn } from './useAddressForm';
 export type { UseAddressDataReturn, SaveAddressParams } from './useAddressData';
@@ -15,3 +18,6 @@ export type {
   UseProductsPaginatedReturn,
   ProductsPerformanceSnapshot,
 } from './useProductsPaginated';
+export type { UseCartAddressReturn, UseCartAddressParams } from './useCartAddress';
+export type { UseCartShippingReturn, UseCartShippingParams } from './useCartShipping';
+export type { UseCartCheckoutReturn, UseCartCheckoutParams } from './useCartCheckout';

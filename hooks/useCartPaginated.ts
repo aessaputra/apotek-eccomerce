@@ -1,304 +1,120 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Dispatch, State } from '@/utils/store';
-import { appActions } from '@/slices/app.slice';
-import { cancelDedupedRequests, runDedupedRequest } from '@/utils/requestDeduplication';
-import { getCartItemsOptimized, getOrCreateCart } from '@/services/cart.service';
-import { CART_CACHE_TTL_MS, CART_PAGE_SIZE } from '@/constants/cart.constants';
-import type { CartItemWithProduct, CartListItem, CartSnapshot } from '@/types/cart';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getCartWithItems } from '@/services/cart.service';
+import type { CartItemWithProduct, CartSnapshot } from '@/types/cart';
+
+const EMPTY_SNAPSHOT: CartSnapshot = {
+  itemCount: 0,
+  estimatedWeightGrams: 0,
+  packageValue: 0,
+};
 
 export interface UseCartPaginatedReturn {
   items: CartItemWithProduct[];
   snapshot: CartSnapshot;
   error: string | null;
-  hasMore: boolean;
   isLoading: boolean;
   isRefreshing: boolean;
-  isFetchingMore: boolean;
-  isRevalidating: boolean;
-  isUsingCachedData: boolean;
-  refresh: () => Promise<void>;
-  refreshIfNeeded: () => Promise<void>;
-  loadMore: () => Promise<void>;
-  metrics: {
-    lastFetchDurationMs: number;
-    lastPayloadBytes: number;
-    cacheAgeMs: number | null;
-  };
+  refresh: (options?: { silent?: boolean }) => Promise<void>;
 }
 
-interface FetchCartPageOptions {
-  offset: number;
-  replace: boolean;
-  reason: 'initial' | 'refresh' | 'load-more' | 'revalidate';
+export interface UseCartPaginatedParams {
+  userId?: string;
 }
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError';
-}
-
-function isFresh(lastFetchedAt: number | null): boolean {
-  return typeof lastFetchedAt === 'number' && Date.now() - lastFetchedAt < CART_CACHE_TTL_MS;
-}
-
-function getCartRequestKey(userId: string, offset: number, limit: number): string {
-  return `cart:${userId}:${offset}:${limit}`;
-}
-
-function getCartRequestPrefix(userId: string): string {
-  return `cart:${userId}:`;
-}
-
-function toCacheItems(items: CartListItem[]): CartItemWithProduct[] {
-  return items.map(item => ({
-    id: item.id,
-    cart_id: '',
-    product_id: item.product_id,
-    quantity: item.quantity,
-    created_at: item.created_at,
-    product: {
-      id: item.product.id,
-      name: item.product.name,
-      price: item.product.price,
-      stock: item.product.stock,
-      weight: item.product.weight,
-      slug: item.product.slug,
-      is_active: item.product.is_active,
-    },
-    images: item.images.map((image, index) => ({
-      id: image.id,
-      url: image.url,
-      sort_order: index,
-    })),
-  }));
-}
-
-export function useCartPaginated(userId?: string): UseCartPaginatedReturn {
-  const dispatch = useDispatch<Dispatch>();
-  const cartCache = useSelector((state: State) => state.app.cartCache);
-  const cacheEntry = userId ? cartCache[userId] : undefined;
-
-  const [isInitialLoading, setIsInitialLoading] = useState(Boolean(userId));
+export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPaginatedReturn {
+  const [items, setItems] = useState<CartItemWithProduct[]>([]);
+  const [snapshot, setSnapshot] = useState<CartSnapshot>(EMPTY_SNAPSHOT);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(Boolean(userId));
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [isRevalidating, setIsRevalidating] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const activeRequestIdRef = useRef(0);
-
-  const items = cacheEntry?.items ?? [];
-  const snapshot = cacheEntry?.snapshot ?? {
-    itemCount: 0,
-    estimatedWeightGrams: 0,
-    packageValue: 0,
-  };
-  const hasMore = cacheEntry?.hasMore ?? false;
-  const cacheIsFresh = isFresh(cacheEntry?.lastFetchedAt ?? null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    setIsInitialLoading(Boolean(userId));
-    setIsRefreshing(false);
-    setIsFetchingMore(false);
-    setIsRevalidating(false);
-    setLocalError(null);
-  }, [userId]);
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-  const fetchCartPage = useCallback(
-    async ({ offset, replace, reason }: FetchCartPageOptions): Promise<void> => {
+  const fetchCart = useCallback(
+    async (mode: 'initial' | 'refresh', silent: boolean = false): Promise<void> => {
       if (!userId) {
+        if (isMountedRef.current) {
+          setItems([]);
+          setSnapshot(EMPTY_SNAPSHOT);
+          setError(null);
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
         return;
       }
 
-      const requestId = activeRequestIdRef.current + 1;
-      activeRequestIdRef.current = requestId;
-      const requestKey = getCartRequestKey(userId, offset, CART_PAGE_SIZE);
-
-      if (reason === 'initial') {
-        setIsInitialLoading(true);
-      }
-
-      if (reason === 'refresh') {
+      if (mode === 'initial') {
+        setIsLoading(true);
+      } else if (!silent) {
         setIsRefreshing(true);
       }
 
-      if (reason === 'load-more') {
-        setIsFetchingMore(true);
-      }
-
-      if (reason === 'revalidate') {
-        setIsRevalidating(true);
-      }
-
-      if (replace) {
-        cancelDedupedRequests(getCartRequestPrefix(userId));
-      }
-
-      dispatch(
-        appActions.setCartCacheStatus({
-          userId,
-          status: replace ? 'refreshing' : 'loading',
-          error: null,
-        }),
-      );
-
-      setLocalError(null);
+      setError(null);
 
       try {
-        const { data: cart, error: cartError } = await getOrCreateCart(userId);
-        if (cartError || !cart) {
-          throw cartError ?? new Error('Unable to initialize cart.');
-        }
+        const { data, error: fetchError } = await getCartWithItems(userId);
 
-        const result = await runDedupedRequest(
-          requestKey,
-          signal => getCartItemsOptimized(cart.id, { offset, limit: CART_PAGE_SIZE, signal }),
-          { policy: replace ? 'replace' : 'dedupe' },
-        );
-
-        if (activeRequestIdRef.current !== requestId) {
+        if (!isMountedRef.current) {
           return;
         }
 
-        if (result.error) {
-          throw result.error;
+        if (fetchError || !data) {
+          throw fetchError ?? new Error('Gagal memuat keranjang.');
         }
 
-        if (result.data && result.metrics) {
-          dispatch(
-            appActions.upsertCartCachePage({
-              userId,
-              items: toCacheItems(result.data.items),
-              snapshot: result.data.snapshot,
-              hasMore: result.metrics.hasMore,
-              offset,
-              fetchedAt: result.metrics.fetchedAt,
-              payloadBytes: result.metrics.payloadBytes,
-              durationMs: result.metrics.durationMs,
-              replace,
-            }),
-          );
-        }
-      } catch (error) {
-        if (isAbortError(error)) {
+        setItems(data.items);
+        setSnapshot(data.snapshot);
+      } catch (err) {
+        if (!isMountedRef.current) {
           return;
         }
 
-        if (activeRequestIdRef.current !== requestId) {
-          return;
-        }
-
-        const message = error instanceof Error ? error.message : 'Gagal memuat keranjang.';
-        dispatch(appActions.setCartCacheStatus({ userId, status: 'error', error: message }));
-        setLocalError(message);
+        setError(err instanceof Error ? err.message : 'Gagal memuat keranjang.');
       } finally {
-        if (activeRequestIdRef.current === requestId) {
-          if (reason === 'initial') {
-            setIsInitialLoading(false);
-          }
-
-          if (reason === 'refresh') {
+        if (isMountedRef.current) {
+          if (mode === 'initial') {
+            setIsLoading(false);
+          } else if (!silent) {
             setIsRefreshing(false);
-          }
-
-          if (reason === 'load-more') {
-            setIsFetchingMore(false);
-          }
-
-          if (reason === 'revalidate') {
-            setIsRevalidating(false);
           }
         }
       }
     },
-    [dispatch, userId],
+    [userId],
   );
 
-  const refresh = useCallback(async (): Promise<void> => {
-    if (!userId) {
-      return;
-    }
-
-    dispatch(appActions.invalidateCartCache(userId));
-    dispatch(
-      appActions.setCartCacheMetadata({
-        userId,
-        metadata: { lastInvalidatedAt: Date.now() },
-      }),
-    );
-    await fetchCartPage({ offset: 0, replace: true, reason: 'refresh' });
-  }, [dispatch, fetchCartPage, userId]);
-
-  const refreshIfNeeded = useCallback(async (): Promise<void> => {
-    if (!userId) {
-      setIsInitialLoading(false);
-      return;
-    }
-
-    if (items.length === 0) {
-      await fetchCartPage({ offset: 0, replace: true, reason: 'initial' });
-      return;
-    }
-
-    setIsInitialLoading(false);
-
-    if (!cacheIsFresh) {
-      await fetchCartPage({ offset: 0, replace: true, reason: 'revalidate' });
-    }
-  }, [cacheIsFresh, fetchCartPage, items.length, userId]);
-
-  const loadMore = useCallback(async (): Promise<void> => {
-    if (
-      !userId ||
-      !hasMore ||
-      isFetchingMore ||
-      isInitialLoading ||
-      isRefreshing ||
-      isRevalidating
-    ) {
-      return;
-    }
-
-    await fetchCartPage({ offset: items.length, replace: false, reason: 'load-more' });
-  }, [
-    fetchCartPage,
-    hasMore,
-    isFetchingMore,
-    isInitialLoading,
-    isRefreshing,
-    isRevalidating,
-    items.length,
-    userId,
-  ]);
-
-  const metrics = useMemo(
-    () => ({
-      lastFetchDurationMs: cacheEntry?.queryDurationMs ?? 0,
-      lastPayloadBytes: cacheEntry?.payloadBytes ?? 0,
-      cacheAgeMs:
-        typeof cacheEntry?.lastFetchedAt === 'number'
-          ? Date.now() - cacheEntry.lastFetchedAt
-          : null,
-    }),
-    [cacheEntry?.lastFetchedAt, cacheEntry?.payloadBytes, cacheEntry?.queryDurationMs],
+  const refresh = useCallback(
+    async (options?: { silent?: boolean }): Promise<void> => {
+      await fetchCart('refresh', options?.silent);
+    },
+    [fetchCart],
   );
 
-  const isLoading = isInitialLoading && items.length === 0;
-  const isUsingCachedData = items.length > 0 && !cacheIsFresh;
-  const error = localError ?? cacheEntry?.error ?? null;
+  useEffect(() => {
+    if (!userId) {
+      setItems([]);
+      setSnapshot(EMPTY_SNAPSHOT);
+      setError(null);
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    void fetchCart('initial');
+  }, [fetchCart, userId]);
 
   return {
     items,
     snapshot,
     error,
-    hasMore,
     isLoading,
     isRefreshing,
-    isFetchingMore,
-    isRevalidating,
-    isUsingCachedData,
     refresh,
-    refreshIfNeeded,
-    loadMore,
-    metrics,
   };
 }
 

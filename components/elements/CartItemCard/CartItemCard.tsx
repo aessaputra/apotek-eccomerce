@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useState } from 'react';
-import { Spinner, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
 import { CartItemWithProduct } from '@/types/cart';
 import Image from '@/components/elements/Image/Image';
 import QuantitySelector from '../QuantitySelector/QuantitySelector';
@@ -10,14 +10,14 @@ export interface CartItemCardProps {
   item: CartItemWithProduct;
   onQuantityChange: (cartItemId: string, newQuantity: number) => void;
   onRemove: (cartItemId: string) => void;
-  isUpdating?: boolean;
+  disabled?: boolean;
 }
 
 function CartItemCardComponent({
   item,
   onQuantityChange,
   onRemove,
-  isUpdating = false,
+  disabled = false,
 }: CartItemCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -26,7 +26,6 @@ function CartItemCardComponent({
   const isOutOfStock = item.product.stock <= 0;
   const isLowStock = item.product.stock > 0 && item.product.stock <= 5;
 
-  // Stable callbacks using useCallback for memo optimization
   const handleQuantityChange = useCallback(
     (newQuantity: number) => {
       if (newQuantity < item.quantity && item.quantity === 1) {
@@ -50,8 +49,6 @@ function CartItemCardComponent({
         borderRadius="$3"
         borderWidth={1}
         borderColor="$surfaceBorder"
-        opacity={isUpdating ? 0.6 : 1}
-        pointerEvents={isUpdating ? 'none' : 'auto'}
         position="relative">
         <XStack padding="$3" gap="$3" alignItems="center">
           <YStack
@@ -107,29 +104,12 @@ function CartItemCardComponent({
               min={0}
               max={item.product.stock || 99}
               onChange={handleQuantityChange}
-              disabled={isUpdating || isOutOfStock}
+              disabled={disabled || isOutOfStock}
               size="sm"
               disableAnimation
             />
           </YStack>
         </XStack>
-
-        {isUpdating && (
-          <YStack
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            alignItems="center"
-            justifyContent="center"
-            backgroundColor="$surface"
-            opacity={0.5}
-            borderRadius="$3"
-            zIndex={10}>
-            <Spinner size="small" color="$primary" />
-          </YStack>
-        )}
       </YStack>
 
       <AppAlertDialog
