@@ -404,46 +404,23 @@ export async function getCartSnapshot(
 
 export async function getCartWithItems(
   userId: string,
+  signal?: AbortSignal,
 ): Promise<{ data: CartWithItems | null; error: Error | null }> {
   const normalizedUserId = userId.trim();
   if (!normalizedUserId) {
     return { data: null, error: new Error('User ID is required.') };
   }
 
-  const { data: existingCarts, error: fetchError } = await supabase
-    .from('carts')
-    .select('*')
-    .eq('user_id', normalizedUserId)
-    .limit(1);
+  const { data: cart, error: cartError } = await getOrCreateCart(normalizedUserId);
 
-  if (fetchError) {
-    return { data: null, error: fetchError as unknown as Error };
+  if (cartError || !cart) {
+    return { data: null, error: cartError ?? new Error('Unable to initialize cart.') };
   }
 
-  let cart = existingCarts?.[0];
+  let cartItemsQuery = supabase.from('cart_items').select('*').eq('cart_id', cart.id);
+  cartItemsQuery = withAbortSignal(cartItemsQuery, signal);
 
-  if (!cart) {
-    const { data: newCart, error: insertError } = await supabase
-      .from('carts')
-      .insert({ user_id: normalizedUserId })
-      .select('*')
-      .single();
-
-    if (insertError) {
-      return { data: null, error: insertError as unknown as Error };
-    }
-
-    cart = newCart;
-  }
-
-  if (!cart) {
-    return { data: null, error: new Error('Unable to initialize cart.') };
-  }
-
-  const { data: cartItems, error: itemsError } = await supabase
-    .from('cart_items')
-    .select('*')
-    .eq('cart_id', cart.id);
+  const { data: cartItems, error: itemsError } = await cartItemsQuery;
 
   if (itemsError) {
     return { data: null, error: itemsError as unknown as Error };
@@ -462,20 +439,26 @@ export async function getCartWithItems(
 
   const productIds = cartItems.map(item => item.product_id);
 
-  const { data: products, error: productsError } = await supabase
+  let productsQuery = supabase
     .from('products')
     .select('id, name, price, stock, weight, slug, is_active')
     .in('id', productIds);
+  productsQuery = withAbortSignal(productsQuery, signal);
+
+  const { data: products, error: productsError } = await productsQuery;
 
   if (productsError) {
     return { data: null, error: productsError as unknown as Error };
   }
 
-  const { data: images, error: imagesError } = await supabase
+  let imagesQuery = supabase
     .from('product_images')
     .select('id, product_id, url, sort_order')
     .in('product_id', productIds)
     .order('sort_order', { ascending: true });
+  imagesQuery = withAbortSignal(imagesQuery, signal);
+
+  const { data: images, error: imagesError } = await imagesQuery;
 
   if (imagesError) {
     return { data: null, error: imagesError as unknown as Error };

@@ -55,6 +55,8 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   const [realtimeState, setRealtimeState] = useState<CartRealtimeConnectionState>('disconnected');
 
   const isMountedRef = useRef(true);
+  const activeRequestIdRef = useRef(0);
+  const fetchAbortControllerRef = useRef<AbortController | null>(null);
   const subscriptionCleanupRef = useRef<(() => void) | null>(null);
   const subscribedCartIdRef = useRef<string | null>(null);
   const hasConnectedOnceRef = useRef(false);
@@ -65,6 +67,8 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+      fetchAbortControllerRef.current?.abort();
+      fetchAbortControllerRef.current = null;
     };
   }, []);
 
@@ -127,6 +131,8 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   const fetchCart = useCallback(
     async (mode: 'initial' | 'refresh', silent: boolean = false): Promise<void> => {
       if (!userId) {
+        fetchAbortControllerRef.current?.abort();
+        fetchAbortControllerRef.current = null;
         if (isMountedRef.current) {
           setCartId(null);
           setItems([]);
@@ -138,18 +144,27 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
         return;
       }
 
+      const requestId = activeRequestIdRef.current + 1;
+      activeRequestIdRef.current = requestId;
+
+      fetchAbortControllerRef.current?.abort();
+      const abortController = new AbortController();
+      fetchAbortControllerRef.current = abortController;
+
       if (mode === 'initial') {
         setIsLoading(true);
       } else if (!silent) {
         setIsRefreshing(true);
       }
 
-      setError(null);
+      if (!silent) {
+        setError(null);
+      }
 
       try {
-        const { data, error: fetchError } = await getCartWithItems(userId);
+        const { data, error: fetchError } = await getCartWithItems(userId, abortController.signal);
 
-        if (!isMountedRef.current) {
+        if (!isMountedRef.current || activeRequestIdRef.current !== requestId) {
           return;
         }
 
@@ -160,13 +175,23 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
         setCartId(data.cartId);
         setItems(data.items);
       } catch (err) {
-        if (!isMountedRef.current) {
+        if (!isMountedRef.current || activeRequestIdRef.current !== requestId) {
           return;
         }
 
-        setError(err instanceof Error ? err.message : 'Gagal memuat keranjang.');
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+
+        if (!silent) {
+          setError(err instanceof Error ? err.message : 'Gagal memuat keranjang.');
+        }
       } finally {
-        if (isMountedRef.current) {
+        if (fetchAbortControllerRef.current === abortController) {
+          fetchAbortControllerRef.current = null;
+        }
+
+        if (isMountedRef.current && activeRequestIdRef.current === requestId) {
           if (mode === 'initial') {
             setIsLoading(false);
           } else if (!silent) {
@@ -191,6 +216,9 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
 
   useEffect(() => {
     if (!userId) {
+      fetchAbortControllerRef.current?.abort();
+      fetchAbortControllerRef.current = null;
+      activeRequestIdRef.current += 1;
       setCartId(null);
       setItems([]);
       setError(null);

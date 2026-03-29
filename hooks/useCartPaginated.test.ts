@@ -73,6 +73,18 @@ function createCart(items: CartItemWithProduct[]): CartWithItems {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 describe('useCartPaginated', () => {
   afterEach(() => {
     mockLatestRealtimeHandler = null;
@@ -116,7 +128,7 @@ describe('useCartPaginated', () => {
     });
 
     expect(result.current.cartId).toBe('cart-1');
-    expect(mockGetCartWithItems).toHaveBeenCalledWith(userId);
+    expect(mockGetCartWithItems).toHaveBeenCalledWith(userId, expect.any(AbortSignal));
     expect(mockSubscribeToCartChanges).toHaveBeenCalledWith(
       'cart-1',
       expect.any(Function),
@@ -182,5 +194,65 @@ describe('useCartPaginated', () => {
     unmount();
 
     expect(mockUnsubscribe).toHaveBeenCalled();
+  });
+
+  it('keeps the latest fetch result when refreshes overlap', async () => {
+    const firstRequest = createDeferred<Awaited<ReturnType<typeof getCartWithItems>>>();
+    const secondRequest = createDeferred<Awaited<ReturnType<typeof getCartWithItems>>>();
+
+    mockGetCartWithItems
+      .mockReturnValueOnce(firstRequest.promise)
+      .mockReturnValueOnce(secondRequest.promise);
+
+    const { result } = renderHook(() => useCartPaginated({ userId: 'user-1' }));
+
+    await act(async () => {
+      void result.current.refresh();
+    });
+
+    secondRequest.resolve({
+      data: createCart([createItem(1, 5)]),
+      error: null,
+    });
+
+    await waitFor(() => {
+      expect(result.current.items[0]?.id).toBe('cart-item-1');
+      expect(result.current.items[0]?.quantity).toBe(5);
+    });
+
+    firstRequest.resolve({
+      data: createCart([createItem(0, 1)]),
+      error: null,
+    });
+
+    await waitFor(() => {
+      expect(result.current.items[0]?.id).toBe('cart-item-1');
+      expect(result.current.items[0]?.quantity).toBe(5);
+    });
+  });
+
+  it('does not surface silent refresh failures in the visible error state', async () => {
+    mockGetCartWithItems
+      .mockResolvedValueOnce({
+        data: createCart([createItem(0, 1)]),
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: null,
+        error: new Error('Temporary realtime refresh failure'),
+      });
+
+    const { result } = renderHook(() => useCartPaginated({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.items[0]?.quantity).toBe(1);
+    });
+
+    await act(async () => {
+      await result.current.refresh({ silent: true });
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.items[0]?.quantity).toBe(1);
   });
 });
