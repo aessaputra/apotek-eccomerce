@@ -61,6 +61,7 @@ export interface ProductWithImages extends ProductRow {
 export interface ProductDetailsData extends ProductWithImages {
   category_name: string | null;
   category_slug: string | null;
+  category_logo_url: string | null;
 }
 
 interface CartMutationResult {
@@ -377,7 +378,7 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
       product.category_id
         ? supabase
             .from('categories')
-            .select('name,slug')
+            .select('name,slug,logo_url')
             .eq('id', product.category_id)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
@@ -407,6 +408,7 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
       })),
       category_name: categoryResult.data?.name ?? null,
       category_slug: categoryResult.data?.slug ?? null,
+      category_logo_url: categoryResult.data?.logo_url ?? null,
     };
   } catch (error) {
     if (__DEV__) console.warn('[HomeService] getProductDetailsById error:', error);

@@ -71,7 +71,9 @@ const CategoryTag = styled(XStack, {
   alignSelf: 'flex-start',
   alignItems: 'center',
   gap: '$2',
-  backgroundColor: '$infoSoft',
+  backgroundColor: '$surfaceElevated',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
   paddingHorizontal: '$3',
   paddingVertical: '$1.5',
   borderRadius: '$4',
@@ -81,9 +83,10 @@ const CategoryIcon = styled(View, {
   width: 20,
   height: 20,
   borderRadius: '$10',
-  backgroundColor: '$primary',
+  backgroundColor: '$surfaceSubtle',
   alignItems: 'center',
   justifyContent: 'center',
+  overflow: 'hidden',
 });
 
 const AddToCartButton = styled(Button, {
@@ -426,7 +429,6 @@ export default function ProductDetails() {
 
   const imageUrl = getPrimaryImageUrl(product);
   const pageTitle = product.name.trim() || 'Product Details';
-  const categoryLabel = product.category_name ?? 'Uncategorized';
   const descriptionLabel =
     product.description?.trim() || 'Deskripsi produk belum tersedia untuk item ini.';
   const formattedUnitPrice = formatPrice(product.price);
@@ -494,12 +496,36 @@ export default function ProductDetails() {
               </Card>
             </XStack>
 
-            <CategoryTag>
-              <CategoryIcon>
-                <PillIcon size={12} color={getThemeColor(theme, 'onPrimary')} />
+            <CategoryTag
+              testID="product-category-badge"
+              accessibilityRole="image"
+              accessibilityLabel={product.category_name ?? 'Uncategorized'}>
+              <CategoryIcon testID="product-category-icon-container">
+                {product.category_logo_url ? (
+                  <Image
+                    testID="product-category-logo"
+                    source={{ uri: product.category_logo_url }}
+                    width={14}
+                    height={14}
+                    borderRadius="$2"
+                    resizeMode="contain"
+                    accessibilityLabel={`${product.category_name ?? 'Uncategorized'} logo`}
+                  />
+                ) : (
+                  <View
+                    testID="product-category-fallback"
+                    width="100%"
+                    height="100%"
+                    borderRadius="$10"
+                    backgroundColor="$warningSoft"
+                    alignItems="center"
+                    justifyContent="center">
+                    <PillIcon size={12} color={getThemeColor(theme, 'primary')} />
+                  </View>
+                )}
               </CategoryIcon>
-              <Text fontSize={13} color="$color" fontWeight="700">
-                {categoryLabel}
+              <Text testID="product-category-label" fontSize={12} color="$color" fontWeight="600">
+                {product.category_name ?? 'Uncategorized'}
               </Text>
             </CategoryTag>
 
