@@ -67,15 +67,18 @@ function CartItemCardComponent({
           </YStack>
 
           <YStack flex={1} minWidth={0} gap="$1" justifyContent="center">
-            <Text
-              fontSize="$3"
-              fontWeight="600"
-              color="$color"
-              numberOfLines={2}
-              ellipsizeMode="tail"
-              flexShrink={1}>
-              {item.product.name}
-            </Text>
+            <YStack height={36} flexShrink={0} justifyContent="flex-start">
+              <Text
+                fontSize="$3"
+                lineHeight={18}
+                fontWeight="600"
+                color="$color"
+                numberOfLines={2}
+                ellipsizeMode="tail"
+                flexShrink={1}>
+                {item.product.name}
+              </Text>
+            </YStack>
             <Text fontSize="$2" color="$colorSubtle" numberOfLines={1} ellipsizeMode="tail">
               {formatPrice(unitPrice)}
             </Text>

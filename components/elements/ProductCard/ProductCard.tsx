@@ -94,9 +94,11 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
           </>
         )}
       </YStack>
-      <Text fontSize={14} lineHeight={18} color="$color" fontWeight="600" numberOfLines={2}>
-        {item.name}
-      </Text>
+      <YStack height={36} flexShrink={0} justifyContent="flex-start">
+        <Text fontSize={14} lineHeight={18} color="$color" fontWeight="600" numberOfLines={2}>
+          {item.name}
+        </Text>
+      </YStack>
       <XStack alignItems="center" justifyContent="space-between" gap="$2">
         <Text fontSize={12} color="$colorSubtle" fontWeight="500" flex={1} numberOfLines={1}>
           {formatPrice(item.price)}
