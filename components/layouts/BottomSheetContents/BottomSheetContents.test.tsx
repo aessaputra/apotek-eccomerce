@@ -7,13 +7,26 @@ import {
 } from '../../../test-utils/renderWithTheme';
 import BottomSheetContents from './BottomSheetContents';
 
+let mockGradientButtonProps:
+  | {
+      title?: string;
+      onPress?: () => void;
+      gradientBackgroundProps?: { colors?: string[] };
+    }
+  | undefined;
+
 jest.mock('@/components/elements/GradientButton', () => ({
   __esModule: true,
-  default: ({ title, onPress }: { title?: string; onPress?: () => void }) => {
+  default: (props: {
+    title?: string;
+    onPress?: () => void;
+    gradientBackgroundProps?: { colors?: string[] };
+  }) => {
+    mockGradientButtonProps = props;
     const { Pressable, Text } = jest.requireActual('react-native') as typeof import('react-native');
     return (
-      <Pressable accessibilityLabel={title ?? 'gradient-button'} onPress={onPress}>
-        <Text>{title}</Text>
+      <Pressable accessibilityLabel={props.title ?? 'gradient-button'} onPress={props.onPress}>
+        <Text>{props.title}</Text>
       </Pressable>
     );
   },
@@ -34,6 +47,10 @@ jest.mock('@/utils/deviceInfo', () => ({
 }));
 
 describe('<BottomSheetContents />', () => {
+  beforeEach(() => {
+    mockGradientButtonProps = undefined;
+  });
+
   test('renders environment summary in light and dark themes', async () => {
     render(<BottomSheetContents onClose={jest.fn()} />);
 
@@ -44,6 +61,11 @@ describe('<BottomSheetContents />', () => {
 
     renderWithDarkTheme(<BottomSheetContents onClose={jest.fn()} />);
     expect(screen.getAllByText('OK').length).toBeGreaterThan(0);
+
+    expect(mockGradientButtonProps?.gradientBackgroundProps?.colors).toEqual([
+      '#06B6D4',
+      'hsla(187, 92%, 47%, 1)',
+    ]);
   });
 
   test('calls onClose from the gradient button', async () => {
