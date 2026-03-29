@@ -46,6 +46,25 @@ export interface CartSnapshot {
   packageValue: number;
 }
 
+export interface CartRealtimeItem {
+  id: string;
+  cart_id: string;
+  product_id: string;
+  quantity: number;
+}
+
+export interface CartRealtimeChange {
+  type: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: CartRealtimeItem | null;
+  old: CartRealtimeItem | null;
+}
+
+export type CartRealtimeConnectionState =
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'disconnected';
+
 /**
  * Minimal cart item fields needed for paginated list display.
  * Subsets CartProductDetails to reduce payload size while preserving UI-critical fields.

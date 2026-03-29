@@ -1,8 +1,12 @@
 import { supabase } from '@/utils/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Tables } from '@/types/supabase';
 import { CART_PAGE_SIZE } from '@/constants/cart.constants';
 import { runDedupedRequest } from '@/utils/requestDeduplication';
 import type {
+  CartRealtimeChange,
+  CartRealtimeConnectionState,
+  CartRealtimeItem,
   CartItemWithProduct,
   CartListItem,
   CartListResult,
@@ -18,6 +22,7 @@ type ProductImageRow = Tables<'product_images'>;
 
 const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 const GET_OR_CREATE_CART_REQUEST_PREFIX = 'cart:get-or-create:';
+const UPDATE_CART_ITEM_REQUEST_PREFIX = 'cart:update-item:';
 
 const CART_ITEMS_SELECT = `
   id,
@@ -66,6 +71,8 @@ type CartItemOptimizedRow = Pick<
 type CartSnapshotRow = Pick<CartItemRow, 'quantity'> & {
   product: Pick<ProductRow, 'price' | 'weight' | 'is_active'> | null;
 };
+
+type CartRealtimeRecord = Partial<Pick<CartItemRow, 'id' | 'cart_id' | 'product_id' | 'quantity'>>;
 
 function toCartSnapshot(rows: CartSnapshotRow[]): CartSnapshot {
   return rows.reduce(
@@ -119,6 +126,36 @@ function withAbortSignal<T>(query: T, signal?: AbortSignal): T {
   }
 
   return query;
+}
+
+function getUpdateCartItemRequestKey(cartItemId: string): string {
+  return `${UPDATE_CART_ITEM_REQUEST_PREFIX}${cartItemId}`;
+}
+
+function toCartRealtimeItem(
+  record: CartRealtimeRecord | null | undefined,
+): CartRealtimeItem | null {
+  if (!record) {
+    return null;
+  }
+
+  const { id, cart_id, product_id, quantity } = record;
+
+  if (
+    typeof id !== 'string' ||
+    typeof cart_id !== 'string' ||
+    typeof product_id !== 'string' ||
+    typeof quantity !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    cart_id,
+    product_id,
+    quantity,
+  };
 }
 
 async function getOrCreateCartInternal(
@@ -516,7 +553,7 @@ export async function getCartWithItems(
 export async function updateCartItemQuantity(
   cartItemId: string,
   newQuantity: number,
-): Promise<{ data: CartItemRow | null; error: Error | null }> {
+): Promise<{ data: CartRealtimeItem | null; error: Error | null }> {
   const normalizedCartItemId = cartItemId.trim();
   if (!normalizedCartItemId) {
     return { data: null, error: new Error('Cart item ID is required.') };
@@ -526,54 +563,43 @@ export async function updateCartItemQuantity(
     return { data: null, error: new Error('Quantity must be greater than 0.') };
   }
 
-  const { data: cartItem, error: fetchError } = await supabase
-    .from('cart_items')
-    .select('id, product_id')
-    .eq('id', normalizedCartItemId)
-    .single();
+  const requestKey = getUpdateCartItemRequestKey(normalizedCartItemId);
 
-  if (fetchError) {
-    return { data: null, error: fetchError as unknown as Error };
+  try {
+    return await runDedupedRequest(
+      requestKey,
+      async signal => {
+        let query = supabase
+          .from('cart_items')
+          .update({ quantity: newQuantity })
+          .eq('id', normalizedCartItemId)
+          .select('id, quantity, product_id, cart_id')
+          .single();
+
+        query = withAbortSignal(query, signal);
+
+        const { data: updatedCartItem, error: updateError } = await query;
+
+        if (updateError) {
+          return { data: null, error: updateError as unknown as Error };
+        }
+
+        const normalizedItem = toCartRealtimeItem(updatedCartItem as CartRealtimeRecord | null);
+
+        if (!normalizedItem) {
+          return { data: null, error: new Error('Cart item not found.') };
+        }
+
+        return { data: normalizedItem, error: null };
+      },
+      { policy: 'replace' },
+    );
+  } catch (error) {
+    return {
+      data: null,
+      error: error instanceof Error ? error : new Error('Failed to update cart item quantity.'),
+    };
   }
-
-  if (!cartItem) {
-    return { data: null, error: new Error('Cart item not found.') };
-  }
-
-  const { data: product, error: productError } = await supabase
-    .from('products')
-    .select('stock, name')
-    .eq('id', cartItem.product_id)
-    .single();
-
-  if (productError) {
-    return { data: null, error: productError as unknown as Error };
-  }
-
-  if (!product) {
-    return { data: null, error: new Error('Product not found.') };
-  }
-
-  if (newQuantity > product.stock) {
-    return { data: null, error: new Error('Stok tidak mencukupi') };
-  }
-
-  const { data: updatedCartItem, error: updateError } = await supabase
-    .from('cart_items')
-    .update({ quantity: newQuantity })
-    .eq('id', normalizedCartItemId)
-    .select('*')
-    .single();
-
-  if (updateError) {
-    return { data: null, error: updateError as unknown as Error };
-  }
-
-  if (!updatedCartItem) {
-    return { data: null, error: new Error('Cart item not found.') };
-  }
-
-  return { data: updatedCartItem, error: null };
 }
 
 export async function removeCartItem(
@@ -620,10 +646,69 @@ export { getCartItemsOptimized as getCartOptimized };
 
 export function subscribeToCartChanges(
   cartId: string,
-  onChange: (event: { type: 'INSERT' | 'UPDATE' | 'DELETE'; itemId: string }) => void,
+  onChange: (event: CartRealtimeChange) => void,
+  onConnectionStateChange?: (state: CartRealtimeConnectionState) => void,
 ): () => void {
-  void cartId;
-  void onChange;
+  const normalizedCartId = cartId.trim();
 
-  return () => {};
+  if (!normalizedCartId) {
+    onConnectionStateChange?.('disconnected');
+    return () => {};
+  }
+
+  onConnectionStateChange?.('connecting');
+
+  const channel = supabase
+    .channel(`cart:${normalizedCartId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'cart_items',
+        filter: `cart_id=eq.${normalizedCartId}`,
+      },
+      (payload: RealtimePostgresChangesPayload<CartRealtimeRecord>) => {
+        if (__DEV__) {
+          const payloadItem = toCartRealtimeItem(payload.new) ?? toCartRealtimeItem(payload.old);
+          console.log('[Realtime] Cart change:', payload.eventType, payloadItem?.id);
+        }
+
+        const eventType = payload.eventType;
+
+        if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
+          onChange({
+            type: eventType,
+            new: toCartRealtimeItem(payload.new),
+            old: toCartRealtimeItem(payload.old),
+          });
+        }
+      },
+    )
+    .subscribe(status => {
+      if (__DEV__) {
+        console.log('[Realtime] Cart subscription status:', status);
+      }
+
+      switch (status) {
+        case 'SUBSCRIBED':
+          onConnectionStateChange?.('connected');
+          break;
+        case 'TIMED_OUT':
+        case 'CHANNEL_ERROR':
+          onConnectionStateChange?.('reconnecting');
+          break;
+        case 'CLOSED':
+          onConnectionStateChange?.('disconnected');
+          break;
+        default:
+          break;
+      }
+    });
+
+  return () => {
+    onConnectionStateChange?.('disconnected');
+    void channel.unsubscribe();
+    void supabase.removeChannel(channel);
+  };
 }

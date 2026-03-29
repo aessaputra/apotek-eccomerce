@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, screen, waitFor } from '@/test-utils/renderWithTheme';
+import { render, screen } from '@/test-utils/renderWithTheme';
 import type { CartItemWithProduct } from '@/types/cart';
 import type { User } from '@/types';
 
@@ -26,31 +26,29 @@ let mockNetworkState: {
 };
 
 const mockCartHookState: {
+  cartId: string | null;
   items: CartItemWithProduct[];
   snapshot: { itemCount: number; estimatedWeightGrams: number; packageValue: number };
   error: string | null;
-  hasMore: boolean;
   isLoading: boolean;
   isRefreshing: boolean;
-  isFetchingMore: boolean;
-  isRevalidating: boolean;
-  isUsingCachedData: boolean;
+  realtimeState: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
   refresh: jest.Mock<() => Promise<void>>;
-  loadMore: jest.Mock<() => Promise<void>>;
-  metrics: { lastFetchDurationMs: number; lastPayloadBytes: number; cacheAgeMs: number | null };
 } = {
+  cartId: 'cart-1',
   items: [],
   snapshot: { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
   error: null,
-  hasMore: true,
   isLoading: false,
   isRefreshing: false,
-  isFetchingMore: false,
-  isRevalidating: false,
-  isUsingCachedData: false,
+  realtimeState: 'connected',
   refresh: jest.fn(async () => undefined),
-  loadMore: jest.fn(async () => undefined),
-  metrics: { lastFetchDurationMs: 0, lastPayloadBytes: 0, cacheAgeMs: null },
+};
+
+const mockCartQuantityHookState = {
+  items: [] as CartItemWithProduct[],
+  snapshot: { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+  updateQuantity: jest.fn(),
 };
 
 const mockCartAddressHookState = {
@@ -106,6 +104,10 @@ jest.mock('@/hooks/useNetworkStatus', () => ({
 
 jest.mock('@/hooks/useCartPaginated', () => ({
   useCartPaginated: () => mockCartHookState,
+}));
+
+jest.mock('@/hooks/useCartQuantity', () => ({
+  useCartQuantity: () => mockCartQuantityHookState,
 }));
 
 jest.mock('@/hooks/useCartAddress', () => ({
@@ -325,15 +327,13 @@ describe('<Cart />', () => {
     mockCartHookState.items = [createItem(1), createItem(2)];
     mockCartHookState.snapshot = { itemCount: 2, estimatedWeightGrams: 200, packageValue: 50000 };
     mockCartHookState.error = null;
-    mockCartHookState.hasMore = true;
     mockCartHookState.isLoading = false;
     mockCartHookState.isRefreshing = false;
-    mockCartHookState.isFetchingMore = false;
-    mockCartHookState.isRevalidating = false;
-    mockCartHookState.isUsingCachedData = false;
-    mockCartHookState.metrics = { lastFetchDurationMs: 0, lastPayloadBytes: 0, cacheAgeMs: null };
+    mockCartHookState.realtimeState = 'connected';
     mockCartHookState.refresh.mockClear();
-    mockCartHookState.loadMore.mockClear();
+    mockCartQuantityHookState.items = mockCartHookState.items;
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+    mockCartQuantityHookState.updateQuantity.mockClear();
     mockCartAddressHookState.setAddressSheetOpen.mockClear();
     mockCartAddressHookState.handleSelectAddress.mockClear();
     mockCartShippingHookState.setShippingError.mockClear();
@@ -354,7 +354,6 @@ describe('<Cart />', () => {
 
   it('shows error banner on fetch error', () => {
     mockCartHookState.error = 'Gagal sinkronisasi keranjang';
-    mockCartHookState.isUsingCachedData = false;
 
     render(<Cart />);
 

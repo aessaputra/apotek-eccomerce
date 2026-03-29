@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { subscribeToCartChanges } from '@/services/cart.service';
+import type { CartRealtimeConnectionState } from '@/types/cart';
 
 interface CartRealtimeState {
   isConnected: boolean;
   lastUpdate: number | null;
   pendingUpdate: boolean;
+  connectionState: CartRealtimeConnectionState;
 }
 
 interface UseCartRealtimeReturn extends CartRealtimeState {
@@ -19,6 +21,7 @@ export function useCartRealtime(
     isConnected: false,
     lastUpdate: null,
     pendingUpdate: false,
+    connectionState: 'disconnected',
   });
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,28 +32,38 @@ export function useCartRealtime(
       return;
     }
 
-    setState(prev => ({ ...prev, isConnected: true }));
+    unsubscribeRef.current = subscribeToCartChanges(
+      cartId,
+      change => {
+        const itemId = change.new?.id ?? change.old?.id ?? 'unknown';
 
-    unsubscribeRef.current = subscribeToCartChanges(cartId, ({ type, itemId }) => {
-      if (__DEV__) {
-        console.log(`[CartRealtime] ${type} event for item ${itemId}`);
-      }
+        if (__DEV__) {
+          console.log(`[CartRealtime] ${change.type} event for item ${itemId}`);
+        }
 
-      setState(prev => ({
-        ...prev,
-        lastUpdate: Date.now(),
-        pendingUpdate: true,
-      }));
+        setState(prev => ({
+          ...prev,
+          lastUpdate: Date.now(),
+          pendingUpdate: true,
+        }));
 
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
 
-      debounceTimerRef.current = setTimeout(() => {
-        onCartChange();
-        setState(prev => ({ ...prev, pendingUpdate: false }));
-      }, 300);
-    });
+        debounceTimerRef.current = setTimeout(() => {
+          onCartChange();
+          setState(prev => ({ ...prev, pendingUpdate: false }));
+        }, 300);
+      },
+      nextState => {
+        setState(prev => ({
+          ...prev,
+          connectionState: nextState,
+          isConnected: nextState === 'connected',
+        }));
+      },
+    );
 
     return () => {
       if (debounceTimerRef.current) {
@@ -64,6 +77,7 @@ export function useCartRealtime(
         isConnected: false,
         lastUpdate: null,
         pendingUpdate: false,
+        connectionState: 'disconnected',
       });
     };
   }, [cartId, onCartChange]);

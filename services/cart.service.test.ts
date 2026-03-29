@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { clearDedupedRequests } from '@/utils/requestDeduplication';
-import { getCartItemsOptimized, getCartSnapshot, getOrCreateCart } from './cart.service';
+import {
+  getCartItemsOptimized,
+  getCartSnapshot,
+  getOrCreateCart,
+  updateCartItemQuantity,
+} from './cart.service';
 
 interface QueryResponse {
   rows?: unknown[];
@@ -68,6 +73,21 @@ function createDeferred<T>() {
   });
 
   return { promise, resolve, reject };
+}
+
+function createUpdateQuery(response: { row?: unknown; error?: Error | null }) {
+  const resolved = {
+    data: response.row ?? null,
+    error: response.error ?? null,
+  };
+
+  return {
+    update: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    abortSignal: jest.fn().mockReturnThis(),
+    single: jest.fn(async () => resolved),
+  };
 }
 
 const mockFrom = jest.fn();
@@ -273,5 +293,29 @@ describe('cart.service snapshot behavior', () => {
     expect(aggregateQuery.abortSignal).toHaveBeenCalledWith(controller.signal);
     expect(result.error).toBeNull();
     expect(result.snapshot.itemCount).toBe(1);
+  });
+
+  it('updates cart quantity with a minimal atomic payload', async () => {
+    const updateQuery = createUpdateQuery({
+      row: {
+        id: 'cart-item-1',
+        cart_id: 'cart-1',
+        product_id: 'product-1',
+        quantity: 3,
+      },
+    });
+
+    mockFrom.mockReturnValueOnce(updateQuery);
+
+    const result = await updateCartItemQuantity('cart-item-1', 3);
+
+    expect(result.error).toBeNull();
+    expect(result.data).toEqual({
+      id: 'cart-item-1',
+      cart_id: 'cart-1',
+      product_id: 'product-1',
+      quantity: 3,
+    });
+    expect(updateQuery.select).toHaveBeenCalledWith('id, quantity, product_id, cart_id');
   });
 });

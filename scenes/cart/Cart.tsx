@@ -1,3 +1,5 @@
+'use client';
+
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FlatList } from 'react-native';
@@ -27,7 +29,8 @@ import { useCartAddress } from '@/hooks/useCartAddress';
 import { useCartCheckout } from '@/hooks/useCartCheckout';
 import { useCartPaginated } from '@/hooks/useCartPaginated';
 import { useCartShipping } from '@/hooks/useCartShipping';
-import { removeCartItem, updateCartItemQuantity } from '@/services/cart.service';
+import { removeCartItem } from '@/services/cart.service';
+import { useCartQuantity } from '@/hooks/useCartQuantity';
 import { formatAddress, resolveBadgeText } from '@/utils/address';
 import { ErrorType, translateErrorMessage, type AppError } from '@/utils/error';
 import type { Address } from '@/types/address';
@@ -243,8 +246,21 @@ export default function Cart() {
   const [delegatedError, setDelegatedError] = useState<AppError | null>(null);
   const [addressError, setAddressError] = useState<AppError | null>(null);
   const offlineMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { items, snapshot, error, isLoading, isRefreshing, refresh } = useCartPaginated({
+  const {
+    items: serverItems,
+    snapshot: serverSnapshot,
+    error,
+    isLoading,
+    isRefreshing,
+    refresh,
+    realtimeState,
+  } = useCartPaginated({
     userId: user?.id,
+  });
+  const { items, snapshot, updateQuantity } = useCartQuantity({
+    items: serverItems,
+    snapshot: serverSnapshot,
+    onError: setCartActionError,
   });
 
   const onOfflineAction = useCallback((message: string) => {
@@ -299,7 +315,7 @@ export default function Cart() {
   }, [delegatedError, setShippingError]);
 
   const handleQuantityChange = useCallback(
-    async (cartItemId: string, newQuantity: number) => {
+    (cartItemId: string, newQuantity: number) => {
       if (isOffline) {
         setOfflineActionMessage('Perubahan jumlah produk tidak tersedia offline.');
         return;
@@ -307,16 +323,9 @@ export default function Cart() {
 
       setCartActionError(null);
 
-      const { error: quantityError } = await updateCartItemQuantity(cartItemId, newQuantity);
-
-      if (quantityError) {
-        setCartActionError(quantityError.message);
-        return;
-      }
-
-      await refresh({ silent: true });
+      updateQuantity(cartItemId, newQuantity);
     },
-    [isOffline, refresh],
+    [isOffline, updateQuantity],
   );
 
   const handleRemoveItem = useCallback(
@@ -502,6 +511,23 @@ export default function Cart() {
                 backgroundColor="$surfaceSubtle">
                 <Text color="$warning" fontWeight="600">
                   {offlineActionMessage}
+                </Text>
+              </Card>
+            ) : null}
+
+            {!isOffline && realtimeState !== 'connected' ? (
+              <Card
+                borderRadius="$4"
+                borderWidth={1}
+                borderColor={realtimeState === 'reconnecting' ? '$warning' : '$surfaceBorder'}
+                padding="$3"
+                backgroundColor="$surfaceSubtle">
+                <Text
+                  color={realtimeState === 'reconnecting' ? '$warning' : '$colorSubtle'}
+                  fontWeight="600">
+                  {realtimeState === 'reconnecting'
+                    ? 'Sinkronisasi keranjang menyambung kembali...'
+                    : 'Menyambungkan sinkronisasi keranjang...'}
                 </Text>
               </Card>
             ) : null}

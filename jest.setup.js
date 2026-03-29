@@ -21,6 +21,42 @@ jest.mock('react-native-reanimated', () => {
   return Reanimated;
 });
 
+// Mock @react-native-async-storage/async-storage
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  setItem: jest.fn(() => Promise.resolve()),
+  getItem: jest.fn(() => Promise.resolve(null)),
+  removeItem: jest.fn(() => Promise.resolve()),
+  multiSet: jest.fn(() => Promise.resolve()),
+  multiGet: jest.fn(() => Promise.resolve([])),
+  clear: jest.fn(() => Promise.resolve()),
+  getAllKeys: jest.fn(() => Promise.resolve([])),
+}));
+
+// Mock Supabase client
+jest.mock('@/utils/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+      onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+    },
+    from: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      update: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      delete: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      on: jest.fn(() => ({ unsubscribe: jest.fn() })),
+    })),
+    channel: jest.fn(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn(() => Promise.resolve('SUBSCRIBED')),
+      unsubscribe: jest.fn(() => Promise.resolve()),
+    })),
+    removeChannel: jest.fn(() => Promise.resolve()),
+  },
+}));
+
 // Setup untuk menangani Animated API warnings dari Tamagui
 // Tamagui menggunakan SpringAnimation yang memicu update state secara async
 // Warnings ini tidak mempengaruhi hasil test, jadi kita suppress mereka
