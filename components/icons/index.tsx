@@ -20,11 +20,13 @@ import {
   Pencil,
   Pill,
   Search,
+  Settings2,
   ShoppingCart,
   Star,
   Trash2,
   Truck,
   User,
+  Wrench,
   X,
   XCircle,
 } from '@tamagui/lucide-icons';
@@ -137,4 +139,12 @@ export function CreditCardIcon(props: IconProps) {
 
 export function TruckIcon(props: IconProps) {
   return <Truck {...props} />;
+}
+
+export function WrenchIcon(props: IconProps) {
+  return <Wrench {...props} />;
+}
+
+export function SettingsIcon(props: IconProps) {
+  return <Settings2 {...props} />;
 }

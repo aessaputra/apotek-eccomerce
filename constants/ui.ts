@@ -93,6 +93,8 @@ export const ICON_SIZES = {
   SMALL: 20,
   /** Large icon size for prominent buttons (32px) */
   LARGE: 32,
+  /** Extra large icon size for empty states (48px) */
+  XL: 48,
 } as const;
 
 export const GOOGLE_BRAND_BLUE = '#4285F4' as const;
@@ -133,12 +135,23 @@ export const MD3_PILL = {
   INACTIVE_SCALE_X: 0.6,
 } as const;
 
-/**
- * Tab bar label font size.
- * 12px is the standard label size for bottom navigation (iOS HIG & Material Design).
- */
+export const EMPTY_STATE = {
+  ICON_CONTAINER_SIZE: 120,
+  TITLE_FONT_SIZE: 20,
+  BODY_FONT_SIZE: 14,
+  LABEL_FONT_SIZE: 12,
+  SUBTITLE_MAX_WIDTH: 280,
+  SUBTITLE_LINE_HEIGHT: 20,
+  MUTED_OPACITY: 0.6,
+  BORDER_WIDTH: 1,
+} as const;
+
 export const TAB_BAR_LABEL_SIZE = 12;
+export const TAB_BAR_LABEL_NUMBER_OF_LINES = 2;
+export const TAB_BAR_LABEL_MIN_FONT_SCALE = 0.85;
+export const TAB_BAR_LABEL_WIDTH = '100%';
 export const TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN = '$1';
+export const TAB_BAR_ITEM_PADDING_VERTICAL = 4;
 export const TAB_BAR_LABEL_MARGIN_TOP_TOKEN = '$1';
 
 /** Tab bar container height (matches WhatsApp-style bottom nav). */
@@ -146,6 +159,23 @@ export const TAB_BAR_HEIGHT = 80;
 /** Tab bar inner padding. */
 export const TAB_BAR_PADDING_TOP = 8;
 export const TAB_BAR_PADDING_BOTTOM = 6;
+/** Tab bar border width (top border in dp). */
+export const TAB_BAR_BORDER_TOP_WIDTH = 1;
+/** Tab bar elevation for Android shadow effect. */
+export const TAB_BAR_ELEVATION = 8;
+
+export const SPACING_TOKENS = {
+  CONTAINER_PADDING: '$5',
+  CONTAINER_GAP: '$4',
+  ICON_CONTAINER_RADIUS: '$10',
+  BADGE_PADDING_HORIZONTAL: '$3',
+  BADGE_PADDING_VERTICAL: '$1.5',
+  BADGE_MARGIN_TOP: '$2',
+  BADGE_BORDER_RADIUS: '$4',
+  MAINTENANCE_ROW_GAP: '$2',
+  MAINTENANCE_ROW_MARGIN_TOP: '$4',
+  CONTENT_STACK_GAP: '$2',
+} as const;
 
 /** Fallback colors for `getThemeColor()` when theme isn't ready (light mode). */
 export const THEME_FALLBACKS = {

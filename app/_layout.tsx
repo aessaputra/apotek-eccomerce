@@ -1,28 +1,32 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, useColorScheme } from 'react-native';
-import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
+import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform, useColorScheme } from 'react-native';
+import type {
+  BottomTabNavigationOptions,
+  BottomTabBarButtonProps,
+} from '@react-navigation/bottom-tabs';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { Tabs, useRouter, useSegments } from 'expo-router';
-import { getTokens, Text, useTheme } from 'tamagui';
+import { useTheme } from 'tamagui';
 
 import BottomSheet from '@/components/elements/BottomSheet';
 import BottomSheetContents from '@/components/layouts/BottomSheetContents';
-import TabBarIconWithPill from '@/components/layouts/TabBarIconWithPill';
-import { HomeIcon, PackageIcon, UserIcon } from '@/components/icons';
+import TabBarLabel from '@/components/layouts/TabBarLabel';
+import TabBarButton from '@/components/layouts/TabBarButton';
+import TabBarIcon from '@/components/layouts/TabBarIcon';
 import Provider, { AuthProvider } from '@/providers';
 import { useAppSlice } from '@/slices';
 import { DEFAULT_THEME_VALUES } from '@/themes';
 import {
-  ICON_SIZES,
   TAB_BAR_HEIGHT,
-  TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN,
-  TAB_BAR_LABEL_SIZE,
-  TAB_BAR_LABEL_MARGIN_TOP_TOKEN,
+  TAB_BAR_ITEM_PADDING_VERTICAL,
   TAB_BAR_PADDING_BOTTOM,
   TAB_BAR_PADDING_TOP,
+  TAB_BAR_BORDER_TOP_WIDTH,
+  TAB_BAR_ELEVATION,
   getBottomBarShadow,
 } from '@/constants/ui';
+import { TABS, VISIBLE_TAB_ROUTES, shouldShowTabBar, type TabRouteName } from '@/constants/tabs';
 import { getThemeColor } from '@/utils/theme';
 import { loadFonts } from '@/utils/fonts';
 import { loadImages } from '@/utils/images';
@@ -31,23 +35,7 @@ import '@/tamagui-web.css';
 
 SplashScreen.preventAutoHideAsync();
 
-const VISIBLE_TAB_ROUTES = new Set(['home', 'orders', 'profile']);
-
-// Route groups where the tab bar should be hidden (matched against segments[0])
-const HIDDEN_GROUPS = new Set(['(auth)', 'google-auth', 'cart']);
-// Screen names where the tab bar should be hidden (matched against any segment)
-const HIDDEN_SCREENS = new Set([
-  'edit-profile',
-  'address-form',
-  'addresses',
-  'product-details',
-  'search',
-  'details',
-]);
-
-const spaceTokens = getTokens().space;
-const TAB_BAR_ITEM_PADDING_VERTICAL = spaceTokens[TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN]?.val ?? 4;
-const TAB_BAR_LABEL_MARGIN_TOP = spaceTokens[TAB_BAR_LABEL_MARGIN_TOP_TOKEN]?.val ?? 4;
+const PROTECTED_ROUTES = [...VISIBLE_TAB_ROUTES, 'cart'];
 
 function Router() {
   const theme = useTheme();
@@ -78,26 +66,18 @@ function Router() {
     }
   }, [assetsReady, checked]);
 
-  // Centralized auth guard: handles all auth-based redirects.
-  // Uses setTimeout(0) to avoid navigation being swallowed during deep link re-mounts.
   useEffect(() => {
-    // Wait until AuthProvider has finished initial session check
     if (!checked) return;
 
     const inAuthGroup = currentGroup === '(auth)';
     const isCallback = currentGroup === 'google-auth';
 
     if (loggedIn) {
-      // Authenticated user on auth/callback screens → redirect to main app
       if (inAuthGroup || isCallback) {
         setTimeout(() => router.navigate('/home'), 0);
       }
     } else {
-      // Unauthenticated user on protected screens → redirect to login
-      // Skip: google-auth (let token exchange complete)
-      // Skip: index (handles its own declarative <Redirect>)
-      const protectedRoutes = ['home', 'orders', 'profile', 'cart'];
-      const inProtectedRoute = !!currentGroup && protectedRoutes.includes(currentGroup);
+      const inProtectedRoute = !!currentGroup && PROTECTED_ROUTES.includes(currentGroup);
       if (inProtectedRoute) {
         setTimeout(() => router.replace('/(auth)/login'), 0);
       }
@@ -127,9 +107,7 @@ function Router() {
     };
   }, [theme]);
 
-  // Exact segment sets to avoid false positives from future routes reusing the same names
-  const hideTabBar =
-    HIDDEN_GROUPS.has(currentGroup ?? '') || segments.some(s => HIDDEN_SCREENS.has(s));
+  const hideTabBar = !shouldShowTabBar(currentGroup, segments);
 
   const tabBarStyle = useMemo(() => {
     const base = {
@@ -138,211 +116,77 @@ function Router() {
       paddingTop: TAB_BAR_PADDING_TOP,
       paddingBottom: TAB_BAR_PADDING_BOTTOM,
       backgroundColor: tabBarColors.background,
-      borderTopWidth: 1,
+      borderTopWidth: TAB_BAR_BORDER_TOP_WIDTH,
       borderTopColor: tabBarColors.borderColor,
     };
     const shadowStyle = getBottomBarShadow(tabBarColors.shadowColor);
     return Platform.OS === 'web'
       ? { ...base, ...shadowStyle }
-      : { ...base, ...shadowStyle, elevation: 8 };
+      : { ...base, ...shadowStyle, elevation: TAB_BAR_ELEVATION };
   }, [hideTabBar, tabBarColors]);
 
   const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
 
-  // Memoized tab bar icon render functions to prevent recreation on each render
-  const renderHomeIcon = useCallback(
-    ({ color, focused }: { color: string; focused: boolean }) => (
-      <TabBarIconWithPill focused={focused}>
-        <HomeIcon size={ICON_SIZES.BUTTON} color={color} />
-      </TabBarIconWithPill>
-    ),
-    [],
-  );
+  const renderTabIcon = useCallback((tabName: TabRouteName) => {
+    const TabIcon = ({ color, focused }: { color: string; focused: boolean }) => {
+      const tabConfig = TABS[tabName];
+      return <TabBarIcon color={color} focused={focused} icon={tabConfig.icon} />;
+    };
+    TabIcon.displayName = `TabIcon_${tabName}`;
+    return TabIcon;
+  }, []);
 
-  const renderOrdersIcon = useCallback(
-    ({ color, focused }: { color: string; focused: boolean }) => (
-      <TabBarIconWithPill focused={focused}>
-        <PackageIcon size={ICON_SIZES.BUTTON} color={color} />
-      </TabBarIconWithPill>
-    ),
-    [],
-  );
+  const renderTabButton = useCallback((tabName: TabRouteName) => {
+    const tabConfig = TABS[tabName];
+    const TabButton = (props: BottomTabBarButtonProps) => {
+      const { children, ref: _ref, ...rest } = props;
+      return (
+        <TabBarButton {...rest} accessibilityHint={tabConfig.accessibilityHint}>
+          {children}
+        </TabBarButton>
+      );
+    };
+    TabButton.displayName = `TabButton_${tabName}`;
+    return TabButton;
+  }, []);
 
-  const renderProfileIcon = useCallback(
-    ({ color, focused }: { color: string; focused: boolean }) => (
-      <TabBarIconWithPill focused={focused}>
-        <UserIcon size={ICON_SIZES.BUTTON} color={color} />
-      </TabBarIconWithPill>
-    ),
-    [],
-  );
+  const screenOptions: BottomTabNavigationOptions = {
+    headerShown: false,
+    tabBarInactiveTintColor: tabBarColors.inactive,
+    tabBarInactiveBackgroundColor: tabBarColors.background,
+    tabBarActiveTintColor: tabBarColors.active,
+    tabBarActiveBackgroundColor: tabBarColors.background,
+    tabBarStyle,
+    tabBarItemStyle: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
+    },
+    tabBarLabel: ({ color, children }) => <TabBarLabel color={color}>{children}</TabBarLabel>,
+  };
 
-  const renderHomeTabButton = useCallback(
-    ({
-      onPress,
-      onLongPress,
-      accessibilityLabel,
-      accessibilityState,
-      testID,
-      children,
-      style,
-    }: BottomTabBarButtonProps) => (
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={accessibilityState}
-        testID={testID}
-        style={style}
-        accessibilityRole="tab"
-        accessibilityHint="Buka halaman beranda">
-        {children}
-      </Pressable>
-    ),
-    [],
-  );
-
-  const renderOrdersTabButton = useCallback(
-    ({
-      onPress,
-      onLongPress,
-      accessibilityLabel,
-      accessibilityState,
-      testID,
-      children,
-      style,
-    }: BottomTabBarButtonProps) => (
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={accessibilityState}
-        testID={testID}
-        style={style}
-        accessibilityRole="tab"
-        accessibilityHint="Buka halaman pesanan">
-        {children}
-      </Pressable>
-    ),
-    [],
-  );
-
-  const renderProfileTabButton = useCallback(
-    ({
-      onPress,
-      onLongPress,
-      accessibilityLabel,
-      accessibilityState,
-      testID,
-      children,
-      style,
-    }: BottomTabBarButtonProps) => (
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={accessibilityState}
-        testID={testID}
-        style={style}
-        accessibilityRole="tab"
-        accessibilityHint="Buka halaman akun">
-        {children}
-      </Pressable>
-    ),
-    [],
+  const getTabScreenOptions = useCallback(
+    (tabName: TabRouteName): BottomTabNavigationOptions => ({
+      title: TABS[tabName].label,
+      tabBarAccessibilityLabel: TABS[tabName].accessibilityLabel,
+      tabBarButton: renderTabButton(tabName),
+      tabBarIcon: renderTabIcon(tabName),
+    }),
+    [renderTabButton, renderTabIcon],
   );
 
   return (
     <Fragment>
-      <Tabs
-        detachInactiveScreens={false}
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          href: VISIBLE_TAB_ROUTES.has(route.name) ? undefined : null,
-          tabBarInactiveTintColor: tabBarColors.inactive,
-          tabBarInactiveBackgroundColor: tabBarColors.background,
-          tabBarActiveTintColor: tabBarColors.active,
-          tabBarActiveBackgroundColor: tabBarColors.background,
-          tabBarStyle,
-          tabBarItemStyle: {
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
-          },
-          tabBarLabel: ({ color, children }) => (
-            <Text
-              allowFontScaling={false}
-              numberOfLines={2}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
-              ellipsizeMode="clip"
-              fontSize={TAB_BAR_LABEL_SIZE}
-              marginTop={TAB_BAR_LABEL_MARGIN_TOP}
-              textAlign="center"
-              width="100%"
-              style={{ color, includeFontPadding: false }}>
-              {children}
-            </Text>
-          ),
-        })}>
-        <Tabs.Screen
-          name="index"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="home"
-          options={{
-            title: 'Beranda',
-            tabBarAccessibilityLabel: 'Navigasi ke Beranda',
-            tabBarButton: renderHomeTabButton,
-            tabBarIcon: renderHomeIcon,
-          }}
-        />
-        <Tabs.Screen
-          name="orders"
-          options={{
-            title: 'Pesanan',
-            tabBarAccessibilityLabel: 'Navigasi ke Pesanan',
-            tabBarButton: renderOrdersTabButton,
-            tabBarIcon: renderOrdersIcon,
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: 'Akun',
-            tabBarAccessibilityLabel: 'Navigasi ke Akun',
-            tabBarButton: renderProfileTabButton,
-            tabBarIcon: renderProfileIcon,
-          }}
-        />
-        <Tabs.Screen
-          name="cart"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="(auth)"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="google-auth"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="+not-found"
-          options={{
-            href: null,
-          }}
-        />
+      <Tabs detachInactiveScreens={false} screenOptions={screenOptions}>
+        <Tabs.Screen name="index" options={{ href: null }} />
+        {VISIBLE_TAB_ROUTES.map(tabName => (
+          <Tabs.Screen key={tabName} name={tabName} options={getTabScreenOptions(tabName)} />
+        ))}
+        <Tabs.Screen name="cart" options={{ href: null }} />
+        <Tabs.Screen name="(auth)" options={{ href: null }} />
+        <Tabs.Screen name="google-auth" options={{ href: null }} />
+        <Tabs.Screen name="+not-found" options={{ href: null }} />
       </Tabs>
       <StatusBar
         style={statusBarStyle}
@@ -353,7 +197,6 @@ function Router() {
       <BottomSheet
         isOpen={isOpen}
         initialOpen
-        // Use theme-aware background with light mode default fallback (#FFFFFF)
         backgroundStyle={{ backgroundColor: getThemeColor(theme, 'background') }}>
         <BottomSheetContents onClose={() => setOpen(false)} />
       </BottomSheet>
