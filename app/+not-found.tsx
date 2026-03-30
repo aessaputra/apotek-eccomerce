@@ -1,6 +1,6 @@
 import { Link, Stack } from 'expo-router';
 import { YStack, Text, useTheme } from 'tamagui';
-import { getThemeColor } from '@/utils/theme';
+import { getStackHeaderOptions, getThemeColor } from '@/utils/theme';
 import { AlertCircleIcon } from '@/components/icons';
 
 export default function NotFoundScreen() {
@@ -15,7 +15,12 @@ export default function NotFoundScreen() {
       backgroundColor="$background"
       padding="$4"
       gap="$4">
-      <Stack.Screen options={{ title: 'Oops!' }} />
+      <Stack.Screen
+        options={{
+          title: 'Oops!',
+          ...getStackHeaderOptions(theme),
+        }}
+      />
 
       <AlertCircleIcon size={64} color={getThemeColor(theme, 'colorPress')} />
 

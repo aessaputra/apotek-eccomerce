@@ -1,17 +1,9 @@
-import { useEffect } from 'react';
 import { YStack, Spinner } from 'tamagui';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { useAppSlice } from '@/slices';
 
 export default function Index() {
   const { checked, loggedIn } = useAppSlice();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!checked || !loggedIn) return;
-
-    router.navigate('/home');
-  }, [checked, loggedIn, router]);
 
   if (!checked) {
     return (
@@ -25,5 +17,5 @@ export default function Index() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  return null;
+  return <Redirect href="/home" />;
 }

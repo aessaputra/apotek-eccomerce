@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   getCategories,
   getLatestProductsWithImages,
@@ -11,6 +12,7 @@ export interface HomeDataState {
   products: ProductWithImages[];
   isLoadingCategories: boolean;
   isLoadingProducts: boolean;
+  isRefreshing: boolean;
   error: string | null;
 }
 
@@ -28,14 +30,32 @@ export function useHomeData(): UseHomeDataReturn {
     products: [],
     isLoadingCategories: true,
     isLoadingProducts: true,
+    isRefreshing: false,
     error: null,
   });
 
-  const fetchData = useCallback(async () => {
+  const activeRequestIdRef = useRef(0);
+  const hasLoadedOnceRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      activeRequestIdRef.current += 1;
+    };
+  }, []);
+
+  const fetchData = useCallback(async (reason: 'initial' | 'focus' | 'manual' = 'manual') => {
+    const requestId = activeRequestIdRef.current + 1;
+    activeRequestIdRef.current = requestId;
+
+    const shouldPreserveContent = hasLoadedOnceRef.current;
+
     setState(prev => ({
       ...prev,
-      isLoadingCategories: true,
-      isLoadingProducts: true,
+      isLoadingCategories: shouldPreserveContent ? prev.isLoadingCategories : true,
+      isLoadingProducts: shouldPreserveContent ? prev.isLoadingProducts : true,
+      isRefreshing: shouldPreserveContent && reason === 'manual',
       error: null,
     }));
 
@@ -45,14 +65,25 @@ export function useHomeData(): UseHomeDataReturn {
         getLatestProductsWithImages(10),
       ]);
 
+      if (!isMountedRef.current || activeRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      hasLoadedOnceRef.current = true;
+
       setState({
         categories,
         products,
         isLoadingCategories: false,
         isLoadingProducts: false,
+        isRefreshing: false,
         error: null,
       });
     } catch (err) {
+      if (!isMountedRef.current || activeRequestIdRef.current !== requestId) {
+        return;
+      }
+
       const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
       if (__DEV__) console.warn('[useHomeData] fetch error:', err);
 
@@ -60,18 +91,21 @@ export function useHomeData(): UseHomeDataReturn {
         ...prev,
         isLoadingCategories: false,
         isLoadingProducts: false,
+        isRefreshing: false,
         error: errorMessage,
       }));
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useFocusEffect(
+    useCallback(() => {
+      void fetchData(hasLoadedOnceRef.current ? 'focus' : 'initial');
+    }, [fetchData]),
+  );
 
   return {
     ...state,
-    refresh: fetchData,
+    refresh: () => fetchData(hasLoadedOnceRef.current ? 'manual' : 'initial'),
   };
 }
 

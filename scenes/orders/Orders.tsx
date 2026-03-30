@@ -1,16 +1,11 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { FlatList, Platform, RefreshControl } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Card, Separator, Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
 import { PackageIcon, CreditCardIcon, TruckIcon } from '@/components/icons';
 import { useOrdersPaginated } from '@/hooks';
 import { useAppSlice } from '@/slices';
-import {
-  getOrderStatusLabel,
-  getPaymentStatusLabel,
-  type OrderListItem,
-  ORDERS_CACHE_TTL_MS,
-} from '@/services';
+import { getOrderStatusLabel, getPaymentStatusLabel, type OrderListItem } from '@/services';
 import { getThemeColor } from '@/utils/theme';
 
 const ORDER_CARD_HEIGHT = 148;
@@ -310,16 +305,13 @@ export default function Orders() {
 
   const refreshTintColor = getThemeColor(theme, 'primary');
 
-  const cacheSummary = useMemo(() => {
-    if (metrics.cacheAgeMs === null) {
-      return null;
+  useEffect(() => {
+    if (!__DEV__ || metrics.cacheAgeMs === null) {
+      return;
     }
 
-    const cacheAgeSeconds = Math.round(metrics.cacheAgeMs / 1000);
-    const ttlSeconds = Math.round(ORDERS_CACHE_TTL_MS / 1000);
-
-    return `Cache ${cacheAgeSeconds}s • TTL ${ttlSeconds}s • ${metrics.lastPayloadBytes} bytes • ${metrics.lastFetchDurationMs} ms`;
-  }, [metrics.cacheAgeMs, metrics.lastFetchDurationMs, metrics.lastPayloadBytes]);
+    console.debug('[Orders] cache metrics', metrics);
+  }, [metrics]);
 
   if (!user) {
     return <EmptyState />;
@@ -361,11 +353,6 @@ export default function Orders() {
         ListHeaderComponent={
           <YStack pt="$4">
             {error && orders.length > 0 ? <ListErrorBanner message={error} /> : null}
-            {cacheSummary ? (
-              <Text fontSize="$2" color="$colorMuted" px="$4" pb="$2">
-                {cacheSummary}
-              </Text>
-            ) : null}
           </YStack>
         }
         ListFooterComponent={

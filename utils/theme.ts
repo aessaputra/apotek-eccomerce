@@ -1,4 +1,5 @@
 import { DARK_THEME_FALLBACKS, THEME_FALLBACKS } from '@/constants/ui';
+import { fonts } from '@/utils/fonts';
 
 function resolveThemeValue(value: unknown): string | undefined {
   if (value == null) return undefined;
@@ -38,13 +39,19 @@ export function getThemeColor(theme: unknown, key: string, fallback?: string): s
 }
 
 export function getStackHeaderOptions(theme: unknown) {
+  const backgroundColor = getThemeColor(theme, 'background');
+
   return {
     headerTintColor: getThemeColor(theme, 'color'),
     headerStyle: {
-      backgroundColor: 'transparent',
+      backgroundColor,
+    },
+    contentStyle: {
+      backgroundColor,
     },
     headerTitleStyle: {
       fontSize: 18,
+      fontFamily: fonts.poppins.semiBold,
       fontWeight: '600' as const,
       color: getThemeColor(theme, 'color'),
     },

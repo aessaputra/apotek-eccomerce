@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, screen } from '@/test-utils/renderWithTheme';
+import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
 import type { CartItemWithProduct } from '@/types/cart';
 import type { User } from '@/types';
 
@@ -253,9 +253,18 @@ jest.mock('@/components/elements/CartLoadingSkeleton/CartLoadingSkeleton', () =>
 }));
 
 jest.mock('@/components/elements/EmptyCartState/EmptyCartState', () => ({
-  EmptyCartState: () => {
-    const { Text } = jest.requireActual('react-native') as typeof import('react-native');
-    return <Text>Empty Cart State</Text>;
+  EmptyCartState: ({ onBrowse }: { onBrowse: () => void }) => {
+    const { Pressable, Text, View } = jest.requireActual(
+      'react-native',
+    ) as typeof import('react-native');
+    return (
+      <View>
+        <Text>Empty Cart State</Text>
+        <Pressable accessibilityLabel="browse-products" onPress={onBrowse}>
+          <Text>Browse products</Text>
+        </Pressable>
+      </View>
+    );
   },
 }));
 
@@ -359,5 +368,18 @@ describe('<Cart />', () => {
 
     expect(screen.getByText('Gagal memuat keranjang.')).not.toBeNull();
     expect(screen.getByText('Gagal sinkronisasi keranjang')).not.toBeNull();
+  });
+
+  it('routes empty-cart browse action directly to /home', () => {
+    mockCartHookState.items = [];
+    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartQuantityHookState.items = [];
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+
+    render(<Cart />);
+
+    fireEvent.press(screen.getByLabelText('browse-products'));
+
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 });

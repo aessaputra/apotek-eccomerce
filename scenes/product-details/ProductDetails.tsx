@@ -181,7 +181,7 @@ function ProductDetailsLoading({
         <BottomActionBarContent>
           <XStack alignItems="stretch" justifyContent="space-between" gap="$3">
             <SkeletonBlock flex={1} height={52} borderRadius="$4" />
-            <SkeletonBlock flex={1.35} height={52} borderRadius="$4" />
+            <SkeletonBlock flex={1.6} height={52} borderRadius="$4" />
           </XStack>
         </BottomActionBarContent>
       </BottomActionBar>
@@ -566,8 +566,8 @@ export default function ProductDetails() {
               px="$3"
               py="$2">
               <Text
-                fontSize={26}
-                lineHeight={31}
+                fontSize={18}
+                lineHeight={22}
                 color="$color"
                 fontWeight="800"
                 letterSpacing={-0.5}
@@ -579,7 +579,7 @@ export default function ProductDetails() {
             </YStack>
 
             <AddToCartButton
-              flex={1.35}
+              flex={1.6}
               flexBasis={0}
               minWidth={0}
               flexShrink={1}

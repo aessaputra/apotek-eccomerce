@@ -547,7 +547,7 @@ export default function Cart() {
         ListEmptyComponent={
           !isLoading ? (
             <YStack marginTop="$1">
-              <EmptyCartState onBrowse={() => router.push('/')} />
+              <EmptyCartState onBrowse={() => router.push('/home')} />
             </YStack>
           ) : null
         }

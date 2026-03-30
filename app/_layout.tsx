@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable } from 'react-native';
+import { Platform, Pressable, useColorScheme } from 'react-native';
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -51,6 +51,7 @@ const TAB_BAR_LABEL_MARGIN_TOP = spaceTokens[TAB_BAR_LABEL_MARGIN_TOP_TOKEN]?.va
 
 function Router() {
   const theme = useTheme();
+  const colorScheme = useColorScheme();
   const { checked, loggedIn } = useAppSlice();
   const segments = useSegments();
   const router = useRouter();
@@ -146,8 +147,7 @@ function Router() {
       : { ...base, ...shadowStyle, elevation: 8 };
   }, [hideTabBar, tabBarColors]);
 
-  // Get app background color for StatusBar consistency
-  const appBg = getThemeColor(theme, 'background', DEFAULT_THEME_VALUES.background);
+  const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
 
   // Memoized tab bar icon render functions to prevent recreation on each render
   const renderHomeIcon = useCallback(
@@ -255,6 +255,7 @@ function Router() {
   return (
     <Fragment>
       <Tabs
+        detachInactiveScreens={false}
         screenOptions={({ route }) => ({
           headerShown: false,
           href: VISIBLE_TAB_ROUTES.has(route.name) ? undefined : null,
@@ -343,7 +344,12 @@ function Router() {
           }}
         />
       </Tabs>
-      <StatusBar style="light" backgroundColor={appBg} translucent={false} />
+      <StatusBar
+        style={statusBarStyle}
+        backgroundColor="transparent"
+        translucent={Platform.OS === 'android'}
+        hidden={false}
+      />
       <BottomSheet
         isOpen={isOpen}
         initialOpen

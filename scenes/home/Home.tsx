@@ -117,7 +117,8 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { user } = useAppSlice();
-  const { categories, products, isLoadingCategories, isLoadingProducts, refresh } = useHomeData();
+  const { categories, products, isLoadingCategories, isLoadingProducts, isRefreshing, refresh } =
+    useHomeData();
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
@@ -181,8 +182,6 @@ export default function Home() {
   const userName = user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer';
   const userAvatarUrl = user?.avatar_url;
   const userInitial = userName.charAt(0).toUpperCase();
-
-  const isRefreshing = isLoadingCategories || isLoadingProducts;
 
   return (
     <ScreenRoot>
@@ -283,7 +282,7 @@ export default function Home() {
 
           <YStack gap="$2.5">
             <SectionTitle>Categories</SectionTitle>
-            {isLoadingCategories ? (
+            {isLoadingCategories && categories.length === 0 ? (
               <CategorySkeleton isLargeScreen={isLargeScreen} />
             ) : categories.length === 0 ? (
               <Text fontSize={13} color="$colorSubtle">
@@ -324,7 +323,7 @@ export default function Home() {
 
           <YStack gap="$2.5">
             <SectionTitle>Latest Products</SectionTitle>
-            {isLoadingProducts ? (
+            {isLoadingProducts && products.length === 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <ProductCardSkeleton width={productWidth} />
               </ScrollView>
