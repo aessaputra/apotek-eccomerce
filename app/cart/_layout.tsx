@@ -10,6 +10,7 @@ function CartStackLayout() {
       <Stack.Screen
         name="index"
         options={{
+          headerShown: false,
           title: 'Keranjang Saya',
           headerTitleAlign: 'center',
           ...getStackHeaderOptions(theme),

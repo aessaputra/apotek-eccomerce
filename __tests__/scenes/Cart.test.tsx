@@ -4,6 +4,7 @@ import type { CartItemWithProduct } from '@/types/cart';
 import type { User } from '@/types';
 
 const mockPush = jest.fn();
+const mockSetOptions = jest.fn();
 const mockRemoveCartItem =
   jest.fn<(...args: unknown[]) => Promise<{ data: boolean; error: null }>>();
 const mockGetAddresses = jest.fn<(...args: unknown[]) => Promise<{ data: never[]; error: null }>>();
@@ -87,6 +88,7 @@ const mockCartCheckoutHookState = {
 jest.mock('expo-router', () => ({
   __esModule: true,
   useRouter: () => ({ push: mockPush }),
+  useNavigation: () => ({ setOptions: mockSetOptions }),
   useFocusEffect: (callback: () => void | (() => void)) => {
     setTimeout(() => {
       callback();
@@ -316,6 +318,7 @@ function createItem(index: number): CartItemWithProduct {
 describe('<Cart />', () => {
   beforeEach(() => {
     mockPush.mockClear();
+    mockSetOptions.mockClear();
     mockRemoveCartItem.mockReset();
     mockGetAddresses.mockReset();
     mockCreateCheckoutOrder.mockReset();
@@ -381,5 +384,41 @@ describe('<Cart />', () => {
     fireEvent.press(screen.getByLabelText('browse-products'));
 
     expect(mockPush).toHaveBeenCalledWith('/home');
+  });
+
+  it('shows a full-screen spinner during the initial cart load', () => {
+    mockCartHookState.items = [];
+    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartHookState.isLoading = true;
+    mockCartQuantityHookState.items = [];
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+
+    render(<Cart />);
+
+    expect(screen.getByLabelText('Memuat keranjang')).not.toBeNull();
+    expect(screen.queryByText('Empty Cart State')).toBeNull();
+    expect(screen.queryByText('Cart Loading Skeleton')).toBeNull();
+  });
+
+  it('does not show realtime synchronization text while the cart reconnects', () => {
+    mockCartHookState.realtimeState = 'reconnecting';
+
+    render(<Cart />);
+
+    expect(screen.queryByText('Sinkronisasi keranjang menyambung kembali...')).toBeNull();
+    expect(screen.queryByText('Menyambungkan sinkronisasi keranjang...')).toBeNull();
+  });
+
+  it('keeps the overlay hidden while refreshing an existing cart', () => {
+    mockCartHookState.items = [createItem(1)];
+    mockCartHookState.snapshot = { itemCount: 1, estimatedWeightGrams: 100, packageValue: 10001 };
+    mockCartHookState.isLoading = true;
+    mockCartQuantityHookState.items = mockCartHookState.items;
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+
+    render(<Cart />);
+
+    expect(screen.queryByLabelText('Memuat keranjang')).toBeNull();
+    expect(screen.getByText('Produk 1')).not.toBeNull();
   });
 });

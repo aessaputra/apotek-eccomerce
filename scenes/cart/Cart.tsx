@@ -1,11 +1,12 @@
 'use client';
 
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RefreshCw } from '@tamagui/lucide-icons';
 import {
+  AnimatePresence,
   YStack,
   XStack,
   Text,
@@ -22,7 +23,6 @@ import { CartItemCard } from '@/components/elements/CartItemCard';
 import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
 import { StickyBottomBar } from '@/components/elements/StickyBottomBar/StickyBottomBar';
 import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartState';
-import { CartLoadingSkeleton } from '@/components/elements/CartLoadingSkeleton/CartLoadingSkeleton';
 import AddressCard from '@/components/elements/AddressCard';
 import { useAppSlice } from '@/slices';
 import { useCartAddress } from '@/hooks/useCartAddress';
@@ -116,6 +116,39 @@ function ErrorBanner({ title, message, onRetry, type = 'danger' }: ErrorBannerPr
 
 interface OfflineBannerProps {
   hasCachedData: boolean;
+}
+
+function CartInitialLoadingOverlay() {
+  return (
+    <YStack
+      key="cart-initial-loading-overlay"
+      flex={1}
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      zIndex={1000}
+      alignItems="center"
+      justifyContent="center"
+      animation="quick"
+      enterStyle={{ opacity: 0 }}
+      exitStyle={{ opacity: 0 }}
+      opacity={1}
+      aria-label="Memuat keranjang">
+      <YStack
+        position="absolute"
+        top={0}
+        left={0}
+        right={0}
+        bottom={0}
+        backgroundColor="$sheetOverlay"
+      />
+      <YStack alignItems="center" justifyContent="center" padding="$4">
+        <Spinner size="large" color="$primary" />
+      </YStack>
+    </YStack>
+  );
 }
 
 function OfflineBanner({ hasCachedData }: OfflineBannerProps) {
@@ -234,6 +267,7 @@ const AddressCardSheet = React.memo(function AddressCardSheet({
 });
 
 export default function Cart() {
+  const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -253,7 +287,6 @@ export default function Cart() {
     isLoading,
     isRefreshing,
     refresh,
-    realtimeState,
   } = useCartPaginated({
     userId: user?.id,
   });
@@ -446,6 +479,14 @@ export default function Cart() {
     void refresh();
   }, [isOffline, refresh]);
 
+  const showInitialLoadingOverlay = isLoading && items.length === 0;
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: !showInitialLoadingOverlay,
+    });
+  }, [navigation, showInitialLoadingOverlay]);
+
   useEffect(() => {
     return () => {
       if (offlineMessageTimerRef.current) {
@@ -471,499 +512,493 @@ export default function Cart() {
     );
   }
 
-  if (isLoading && items.length === 0) {
-    return (
-      <YStack flex={1} backgroundColor="$background" padding="$4" gap="$3">
-        <CartLoadingSkeleton rowCount={4} />
-      </YStack>
-    );
-  }
-
   return (
     <YStack flex={1} backgroundColor="$background" position="relative">
-      <FlatList
-        data={items}
-        renderItem={({ item }: { item: CartItemWithProduct }) => (
-          <CartItemRenderer
-            item={item}
-            onQuantityChange={handleQuantityChange}
-            onRemove={handleRemoveItem}
-            disabled={false}
-          />
-        )}
-        keyExtractor={item => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          padding: 16,
-          gap: 12,
-          paddingBottom: BOTTOM_BAR_HEIGHT + insets.bottom + 16,
-        }}
-        ListHeaderComponent={
-          <YStack gap="$3">
-            {isOffline ? <OfflineBanner hasCachedData={hasCachedCartData} /> : null}
-
-            {offlineActionMessage ? (
-              <Card
-                borderRadius="$4"
-                borderWidth={1}
-                borderColor="$warning"
-                padding="$3"
-                backgroundColor="$surfaceSubtle">
-                <Text color="$warning" fontWeight="600">
-                  {offlineActionMessage}
-                </Text>
-              </Card>
-            ) : null}
-
-            {!isOffline && realtimeState !== 'connected' ? (
-              <Card
-                borderRadius="$4"
-                borderWidth={1}
-                borderColor={realtimeState === 'reconnecting' ? '$warning' : '$surfaceBorder'}
-                padding="$3"
-                backgroundColor="$surfaceSubtle">
-                <Text
-                  color={realtimeState === 'reconnecting' ? '$warning' : '$colorSubtle'}
-                  fontWeight="600">
-                  {realtimeState === 'reconnecting'
-                    ? 'Sinkronisasi keranjang menyambung kembali...'
-                    : 'Menyambungkan sinkronisasi keranjang...'}
-                </Text>
-              </Card>
-            ) : null}
-
-            {error ? <ErrorBanner message={error} onRetry={handleCartRefresh} /> : null}
-
-            {cartActionError ? (
-              <ErrorBanner
-                title="Gagal memperbarui keranjang."
-                message={cartActionError}
-                onRetry={() => setCartActionError(null)}
-                type="warning"
-              />
-            ) : null}
-          </YStack>
-        }
-        ListEmptyComponent={
-          !isLoading ? (
-            <YStack marginTop="$1">
-              <EmptyCartState onBrowse={() => router.push('/home')} />
-            </YStack>
-          ) : null
-        }
-        ListFooterComponent={
-          items.length > 0 && !isLoading ? (
-            <YStack gap="$4" paddingTop="$1">
-              {loadingSelectedAddress ? (
-                <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
-                  <Spinner size="large" color="$primary" />
-                </YStack>
-              ) : selectedAddress ? (
-                <Card
-                  bordered
-                  elevate
-                  size="$4"
-                  backgroundColor="$surface"
-                  borderColor="$surfaceBorder"
-                  onPress={handleOpenAddressSheet}
-                  aria-label="Ganti alamat pengiriman">
-                  <XStack padding="$4" gap="$3" alignItems="center">
-                    <XStack alignSelf="flex-start" marginTop="$1">
-                      <MapPinIcon size={20} color="$primary" />
-                    </XStack>
-
-                    <YStack gap="$1" flex={1}>
-                      <XStack alignItems="center" gap="$1" flex={1}>
-                        <Text color="$color" fontWeight="700" numberOfLines={1}>
-                          {selectedAddress.receiver_name}
-                        </Text>
-                        <Text color="$colorSubtle" fontSize="$3">
-                          {' | '}
-                        </Text>
-                        <Text color="$colorSubtle" fontSize="$3" numberOfLines={1} flex={1}>
-                          {selectedAddress.phone_number}
-                        </Text>
-                      </XStack>
-                      <Text color="$colorSubtle" numberOfLines={2}>
-                        {selectedAddressFullText}
-                      </Text>
-                    </YStack>
-
-                    <XStack alignItems="center" justifyContent="center">
-                      <ChevronRightIcon size={16} color="$colorSubtle" />
-                    </XStack>
-                  </XStack>
-                </Card>
-              ) : (
-                <Card
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderStyle="dashed"
-                  borderColor="$surfaceBorder"
-                  backgroundColor="$surface"
-                  padding="$4">
-                  <YStack gap="$3">
-                    <XStack alignItems="center" gap="$2">
-                      <MapPinIcon size={18} color="$primary" />
-                      <Text color="$color" fontWeight="600">
-                        Belum ada alamat
-                      </Text>
-                    </XStack>
-                    <TamaguiButton
-                      backgroundColor="$primary"
-                      color="$onPrimary"
-                      borderRadius="$3"
-                      minHeight={44}
-                      onPress={handleOpenAddressSheet}
-                      aria-label="Tambah alamat pengiriman">
-                      Tambah Alamat
-                    </TamaguiButton>
-                  </YStack>
-                </Card>
+      <AnimatePresence initial={false}>
+        {showInitialLoadingOverlay ? (
+          <CartInitialLoadingOverlay />
+        ) : (
+          <YStack
+            key="cart-content"
+            flex={1}
+            animation="quick"
+            enterStyle={{ opacity: 0 }}
+            exitStyle={{ opacity: 0 }}
+            opacity={1}>
+            <FlatList
+              data={items}
+              renderItem={({ item }: { item: CartItemWithProduct }) => (
+                <CartItemRenderer
+                  item={item}
+                  onQuantityChange={handleQuantityChange}
+                  onRemove={handleRemoveItem}
+                  disabled={false}
+                />
               )}
+              keyExtractor={item => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                padding: 16,
+                gap: 12,
+                paddingBottom: BOTTOM_BAR_HEIGHT + insets.bottom + 16,
+              }}
+              ListHeaderComponent={
+                <YStack gap="$3">
+                  {isOffline ? <OfflineBanner hasCachedData={hasCachedCartData} /> : null}
 
-              {addressErrorMessage ? (
-                <Card
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderColor="$danger"
-                  padding="$3"
-                  backgroundColor="$surface">
-                  <Text color="$danger">{addressErrorMessage}</Text>
-                </Card>
-              ) : null}
+                  {offlineActionMessage ? (
+                    <Card
+                      borderRadius="$4"
+                      borderWidth={1}
+                      borderColor="$warning"
+                      padding="$3"
+                      backgroundColor="$surfaceSubtle">
+                      <Text color="$warning" fontWeight="600">
+                        {offlineActionMessage}
+                      </Text>
+                    </Card>
+                  ) : null}
 
-              <Card
-                bordered
-                elevate
-                size="$4"
-                backgroundColor="$surface"
-                borderColor="$surfaceBorder"
-                opacity={isNetworkUnavailable ? 0.7 : 1}
-                onPress={handleOpenShippingSheet}>
-                <Card.Header padded>
-                  <XStack alignItems="center" justifyContent="space-between" gap="$3">
-                    <Text fontSize="$4" fontWeight="600" color="$color" numberOfLines={1} flex={1}>
+                  {error ? <ErrorBanner message={error} onRetry={handleCartRefresh} /> : null}
+
+                  {cartActionError ? (
+                    <ErrorBanner
+                      title="Gagal memperbarui keranjang."
+                      message={cartActionError}
+                      onRetry={() => setCartActionError(null)}
+                      type="warning"
+                    />
+                  ) : null}
+                </YStack>
+              }
+              ListEmptyComponent={
+                <YStack marginTop="$1">
+                  <EmptyCartState onBrowse={() => router.push('/home')} />
+                </YStack>
+              }
+              ListFooterComponent={
+                items.length > 0 && !isLoading ? (
+                  <YStack gap="$4" paddingTop="$1">
+                    {loadingSelectedAddress ? (
+                      <YStack alignItems="center" justifyContent="center" paddingVertical="$5">
+                        <Spinner size="large" color="$primary" />
+                      </YStack>
+                    ) : selectedAddress ? (
+                      <Card
+                        bordered
+                        elevate
+                        size="$4"
+                        backgroundColor="$surface"
+                        borderColor="$surfaceBorder"
+                        onPress={handleOpenAddressSheet}
+                        aria-label="Ganti alamat pengiriman">
+                        <XStack padding="$4" gap="$3" alignItems="center">
+                          <XStack alignSelf="flex-start" marginTop="$1">
+                            <MapPinIcon size={20} color="$primary" />
+                          </XStack>
+
+                          <YStack gap="$1" flex={1}>
+                            <XStack alignItems="center" gap="$1" flex={1}>
+                              <Text color="$color" fontWeight="700" numberOfLines={1}>
+                                {selectedAddress.receiver_name}
+                              </Text>
+                              <Text color="$colorSubtle" fontSize="$3">
+                                {' | '}
+                              </Text>
+                              <Text color="$colorSubtle" fontSize="$3" numberOfLines={1} flex={1}>
+                                {selectedAddress.phone_number}
+                              </Text>
+                            </XStack>
+                            <Text color="$colorSubtle" numberOfLines={2}>
+                              {selectedAddressFullText}
+                            </Text>
+                          </YStack>
+
+                          <XStack alignItems="center" justifyContent="center">
+                            <ChevronRightIcon size={16} color="$colorSubtle" />
+                          </XStack>
+                        </XStack>
+                      </Card>
+                    ) : (
+                      <Card
+                        borderRadius="$4"
+                        borderWidth={1}
+                        borderStyle="dashed"
+                        borderColor="$surfaceBorder"
+                        backgroundColor="$surface"
+                        padding="$4">
+                        <YStack gap="$3">
+                          <XStack alignItems="center" gap="$2">
+                            <MapPinIcon size={18} color="$primary" />
+                            <Text color="$color" fontWeight="600">
+                              Belum ada alamat
+                            </Text>
+                          </XStack>
+                          <TamaguiButton
+                            backgroundColor="$primary"
+                            color="$onPrimary"
+                            borderRadius="$3"
+                            minHeight={44}
+                            onPress={handleOpenAddressSheet}
+                            aria-label="Tambah alamat pengiriman">
+                            Tambah Alamat
+                          </TamaguiButton>
+                        </YStack>
+                      </Card>
+                    )}
+
+                    {addressErrorMessage ? (
+                      <Card
+                        borderRadius="$4"
+                        borderWidth={1}
+                        borderColor="$danger"
+                        padding="$3"
+                        backgroundColor="$surface">
+                        <Text color="$danger">{addressErrorMessage}</Text>
+                      </Card>
+                    ) : null}
+
+                    <Card
+                      bordered
+                      elevate
+                      size="$4"
+                      backgroundColor="$surface"
+                      borderColor="$surfaceBorder"
+                      opacity={isNetworkUnavailable ? 0.7 : 1}
+                      onPress={handleOpenShippingSheet}>
+                      <Card.Header padded>
+                        <XStack alignItems="center" justifyContent="space-between" gap="$3">
+                          <Text
+                            fontSize="$4"
+                            fontWeight="600"
+                            color="$color"
+                            numberOfLines={1}
+                            flex={1}>
+                            Opsi Pengiriman
+                          </Text>
+                          {loadingRates ? (
+                            <Spinner size="small" color="$primary" />
+                          ) : (
+                            <ChevronRightIcon size={16} color="$colorSubtle" />
+                          )}
+                        </XStack>
+                      </Card.Header>
+
+                      <Separator />
+
+                      <XStack padding="$3" gap="$3" alignItems="center">
+                        {selectedShippingOption ? (
+                          <>
+                            <YStack flex={1} gap="$0.5" minWidth={0}>
+                              <Text color="$color" fontWeight="700" numberOfLines={1}>
+                                {selectedShippingOption.courier_name} -{' '}
+                                {selectedShippingOption.service_name}
+                              </Text>
+                              <Text color="$colorSubtle" fontSize="$3" numberOfLines={1}>
+                                Estimasi: {selectedShippingOption.estimated_delivery}
+                              </Text>
+                            </YStack>
+                            <Text color="$primary" fontWeight="700" flexShrink={0}>
+                              {formatRupiah(selectedShippingOption.price)}
+                            </Text>
+                          </>
+                        ) : (
+                          <Text flex={1} color="$colorSubtle" fontWeight="500" textAlign="center">
+                            Pilih Kurir
+                          </Text>
+                        )}
+                      </XStack>
+
+                      {isOffline ? (
+                        <XStack px="$3" pb="$3">
+                          <Text fontSize="$2" color="$warning" fontWeight="600">
+                            Tidak tersedia offline
+                          </Text>
+                        </XStack>
+                      ) : null}
+                    </Card>
+
+                    <Card bordered elevate size="$4">
+                      <Card.Header padded>
+                        <Text fontSize="$4" fontWeight="600" color="$color">
+                          Ringkasan Pesanan
+                        </Text>
+                      </Card.Header>
+                      <Separator />
+                      <CartSummary
+                        subtotal={snapshot.packageValue}
+                        shippingCost={selectedShippingOption?.price}
+                        shippingName={selectedShippingOption?.courier_name}
+                        itemCount={snapshot.itemCount}
+                        isLoadingShipping={loadingRates}
+                      />
+                    </Card>
+
+                    {activeOrderId ? (
+                      <Card
+                        borderRadius="$4"
+                        borderWidth={1}
+                        borderColor="$warning"
+                        padding="$3"
+                        backgroundColor="$warningSoft">
+                        <YStack gap="$2.5">
+                          <Text color="$warning" fontWeight="700">
+                            Pembayaran Tertunda
+                          </Text>
+                          <Text color="$colorSubtle" fontSize="$2">
+                            {paymentError ??
+                              'Order sudah dibuat. Lanjutkan pembayaran untuk menggunakan order yang sama tanpa membuat order baru. Pilihan kurir tidak wajib dipilih ulang saat melanjutkan pembayaran.'}
+                          </Text>
+                          <XStack justifyContent="flex-end" gap="$2">
+                            <TamaguiButton
+                              size="$2"
+                              borderRadius="$3"
+                              backgroundColor="transparent"
+                              borderWidth={1}
+                              borderColor="$surfaceBorder"
+                              color="$color"
+                              onPress={() => {
+                                void clearCheckoutSession();
+                              }}
+                              aria-label="Batalkan checkout tertunda">
+                              Batalkan
+                            </TamaguiButton>
+                            <TamaguiButton
+                              size="$2"
+                              borderRadius="$3"
+                              backgroundColor="$primary"
+                              color="$onPrimary"
+                              disabled={isNetworkUnavailable || startingCheckout}
+                              opacity={isNetworkUnavailable || startingCheckout ? 0.7 : 1}
+                              onPress={() => {
+                                resetPaymentError();
+                                void handleWrappedStartCheckout();
+                              }}
+                              aria-label="Lanjutkan pembayaran">
+                              {startingCheckout ? 'Memproses...' : 'Lanjutkan Pembayaran'}
+                            </TamaguiButton>
+                          </XStack>
+                        </YStack>
+                      </Card>
+                    ) : null}
+
+                    {shippingError && shippingOptions.length === 0 && !loadingRates ? (
+                      <XStack justifyContent="flex-end" marginTop="$-2">
+                        <TamaguiButton
+                          size="$2"
+                          circular
+                          backgroundColor="transparent"
+                          borderWidth={1}
+                          borderColor="$surfaceBorder"
+                          color="$primary"
+                          onPress={() => {
+                            void handleCalculateShipping();
+                          }}
+                          icon={<RefreshCw size={14} color="$primary" />}
+                          aria-label="Muat ulang ongkir"
+                        />
+                      </XStack>
+                    ) : null}
+
+                    {shippingError ? (
+                      <Card
+                        borderRadius="$4"
+                        borderWidth={1}
+                        borderColor="$danger"
+                        padding="$3"
+                        backgroundColor="$surface">
+                        <YStack gap="$1.5">
+                          <Text color="$danger">
+                            {shippingErrorMessage ?? 'Terjadi kesalahan.'}
+                          </Text>
+                          {shippingRecoverySuggestion ? (
+                            <Text color="$colorSubtle" fontSize="$2">
+                              {shippingRecoverySuggestion}
+                            </Text>
+                          ) : null}
+                        </YStack>
+                      </Card>
+                    ) : null}
+                  </YStack>
+                ) : null
+              }
+              refreshing={isNetworkUnavailable ? false : isRefreshing}
+              onRefresh={isNetworkUnavailable ? undefined : handleCartRefresh}
+            />
+
+            <Sheet
+              modal
+              dismissOnOverlayPress
+              dismissOnSnapToBottom
+              moveOnKeyboardChange
+              snapPoints={[60]}
+              open={shippingSheetOpen}
+              onOpenChange={setShippingSheetOpen}
+              animation="medium"
+              animationConfig={{
+                type: 'spring',
+                damping: 24,
+                mass: 0.9,
+                stiffness: 200,
+              }}>
+              <Sheet.Overlay
+                animation="lazy"
+                enterStyle={{ opacity: 0 }}
+                exitStyle={{ opacity: 0 }}
+                backgroundColor="$sheetOverlay"
+              />
+              <Sheet.Handle />
+              <Sheet.Frame
+                backgroundColor="$surfaceSubtle"
+                borderTopLeftRadius="$6"
+                borderTopRightRadius="$6">
+                <YStack flex={1}>
+                  <YStack px="$4" pt="$2" pb="$3">
+                    <Text fontSize="$6" fontWeight="700" color="$color">
                       Opsi Pengiriman
                     </Text>
-                    {loadingRates ? (
-                      <Spinner size="small" color="$primary" />
-                    ) : (
-                      <ChevronRightIcon size={16} color="$colorSubtle" />
-                    )}
-                  </XStack>
-                </Card.Header>
-
-                <Separator />
-
-                <XStack padding="$3" gap="$3" alignItems="center">
-                  {selectedShippingOption ? (
-                    <>
-                      <YStack flex={1} gap="$0.5" minWidth={0}>
-                        <Text color="$color" fontWeight="700" numberOfLines={1}>
-                          {selectedShippingOption.courier_name} -{' '}
-                          {selectedShippingOption.service_name}
-                        </Text>
-                        <Text color="$colorSubtle" fontSize="$3" numberOfLines={1}>
-                          Estimasi: {selectedShippingOption.estimated_delivery}
-                        </Text>
-                      </YStack>
-                      <Text color="$primary" fontWeight="700" flexShrink={0}>
-                        {formatRupiah(selectedShippingOption.price)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text flex={1} color="$colorSubtle" fontWeight="500" textAlign="center">
-                      Pilih Kurir
-                    </Text>
-                  )}
-                </XStack>
-
-                {isOffline ? (
-                  <XStack px="$3" pb="$3">
-                    <Text fontSize="$2" color="$warning" fontWeight="600">
-                      Tidak tersedia offline
-                    </Text>
-                  </XStack>
-                ) : null}
-              </Card>
-
-              <Card bordered elevate size="$4">
-                <Card.Header padded>
-                  <Text fontSize="$4" fontWeight="600" color="$color">
-                    Ringkasan Pesanan
-                  </Text>
-                </Card.Header>
-                <Separator />
-                <CartSummary
-                  subtotal={snapshot.packageValue}
-                  shippingCost={selectedShippingOption?.price}
-                  shippingName={selectedShippingOption?.courier_name}
-                  itemCount={snapshot.itemCount}
-                  isLoadingShipping={loadingRates}
-                />
-              </Card>
-
-              {activeOrderId ? (
-                <Card
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderColor="$warning"
-                  padding="$3"
-                  backgroundColor="$warningSoft">
-                  <YStack gap="$2.5">
-                    <Text color="$warning" fontWeight="700">
-                      Pembayaran Tertunda
-                    </Text>
-                    <Text color="$colorSubtle" fontSize="$2">
-                      {paymentError ??
-                        'Order sudah dibuat. Lanjutkan pembayaran untuk menggunakan order yang sama tanpa membuat order baru. Pilihan kurir tidak wajib dipilih ulang saat melanjutkan pembayaran.'}
-                    </Text>
-                    <XStack justifyContent="flex-end" gap="$2">
-                      <TamaguiButton
-                        size="$2"
-                        borderRadius="$3"
-                        backgroundColor="transparent"
-                        borderWidth={1}
-                        borderColor="$surfaceBorder"
-                        color="$color"
-                        onPress={() => {
-                          void clearCheckoutSession();
-                        }}
-                        aria-label="Batalkan checkout tertunda">
-                        Batalkan
-                      </TamaguiButton>
-                      <TamaguiButton
-                        size="$2"
-                        borderRadius="$3"
-                        backgroundColor="$primary"
-                        color="$onPrimary"
-                        disabled={isNetworkUnavailable || startingCheckout}
-                        opacity={isNetworkUnavailable || startingCheckout ? 0.7 : 1}
-                        onPress={() => {
-                          resetPaymentError();
-                          void handleWrappedStartCheckout();
-                        }}
-                        aria-label="Lanjutkan pembayaran">
-                        {startingCheckout ? 'Memproses...' : 'Lanjutkan Pembayaran'}
-                      </TamaguiButton>
-                    </XStack>
                   </YStack>
-                </Card>
-              ) : null}
 
-              {shippingError && shippingOptions.length === 0 && !loadingRates ? (
-                <XStack justifyContent="flex-end" marginTop="$-2">
-                  <TamaguiButton
-                    size="$2"
-                    circular
-                    backgroundColor="transparent"
-                    borderWidth={1}
-                    borderColor="$surfaceBorder"
-                    color="$primary"
-                    onPress={() => {
-                      void handleCalculateShipping();
-                    }}
-                    icon={<RefreshCw size={14} color="$primary" />}
-                    aria-label="Muat ulang ongkir"
-                  />
-                </XStack>
-              ) : null}
+                  <Sheet.ScrollView showsVerticalScrollIndicator={false}>
+                    <YStack gap="$2" px="$4" pb="$4">
+                      {shippingOptions.map(option => {
+                        const optionKey = `${option.courier_code}-${option.service_code}`;
 
-              {shippingError ? (
-                <Card
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderColor="$danger"
-                  padding="$3"
-                  backgroundColor="$surface">
-                  <YStack gap="$1.5">
-                    <Text color="$danger">{shippingErrorMessage ?? 'Terjadi kesalahan.'}</Text>
-                    {shippingRecoverySuggestion ? (
-                      <Text color="$colorSubtle" fontSize="$2">
-                        {shippingRecoverySuggestion}
+                        return (
+                          <CourierOptionCard
+                            key={optionKey}
+                            option={option}
+                            optionKey={optionKey}
+                            isSelected={selectedShippingKey === optionKey}
+                            onSelect={handleSelectShippingKey}
+                            formatRupiah={formatRupiah}
+                          />
+                        );
+                      })}
+                    </YStack>
+                  </Sheet.ScrollView>
+
+                  <YStack px="$4" pt="$2" pb="$4">
+                    <TamaguiButton
+                      borderRadius="$3"
+                      minHeight={44}
+                      backgroundColor="$primary"
+                      color="$surface"
+                      disabled={isNetworkUnavailable}
+                      opacity={isNetworkUnavailable ? 0.6 : 1}
+                      onPress={() => setShippingSheetOpen(false)}>
+                      Konfirmasi
+                    </TamaguiButton>
+                    {isOffline ? (
+                      <Text fontSize="$2" color="$warning" textAlign="center" marginTop="$2">
+                        Tidak tersedia offline
                       </Text>
                     ) : null}
                   </YStack>
-                </Card>
-              ) : null}
-            </YStack>
-          ) : null
-        }
-        refreshing={isNetworkUnavailable ? false : isRefreshing}
-        onRefresh={isNetworkUnavailable ? undefined : handleCartRefresh}
-      />
+                </YStack>
+              </Sheet.Frame>
+            </Sheet>
 
-      <Sheet
-        modal
-        dismissOnOverlayPress
-        dismissOnSnapToBottom
-        moveOnKeyboardChange
-        snapPoints={[60]}
-        open={shippingSheetOpen}
-        onOpenChange={setShippingSheetOpen}
-        animation="medium"
-        animationConfig={{
-          type: 'spring',
-          damping: 24,
-          mass: 0.9,
-          stiffness: 200,
-        }}>
-        <Sheet.Overlay
-          animation="lazy"
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="$sheetOverlay"
-        />
-        <Sheet.Handle />
-        <Sheet.Frame
-          backgroundColor="$surfaceSubtle"
-          borderTopLeftRadius="$6"
-          borderTopRightRadius="$6">
-          <YStack flex={1}>
-            <YStack px="$4" pt="$2" pb="$3">
-              <Text fontSize="$6" fontWeight="700" color="$color">
-                Opsi Pengiriman
-              </Text>
-            </YStack>
-
-            <Sheet.ScrollView showsVerticalScrollIndicator={false}>
-              <YStack gap="$2" px="$4" pb="$4">
-                {shippingOptions.map(option => {
-                  const optionKey = `${option.courier_code}-${option.service_code}`;
-
-                  return (
-                    <CourierOptionCard
-                      key={optionKey}
-                      option={option}
-                      optionKey={optionKey}
-                      isSelected={selectedShippingKey === optionKey}
-                      onSelect={handleSelectShippingKey}
-                      formatRupiah={formatRupiah}
-                    />
-                  );
-                })}
-              </YStack>
-            </Sheet.ScrollView>
-
-            <YStack px="$4" pt="$2" pb="$4">
-              <TamaguiButton
-                borderRadius="$3"
-                minHeight={44}
-                backgroundColor="$primary"
-                color="$surface"
-                disabled={isNetworkUnavailable}
-                opacity={isNetworkUnavailable ? 0.6 : 1}
-                onPress={() => setShippingSheetOpen(false)}>
-                Konfirmasi
-              </TamaguiButton>
-              {isOffline ? (
-                <Text fontSize="$2" color="$warning" textAlign="center" marginTop="$2">
-                  Tidak tersedia offline
-                </Text>
-              ) : null}
-            </YStack>
-          </YStack>
-        </Sheet.Frame>
-      </Sheet>
-
-      <Sheet
-        modal
-        dismissOnOverlayPress
-        dismissOnSnapToBottom
-        moveOnKeyboardChange
-        snapPoints={[60]}
-        open={addressSheetOpen}
-        onOpenChange={setAddressSheetOpen}
-        animation="medium"
-        animationConfig={{
-          type: 'spring',
-          damping: 24,
-          mass: 0.9,
-          stiffness: 200,
-        }}>
-        <Sheet.Overlay
-          animation="lazy"
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="$sheetOverlay"
-        />
-        <Sheet.Handle />
-        <Sheet.Frame
-          backgroundColor="$surfaceSubtle"
-          borderTopLeftRadius="$6"
-          borderTopRightRadius="$6">
-          <YStack flex={1}>
-            <YStack px="$4" pt="$2" pb="$3">
-              <Text fontSize="$6" fontWeight="700" color="$color">
-                Pilih Alamat
-              </Text>
-            </YStack>
-
-            {loadingAddresses ? (
-              <YStack flex={1} alignItems="center" justifyContent="center">
-                <Spinner size="large" color="$primary" />
-              </YStack>
-            ) : availableAddresses.length === 0 ? (
-              <YStack flex={1} alignItems="center" justifyContent="center" px="$4">
-                <Card
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderStyle="dashed"
-                  borderColor="$surfaceBorder"
-                  backgroundColor="$surface"
-                  padding="$4"
-                  width="100%">
-                  <YStack gap="$3" alignItems="center">
-                    <MapPinIcon size={28} color="$primary" />
-                    <Text color="$color" fontWeight="600" textAlign="center">
-                      Belum ada alamat
+            <Sheet
+              modal
+              dismissOnOverlayPress
+              dismissOnSnapToBottom
+              moveOnKeyboardChange
+              snapPoints={[60]}
+              open={addressSheetOpen}
+              onOpenChange={setAddressSheetOpen}
+              animation="medium"
+              animationConfig={{
+                type: 'spring',
+                damping: 24,
+                mass: 0.9,
+                stiffness: 200,
+              }}>
+              <Sheet.Overlay
+                animation="lazy"
+                enterStyle={{ opacity: 0 }}
+                exitStyle={{ opacity: 0 }}
+                backgroundColor="$sheetOverlay"
+              />
+              <Sheet.Handle />
+              <Sheet.Frame
+                backgroundColor="$surfaceSubtle"
+                borderTopLeftRadius="$6"
+                borderTopRightRadius="$6">
+                <YStack flex={1}>
+                  <YStack px="$4" pt="$2" pb="$3">
+                    <Text fontSize="$6" fontWeight="700" color="$color">
+                      Pilih Alamat
                     </Text>
                   </YStack>
-                </Card>
-              </YStack>
-            ) : (
-              <Sheet.ScrollView showsVerticalScrollIndicator={false}>
-                <YStack gap="$2" px="$4" pb="$4">
-                  {availableAddresses.map(address => (
-                    <AddressCardSheet
-                      key={address.id}
-                      address={address}
-                      isSelected={address.id === selectedAddressId}
-                      onSelect={handleSelectAddress}
-                    />
-                  ))}
-                </YStack>
-              </Sheet.ScrollView>
-            )}
-          </YStack>
-        </Sheet.Frame>
-      </Sheet>
 
-      {!isLoading && items.length > 0 ? (
-        <>
-          {isOffline ? (
-            <XStack
-              position="absolute"
-              left={16}
-              right={16}
-              bottom={BOTTOM_BAR_HEIGHT + insets.bottom + 8}
-              justifyContent="center"
-              pointerEvents="none">
-              <Text fontSize="$2" color="$warning" fontWeight="600">
-                Checkout tidak tersedia offline
-              </Text>
-            </XStack>
-          ) : null}
-          <StickyBottomBar
-            grandTotal={snapshot.packageValue + (selectedShippingOption?.price || 0)}
-            isLoading={startingCheckout}
-            disabled={(!selectedShippingOption && !activeOrderId) || isNetworkUnavailable}
-            onConfirm={handleWrappedStartCheckout}
-            confirmText={activeOrderId ? 'Lanjutkan Pembayaran' : 'Konfirmasi'}
-          />
-        </>
-      ) : null}
+                  {loadingAddresses ? (
+                    <YStack flex={1} alignItems="center" justifyContent="center">
+                      <Spinner size="large" color="$primary" />
+                    </YStack>
+                  ) : availableAddresses.length === 0 ? (
+                    <YStack flex={1} alignItems="center" justifyContent="center" px="$4">
+                      <Card
+                        borderRadius="$4"
+                        borderWidth={1}
+                        borderStyle="dashed"
+                        borderColor="$surfaceBorder"
+                        backgroundColor="$surface"
+                        padding="$4"
+                        width="100%">
+                        <YStack gap="$3" alignItems="center">
+                          <MapPinIcon size={28} color="$primary" />
+                          <Text color="$color" fontWeight="600" textAlign="center">
+                            Belum ada alamat
+                          </Text>
+                        </YStack>
+                      </Card>
+                    </YStack>
+                  ) : (
+                    <Sheet.ScrollView showsVerticalScrollIndicator={false}>
+                      <YStack gap="$2" px="$4" pb="$4">
+                        {availableAddresses.map(address => (
+                          <AddressCardSheet
+                            key={address.id}
+                            address={address}
+                            isSelected={address.id === selectedAddressId}
+                            onSelect={handleSelectAddress}
+                          />
+                        ))}
+                      </YStack>
+                    </Sheet.ScrollView>
+                  )}
+                </YStack>
+              </Sheet.Frame>
+            </Sheet>
+
+            {!isLoading && items.length > 0 ? (
+              <>
+                {isOffline ? (
+                  <XStack
+                    position="absolute"
+                    left={16}
+                    right={16}
+                    bottom={BOTTOM_BAR_HEIGHT + insets.bottom + 8}
+                    justifyContent="center"
+                    pointerEvents="none">
+                    <Text fontSize="$2" color="$warning" fontWeight="600">
+                      Checkout tidak tersedia offline
+                    </Text>
+                  </XStack>
+                ) : null}
+                <StickyBottomBar
+                  grandTotal={snapshot.packageValue + (selectedShippingOption?.price || 0)}
+                  isLoading={startingCheckout}
+                  disabled={(!selectedShippingOption && !activeOrderId) || isNetworkUnavailable}
+                  onConfirm={handleWrappedStartCheckout}
+                  confirmText={activeOrderId ? 'Lanjutkan Pembayaran' : 'Konfirmasi'}
+                />
+              </>
+            ) : null}
+          </YStack>
+        )}
+      </AnimatePresence>
     </YStack>
   );
 }

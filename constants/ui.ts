@@ -147,7 +147,7 @@ export const EMPTY_STATE = {
 } as const;
 
 export const TAB_BAR_LABEL_SIZE = 12;
-export const TAB_BAR_LABEL_NUMBER_OF_LINES = 2;
+export const TAB_BAR_LABEL_NUMBER_OF_LINES = 1;
 export const TAB_BAR_LABEL_MIN_FONT_SCALE = 0.85;
 export const TAB_BAR_LABEL_WIDTH = '100%';
 export const TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN = '$1';

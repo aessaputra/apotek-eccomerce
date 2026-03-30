@@ -8,8 +8,14 @@ const TabBarButton = React.forwardRef<View, BottomTabBarButtonProps>(
   function TabBarButton(props, ref) {
     const { children, ...pressableProps } = props;
     return (
-      <Pressable ref={ref} {...pressableProps} accessibilityRole="tab">
-        <YStack marginTop={TAB_BAR_LABEL_MARGIN_TOP_TOKEN}>{children}</YStack>
+      <Pressable ref={ref} {...pressableProps} accessibilityRole="tab" style={{ flex: 1 }}>
+        <YStack
+          flex={1}
+          alignItems="center"
+          justifyContent="center"
+          marginTop={TAB_BAR_LABEL_MARGIN_TOP_TOKEN}>
+          {children}
+        </YStack>
       </Pressable>
     );
   },

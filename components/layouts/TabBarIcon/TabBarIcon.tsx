@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import { YStack } from 'tamagui';
 import { HomeIcon } from '@/components/icons';
 import TabBarIconWithPill from '../TabBarIconWithPill';
 import { ICON_SIZES } from '@/constants/ui';
@@ -12,7 +13,13 @@ interface TabBarIconProps {
 function TabBarIcon({ color, focused, icon: IconComponent }: TabBarIconProps) {
   return (
     <TabBarIconWithPill focused={focused}>
-      <IconComponent size={ICON_SIZES.BUTTON} color={color} />
+      <YStack
+        width={ICON_SIZES.BUTTON}
+        height={ICON_SIZES.BUTTON}
+        alignItems="center"
+        justifyContent="center">
+        <IconComponent size={ICON_SIZES.BUTTON} color={color} />
+      </YStack>
     </TabBarIconWithPill>
   );
 }

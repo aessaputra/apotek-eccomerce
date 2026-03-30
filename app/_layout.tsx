@@ -112,6 +112,8 @@ function Router() {
   const tabBarStyle = useMemo(() => {
     const base = {
       display: (hideTabBar ? 'none' : 'flex') as 'none' | 'flex',
+      flexDirection: 'row' as const,
+      width: '100%' as const,
       height: TAB_BAR_HEIGHT,
       paddingTop: TAB_BAR_PADDING_TOP,
       paddingBottom: TAB_BAR_PADDING_BOTTOM,
