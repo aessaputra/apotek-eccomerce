@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "556f3bd3b59be46990bab40f922eb6ebfb711979a11836a6f78c78d658e82a41"
     },
+    "expo-deployment": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "9ea9f16374765c1b16764a51bd43a64098921b33f48e94d9c5c1cce24b335c10"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
