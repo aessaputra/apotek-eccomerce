@@ -146,9 +146,13 @@ export const EMPTY_STATE = {
   BORDER_WIDTH: 1,
 } as const;
 
-export const TAB_BAR_LABEL_SIZE = 12;
+export const TAB_BAR_LABEL_SIZE = 11;
+export const TAB_BAR_LABEL_MIN_SIZE = 10;
+export const TAB_BAR_LABEL_MAX_SIZE = 12;
 export const TAB_BAR_LABEL_NUMBER_OF_LINES = 1;
 export const TAB_BAR_LABEL_WIDTH = '100%';
+export const TAB_BAR_SMALL_SCREEN_WIDTH = 320;
+export const TAB_BAR_LARGE_SCREEN_WIDTH = 430;
 export const TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN = '$1';
 export const TAB_BAR_ITEM_PADDING_VERTICAL = 4;
 export const TAB_BAR_LABEL_MARGIN_TOP_TOKEN = '$1';
