@@ -178,7 +178,7 @@ describe('useProductsPaginated', () => {
     expect(mockRootState.app.productsCache['category-1']?.items[0]?.id).toBe('product-47');
   });
 
-  test('refresh invalidates cached products and replaces them with the newest page', async () => {
+  test('refresh replaces cached products with the newest page', async () => {
     mockRootState = {
       app: appReducer(
         mockRootState.app,
@@ -210,6 +210,76 @@ describe('useProductsPaginated', () => {
 
     expect(mockRootState.app.productsCache['category-1']?.items[0]?.id).toBe('product-200');
     expect(result.current.hasMore).toBe(false);
+  });
+
+  test('keeps cached products visible and suppresses visible error when revalidation fails', async () => {
+    const cachedProducts = createProducts(24);
+
+    mockRootState = {
+      app: appReducer(
+        mockRootState.app,
+        appActions.upsertProductsCachePage({
+          categoryId: 'category-1',
+          items: cachedProducts,
+          offset: 0,
+          hasMore: true,
+          fetchedAt: Date.now() - PRODUCTS_CACHE_TTL_MS - 1000,
+          payloadBytes: 2048,
+          durationMs: 90,
+          replace: true,
+        }),
+      ),
+    };
+
+    mockGetProductsOptimized.mockRejectedValue(new Error('Failed to fetch products'));
+
+    const { result, rerender } = renderHook(() => useProductsPaginated('category-1'));
+
+    await act(async () => {
+      await result.current.refreshIfNeeded();
+    });
+    rerender({});
+
+    expect(result.current.products).toHaveLength(24);
+    expect(result.current.products[0]?.id).toBe(cachedProducts[0]?.id);
+    expect(result.current.error).toBeNull();
+    expect(mockRootState.app.productsCache['category-1']?.status).toBe('success');
+    expect(mockRootState.app.productsCache['category-1']?.error).toBeNull();
+  });
+
+  test('keeps cached products visible and suppresses visible error when refresh fails', async () => {
+    const cachedProducts = createProducts(24);
+
+    mockRootState = {
+      app: appReducer(
+        mockRootState.app,
+        appActions.upsertProductsCachePage({
+          categoryId: 'category-1',
+          items: cachedProducts,
+          offset: 0,
+          hasMore: true,
+          fetchedAt: Date.now() - PRODUCTS_CACHE_TTL_MS - 1000,
+          payloadBytes: 2048,
+          durationMs: 90,
+          replace: true,
+        }),
+      ),
+    };
+
+    mockGetProductsOptimized.mockRejectedValue(new Error('Failed to fetch products'));
+
+    const { result, rerender } = renderHook(() => useProductsPaginated('category-1'));
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+    rerender({});
+
+    expect(result.current.products).toHaveLength(24);
+    expect(result.current.products[0]?.id).toBe(cachedProducts[0]?.id);
+    expect(result.current.error).toBeNull();
+    expect(mockRootState.app.productsCache['category-1']?.status).toBe('success');
+    expect(mockRootState.app.productsCache['category-1']?.error).toBeNull();
   });
 
   test('does not request another page when the last full page reports hasMore false', async () => {

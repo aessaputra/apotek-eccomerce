@@ -170,10 +170,10 @@ export default function Home() {
   );
 
   const handleProductPress = useCallback(
-    (productId: string) => {
+    (productId: string, productName: string) => {
       router.push({
         pathname: '/home/product-details',
-        params: { id: productId },
+        params: { id: productId, name: productName },
       });
     },
     [router],
@@ -343,7 +343,7 @@ export default function Home() {
                       item={item}
                       width={productWidth}
                       iconColor={iconColor}
-                      onPress={() => handleProductPress(item.id)}
+                      onPress={() => handleProductPress(item.id, item.name)}
                     />
                   ))}
                 </XStack>

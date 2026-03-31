@@ -38,8 +38,11 @@ export default function ProductSearch() {
   }, [router]);
 
   const handleProductPress = useCallback(
-    (productId: string) => {
-      router.push({ pathname: '/home/product-details', params: { id: productId } });
+    (productId: string, productName: string) => {
+      router.push({
+        pathname: '/home/product-details',
+        params: { id: productId, name: productName },
+      });
     },
     [router],
   );

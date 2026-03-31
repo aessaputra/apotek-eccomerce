@@ -9,6 +9,7 @@ import {
   type ProductListItem,
 } from '@/services';
 import { cancelDedupedRequests, runDedupedRequest } from '@/utils/requestDeduplication';
+import { classifyError, translateErrorMessage } from '@/utils/error';
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
@@ -172,16 +173,17 @@ export function useProductsPaginated(categoryId?: string): UseProductsPaginatedR
           return;
         }
 
-        const message = error instanceof Error ? error.message : 'Failed to load products.';
+        const message = translateErrorMessage(classifyError(error));
+        const shouldSurfaceError = products.length === 0;
 
         dispatch(
           appActions.setProductsCacheStatus({
             categoryId,
-            status: 'error',
-            error: message,
+            status: shouldSurfaceError ? 'error' : 'success',
+            error: shouldSurfaceError ? message : null,
           }),
         );
-        setLocalError(message);
+        setLocalError(shouldSurfaceError ? message : null);
       } finally {
         if (activeRequestIdRef.current === requestId) {
           if (reason === 'initial') {
@@ -233,9 +235,8 @@ export function useProductsPaginated(categoryId?: string): UseProductsPaginatedR
       return;
     }
 
-    dispatch(appActions.invalidateProductsCache(categoryId));
     await fetchProductsPage({ offset: 0, replace: true, reason: 'refresh' });
-  }, [categoryId, dispatch, fetchProductsPage]);
+  }, [categoryId, fetchProductsPage]);
 
   const loadMore = useCallback(async (): Promise<void> => {
     if (
@@ -276,7 +277,7 @@ export function useProductsPaginated(categoryId?: string): UseProductsPaginatedR
 
   return {
     products,
-    error: localError ?? cacheEntry?.error ?? null,
+    error: products.length === 0 ? (localError ?? cacheEntry?.error ?? null) : null,
     hasMore,
     isInitialLoading,
     isRefreshing,

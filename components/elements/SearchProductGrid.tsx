@@ -7,7 +7,7 @@ import type { ProductWithImages } from '@/services/home.service';
 export interface SearchProductGridProps {
   products: ProductWithImages[];
   iconColor: string;
-  onProductPress: (productId: string) => void;
+  onProductPress: (productId: string, productName: string) => void;
   onAddToCart?: (productId: string) => void;
 }
 
@@ -60,7 +60,7 @@ export default function SearchProductGrid({
         item={item}
         width={cardWidth}
         iconColor={iconColor}
-        onPress={() => onProductPress(item.id)}
+        onPress={() => onProductPress(item.id, item.name)}
         onAddToCart={onAddToCart ? () => onAddToCart(item.id) : undefined}
       />
     ),

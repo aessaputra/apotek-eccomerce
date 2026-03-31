@@ -1,5 +1,7 @@
 import { supabase } from '@/utils/supabase';
 import type { Tables } from '@/types/supabase';
+import { classifyError, isRetryableError } from '@/utils/error';
+import { withRetry } from '@/utils/retry';
 
 export type CategoryRow = Tables<'categories'>;
 export type ProductRow = Tables<'products'>;
@@ -186,29 +188,36 @@ export async function getProductsOptimized(
   }
 
   try {
-    let query = supabase
-      .from('products')
-      .select(PRODUCT_LIST_SELECT)
-      .eq('category_id', normalizedCategoryId)
-      .eq('is_active', true)
-      .gt('stock', 0)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + requestedLimit);
+    const data = await withRetry(
+      async () => {
+        let query = supabase
+          .from('products')
+          .select(PRODUCT_LIST_SELECT)
+          .eq('category_id', normalizedCategoryId)
+          .eq('is_active', true)
+          .gt('stock', 0)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + requestedLimit);
 
-    if (params.signal) {
-      query = query.abortSignal(params.signal);
-    }
+        if (params.signal) {
+          query = query.abortSignal(params.signal);
+        }
 
-    const { data, error } = await query;
+        const { data: rows, error } = await query;
 
-    if (error) {
-      logHomeServiceError('getProductsOptimized query failed', error);
-      return {
-        data: null,
-        error: toUserError(error, 'Failed to load products. Please try again.'),
-        metrics: null,
-      };
-    }
+        if (error) {
+          throw error;
+        }
+
+        return rows;
+      },
+      {
+        maxRetries: 2,
+        baseDelay: 250,
+        maxDelay: 1000,
+        shouldRetry: error => !isAbortError(error) && isRetryableError(classifyError(error)),
+      },
+    );
 
     const rows = (
       (data ?? []) as unknown as Array<ProductRow & { product_images?: ProductListImage[] | null }>

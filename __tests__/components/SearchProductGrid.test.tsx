@@ -95,7 +95,7 @@ describe('<SearchProductGrid />', () => {
     fireEvent.press(screen.getByLabelText('Buka product-1'));
     fireEvent.press(screen.getByLabelText('Tambah product-2'));
 
-    expect(onProductPress).toHaveBeenCalledWith('product-1');
+    expect(onProductPress).toHaveBeenCalledWith('product-1', 'Vitamin C');
     expect(onAddToCart).toHaveBeenCalledWith('product-2');
   });
 });

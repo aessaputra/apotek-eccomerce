@@ -2,11 +2,11 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Platform, RefreshControl, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card, Spinner, Text, YStack, styled, useMedia, useTheme } from 'tamagui';
+import { Spinner, Text, YStack, styled, useMedia, useTheme } from 'tamagui';
 import ProductCard from '@/components/elements/ProductCard';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useProductsPaginated } from '@/hooks';
-import { addProductToCart, PRODUCTS_CACHE_TTL_MS, type ProductListItem } from '@/services';
+import { addProductToCart, type ProductListItem } from '@/services';
 import { useAppSlice } from '@/slices';
 import type { RouteParams } from '@/types/routes.types';
 import { getThemeColor } from '@/utils/theme';
@@ -53,7 +53,7 @@ interface ProductGridItemProps {
   item: ProductListItem;
   width: number;
   iconColor: string;
-  onPress: (productId: string) => void;
+  onPress: (productId: string, productName: string) => void;
   onAddToCart: (productId: string) => void;
 }
 
@@ -70,7 +70,7 @@ const ProductGridItem = React.memo(function ProductGridItem({
         item={item}
         width={width}
         iconColor={iconColor}
-        onPress={() => onPress(item.id)}
+        onPress={() => onPress(item.id, item.name)}
         onAddToCart={() => onAddToCart(item.id)}
       />
     </YStack>
@@ -124,21 +124,6 @@ function ListFooter({
   );
 }
 
-function CacheErrorBanner({ message }: { message: string }) {
-  return (
-    <Card bordered size="$3" backgroundColor="$dangerSoft" borderColor="$danger" marginBottom="$3">
-      <YStack padding="$3" gap="$1">
-        <Text fontSize="$3" fontWeight="700" color="$danger">
-          Cached products are shown, but the latest refresh failed
-        </Text>
-        <Text fontSize="$2" color="$danger">
-          {message}
-        </Text>
-      </YStack>
-    </Card>
-  );
-}
-
 export default function CategoryProductList() {
   const router = useRouter();
   const media = useMedia();
@@ -154,6 +139,11 @@ export default function CategoryProductList() {
     if (Array.isArray(value)) return value[0] ?? '';
     return typeof value === 'string' ? value : '';
   }, [params.categoryId]);
+  const categoryName = useMemo(() => {
+    const value = params.categoryName;
+    if (Array.isArray(value)) return value[0] ?? '';
+    return typeof value === 'string' ? value : '';
+  }, [params.categoryName]);
 
   const {
     products,
@@ -166,7 +156,6 @@ export default function CategoryProductList() {
     refresh,
     refreshIfNeeded,
     loadMore,
-    metrics,
   } = useProductsPaginated(categoryId);
 
   const topPadding = media.gtSm ? 16 : 12;
@@ -195,10 +184,10 @@ export default function CategoryProductList() {
   }, [refresh]);
 
   const handleOpenProductDetails = useCallback(
-    (productId: string) => {
+    (productId: string, productName: string) => {
       router.push({
         pathname: '/home/product-details',
-        params: { id: productId },
+        params: { id: productId, name: productName },
       });
     },
     [router],
@@ -245,15 +234,6 @@ export default function CategoryProductList() {
 
     void loadMore();
   }, [hasMore, loadMore]);
-
-  const cacheSummary = useMemo(() => {
-    if (metrics.cacheAgeMs === null) {
-      return null;
-    }
-
-    return `Cache ${Math.round(metrics.cacheAgeMs / 1000)}s • TTL ${Math.round(PRODUCTS_CACHE_TTL_MS / 1000)}s • ${metrics.lastPayloadBytes} bytes • ${metrics.lastFetchDurationMs} ms`;
-  }, [metrics.cacheAgeMs, metrics.lastFetchDurationMs, metrics.lastPayloadBytes]);
-
   if (!categoryId.trim()) {
     return (
       <ScreenRoot>
@@ -307,12 +287,6 @@ export default function CategoryProductList() {
         }
         ListHeaderComponent={
           <ContentStack pt={topPadding} px={horizontalPadding} pb="$3">
-            {cacheSummary ? (
-              <Text fontSize="$2" color="$colorMuted" pt="$2">
-                {cacheSummary}
-              </Text>
-            ) : null}
-            {error && products.length > 0 ? <CacheErrorBanner message={error} /> : null}
             {cartFeedback ? (
               <Text fontSize={13} color="$primary" pt="$2">
                 {cartFeedback}
@@ -330,7 +304,9 @@ export default function CategoryProductList() {
                   No products found
                 </Text>
                 <Text fontSize={13} color="$colorSubtle" textAlign="center">
-                  This category has no active products with stock.
+                  {categoryName
+                    ? `${categoryName} has no active products with stock.`
+                    : 'This category has no active products with stock.'}
                 </Text>
               </EmptyState>
             </ContentStack>
