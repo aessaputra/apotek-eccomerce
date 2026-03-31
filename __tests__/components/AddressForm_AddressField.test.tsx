@@ -1,7 +1,7 @@
 import { test, expect, jest } from '@jest/globals';
 import { render, renderWithDarkTheme, screen, fireEvent } from '@/test-utils/renderWithTheme';
 import * as Haptics from 'expo-haptics';
-import AddressField from '@/components/AddressFormSheet/AddressField';
+import AddressField from '@/components/AddressForm/AddressField';
 
 jest.mock('expo-haptics', () => ({
   __esModule: true,
@@ -13,7 +13,7 @@ jest.mock('expo-haptics', () => ({
 
 const mockImpactAsync = jest.mocked(Haptics.impactAsync);
 
-jest.mock('@/components/AddressFormSheet/AddressEditSheet', () => ({
+jest.mock('@/components/AddressForm/AddressEditSheet', () => ({
   __esModule: true,
   default: ({
     open,

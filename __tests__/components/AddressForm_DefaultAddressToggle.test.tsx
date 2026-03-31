@@ -1,7 +1,7 @@
 import { test, expect, jest } from '@jest/globals';
 import { render, renderWithDarkTheme, screen, fireEvent } from '@/test-utils/renderWithTheme';
 import * as Haptics from 'expo-haptics';
-import DefaultAddressToggle from '@/components/AddressFormSheet/DefaultAddressToggle';
+import DefaultAddressToggle from '@/components/AddressForm/DefaultAddressToggle';
 
 jest.mock('expo-haptics', () => ({
   __esModule: true,

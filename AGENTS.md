@@ -18,7 +18,7 @@ Expo SDK 54 pharmacy e-commerce app (React Native 0.81.5, React 19.1, TypeScript
 │   ├── elements/       # Atomic UI components (Button, Avatar, FormInput...)
 │   ├── layouts/        # Layout components (TabBarIconWithPill)
 │   ├── icons/          # Custom icon components
-│   ├── AddressFormSheet/  # Complex composite (address picker + map)
+│   ├── AddressForm/       # Complex composite (address form + area picker + map)
 │   └── MapPin/         # Map integration component
 ├── services/           # API abstraction layer — see services/AGENTS.md
 ├── hooks/              # Custom React hooks (auth, address, cart, home data, theme)
@@ -166,45 +166,45 @@ The app uses a pharmacy-focused dark-mode color system with a "soft-charcoal" hi
 
 #### Elevation Model
 
-| Level | Token | Hex | Usage |
-|-------|-------|-----|-------|
-| 0 | `background` | `#0F1419` | App canvas (deepest) |
-| 0.5 | `backgroundHover` | `#141B22` | Hover state on canvas |
-| 1 | `surface` | `#1A2329` | Cards, containers |
-| 2 | `surfaceSubtle` | `#242D35` | Elevated cards, modals |
-| 3 | `surfaceElevated` | `#2D3A44` | Highest elevation, dropdowns |
+| Level | Token             | Hex       | Usage                        |
+| ----- | ----------------- | --------- | ---------------------------- |
+| 0     | `background`      | `#0F1419` | App canvas (deepest)         |
+| 0.5   | `backgroundHover` | `#141B22` | Hover state on canvas        |
+| 1     | `surface`         | `#1A2329` | Cards, containers            |
+| 2     | `surfaceSubtle`   | `#242D35` | Elevated cards, modals       |
+| 3     | `surfaceElevated` | `#2D3A44` | Highest elevation, dropdowns |
 
 Each elevation level increases luminosity by ~8% for perceptible depth without harsh contrast jumps.
 
 #### Text Hierarchy
 
-| Token | Hex | Contrast Ratio | WCAG Level | Usage |
-|-------|-----|----------------|------------|-------|
-| `color` | `#F0F4F8` | ~16.75:1 | AAA | Primary text (headings, labels) |
-| `colorSubtle` | `#A8B8C4` | ~9.10:1 | AAA | Secondary text (body) |
-| `colorMuted` | `#7A8A9A` | ~5.23:1 | AA | Muted / tertiary text |
-| `placeholderColor` | `#7A8A9A` | ~5.23:1 | AA | Form hints and placeholders |
-| `searchPlaceholderColor` | `#B0B0B0` | ~8.53:1 | AAA | Search-field placeholder text |
-| `colorDisabled` | `#5A6A7A` | ~3.33:1 | - | Disabled states |
+| Token                    | Hex       | Contrast Ratio | WCAG Level | Usage                           |
+| ------------------------ | --------- | -------------- | ---------- | ------------------------------- |
+| `color`                  | `#F0F4F8` | ~16.75:1       | AAA        | Primary text (headings, labels) |
+| `colorSubtle`            | `#A8B8C4` | ~9.10:1        | AAA        | Secondary text (body)           |
+| `colorMuted`             | `#7A8A9A` | ~5.23:1        | AA         | Muted / tertiary text           |
+| `placeholderColor`       | `#7A8A9A` | ~5.23:1        | AA         | Form hints and placeholders     |
+| `searchPlaceholderColor` | `#B0B0B0` | ~8.53:1        | AAA        | Search-field placeholder text   |
+| `colorDisabled`          | `#5A6A7A` | ~3.33:1        | -          | Disabled states                 |
 
 #### Brand Accent (Cyan)
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `primary` | `#06B6D4` | Primary interactive elements |
-| `brandPrimary` | `#06B6D4` | Brand primary color |
-| `brandPrimarySoft` | `hsla(187, 92%, 47%, 1)` | Secondary actions |
-| `tabBarPillBackground` | `rgba(6,182,212,0.20)` | Tab bar active indicator |
-| `outlineColor` | `rgba(6,182,212,0.3)` | Focus ring |
+| Token                  | Hex                      | Usage                        |
+| ---------------------- | ------------------------ | ---------------------------- |
+| `primary`              | `#06B6D4`                | Primary interactive elements |
+| `brandPrimary`         | `#06B6D4`                | Brand primary color          |
+| `brandPrimarySoft`     | `hsla(187, 92%, 47%, 1)` | Secondary actions            |
+| `tabBarPillBackground` | `rgba(6,182,212,0.20)`   | Tab bar active indicator     |
+| `outlineColor`         | `rgba(6,182,212,0.3)`    | Focus ring                   |
 
 #### Border Colors
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `borderColor` | `#5A7887` | Accessible input/action borders |
-| `borderColorHover` | `#6E96A4` | Hover state borders |
-| `borderColorFocus` | `#06B6D4` | Focus state borders |
-| `surfaceBorder` | `#2D3A44` | Surface borders |
+| Token              | Hex       | Usage                           |
+| ------------------ | --------- | ------------------------------- |
+| `borderColor`      | `#5A7887` | Accessible input/action borders |
+| `borderColorHover` | `#6E96A4` | Hover state borders             |
+| `borderColorFocus` | `#06B6D4` | Focus state borders             |
+| `surfaceBorder`    | `#2D3A44` | Surface borders                 |
 
 ### Light Mode Palette (Preserved)
 

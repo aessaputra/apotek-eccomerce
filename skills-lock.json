@@ -11,10 +11,30 @@
       "sourceType": "github",
       "computedHash": "556f3bd3b59be46990bab40f922eb6ebfb711979a11836a6f78c78d658e82a41"
     },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "computedHash": "d31e234f0c90694a670222cdd1dafa853e051d7066beda389f1097c22dadd461"
+    },
     "native-data-fetching": {
       "source": "expo/skills",
       "sourceType": "github",
       "computedHash": "3cd0ba91f359f9f84cd40f36f356287994a0e952520fac6e03ef7952d0397879"
+    },
+    "react-native": {
+      "source": "vercel-labs/json-render",
+      "sourceType": "github",
+      "computedHash": "1cfeffbd71f8fc350e7fdb5cd1f76067d64b60f2fef2300fd83181ad90148451"
+    },
+    "react-native-reanimated": {
+      "source": "dralgorhythm/claude-agentic-framework",
+      "sourceType": "github",
+      "computedHash": "456790e1db75301d220f2b03252d5885ab62ba1b1773b3549a65c96fe677075a"
+    },
+    "react-ui-patterns": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "6d4eb6b0bda3479324f508314a737ed7cac0c4ed60538bd7bf892b1977a3e09e"
     },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",

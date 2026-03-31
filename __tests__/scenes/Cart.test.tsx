@@ -400,6 +400,40 @@ describe('<Cart />', () => {
     expect(screen.queryByText('Cart Loading Skeleton')).toBeNull();
   });
 
+  it('hides the navigation header during the first cart load', () => {
+    mockCartHookState.items = [];
+    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartHookState.isLoading = true;
+    mockCartQuantityHookState.items = [];
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+
+    render(<Cart />);
+
+    expect(mockSetOptions).toHaveBeenCalledWith({ headerShown: false });
+  });
+
+  it('shows the navigation header again after the initial load completes', () => {
+    mockCartHookState.items = [];
+    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartHookState.isLoading = true;
+    mockCartQuantityHookState.items = [];
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+
+    const view = render(<Cart />);
+
+    mockCartHookState.items = [createItem(1)];
+    mockCartHookState.snapshot = { itemCount: 1, estimatedWeightGrams: 100, packageValue: 10001 };
+    mockCartHookState.isLoading = false;
+    mockCartQuantityHookState.items = mockCartHookState.items;
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+
+    view.rerender(<Cart />);
+
+    expect(screen.getByText('Produk 1')).not.toBeNull();
+    expect(mockSetOptions).toHaveBeenNthCalledWith(1, { headerShown: false });
+    expect(mockSetOptions).toHaveBeenLastCalledWith({ headerShown: true });
+  });
+
   it('does not show realtime synchronization text while the cart reconnects', () => {
     mockCartHookState.realtimeState = 'reconnecting';
 
@@ -420,5 +454,6 @@ describe('<Cart />', () => {
 
     expect(screen.queryByLabelText('Memuat keranjang')).toBeNull();
     expect(screen.getByText('Produk 1')).not.toBeNull();
+    expect(mockSetOptions).toHaveBeenCalledWith({ headerShown: true });
   });
 });

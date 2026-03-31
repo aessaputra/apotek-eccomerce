@@ -2,7 +2,7 @@ import { createRef } from 'react';
 import type { TextInput as RNTextInput } from 'react-native';
 import { test, expect, jest } from '@jest/globals';
 import { render, renderWithDarkTheme, screen, fireEvent } from '@/test-utils/renderWithTheme';
-import AddressInfoSection from '@/components/AddressFormSheet/AddressInfoSection';
+import AddressInfoSection from '@/components/AddressForm/AddressInfoSection';
 
 function createProps(overrides: Partial<React.ComponentProps<typeof AddressInfoSection>> = {}) {
   return {

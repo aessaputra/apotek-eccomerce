@@ -30,7 +30,7 @@ components/
 │   ├── StickyBottomBar/   # Fixed bottom action bar
 │   ├── AppAlertDialog/    # Confirmation dialog
 │   └── SearchProductGrid.tsx  # (exception: no folder)
-├── AddressFormSheet/      # Complex: address form + area picker + map
+├── AddressForm/           # Complex: address form + area picker + map
 ├── AreaPicker/            # Area/district selector
 ├── MapPin/                # Map pin with react-native-maps (dynamic require for web)
 ├── layouts/               # Layout components
@@ -40,12 +40,12 @@ components/
 
 ## WHERE TO LOOK
 
-| Task                  | Location              | Notes                                                  |
-| --------------------- | --------------------- | ------------------------------------------------------ |
-| Add atomic component  | `elements/[Name]/`    | Create `Name.tsx` + `index.ts` + `Name.test.tsx`       |
-| Add complex composite | Root of `components/` | Only for multi-file composites (like AddressFormSheet) |
-| Add layout component  | `layouts/[Name]/`     | Navigation/structural components                       |
-| Add custom icon       | `icons/`              | SVG-based icon components                              |
+| Task                  | Location              | Notes                                             |
+| --------------------- | --------------------- | ------------------------------------------------- |
+| Add atomic component  | `elements/[Name]/`    | Create `Name.tsx` + `index.ts` + `Name.test.tsx`  |
+| Add complex composite | Root of `components/` | Only for multi-file composites (like AddressForm) |
+| Add layout component  | `layouts/[Name]/`     | Navigation/structural components                  |
+| Add custom icon       | `icons/`              | SVG-based icon components                         |
 
 ## CONVENTIONS
 

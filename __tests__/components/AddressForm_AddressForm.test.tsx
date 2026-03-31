@@ -2,7 +2,7 @@ import { createRef } from 'react';
 import type { TextInput as RNTextInput } from 'react-native';
 import { test, expect, jest } from '@jest/globals';
 import { render, renderWithDarkTheme, screen, fireEvent } from '@/test-utils/renderWithTheme';
-import AddressForm from '@/components/AddressFormSheet/AddressForm';
+import AddressForm from '@/components/AddressForm/AddressForm';
 import type { AddressFormErrors, AddressFormValues } from '@/utils/addressValidation';
 import type { BiteshipArea } from '@/types/shipping';
 

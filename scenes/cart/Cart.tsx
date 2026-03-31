@@ -1,6 +1,14 @@
 'use client';
 
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigation, useRouter } from 'expo-router';
 import { FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -129,6 +137,7 @@ function CartInitialLoadingOverlay() {
       right={0}
       bottom={0}
       zIndex={1000}
+      backgroundColor="$background"
       alignItems="center"
       justifyContent="center"
       animation="quick"
@@ -136,14 +145,6 @@ function CartInitialLoadingOverlay() {
       exitStyle={{ opacity: 0 }}
       opacity={1}
       aria-label="Memuat keranjang">
-      <YStack
-        position="absolute"
-        top={0}
-        left={0}
-        right={0}
-        bottom={0}
-        backgroundColor="$sheetOverlay"
-      />
       <YStack alignItems="center" justifyContent="center" padding="$4">
         <Spinner size="large" color="$primary" />
       </YStack>
@@ -481,10 +482,16 @@ export default function Cart() {
 
   const showInitialLoadingOverlay = isLoading && items.length === 0;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: !showInitialLoadingOverlay,
     });
+
+    return () => {
+      navigation.setOptions({
+        headerShown: true,
+      });
+    };
   }, [navigation, showInitialLoadingOverlay]);
 
   useEffect(() => {

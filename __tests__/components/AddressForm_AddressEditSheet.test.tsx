@@ -1,6 +1,6 @@
 import { test, expect, jest } from '@jest/globals';
 import { render, renderWithDarkTheme, screen, fireEvent } from '@/test-utils/renderWithTheme';
-import AddressEditSheet from '@/components/AddressFormSheet/AddressEditSheet';
+import AddressEditSheet from '@/components/AddressForm/AddressEditSheet';
 
 jest.mock('tamagui', () => {
   const actual = jest.requireActual('tamagui') as typeof import('tamagui');
