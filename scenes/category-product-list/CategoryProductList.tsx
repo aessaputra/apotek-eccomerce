@@ -2,8 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Platform, RefreshControl, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card, Spinner, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
-import { ChevronLeftIcon } from '@/components/icons';
+import { Card, Spinner, Text, YStack, styled, useMedia, useTheme } from 'tamagui';
 import ProductCard from '@/components/elements/ProductCard';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useProductsPaginated } from '@/hooks';
@@ -36,19 +35,6 @@ const ContentStack = styled(YStack, {
   $gtLg: {
     maxWidth: 1080,
   },
-});
-
-const HeaderButton = styled(Card, {
-  width: 40,
-  height: 40,
-  borderRadius: '$10',
-  backgroundColor: '$surface',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  alignItems: 'center',
-  justifyContent: 'center',
-  elevation: 2,
-  pressStyle: { opacity: 0.9, scale: 0.98 },
 });
 
 const EmptyState = styled(YStack, {
@@ -153,13 +139,13 @@ function CacheErrorBanner({ message }: { message: string }) {
   );
 }
 
-export default function ProductList() {
+export default function CategoryProductList() {
   const router = useRouter();
   const media = useMedia();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const params = useLocalSearchParams<RouteParams<'home/product-list'>>();
+  const params = useLocalSearchParams<RouteParams<'home/category-product-list'>>();
   const { user } = useAppSlice();
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
 
@@ -168,12 +154,6 @@ export default function ProductList() {
     if (Array.isArray(value)) return value[0] ?? '';
     return typeof value === 'string' ? value : '';
   }, [params.categoryId]);
-
-  const categoryName = useMemo(() => {
-    const value = params.categoryName;
-    if (Array.isArray(value)) return value[0] ?? 'Category';
-    return typeof value === 'string' ? value : 'Category';
-  }, [params.categoryName]);
 
   const {
     products,
@@ -189,7 +169,7 @@ export default function ProductList() {
     metrics,
   } = useProductsPaginated(categoryId);
 
-  const topPadding = (media.gtSm ? 16 : 12) + insets.top;
+  const topPadding = media.gtSm ? 16 : 12;
   const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
   const columns = media.gtMd ? 3 : 2;
   const maxWidth = media.gtLg ? 1080 : media.gtMd ? 920 : 720;
@@ -213,10 +193,6 @@ export default function ProductList() {
   const handleRefresh = useCallback(() => {
     void refresh();
   }, [refresh]);
-
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
 
   const handleOpenProductDetails = useCallback(
     (productId: string) => {
@@ -281,7 +257,9 @@ export default function ProductList() {
   if (!categoryId.trim()) {
     return (
       <ScreenRoot>
-        <ErrorState message="Missing category id." />
+        <YStack pt={topPadding}>
+          <ErrorState message="Missing category id." />
+        </YStack>
       </ScreenRoot>
     );
   }
@@ -289,25 +267,9 @@ export default function ProductList() {
   if (isInitialLoading && products.length === 0) {
     return (
       <ScreenRoot>
-        <ContentStack pt={topPadding} px={horizontalPadding} pb="$3">
-          <XStack alignItems="center" justifyContent="space-between" gap="$3">
-            <HeaderButton onPress={handleBack} role="button" aria-label="Back">
-              <ChevronLeftIcon size={20} color={getThemeColor(theme, 'color')} />
-            </HeaderButton>
-            <Text
-              flex={1}
-              textAlign="center"
-              px="$2"
-              fontSize={16}
-              fontWeight="700"
-              color="$color"
-              numberOfLines={1}>
-              {categoryName}
-            </Text>
-            <YStack width={40} />
-          </XStack>
-        </ContentStack>
-        <LoadingState />
+        <YStack pt={topPadding} flex={1}>
+          <LoadingState />
+        </YStack>
       </ScreenRoot>
     );
   }
@@ -345,22 +307,6 @@ export default function ProductList() {
         }
         ListHeaderComponent={
           <ContentStack pt={topPadding} px={horizontalPadding} pb="$3">
-            <XStack alignItems="center" justifyContent="space-between" gap="$3">
-              <HeaderButton onPress={handleBack} role="button" aria-label="Back">
-                <ChevronLeftIcon size={20} color={getThemeColor(theme, 'color')} />
-              </HeaderButton>
-              <Text
-                flex={1}
-                textAlign="center"
-                px="$2"
-                fontSize={16}
-                fontWeight="700"
-                color="$color"
-                numberOfLines={1}>
-                {categoryName}
-              </Text>
-              <YStack width={40} />
-            </XStack>
             {cacheSummary ? (
               <Text fontSize="$2" color="$colorMuted" pt="$2">
                 {cacheSummary}

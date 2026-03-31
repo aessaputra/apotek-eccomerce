@@ -162,7 +162,7 @@ export default function Home() {
   const handleCategoryPress = useCallback(
     (categoryId: string, categoryName: string) => {
       router.push({
-        pathname: '/home/product-list',
+        pathname: '/home/category-product-list',
         params: { categoryId, categoryName },
       });
     },

@@ -34,6 +34,7 @@ function ProfileStackLayout() {
           const isEdit = typeof id === 'string' && id.length > 0;
           return {
             title: isEdit ? 'Edit Alamat' : 'Tambah Alamat',
+            headerShown: true,
             headerTitleAlign: 'center',
           };
         }}
@@ -49,6 +50,7 @@ function ProfileStackLayout() {
         name="edit-profile"
         options={{
           title: 'Edit Profil',
+          headerShown: true,
           headerTitleAlign: 'center',
         }}
       />

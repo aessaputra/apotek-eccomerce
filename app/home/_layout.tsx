@@ -28,14 +28,16 @@ function HomeStackLayout() {
         name="product-details"
         options={{
           title: 'Product Details',
-          headerShown: false,
+          headerShown: true,
+          headerTitleAlign: 'center',
         }}
       />
       <Stack.Screen
-        name="product-list"
+        name="category-product-list"
         options={{
           title: 'Products',
-          headerShown: false,
+          headerShown: true,
+          headerTitleAlign: 'center',
         }}
       />
     </Stack>

@@ -16,13 +16,7 @@ import {
   useMedia,
   useTheme,
 } from 'tamagui';
-import {
-  AlertCircleIcon,
-  CartIcon,
-  ChevronLeftIcon,
-  HeartIcon,
-  PillIcon,
-} from '@/components/icons';
+import { AlertCircleIcon, CartIcon, HeartIcon, PillIcon } from '@/components/icons';
 import {
   addProductToCart,
   formatPrice,
@@ -47,19 +41,6 @@ const ContentStack = styled(YStack, {
   maxWidth: 560,
   alignSelf: 'center',
   gap: '$4',
-});
-
-const HeaderButton = styled(Card, {
-  width: 40,
-  height: 40,
-  borderRadius: '$10',
-  backgroundColor: '$surface',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  alignItems: 'center',
-  justifyContent: 'center',
-  elevation: 2,
-  pressStyle: { opacity: 0.9, scale: 0.98 },
 });
 
 const SkeletonBlock = styled(YStack, {
@@ -154,12 +135,6 @@ function ProductDetailsLoading({
     <ScreenRoot>
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         <ContentStack pt={topPadding} px={horizontalPadding} pb={bottomPadding} flex={1}>
-          <XStack alignItems="center" justifyContent="space-between">
-            <SkeletonBlock width={40} height={40} borderRadius="$10" />
-            <SkeletonBlock width={80} height={18} />
-            <YStack width={40} />
-          </XStack>
-
           <SkeletonBlock width="100%" aspectRatio={1} borderRadius="$6" />
 
           <YStack gap="$3">
@@ -193,8 +168,6 @@ interface ProductErrorStateProps {
   topPadding: number;
   horizontalPadding: '$4' | '$5';
   message: string;
-  title: string;
-  onBack: () => void;
   onRetry: () => void;
 }
 
@@ -202,8 +175,6 @@ function ProductErrorState({
   topPadding,
   horizontalPadding,
   message,
-  title,
-  onBack,
   onRetry,
 }: ProductErrorStateProps) {
   const theme = useTheme();
@@ -211,37 +182,8 @@ function ProductErrorState({
   return (
     <ScreenRoot>
       <ContentStack pt={topPadding} px={horizontalPadding} pb="$6" flex={1}>
-        <XStack alignItems="center" justifyContent="space-between">
-          <Card
-            width={40}
-            height={40}
-            borderRadius="$10"
-            backgroundColor="$surface"
-            borderWidth={1}
-            borderColor="$surfaceBorder"
-            alignItems="center"
-            justifyContent="center"
-            pressStyle={{ opacity: 0.9, scale: 0.98 }}
-            onPress={onBack}>
-            <ChevronLeftIcon size={20} color={getThemeColor(theme, 'color')} />
-          </Card>
-
-          <Text
-            fontSize={16}
-            fontWeight="700"
-            color="$color"
-            flex={1}
-            textAlign="center"
-            numberOfLines={1}
-            px="$2">
-            {title}
-          </Text>
-
-          <YStack width={40} />
-        </XStack>
-
         <YStack
-          marginTop="$7"
+          marginTop="$3"
           backgroundColor="$surface"
           borderWidth={1}
           borderColor="$surfaceBorder"
@@ -300,7 +242,7 @@ export default function ProductDetails() {
 
   const productId = Array.isArray(params.id) ? (params.id[0] ?? '') : (params.id ?? '');
 
-  const topPadding = (media.gtSm ? 16 : 12) + insets.top;
+  const topPadding = media.gtSm ? 16 : 12;
   const horizontalPadding: '$4' | '$5' = media.gtSm ? '$5' : '$4';
   const bottomPaddingInset = Math.max(insets.bottom, 12);
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + bottomPaddingInset;
@@ -341,10 +283,6 @@ export default function ProductDetails() {
       return Math.min(Math.max(prevQuantity, 1), maxQuantity);
     });
   }, [product]);
-
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
 
   const handleAddToCart = useCallback(async () => {
     if (!product) {
@@ -420,15 +358,12 @@ export default function ProductDetails() {
         topPadding={topPadding}
         horizontalPadding={horizontalPadding}
         message={error ?? 'Terjadi kesalahan yang tidak diketahui.'}
-        title="Product Details"
-        onBack={handleBack}
         onRetry={handleRetry}
       />
     );
   }
 
   const imageUrl = getPrimaryImageUrl(product);
-  const pageTitle = product.name.trim() || 'Product Details';
   const descriptionLabel =
     product.description?.trim() || 'Deskripsi produk belum tersedia untuk item ini.';
   const formattedUnitPrice = formatPrice(product.price);
@@ -443,25 +378,6 @@ export default function ProductDetails() {
     <ScreenRoot>
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
         <ContentStack pt={topPadding} px={horizontalPadding} pb={contentBottomPadding} flex={1}>
-          <XStack alignItems="center" justifyContent="space-between">
-            <HeaderButton onPress={handleBack}>
-              <ChevronLeftIcon size={20} color={getThemeColor(theme, 'color')} />
-            </HeaderButton>
-
-            <Text
-              fontSize={16}
-              fontWeight="700"
-              color="$color"
-              flex={1}
-              textAlign="center"
-              numberOfLines={1}
-              px="$2">
-              {pageTitle}
-            </Text>
-
-            <YStack width={40} />
-          </XStack>
-
           <ProductImageGallery images={product.images} />
 
           <YStack gap="$3" mt="$2">

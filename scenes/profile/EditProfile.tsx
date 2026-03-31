@@ -181,7 +181,7 @@ export default function EditProfile() {
 
   if (!user) {
     return (
-      <SafeAreaView edges={['top']}>
+      <SafeAreaView edges={['bottom']}>
         <YStack
           flex={1}
           padding="$5"
@@ -197,7 +197,7 @@ export default function EditProfile() {
   }
 
   return (
-    <SafeAreaView edges={['top']}>
+    <SafeAreaView edges={['bottom']}>
       <YStack flex={1}>
         <FormScrollView
           contentContainerStyle={{

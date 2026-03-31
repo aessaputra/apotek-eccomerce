@@ -144,7 +144,7 @@ export default function AddressFormScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView edges={['top']}>
+      <SafeAreaView edges={['bottom']}>
         <YStack flex={1} alignItems="center" justifyContent="center">
           <Spinner size="large" color="$primary" />
         </YStack>
@@ -153,7 +153,7 @@ export default function AddressFormScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']}>
+    <SafeAreaView edges={['bottom']}>
       <FormScrollView
         contentContainerStyle={{
           paddingBottom: scrollPaddingBottom,
