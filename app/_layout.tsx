@@ -1,5 +1,5 @@
 import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform, useColorScheme, useWindowDimensions } from 'react-native';
 import type {
   BottomTabNavigationOptions,
   BottomTabBarButtonProps,
@@ -9,17 +9,15 @@ import { StatusBar } from 'expo-status-bar';
 import { Tabs, useRouter, useSegments } from 'expo-router';
 import { useTheme } from 'tamagui';
 
-import BottomSheet from '@/components/elements/BottomSheet';
-import BottomSheetContents from '@/components/layouts/BottomSheetContents';
 import TabBarLabel from '@/components/layouts/TabBarLabel';
 import TabBarButton from '@/components/layouts/TabBarButton';
 import TabBarIcon from '@/components/layouts/TabBarIcon';
+import WelcomeSheet from '@/components/layouts/WelcomeSheet';
 import Provider, { AuthProvider } from '@/providers';
 import { useAppSlice } from '@/slices';
 import { DEFAULT_THEME_VALUES } from '@/themes';
 import {
   TAB_BAR_HEIGHT,
-  TAB_BAR_ITEM_PADDING_VERTICAL,
   TAB_BAR_PADDING_BOTTOM,
   TAB_BAR_PADDING_TOP,
   TAB_BAR_BORDER_TOP_WIDTH,
@@ -27,6 +25,8 @@ import {
   getBottomBarShadow,
 } from '@/constants/ui';
 import { TABS, VISIBLE_TAB_ROUTES, shouldShowTabBar, type TabRouteName } from '@/constants/tabs';
+import { getTabBarLayoutMetrics } from '@/utils/tabBarTypography';
+import config from '@/utils/config';
 import { getThemeColor } from '@/utils/theme';
 import { loadFonts } from '@/utils/fonts';
 import { loadImages } from '@/utils/images';
@@ -43,9 +43,11 @@ function Router() {
   const { checked, loggedIn } = useAppSlice();
   const segments = useSegments();
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const [assetsReady, setAssetsReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
   const currentGroup = segments[0] as string | undefined;
+  const shouldShowWelcomeSheet = config.env === 'development';
 
   useEffect(() => {
     (async () => {
@@ -62,9 +64,9 @@ function Router() {
   useEffect(() => {
     if (assetsReady && checked) {
       SplashScreen.hideAsync();
-      setOpen(true);
+      setOpen(shouldShowWelcomeSheet);
     }
-  }, [assetsReady, checked]);
+  }, [assetsReady, checked, shouldShowWelcomeSheet]);
 
   useEffect(() => {
     if (!checked) return;
@@ -108,6 +110,7 @@ function Router() {
   }, [theme]);
 
   const hideTabBar = !shouldShowTabBar(currentGroup, segments);
+  const tabBarLayoutMetrics = useMemo(() => getTabBarLayoutMetrics(windowWidth), [windowWidth]);
 
   const tabBarStyle = useMemo(() => {
     const base = {
@@ -142,6 +145,7 @@ function Router() {
     const tabConfig = TABS[tabName];
     const TabButton = (props: BottomTabBarButtonProps) => {
       const { children, ref: _ref, ...rest } = props;
+
       return (
         <TabBarButton {...rest} accessibilityHint={tabConfig.accessibilityHint}>
           {children}
@@ -161,9 +165,11 @@ function Router() {
     tabBarStyle,
     tabBarItemStyle: {
       flex: 1,
+      minWidth: 0,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
+      paddingVertical: tabBarLayoutMetrics.itemPaddingVertical,
+      paddingHorizontal: tabBarLayoutMetrics.itemPaddingHorizontal,
     },
     tabBarLabel: ({ color, children }) => <TabBarLabel color={color}>{children}</TabBarLabel>,
   };
@@ -196,12 +202,7 @@ function Router() {
         translucent={Platform.OS === 'android'}
         hidden={false}
       />
-      <BottomSheet
-        isOpen={isOpen}
-        initialOpen
-        backgroundStyle={{ backgroundColor: getThemeColor(theme, 'background') }}>
-        <BottomSheetContents onClose={() => setOpen(false)} />
-      </BottomSheet>
+      {shouldShowWelcomeSheet ? <WelcomeSheet open={isOpen} onOpenChange={setOpen} /> : null}
     </Fragment>
   );
 }

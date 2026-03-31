@@ -1,25 +1,40 @@
 import { describe, expect, test } from '@jest/globals';
-import { TAB_BAR_LABEL_MAX_SIZE, TAB_BAR_LABEL_MIN_SIZE, TAB_BAR_LABEL_SIZE } from '@/constants/ui';
-import { getTabBarLabelFontSize } from '@/utils/tabBarTypography';
+import {
+  TAB_BAR_ITEM_PADDING_HORIZONTAL,
+  TAB_BAR_ITEM_PADDING_HORIZONTAL_COMPACT,
+  TAB_BAR_ITEM_PADDING_VERTICAL,
+  TAB_BAR_ITEM_PADDING_VERTICAL_COMPACT,
+  TAB_BAR_LABEL_MARGIN_TOP,
+  TAB_BAR_LABEL_MARGIN_TOP_COMPACT,
+  TAB_BAR_LABEL_SIZES,
+} from '@/constants/ui';
+import { getTabBarLayoutMetrics } from '@/utils/tabBarTypography';
 
-describe('getTabBarLabelFontSize', () => {
-  test('returns 10px for 320px screens', () => {
-    expect(getTabBarLabelFontSize(320)).toBe(TAB_BAR_LABEL_MIN_SIZE);
+describe('tab bar label sizes', () => {
+  test('define responsive sizes for each media breakpoint', () => {
+    expect(TAB_BAR_LABEL_SIZES).toEqual({
+      xs: 11,
+      sm: 12,
+      md: 13,
+      lg: 14,
+    });
+  });
+});
+
+describe('getTabBarLayoutMetrics', () => {
+  test('uses compact spacing on 375px screens', () => {
+    expect(getTabBarLayoutMetrics(375)).toEqual({
+      itemPaddingHorizontal: TAB_BAR_ITEM_PADDING_HORIZONTAL_COMPACT,
+      itemPaddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL_COMPACT,
+      labelMarginTop: TAB_BAR_LABEL_MARGIN_TOP_COMPACT,
+    });
   });
 
-  test('returns 11px for 375px screens', () => {
-    expect(getTabBarLabelFontSize(375)).toBe(TAB_BAR_LABEL_SIZE);
-  });
-
-  test('returns 12px for 430px screens', () => {
-    expect(getTabBarLabelFontSize(430)).toBe(TAB_BAR_LABEL_MAX_SIZE);
-  });
-
-  test('clamps widths below 320px to 10px', () => {
-    expect(getTabBarLabelFontSize(280)).toBe(TAB_BAR_LABEL_MIN_SIZE);
-  });
-
-  test('clamps widths above 430px to 14px', () => {
-    expect(getTabBarLabelFontSize(500)).toBe(TAB_BAR_LABEL_MAX_SIZE);
+  test('uses default spacing above compact widths', () => {
+    expect(getTabBarLayoutMetrics(430)).toEqual({
+      itemPaddingHorizontal: TAB_BAR_ITEM_PADDING_HORIZONTAL,
+      itemPaddingVertical: TAB_BAR_ITEM_PADDING_VERTICAL,
+      labelMarginTop: TAB_BAR_LABEL_MARGIN_TOP,
+    });
   });
 });

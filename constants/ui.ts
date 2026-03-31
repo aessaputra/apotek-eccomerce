@@ -146,16 +146,25 @@ export const EMPTY_STATE = {
   BORDER_WIDTH: 1,
 } as const;
 
-export const TAB_BAR_LABEL_SIZE = 11;
-export const TAB_BAR_LABEL_MIN_SIZE = 10;
-export const TAB_BAR_LABEL_MAX_SIZE = 12;
+export const TAB_BAR_LABEL_SIZES = {
+  xs: 11,
+  sm: 12,
+  md: 13,
+  lg: 14,
+} as const;
 export const TAB_BAR_LABEL_NUMBER_OF_LINES = 1;
 export const TAB_BAR_LABEL_WIDTH = '100%';
 export const TAB_BAR_SMALL_SCREEN_WIDTH = 320;
+export const TAB_BAR_COMPACT_SCREEN_WIDTH = 375;
 export const TAB_BAR_LARGE_SCREEN_WIDTH = 430;
 export const TAB_BAR_ITEM_PADDING_VERTICAL_TOKEN = '$1';
 export const TAB_BAR_ITEM_PADDING_VERTICAL = 4;
+export const TAB_BAR_ITEM_PADDING_VERTICAL_COMPACT = 2;
+export const TAB_BAR_ITEM_PADDING_HORIZONTAL = 3;
+export const TAB_BAR_ITEM_PADDING_HORIZONTAL_COMPACT = 1;
 export const TAB_BAR_LABEL_MARGIN_TOP_TOKEN = '$1';
+export const TAB_BAR_LABEL_MARGIN_TOP = 3;
+export const TAB_BAR_LABEL_MARGIN_TOP_COMPACT = 1;
 
 /** Tab bar container height (matches WhatsApp-style bottom nav). */
 export const TAB_BAR_HEIGHT = 80;

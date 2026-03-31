@@ -1,19 +1,30 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import type { View } from 'react-native';
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { YStack } from 'tamagui';
-import { TAB_BAR_LABEL_MARGIN_TOP_TOKEN } from '@/constants/ui';
+import { getTabBarLayoutMetrics } from '@/utils/tabBarTypography';
 
 const TabBarButton = React.forwardRef<View, BottomTabBarButtonProps>(
   function TabBarButton(props, ref) {
-    const { children, ...pressableProps } = props;
+    const { children, style, ...pressableProps } = props;
+    const { width } = useWindowDimensions();
+    const { labelMarginTop } = getTabBarLayoutMetrics(width);
+
     return (
-      <Pressable ref={ref} {...pressableProps} accessibilityRole="tab" style={{ flex: 1 }}>
+      <Pressable
+        ref={ref}
+        {...pressableProps}
+        accessibilityRole="tab"
+        style={StyleSheet.flatten([{ flex: 1, minWidth: 0 }, style])}>
         <YStack
           flex={1}
+          width="100%"
+          maxWidth="100%"
+          minWidth={0}
           alignItems="center"
           justifyContent="center"
-          marginTop={TAB_BAR_LABEL_MARGIN_TOP_TOKEN}>
+          marginTop={labelMarginTop}>
           {children}
         </YStack>
       </Pressable>

@@ -1,32 +1,29 @@
 import {
-  TAB_BAR_LABEL_MAX_SIZE,
-  TAB_BAR_LABEL_MIN_SIZE,
-  TAB_BAR_LABEL_SIZE,
-  TAB_BAR_LARGE_SCREEN_WIDTH,
-  TAB_BAR_SMALL_SCREEN_WIDTH,
+  TAB_BAR_COMPACT_SCREEN_WIDTH,
+  TAB_BAR_ITEM_PADDING_HORIZONTAL,
+  TAB_BAR_ITEM_PADDING_HORIZONTAL_COMPACT,
+  TAB_BAR_ITEM_PADDING_VERTICAL,
+  TAB_BAR_ITEM_PADDING_VERTICAL_COMPACT,
+  TAB_BAR_LABEL_MARGIN_TOP,
+  TAB_BAR_LABEL_MARGIN_TOP_COMPACT,
 } from '@/constants/ui';
 
-export function getTabBarLabelFontSize(screenWidth: number): number {
-  if (screenWidth <= TAB_BAR_SMALL_SCREEN_WIDTH) {
-    return TAB_BAR_LABEL_MIN_SIZE;
-  }
+export interface TabBarLayoutMetrics {
+  itemPaddingHorizontal: number;
+  itemPaddingVertical: number;
+  labelMarginTop: number;
+}
 
-  if (screenWidth >= TAB_BAR_LARGE_SCREEN_WIDTH) {
-    return TAB_BAR_LABEL_MAX_SIZE;
-  }
+export function getTabBarLayoutMetrics(screenWidth: number): TabBarLayoutMetrics {
+  const isCompactScreen = screenWidth <= TAB_BAR_COMPACT_SCREEN_WIDTH;
 
-  if (screenWidth <= 375) {
-    const progressToBase =
-      (screenWidth - TAB_BAR_SMALL_SCREEN_WIDTH) / (375 - TAB_BAR_SMALL_SCREEN_WIDTH);
-
-    return Math.round(
-      TAB_BAR_LABEL_MIN_SIZE + progressToBase * (TAB_BAR_LABEL_SIZE - TAB_BAR_LABEL_MIN_SIZE),
-    );
-  }
-
-  const progressToLarge = (screenWidth - 375) / (TAB_BAR_LARGE_SCREEN_WIDTH - 375);
-
-  return Math.round(
-    TAB_BAR_LABEL_SIZE + progressToLarge * (TAB_BAR_LABEL_MAX_SIZE - TAB_BAR_LABEL_SIZE),
-  );
+  return {
+    itemPaddingHorizontal: isCompactScreen
+      ? TAB_BAR_ITEM_PADDING_HORIZONTAL_COMPACT
+      : TAB_BAR_ITEM_PADDING_HORIZONTAL,
+    itemPaddingVertical: isCompactScreen
+      ? TAB_BAR_ITEM_PADDING_VERTICAL_COMPACT
+      : TAB_BAR_ITEM_PADDING_VERTICAL,
+    labelMarginTop: isCompactScreen ? TAB_BAR_LABEL_MARGIN_TOP_COMPACT : TAB_BAR_LABEL_MARGIN_TOP,
+  };
 }

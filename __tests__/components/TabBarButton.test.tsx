@@ -50,4 +50,22 @@ describe('<TabBarButton />', () => {
       unmount();
     });
   });
+
+  test('merges incoming pressable styles with layout defaults', () => {
+    const { getByRole } = render(
+      <TabBarButton onPress={() => {}} accessibilityLabel="Test" style={{ opacity: 1 }}>
+        <Text>Icon</Text>
+      </TabBarButton>,
+    );
+
+    const button = getByRole('tab');
+
+    expect(button.props.style).toEqual(
+      expect.objectContaining({
+        flex: 1,
+        minWidth: 0,
+        opacity: 1,
+      }),
+    );
+  });
 });
