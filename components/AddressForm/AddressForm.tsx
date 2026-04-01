@@ -25,7 +25,6 @@ export interface AddressFormProps {
   onFieldCommitted?: () => void;
   onAreaSelect: (area: {
     id: string;
-    subdistrictId: string;
     name: string;
     city: string;
     province: string;
@@ -69,7 +68,6 @@ function AddressForm({
     (area: BiteshipArea) => {
       onAreaSelect({
         id: area.id,
-        subdistrictId: area.id,
         name: area.name,
         city: area.administrative_division_level_2_name || '',
         province: area.administrative_division_level_1_name || '',

@@ -36,7 +36,6 @@ export interface UseAddressFormReturn {
   setFieldValue: <K extends keyof AddressFormValues>(field: K, value: AddressFormValues[K]) => void;
   setArea: (area: {
     id: string;
-    subdistrictId: string;
     name: string;
     city: string;
     province: string;
@@ -96,7 +95,6 @@ export function useAddressForm(): UseAddressFormReturn {
     setValues(prev => ({
       ...prev,
       areaId: '',
-      subdistrictId: '',
       areaName: '',
     }));
     // Clear area error since user is now manually entering data
@@ -107,18 +105,10 @@ export function useAddressForm(): UseAddressFormReturn {
    * Set area from area picker selection
    */
   const setArea = useCallback(
-    (area: {
-      id: string;
-      subdistrictId: string;
-      name: string;
-      city: string;
-      province: string;
-      postalCode: string;
-    }) => {
+    (area: { id: string; name: string; city: string; province: string; postalCode: string }) => {
       setValues(prev => ({
         ...prev,
         areaId: area.id,
-        subdistrictId: area.subdistrictId,
         areaName: area.name,
         city: area.city,
         province: area.province,
@@ -210,8 +200,7 @@ export function useAddressForm(): UseAddressFormReturn {
       receiverName: address.receiver_name,
       phoneNumber: address.phone_number,
       streetAddress: address.street_address,
-      areaId: address.area_id || address.subdistrict_id || '',
-      subdistrictId: address.subdistrict_id || '',
+      areaId: address.area_id || '',
       areaName: address.area_name || '',
       city: address.city,
       postalCode: address.postal_code,

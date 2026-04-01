@@ -148,7 +148,6 @@ export default function AddressFormScreen() {
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
       area_id: values.areaId,
-      subdistrict_id: values.subdistrictId || values.areaId || null,
       area_name: values.areaName || null,
       city: values.city.trim(),
       postal_code: values.postalCode.trim(),

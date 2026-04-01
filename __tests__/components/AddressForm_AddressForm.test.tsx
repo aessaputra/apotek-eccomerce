@@ -151,7 +151,6 @@ function createProps(overrides: Partial<React.ComponentProps<typeof AddressForm>
     phoneNumber: '081234567890',
     streetAddress: 'Jl. Mawar No. 1',
     areaId: '',
-    subdistrictId: '',
     areaName: '',
     city: 'Jakarta',
     postalCode: '12345',
@@ -255,7 +254,6 @@ describe('<AddressForm />', () => {
 
     expect(props.onAreaSelect).toHaveBeenCalledWith({
       id: 'area-1',
-      subdistrictId: 'area-1',
       name: 'Kelapa Gading',
       city: 'Jakarta Utara',
       province: 'DKI Jakarta',
