@@ -89,16 +89,20 @@ function Router() {
   const tabBarColors = useMemo(() => {
     const background = getThemeColor(
       theme,
-      'surfaceElevated',
+      'surface',
       getThemeColor(
         theme,
-        'surface',
+        'surfaceElevated',
         getThemeColor(theme, 'background', DEFAULT_THEME_VALUES.background),
       ),
     );
     return {
       background,
-      borderColor: getThemeColor(theme, 'borderColor', DEFAULT_THEME_VALUES.borderColor),
+      borderColor: getThemeColor(
+        theme,
+        'surfaceBorder',
+        getThemeColor(theme, 'borderColor', DEFAULT_THEME_VALUES.borderColor),
+      ),
       active: getThemeColor(
         theme,
         'primary',
