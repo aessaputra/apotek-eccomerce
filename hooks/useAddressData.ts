@@ -18,6 +18,7 @@ export interface UseAddressDataReturn {
   saveAddress: (params: SaveAddressParams) => Promise<boolean>;
   /** Reset state */
   reset: () => void;
+  clearError: () => void;
 }
 
 export interface SaveAddressParams {
@@ -126,6 +127,10 @@ export function useAddressData(): UseAddressDataReturn {
     setError(null);
   }, []);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   return {
     address,
     isLoading,
@@ -134,5 +139,6 @@ export function useAddressData(): UseAddressDataReturn {
     loadAddress,
     saveAddress,
     reset,
+    clearError,
   };
 }

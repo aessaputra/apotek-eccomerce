@@ -19,7 +19,7 @@ export default function Details() {
       alignItems="center"
       justifyContent="center"
       backgroundColor="$background">
-      <Text fontSize="$7" marginBottom="$5" color="$color" fontFamily="$heading" fontWeight="700">
+      <Text fontSize="$7" marginBottom="$5" color="$color" fontWeight="700">
         Detail
       </Text>
       <GradientButton
@@ -31,7 +31,7 @@ export default function Details() {
         height={44}
         width="50%"
         gradientBackgroundProps={{
-          colors: [getThemeColor(theme, 'brandPrimary'), getThemeColor(theme, 'accent5')],
+          colors: [getThemeColor(theme, 'brandPrimary'), getThemeColor(theme, 'brandPrimarySoft')],
           start: { x: 0, y: 1 },
           end: { x: 0.8, y: 0 },
         }}

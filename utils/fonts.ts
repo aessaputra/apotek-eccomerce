@@ -2,6 +2,7 @@ import { loadAsync } from 'expo-font';
 
 export const fonts = {
   poppins: {
+    family: 'Poppins',
     regular: 'poppins_regular',
     regularItalic: 'poppins_regular_italic',
     semiBold: 'poppins_semiBold',

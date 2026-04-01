@@ -66,10 +66,10 @@ function ErrorMessage({
             {dismissible && onDismiss && (
               <Button
                 onPress={onDismiss}
-                backgroundColor="transparent"
+                backgroundColor="$colorTransparent"
                 padding={4}
-                accessibilityLabel="Dismiss error"
-                accessibilityRole="button">
+                aria-label="Dismiss error"
+                role="button">
                 <CloseIcon size={14} color={dangerColor} />
               </Button>
             )}

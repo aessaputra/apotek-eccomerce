@@ -1,4 +1,25 @@
-import { THEME_FALLBACKS } from '@/constants/ui';
+import { DARK_THEME_FALLBACKS, THEME_FALLBACKS } from '@/constants/ui';
+import { fonts } from '@/utils/fonts';
+
+function resolveThemeValue(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  const variable = value as { get?: () => string; val?: string };
+  if (typeof variable.get === 'function') {
+    const got = variable.get();
+    if (typeof got === 'string') return got;
+  }
+  if (typeof value === 'string') return value;
+  return variable?.val;
+}
+
+function getFallbackSet(theme: unknown) {
+  const background = resolveThemeValue((theme as Record<string, unknown>)?.background);
+  const primary = resolveThemeValue((theme as Record<string, unknown>)?.primary);
+
+  const isDark =
+    background === DARK_THEME_FALLBACKS.background || primary === DARK_THEME_FALLBACKS.primary;
+  return isDark ? DARK_THEME_FALLBACKS : THEME_FALLBACKS;
+}
 
 /**
  * Safe theme color access for non-Tamagui APIs (e.g. React Native StyleSheet,
@@ -11,30 +32,29 @@ import { THEME_FALLBACKS } from '@/constants/ui';
 export function getThemeColor(theme: unknown, key: string, fallback?: string): string {
   const v = (theme as Record<string, unknown>)?.[key];
   if (v == null) {
-    // Use THEME_FALLBACKS if available, otherwise use provided fallback
-    return (
-      (THEME_FALLBACKS[key as keyof typeof THEME_FALLBACKS] as string) ?? fallback ?? '#000000'
-    );
+    const fallbackSet = getFallbackSet(theme);
+    return (fallbackSet[key as keyof typeof fallbackSet] as string) ?? fallback ?? '#000000';
   }
-  const variable = v as { get?: () => string; val?: string };
-  if (typeof variable.get === 'function') {
-    const got = variable.get();
-    if (typeof got === 'string') return got;
-  }
-  return (typeof v === 'string' ? v : variable?.val) ?? fallback ?? '#000000';
+  return resolveThemeValue(v) ?? fallback ?? '#000000';
 }
 
 export function getStackHeaderOptions(theme: unknown) {
+  const backgroundColor = getThemeColor(theme, 'background');
+
   return {
-    headerTintColor: getThemeColor(theme, 'white'),
+    headerTintColor: getThemeColor(theme, 'color'),
     headerStyle: {
-      backgroundColor: getThemeColor(
-        theme,
-        'headerBackground',
-        getThemeColor(theme, 'brandPrimary'),
-      ),
+      backgroundColor,
     },
-    headerTitleStyle: { fontSize: 18, fontWeight: '600' as const },
+    contentStyle: {
+      backgroundColor,
+    },
+    headerTitleStyle: {
+      fontSize: 18,
+      fontFamily: fonts.poppins.semiBold,
+      fontWeight: '600' as const,
+      color: getThemeColor(theme, 'color'),
+    },
     headerShadowVisible: false,
   };
 }

@@ -35,7 +35,7 @@ function Button({
   style,
   disabled,
   isLoading,
-  loaderColor = '$white',
+  loaderColor = '$onPrimary',
   imageStyle,
   children,
   backgroundColor = '$primary',
@@ -54,8 +54,8 @@ function Button({
     backgroundColor,
     opacity: disabled || isLoading ? 0.6 : 1,
     disabled: disabled ?? isLoading,
-    accessibilityRole: 'button' as const,
-    accessibilityLabel: title,
+    role: 'button' as const,
+    'aria-label': title,
     cursor: 'pointer' as const,
     style,
     ...others,
@@ -69,7 +69,6 @@ function Button({
       {!isLoading && title && (
         <Text
           fontSize={mergedTitleStyle.fontSize}
-          fontFamily={mergedTitleStyle.fontFamily || '$body'}
           fontWeight={mergedTitleStyle.fontWeight}
           color={mergedTitleStyle.color}
           {...titleStyle}>

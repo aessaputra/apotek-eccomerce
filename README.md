@@ -1,4 +1,4 @@
-# Apotek Eccomerce
+# Apotek Ecommerce
 
 Aplikasi e-commerce apotek berbasis React Native (Expo SDK 54), dengan dukungan multi-platform (iOS, Android, Web), autentikasi Supabase, dan CI/CD EAS.
 

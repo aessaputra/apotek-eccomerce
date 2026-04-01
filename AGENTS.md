@@ -1,364 +1,232 @@
-# Claude AI Development Guide
+# PROJECT KNOWLEDGE BASE
 
-This React Native Expo project follows specific patterns and uses built-in features for consistency and reusability.
+**Generated:** 2026-03-26
+**Commit:** 83c823c
+**Branch:** dev
 
-## Project Context
+## OVERVIEW
 
-**Technology Stack:**
+Expo SDK 54 pharmacy e-commerce app (React Native 0.81.5, React 19.1, TypeScript strict). Multi-platform (iOS, Android, Web) with Tamagui UI, Redux Toolkit state, Supabase auth/backend, and co-located edge functions. New Architecture enabled.
 
-- React Native with Expo SDK 54
-- TypeScript (strict mode)
-- Expo Router v6 (flat config)
-- Redux Toolkit for state management
-- Tamagui for UI components and styling
-- ESLint 9 with flat config
-- React 19.1 and React Native 0.81.5
-
-## Always Use These Built-in Features
-
-### Configuration & Environment
-
-- **`utils/config.ts`** - For all environment variables and app configuration (env, apiUrl, supabaseUrl, supabasePublishableKey)
-- **`utils/deviceInfo.ts`** - For platform detection, screen dimensions, and device info
-- Never hardcode values that should come from configuration
-- **Supabase**: Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` (Publishable Key) in `.env.dev`; use `supabase` from `@/services` or `@/utils/supabase`
-
-### Theme & Styling (Full Tamagui)
-
-- **Single styling system**: Tamagui only. No StyleSheet or dual styling.
-- **Colors**: Defined in `themes.ts` (palettes + semantic tokens), imported by `tamagui.config.ts`. Use Tamagui tokens (`$primary`, `$background`, `$color`) in components; never hardcode.
-- **Fonts**: `@/utils/fonts` — `loadFonts()`, `fonts` (Poppins). Call at app init.
-- **Images**: `@/utils/images` — `loadImages()`, `images` (logo etc.). Call at app init.
-- **Tamagui** - All UI uses Tamagui: components, layout (YStack, XStack), tokens. Import from `tamagui`.
-
-### Custom Hooks (Reuse These)
-
-- **`useColorScheme` from `@/hooks`** - For dark/light theme detection
-- **`useDataPersist` from `@/hooks`** - For local storage operations
-- **`useAppSlice` from `@/slices`** - For global state operations
-
-### State Management
-
-- **Redux Toolkit slices in `@/slices`** - For all global state
-- Use `useAppSlice` for accessing global state
-- Keep local state minimal, prefer global state for shared data
-
-### Services & API
-
-- **`@/services`** - For all API calls and external integrations
-- **`supabase`** from `@/services` - Supabase client for Auth, Database, Storage, Realtime
-- Never make direct API calls from components
-- Use the services layer for data transformation
-
-### Providers
-
-- **`providers/Provider.tsx`** - Root provider wrapping TamaguiProvider, ReduxProvider, SafeAreaProvider, ThemeProvider, GestureHandler
-- **`providers/AuthProvider.tsx`** - Authentication state management with Supabase session tracking
-- All providers are composed in `app/_layout.tsx` via `<Provider>` and `<AuthProvider>`
-
-### Type Definitions
-
-- **`@/types`** - For all TypeScript interfaces and types
-- Always define component prop interfaces
-- Use strict TypeScript - project is configured for it
-
-## Directory Structure
+## STRUCTURE
 
 ```
-app/                 # Expo Router routes (keep minimal, delegate to scenes)
-components/
-  elements/          # Reusable Tamagui-based components (styled() or Tamagui primitives)
-  layouts/           # Layout-specific components (headers, navigation)
-constants/           # UI constants and theme fallbacks
-hooks/               # Custom React hooks
-providers/           # App-level providers (Tamagui, Redux, SafeArea, Auth)
-scenes/              # Screen components (main UI logic)
-services/            # API and external services (auth, profile, user, address, supabase)
-slices/              # Redux Toolkit slices
-tamagui.config.ts    # createTamagui config (imports themes from themes.ts)
-test-utils/          # Shared test utilities and helpers
-themes.ts            # All color palettes, semantic tokens, light/dark theme definitions
-types/               # TypeScript type definitions (env, user, address, supabase)
-utils/               # Utility functions (config, deviceInfo, fonts, images, store, theme, validation, supabase, LargeSecureStore, cryptoPolyfill)
+./
+├── app/                # Expo Router v6 routes (THIN RE-EXPORTS to scenes/)
+├── scenes/             # Actual screen components (Home, Auth, Cart, Orders, Profile)
+├── components/         # Reusable UI — see components/AGENTS.md
+│   ├── elements/       # Atomic UI components (Button, Avatar, FormInput...)
+│   ├── layouts/        # Layout components (TabBarIconWithPill)
+│   ├── icons/          # Custom icon components
+│   ├── AddressForm/       # Complex composite (address form + area picker + map)
+│   └── MapPin/         # Map integration component
+├── services/           # API abstraction layer — see services/AGENTS.md
+├── hooks/              # Custom React hooks (auth, address, cart, home data, theme)
+├── slices/             # Redux Toolkit slices (single app.slice.ts)
+├── providers/          # AuthProvider + Redux store provider
+├── types/              # TypeScript types (address, auth, cart, order, product, shipping, user, supabase)
+├── constants/          # App constants (address, auth, ui)
+├── utils/              # Utilities (config, crypto, device, fonts, images, store, supabase client)
+├── supabase/           # Edge functions + migrations — see supabase/AGENTS.md
+├── assets/             # Poppins fonts + images
+├── android/            # Native Android project (local dev builds)
+├── test-utils/         # renderWithTheme.tsx (Tamagui test wrapper)
+└── tamagui.config.ts   # Tamagui theme config
 ```
 
-## Component Development Patterns
+## WHERE TO LOOK
 
-### Component Structure
+| Task               | Location                                                 | Notes                                                            |
+| ------------------ | -------------------------------------------------------- | ---------------------------------------------------------------- |
+| Add a new screen   | `scenes/[name]/` + `app/[group]/[name].tsx`              | Route file re-exports from scene                                 |
+| Add a new route    | `app/[group]/`                                           | Expo Router file-based; update `_layout.tsx` if tab/stack needed |
+| Add a UI component | `components/elements/[Name]/`                            | Follow `Name.tsx` + `index.ts` + `Name.test.tsx` pattern         |
+| Add an API call    | `services/[domain].service.ts`                           | Never call Supabase directly from components                     |
+| Add Redux state    | `slices/app.slice.ts` → register in `utils/store.ts`     | Single slice currently                                           |
+| Add a custom hook  | `hooks/use[Name].ts`                                     | Co-locate test as `use[Name].test.ts`                            |
+| Add a type         | `types/[domain].types.ts`                                | One file per domain                                              |
+| Route param types  | `types/routes.types.ts`                                  | Keep route params in sync with `useLocalSearchParams` usage      |
+| Add a constant     | `constants/[domain].constants.ts`                        |                                                                  |
+| Auth flow          | `providers/AuthProvider.tsx` + `app/_layout.tsx`         | Auth guard in root layout useEffect                              |
+| Backend logic      | `supabase/functions/[name]/index.ts`                     | Deno runtime, see supabase/AGENTS.md                             |
+| Env variables      | `.env.dev` → `app.config.ts` (extra) → `utils/config.ts` | dotenvx managed                                                  |
+| CI/CD              | `.github/workflows/test.yml` + `preview.yml`             | Tests on PR; EAS Update on push                                  |
 
-1. Define TypeScript interface for props
-2. Use function declarations (not arrow functions)
-3. Place hooks at the top
-4. Use early returns for conditional rendering
-5. Use Tamagui for all styling: tokens (`$primary`, `$background`), layout (YStack, XStack), `styled()` for custom components. No StyleSheet.
-6. Export default at bottom
+## ARCHITECTURE PATTERNS
 
-### Import Order
+**Routing: Two-Layer Re-Export**
 
-1. React and React Native
-2. Third-party libraries
-3. Internal imports with `@/` paths
-4. Relative imports
+- `app/` files are thin wrappers: `export { default } from '@/scenes/[name]'`
+- Actual screen logic lives in `scenes/`
+- Navigation: Bottom tabs (home, orders, profile) + Stack per tab + route groups
 
-### File Naming
+**Auth Guard (Centralized + Route-Level)**
 
-- **Components**: PascalCase (`Button.tsx`)
-- **Hooks**: camelCase with "use" prefix (`useColorScheme.ts`)
-- **Utils**: camelCase (`deviceInfo.ts`)
-- **Types**: PascalCase (`User.ts`)
+- `app/_layout.tsx` useEffect watches `checked` + `loggedIn` from AuthProvider
+- Protected stacks are wrapped with `withAuthGuard` for defense-in-depth rendering guard
+- Protected routes: home, orders, profile, cart → redirect to `/login`
+- Auth screens → redirect to `/home` when authenticated
 
-## Development Guidelines
+**Service Layer (Mandatory)**
 
-### When Creating Components
+- ALL Supabase calls go through `services/*.service.ts`
+- Components/hooks never import `supabase` client directly
+- Services return typed results, handle errors with `__DEV__` console guards
 
-1. **Check Tamagui first**: Card, Input, Form, ListItem, Button, Avatar, Checkbox, Switch — use directly or extend with `styled()`
-2. Check `components/elements` for project-specific Tamagui-based wrappers
-3. Use Tamagui tokens (`$primary`, `$background`, `$color`) — never hardcode
-4. Custom components: use Tamagui `styled(View)`, `styled(Text)`, or composition — no StyleSheet
-5. Use TypeScript interfaces for all props
-6. Write tests for all new components
+**State: Redux Toolkit**
 
-### State Management Rules
+- Single `slices/app.slice.ts` for global state
+- Logger middleware active in development
+- AuthProvider manages session state separately via React context
 
-- Use Redux Toolkit for global state
-- Use `useAppSlice` for state operations
-- Keep component state local only when not shared
-- Use built-in hooks for common functionality
+## CONVENTIONS
 
-### Styling Rules (Full Tamagui)
+- **Path alias**: `@/*` maps to project root (`./`)
+- **File naming**: PascalCase for components (`Button.tsx`), camelCase for utils/services (`auth.service.ts`)
+- **Component structure**: `Name/Name.tsx` + `Name/index.ts` (barrel) + `Name/Name.test.tsx`
+- **Tests**: Co-located with source (`.test.ts(x)` suffix), use `renderWithTheme` for Tamagui components
+- **Console logging**: ALWAYS guard with `if (__DEV__)` in app code
+- **ESLint**: Flat config (`eslint.config.js`) — expo + prettier
+- **Prettier**: `singleQuote`, `trailingComma: all`, `printWidth: 100`, `bracketSameLine: true`, `arrowParens: avoid`
+- **Pre-commit**: Husky runs lint-staged (lint --fix + format) then jest
 
-- **Single styling system**: Tamagui only. Do not use StyleSheet.
-- **Color source**: palettes + semantic tokens in `themes.ts` → imported by `tamagui.config.ts`
-- **All components**: Use Tamagui tokens (`$primary`, `$background`, `$color`), layout (YStack, XStack), and `styled()` for custom UI
-- **TamaguiProvider** in `providers/Provider.tsx` receives `defaultTheme` from `useColorScheme()` (`colorScheme ?? 'light'`)
-- Use Tamagui's responsive props when needed; support dark/light via Tamagui themes
+## ANTI-PATTERNS (THIS PROJECT)
 
-### Testing Requirements
+- **NEVER** call Supabase client directly from components — use `services/*.service.ts`
+- **NEVER** put screen logic in `app/` route files — they are re-export wrappers only
+- **NEVER** use `@ts-ignore` or `as any` — zero occurrences, keep it that way
+- **NEVER** use `console.log` without `__DEV__` guard in app code (edge functions are exempt)
+- **NEVER** use `require()` unless platform-specific dynamic import is needed (3 approved usages exist)
+- **NEVER** add Tamagui babel plugin — disabled intentionally (causes Metro issues). Tamagui runs at runtime only via metro plugin
 
-- One test file per component
-- Test behavior, not implementation
-- Use descriptive test names
-- Mock external dependencies
+## UNIQUE STYLES
 
-## Navigation (Expo Router v6)
+- **UI Framework**: Tamagui (not StyleSheet, not NativeWind) — all components use Tamagui primitives
+- **Theme Mode**: Tamagui `brand` + `brand_dark`, selected automatically from system color scheme
+- **Language**: Indonesian UI labels (`Beranda`, `Pesanan`, `Akun`) — backend/code in English
+- **Mocking pattern**: Inline `jest.mock()` in each test file, no `__mocks__/` directories
+- **Fake timers**: Global in jest.setup.js for Reanimated/Animated components
+- **act() suppression**: jest.setup.js suppresses act warnings for Tamagui Animated + Icon components
+- **Crypto polyfill**: Custom `utils/cryptoPolyfill.ts` for React Native crypto support
+- **LargeSecureStore**: Custom secure storage wrapper in `utils/LargeSecureStore.ts`
 
-- Use flat config format (already configured)
-- Keep route files minimal - delegate to scene components
-- Use `<Redirect>` for programmatic navigation
-- Handle deep linking through router
+## COMMANDS
 
-## Code Quality Standards
+```bash
+# Development
+npm run dev                    # All platforms (dotenvx .env.dev)
+npm run dev:ios                # iOS only
+npm run dev:android            # Android only
+npm run dev:web                # Web only
 
-- No `console.log` in production code
-- Always handle loading and error states
-- Write self-documenting code
-- Keep functions focused and small
-- Use TypeScript strictly
+# Quality
+npm run lint                   # ESLint (expo lint)
+npm run format                 # Prettier write
+npm run format:check           # Prettier check only
+npm run test                   # Jest (--verbose --passWithNoTests)
+npm run test:watch             # Jest watch mode
 
-## Key Development Principles
+# Build & Deploy
+npm run dev:build:mobile       # EAS build (iOS + Android)
+npm run dev:build:web          # Export web static
+npm run dev:deploy:web         # Build + deploy to EAS Hosting
 
-1. **Reuse First** - Check Tamagui components, then `components/elements`, before creating new ones
-2. **Follow Patterns** - Use established patterns in the codebase
-3. **Use Built-ins** - Leverage Tamagui, theme, hooks, and utils
-4. **Single Styling** - Tamagui only; colors in themes.ts (imported by tamagui.config.ts); no StyleSheet or dual systems
-5. **Type Safety** - Use TypeScript strictly for better code quality
-6. **Test Everything** - Write tests for all components
-7. **Stay Consistent** - Follow naming conventions and code structure
-
-## Common Utilities Available
-
-### Device & Platform
-
-```typescript
-// From utils/deviceInfo.ts
-import { isIos, isAndroid, isWeb, isMobile, windowWidth, windowHeight } from '@/utils/deviceInfo';
+# Environment
+npm run dev:secret:push        # Push .env.dev to EAS secrets
+npm run dev:config:public      # Show public config
+npm run dev:doctor             # Expo health check
 ```
 
-### Configuration
+## NOTES
 
-```typescript
-// From utils/config.ts
-import config from '@/utils/config';
-// Access env, apiUrl, supabaseUrl, supabasePublishableKey
-```
+- **Node 20.x** required (specified in `eas.json` build config)
+- **`legacy-peer-deps=true`** in `.npmrc` — required for dependency resolution
+- **17 Supabase migrations** in `supabase/migrations/` — schema history
+- **Coverage** enabled by default for: components, hooks, scenes, services, slices, utils, providers
+- **No E2E tests** — only unit/integration via Jest + React Testing Library
+- **Android native dir** exists for local dev builds — EAS handles production builds
+- **`app.json` owner**: `"i-have-no-company"` — update before publishing
 
-### Supabase
+## DARK-THEME COLOR SYSTEM
 
-```typescript
-// From @/services or @/utils/supabase
-import { supabase } from '@/services';
-// Auth: supabase.auth.signInWithPassword(), .getSession(), etc.
-// Database: supabase.from('table').select(), .insert(), etc.
-// Storage: supabase.storage.from('bucket').upload(), etc.
-```
+**Updated:** 2026-03-27
 
-### Fonts & Images (app init)
+### Overview
 
-```typescript
-import { loadFonts } from '@/utils/fonts';
-import { loadImages } from '@/utils/images';
-import { images } from '@/utils/images'; // logo
-```
+The app uses a pharmacy-focused dark-mode color system with a "soft-charcoal" hierarchy instead of pure black. This reduces eye strain while maintaining clear visual hierarchy through elevation levels.
 
-### Tamagui (Full UI Styling)
+### Architecture
 
-```typescript
-// Import from 'tamagui' (per Tamagui docs)
-import { Card, Input, Button, YStack, XStack, useTheme, styled, View, Text } from 'tamagui';
+- **Theme files**: `themes.ts` exports `brand` (light) and `brand_dark` (dark) theme objects
+- **Config**: `tamagui.config.ts` uses `createTamagui({...defaultConfig, themes})`
+- **Fallbacks**: `constants/ui.ts` provides `THEME_FALLBACKS` (light) and `DARK_THEME_FALLBACKS` (dark) for non-Tamagui consumers
+- **Navigation**: `providers/Provider.tsx` defines `BrandNavigationTheme` and `BrandNavigationDarkTheme`
 
-// Tokens: $primary, $background, $color (defined in tamagui.config themes)
-// Custom: styled(View, { backgroundColor: '$background', ... }) or styled(Text, { ... })
-// Root: Provider wraps TamaguiProvider with config={tamaguiConfig} defaultTheme={colorScheme ?? 'light'}
-```
+### Dark Mode Palette (Soft-Charcoal Hierarchy)
 
-### Hooks
+#### Elevation Model
 
-```typescript
-// From @/hooks
-import useColorScheme from '@/hooks/useColorScheme';
-import { useDataPersist } from '@/hooks';
-```
+| Level | Token             | Hex       | Usage                        |
+| ----- | ----------------- | --------- | ---------------------------- |
+| 0     | `background`      | `#0F1419` | App canvas (deepest)         |
+| 0.5   | `backgroundHover` | `#141B22` | Hover state on canvas        |
+| 1     | `surface`         | `#1A2329` | Cards, containers            |
+| 2     | `surfaceSubtle`   | `#242D35` | Elevated cards, modals       |
+| 3     | `surfaceElevated` | `#2D3A44` | Highest elevation, dropdowns |
 
-### Theme Utilities
+Each elevation level increases luminosity by ~8% for perceptible depth without harsh contrast jumps.
 
-```typescript
-// From utils/theme.ts
-import { getThemeColor, getStackHeaderOptions } from '@/utils/theme';
-// getThemeColor(theme, 'primary', '#fallback') - Safe theme color access for non-Tamagui APIs
-// getStackHeaderOptions(theme) - Shared Stack header options with brand colors
-```
+#### Text Hierarchy
 
-### Validation
+| Token                    | Hex       | Contrast Ratio | WCAG Level | Usage                           |
+| ------------------------ | --------- | -------------- | ---------- | ------------------------------- |
+| `color`                  | `#F0F4F8` | ~16.75:1       | AAA        | Primary text (headings, labels) |
+| `colorSubtle`            | `#A8B8C4` | ~9.10:1        | AAA        | Secondary text (body)           |
+| `colorMuted`             | `#7A8A9A` | ~5.23:1        | AA         | Muted / tertiary text           |
+| `placeholderColor`       | `#7A8A9A` | ~5.23:1        | AA         | Form hints and placeholders     |
+| `searchPlaceholderColor` | `#B0B0B0` | ~8.53:1        | AAA        | Search-field placeholder text   |
+| `colorDisabled`          | `#5A6A7A` | ~3.33:1        | -          | Disabled states                 |
 
-```typescript
-// From utils/validation.ts
-import { validateEmail, validatePassword, getPasswordStrength } from '@/utils/validation';
-// Email RFC 5322 validation, password strength (WEAK/MEDIUM/STRONG)
-```
+#### Brand Accent (Cyan)
 
-### Security & Crypto
+| Token                  | Hex                      | Usage                        |
+| ---------------------- | ------------------------ | ---------------------------- |
+| `primary`              | `#06B6D4`                | Primary interactive elements |
+| `brandPrimary`         | `#06B6D4`                | Brand primary color          |
+| `brandPrimarySoft`     | `hsla(187, 92%, 47%, 1)` | Secondary actions            |
+| `tabBarPillBackground` | `rgba(6,182,212,0.20)`   | Tab bar active indicator     |
+| `outlineColor`         | `rgba(6,182,212,0.3)`    | Focus ring                   |
 
-```typescript
-// utils/LargeSecureStore.ts - AES-256 encrypted storage for Supabase auth tokens
-// utils/cryptoPolyfill.ts - crypto.subtle.digest polyfill for PKCE S256 (auto-imported by supabase.ts)
-// Both are internal utilities, not typically imported directly
-```
+#### Border Colors
 
-## Tamagui Setup (per official docs)
+| Token              | Hex       | Usage                           |
+| ------------------ | --------- | ------------------------------- |
+| `borderColor`      | `#5A7887` | Accessible input/action borders |
+| `borderColorHover` | `#6E96A4` | Hover state borders             |
+| `borderColorFocus` | `#06B6D4` | Focus state borders             |
+| `surfaceBorder`    | `#2D3A44` | Surface borders                 |
 
-- **tamagui.config.ts**: `createTamagui({ ...defaultConfig, themes })` — imports themes from `themes.ts`. Include `declare module 'tamagui' { interface TamaguiCustomConfig extends ... }` for types.
-- **themes.ts**: All color palettes (light/dark), accent colors, semantic tokens (primary, brandPrimary, surface, etc.), and child themes (warning, error, success). Single source of truth for colors.
-- **Root layout**: `Provider` wraps `TamaguiProvider` with `config={tamaguiConfig}` and `defaultTheme={colorScheme ?? 'light'}` — `colorScheme` from `useColorScheme()` hook.
-- **Web**: `import '@/tamagui-web.css'` in root layout for Expo web.
-- **Babel**: `@tamagui/babel-plugin` is installed but **disabled** in babel.config.js (causes issues with Metro/React Native). Tamagui works at runtime without it. Re-enable only for web-only builds if needed.
+### Light Mode Palette (Preserved)
 
-## Architecture Notes
+Light mode maintains the professional teal direction:
 
-- Project upgraded to Expo SDK 54
-- Using React 19.1 with React Native 0.81.5
-- Full Tamagui for all UI styling; colors defined in themes.ts, imported by tamagui.config.ts; no StyleSheet
-- ESLint 9 with flat config
-- Directory "pages" was renamed to "scenes"
-- TypeScript strict mode enabled (v5.9.2)
-- Custom theme system with dark/light support; Tamagui themes (light/dark) sync with useColorScheme
-- SafeAreaView imported from react-native-safe-area-context (not React Native)
-- Required peer dependencies: @expo/metro-runtime, react-native-worklets
+- **Background**: `#FFFFFF` (pure white)
+- **Primary text**: `#0F2F2B` (deep teal)
+- **Accent**: `#0F766E` (brand teal)
+- **Surfaces**: Subtle gray progression (`#F9FAFB`, `#FFFFFF`)
 
-## Available Scripts
+### Token Consumers
 
-### Development Commands:
+Key components that consume theme tokens:
 
-- `npm run dev` - Start Expo development server for all platforms with cache cleared
-- `npm run dev:ios` - Start development server for iOS simulator only
-- `npm run dev:android` - Start development server for Android emulator only
-- `npm run dev:web` - Start development server for web browser only
-- `npm run dev:tailscale` - Start development server via Tailscale network
-- `npm run dev:doctor` - Run Expo diagnostics to check project health
+- **Search inputs**: `surfaceElevated`, `borderColor`, `primary`, `searchPlaceholderColor`
+- **Category cards**: `surface`, `primary`, `color`
+- **Product cards**: `surface`, `surfaceElevated`, `color`, `colorSubtle`
+- **Tab bar**: `tabBarInactive`, `tabBarPillBackground`, `primary`
+- **Form inputs**: `background`, `borderColor`, `borderColorFocus`, `color`, `placeholderColor`
 
-### Building & Deployment:
+### Verification Notes
 
-- `npm run dev:build:mobile` - Build iOS (IPA) and Android (APK) using EAS Build for development
-- `npm run dev:build:web` - Export static web application to `dist/` directory
-- `npm run dev:serve:web` - Serve the built web app locally (run after `dev:build:web`)
-- `npm run dev:deploy:web` - Build and deploy web app to EAS Hosting
-
-### Environment & Configuration:
-
-- `npm run dev:secret:push` - Upload environment variables from `.env.dev` to EAS secrets
-- `npm run dev:secret:list` - List all environment variables stored in EAS
-- `npm run dev:config:public` - Display current Expo configuration for debugging
-
-### Code Quality & Testing:
-
-- `npm run lint` - Run ESLint to check code quality and style
-- `npm run lint:staged` - Run linting only on staged Git files (used in pre-commit)
-- `npm run format` - Format code using Prettier
-- `npm run format:check` - Check code formatting without modifying files
-- `npm run test` - Run Jest unit tests
-- `npm run test:watch` - Run Jest tests in watch mode for development
-
-### Native Run:
-
-- `npm run android` - Run app on Android device/emulator (native build)
-- `npm run ios` - Run app on iOS simulator (native build)
-
-### Git Hooks:
-
-- `npm run prepare` - Set up Husky Git hooks for pre-commit quality checks
-
-## When in Doubt
-
-- Use Tamagui for all UI — no StyleSheet
-- Check Tamagui components (Card, Input, Form, ListItem, Button, etc.) first
-- Check `components/elements` for project-specific Tamagui wrappers
-- Use Tamagui tokens (`$primary`, `$background`) — never hardcode colors
-- Custom UI: `styled(View, {...})` or Tamagui composition
-
-## Active Agent Skills
-
-### Essentials (Core)
-
-- `concise-planning`: Always start with a plan
-- `lint-and-validate`: Keep code clean automatically
-- `git-pushing`: Save work safely
-- `kaizen`: Continuous improvement mindset
-- `systematic-debugging`: Debug like a pro
-- `clean-code`: Clean Code principles for readability and maintainability
-
-### TypeScript & React
-
-- `typescript-expert`: Advanced TypeScript patterns and strict mode best practices
-- `typescript-advanced-types`: Generics, conditional types, mapped types for type-safe code
-- `react-patterns`: Modern React hooks, composition, and performance patterns
-- `react-state-management`: Redux Toolkit, Zustand, and React Query patterns
-
-### Mobile Development
-
-- `mobile-developer`: Cross-platform mobile development best practices
-- `react-native-architecture`: React Native with Expo project structure and native modules
-- `app-store-optimization`: Preparation for App Store and Play Store release
-- `upgrading-expo`: Expo SDK version upgrade guidance
-- `mobile-design`: Mobile-first design, touch interaction, and platform conventions
-- `ui-ux-pro-max`: 50 styles, 21 palettes, font pairings, and design system intelligence
-
-### Backend & Data
-
-- `supabase-automation`: Supabase auth, database, storage, and edge functions
-- `api-design-principles`: REST API design, versioning, pagination standards
-- `database-design`: Schema design, indexing strategy, and ORM selection
-- `postgres-best-practices`: PostgreSQL optimization from Supabase best practices
-
-### Payments & E-Commerce
-
-- `payment-integration`: Payment gateway integration (Midtrans QRIS, GoPay, VA)
-- `auth-implementation-patterns`: JWT, OAuth2, session management, and RBAC
-
-### Security & Compliance
-
-- `api-security-best-practices`: Authentication, authorization, input validation, rate limiting
-- `gdpr-data-handling`: Data privacy compliance (applicable to Indonesia's UU PDP)
-
-### Testing & Quality
-
-- `testing-patterns`: Jest patterns, factory functions, mocking strategies, and TDD
-- `test-driven-development`: TDD workflow — red-green-refactor cycle
+- **Static contrast analysis**: Ratios calculated using WCAG luminance formula
+- **Runtime validation required**: Manual testing on devices is still needed for iOS, Android, screen-reader, and authenticated-route certification
+- **WebAIM web checks completed**: See `docs/WEBAIM_VALIDATION_REPORT.md` for browser-run contrast validation of final theme pairs

@@ -1,16 +1,12 @@
 {
   "expo": {
-    "name": "apotek-eccomerce",
-    "slug": "apotek-eccomerce",
-    "scheme": "apotek-eccomerce",
+    "name": "apotek-ecommerce",
+    "slug": "apotek-ecommerce",
+    "scheme": "apotek-ecommerce",
     "version": "3.0.0",
     "owner": "i-have-no-company",
     "newArchEnabled": true,
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
+    "platforms": ["ios", "android", "web"],
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "userInterfaceStyle": "automatic",

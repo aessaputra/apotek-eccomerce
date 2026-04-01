@@ -6,7 +6,7 @@ module.exports = defineConfig([
   expoConfig,
   eslintPluginPrettierRecommended,
   {
-    ignores: ['dist/*', '.agents/**'],
+    ignores: ['dist/*', '.agents/**', 'supabase/functions/**'],
   },
   {
     files: ['jest.setup.js'],

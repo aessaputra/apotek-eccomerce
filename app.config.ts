@@ -17,17 +17,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   }
   const expoConfig: ExpoConfig = {
     ...config,
-    slug: process.env.EXPO_SLUG ?? 'apotek-eccomerce',
-    name: process.env.EXPO_NAME ?? 'Apotek Eccomerce',
-    scheme: 'apotek-eccomerce', // Deep linking scheme untuk OAuth redirect
+    slug: process.env.EXPO_SLUG ?? 'apotek-ecommerce',
+    name: process.env.EXPO_NAME ?? 'Apotek Ecommerce',
+    scheme: 'apotek-ecommerce', // Deep linking scheme untuk OAuth redirect
     icon: './assets/images/logo.png', // App icon untuk semua platform
     ios: {
       ...config.ios,
-      bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekeccomerce',
+      bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekecommerce',
     },
     android: {
       ...config.android,
-      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekeccomerce',
+      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekecommerce',
       // Use 'resize' mode for consistent keyboard handling with KeyboardAvoidingView.
       // This allows the container to resize when keyboard appears, enabling
       // bottom action buttons to stay above keyboard.
@@ -54,11 +54,25 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       apiUrl: process.env.API_URL ?? '',
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '',
+      originLatitude: process.env.EXPO_PUBLIC_ORIGIN_LATITUDE
+        ? Number(process.env.EXPO_PUBLIC_ORIGIN_LATITUDE)
+        : -6.2146,
+      originLongitude: process.env.EXPO_PUBLIC_ORIGIN_LONGITUDE
+        ? Number(process.env.EXPO_PUBLIC_ORIGIN_LONGITUDE)
+        : 106.8451,
     },
     plugins: [
+      'expo-dev-client',
       'expo-router',
       'expo-asset',
       'expo-secure-store',
+      [
+        'react-native-maps',
+        {
+          androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
+          iosGoogleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
+        },
+      ],
       [
         'expo-splash-screen',
         {

@@ -9,12 +9,17 @@ export type Database = {
     Tables: {
       addresses: {
         Row: {
+          area_id: string | null;
+          area_name: string | null;
           city: string;
           city_id: string | null;
+          country_code: string | null;
           created_at: string;
           district_id: string | null;
           id: string;
           is_default: boolean | null;
+          latitude: number | null;
+          longitude: number | null;
           phone_number: string;
           postal_code: string;
           profile_id: string;
@@ -25,12 +30,17 @@ export type Database = {
           subdistrict_id: string | null;
         };
         Insert: {
+          area_id?: string | null;
+          area_name?: string | null;
           city: string;
           city_id?: string | null;
+          country_code?: string | null;
           created_at?: string;
           district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
+          latitude?: number | null;
+          longitude?: number | null;
           phone_number: string;
           postal_code: string;
           profile_id: string;
@@ -41,12 +51,17 @@ export type Database = {
           subdistrict_id?: string | null;
         };
         Update: {
+          area_id?: string | null;
+          area_name?: string | null;
           city?: string;
           city_id?: string | null;
+          country_code?: string | null;
           created_at?: string;
           district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
+          latitude?: number | null;
+          longitude?: number | null;
           phone_number?: string;
           postal_code?: string;
           profile_id?: string;
@@ -148,61 +163,219 @@ export type Database = {
       };
       orders: {
         Row: {
+          biteship_order_id: string | null;
+          checkout_idempotency_key: string | null;
           courier_code: string | null;
           courier_service: string | null;
           created_at: string;
+          destination_area_id: string | null;
+          destination_postal_code: number | null;
           destination_city_id: string | null;
           id: string;
           midtrans_order_id: string | null;
           midtrans_transaction_id: string | null;
+          origin_area_id: string | null;
           origin_city_id: string | null;
-          payment_status: string;
-          payment_type: string | null;
+          expired_at: string | null;
+          gross_amount: number | null;
+          paid_at: string | null;
+          payment_status: Database['public']['Enums']['payment_status'];
+          payment_type: Database['public']['Enums']['payment_type'] | null;
           shipping_address_id: string | null;
           shipping_cost: number | null;
           shipping_etd: string | null;
+          snap_redirect_url: string | null;
+          snap_token: string | null;
+          snap_token_created_at: string | null;
           status: string;
           total_amount: number;
+          updated_at: string | null;
           user_id: string | null;
           waybill_number: string | null;
         };
         Insert: {
+          biteship_order_id?: string | null;
+          checkout_idempotency_key?: string | null;
           courier_code?: string | null;
           courier_service?: string | null;
           created_at?: string;
+          destination_area_id?: string | null;
+          destination_postal_code?: number | null;
           destination_city_id?: string | null;
+          expired_at?: string | null;
+          gross_amount?: number | null;
           id?: string;
           midtrans_order_id?: string | null;
           midtrans_transaction_id?: string | null;
+          origin_area_id?: string | null;
           origin_city_id?: string | null;
-          payment_status?: string;
-          payment_type?: string | null;
+          paid_at?: string | null;
+          payment_status?: Database['public']['Enums']['payment_status'];
+          payment_type?: Database['public']['Enums']['payment_type'] | null;
           shipping_address_id?: string | null;
           shipping_cost?: number | null;
           shipping_etd?: string | null;
+          snap_redirect_url?: string | null;
+          snap_token?: string | null;
+          snap_token_created_at?: string | null;
           status?: string;
           total_amount: number;
+          updated_at?: string | null;
           user_id?: string | null;
           waybill_number?: string | null;
         };
         Update: {
+          biteship_order_id?: string | null;
+          checkout_idempotency_key?: string | null;
           courier_code?: string | null;
           courier_service?: string | null;
           created_at?: string;
+          destination_area_id?: string | null;
+          destination_postal_code?: number | null;
           destination_city_id?: string | null;
+          expired_at?: string | null;
+          gross_amount?: number | null;
           id?: string;
           midtrans_order_id?: string | null;
           midtrans_transaction_id?: string | null;
+          origin_area_id?: string | null;
           origin_city_id?: string | null;
-          payment_status?: string;
-          payment_type?: string | null;
+          paid_at?: string | null;
+          payment_status?: Database['public']['Enums']['payment_status'];
+          payment_type?: Database['public']['Enums']['payment_type'] | null;
           shipping_address_id?: string | null;
           shipping_cost?: number | null;
           shipping_etd?: string | null;
+          snap_redirect_url?: string | null;
+          snap_token?: string | null;
+          snap_token_created_at?: string | null;
           status?: string;
           total_amount?: number;
+          updated_at?: string | null;
           user_id?: string | null;
           waybill_number?: string | null;
+        };
+      };
+      payments: {
+        Row: {
+          acquirer: string | null;
+          approval_code: string | null;
+          bank: string | null;
+          bill_key: string | null;
+          biller_code: string | null;
+          card_type: string | null;
+          channel_response_code: string | null;
+          channel_response_message: string | null;
+          checkout_idempotency_key: string | null;
+          created_at: string;
+          currency: string;
+          eci: string | null;
+          expiry_time: string | null;
+          fraud_status: string | null;
+          gross_amount: number;
+          id: string;
+          issuer: string | null;
+          masked_card: string | null;
+          merchant_id: string | null;
+          midtrans_order_id: string;
+          midtrans_transaction_id: string | null;
+          order_id: string;
+          paid_at: string | null;
+          payment_code: string | null;
+          payment_type: Database['public']['Enums']['payment_type'] | null;
+          raw_notification: Json;
+          redirect_url: string | null;
+          settlement_time: string | null;
+          signature_key: string | null;
+          status: Database['public']['Enums']['payment_status'];
+          status_code: string | null;
+          status_message: string | null;
+          store: string | null;
+          transaction_status: string | null;
+          transaction_time: string | null;
+          updated_at: string;
+          user_id: string | null;
+          va_numbers: Json;
+        };
+        Insert: {
+          acquirer?: string | null;
+          approval_code?: string | null;
+          bank?: string | null;
+          bill_key?: string | null;
+          biller_code?: string | null;
+          card_type?: string | null;
+          channel_response_code?: string | null;
+          channel_response_message?: string | null;
+          checkout_idempotency_key?: string | null;
+          created_at?: string;
+          currency?: string;
+          eci?: string | null;
+          expiry_time?: string | null;
+          fraud_status?: string | null;
+          gross_amount: number;
+          id?: string;
+          issuer?: string | null;
+          masked_card?: string | null;
+          merchant_id?: string | null;
+          midtrans_order_id: string;
+          midtrans_transaction_id?: string | null;
+          order_id: string;
+          paid_at?: string | null;
+          payment_code?: string | null;
+          payment_type?: Database['public']['Enums']['payment_type'] | null;
+          raw_notification?: Json;
+          redirect_url?: string | null;
+          settlement_time?: string | null;
+          signature_key?: string | null;
+          status?: Database['public']['Enums']['payment_status'];
+          status_code?: string | null;
+          status_message?: string | null;
+          store?: string | null;
+          transaction_status?: string | null;
+          transaction_time?: string | null;
+          updated_at?: string;
+          user_id?: string | null;
+          va_numbers?: Json;
+        };
+        Update: {
+          acquirer?: string | null;
+          approval_code?: string | null;
+          bank?: string | null;
+          bill_key?: string | null;
+          biller_code?: string | null;
+          card_type?: string | null;
+          channel_response_code?: string | null;
+          channel_response_message?: string | null;
+          checkout_idempotency_key?: string | null;
+          created_at?: string;
+          currency?: string;
+          eci?: string | null;
+          expiry_time?: string | null;
+          fraud_status?: string | null;
+          gross_amount?: number;
+          id?: string;
+          issuer?: string | null;
+          masked_card?: string | null;
+          merchant_id?: string | null;
+          midtrans_order_id?: string;
+          midtrans_transaction_id?: string | null;
+          order_id?: string;
+          paid_at?: string | null;
+          payment_code?: string | null;
+          payment_type?: Database['public']['Enums']['payment_type'] | null;
+          raw_notification?: Json;
+          redirect_url?: string | null;
+          settlement_time?: string | null;
+          signature_key?: string | null;
+          status?: Database['public']['Enums']['payment_status'];
+          status_code?: string | null;
+          status_message?: string | null;
+          store?: string | null;
+          transaction_status?: string | null;
+          transaction_time?: string | null;
+          updated_at?: string;
+          user_id?: string | null;
+          va_numbers?: Json;
         };
       };
       product_images: {
@@ -240,6 +413,7 @@ export type Database = {
           slug: string;
           stock: number;
           updated_at: string;
+          weight: number;
         };
         Insert: {
           category_id?: string | null;
@@ -252,6 +426,7 @@ export type Database = {
           slug: string;
           stock?: number;
           updated_at?: string;
+          weight?: number;
         };
         Update: {
           category_id?: string | null;
@@ -264,6 +439,7 @@ export type Database = {
           slug?: string;
           stock?: number;
           updated_at?: string;
+          weight?: number;
         };
       };
       profiles: {
@@ -298,10 +474,79 @@ export type Database = {
           updated_at?: string;
         };
       };
+      webhook_idempotency: {
+        Row: {
+          created_at: string | null;
+          event_key: string;
+          id: string;
+          provider: string;
+        };
+        Insert: {
+          created_at?: string | null;
+          event_key: string;
+          id?: string;
+          provider: string;
+        };
+        Update: {
+          created_at?: string | null;
+          event_key?: string;
+          id?: string;
+          provider?: string;
+        };
+      };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
-    Enums: { [_ in never]: never };
+    Functions: {
+      apply_midtrans_webhook_transition: {
+        Args: {
+          p_provider: string;
+          p_event_key: string;
+          p_order_id: string;
+          p_next_payment_status: string;
+          p_next_order_status: string;
+          p_midtrans_transaction_id?: string | null;
+          p_payment_type?: string | null;
+          p_biteship_order_id?: string | null;
+          p_waybill_number?: string | null;
+        };
+        Returns: {
+          applied: boolean;
+          payment_status: string;
+          order_status: string;
+        }[];
+      };
+    };
+    Enums: {
+      payment_status:
+        | 'pending'
+        | 'settlement'
+        | 'deny'
+        | 'expire'
+        | 'cancel'
+        | 'refund'
+        | 'partial_refund'
+        | 'chargeback'
+        | 'partial_chargeback'
+        | 'authorize';
+      payment_type:
+        | 'credit_card'
+        | 'bank_transfer'
+        | 'echannel'
+        | 'gopay'
+        | 'shopeepay'
+        | 'qris'
+        | 'akulaku'
+        | 'kredivo'
+        | 'indomaret'
+        | 'alfamart'
+        | 'bca_klikbca'
+        | 'bca_klikpay'
+        | 'bri_epay'
+        | 'cimb_clicks'
+        | 'danamon_online'
+        | 'uob_ezpay'
+        | 'other';
+    };
   };
 };
 

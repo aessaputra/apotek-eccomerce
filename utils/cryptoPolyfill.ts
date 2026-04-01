@@ -7,7 +7,7 @@
  *
  * This module:
  * 1. Imports `react-native-get-random-values` → polyfills `crypto.getRandomValues`
- * 2. Polyfills `crypto.subtle.digest` → bridges to `expo-crypto.digest()` (native SHA-256)
+ * 2. Polyfills `crypto.subtle.digest` → bridges to `expo-crypto.digestStringAsync()` (native SHA)
  *
  * Must be imported BEFORE `@supabase/supabase-js` createClient.
  *
@@ -17,8 +17,43 @@ import 'react-native-get-random-values';
 import * as ExpoCrypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
+function toUint8Array(data: ArrayBuffer | ArrayBufferView): Uint8Array {
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
+  }
+
+  return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+}
+
+function bytesToUtf8(bytes: Uint8Array): string {
+  if (typeof TextDecoder !== 'undefined') {
+    return new TextDecoder().decode(bytes);
+  }
+
+  let result = '';
+  for (const byte of bytes) {
+    result += String.fromCharCode(byte);
+  }
+  return result;
+}
+
+function hexToArrayBuffer(hex: string): ArrayBuffer {
+  const normalizedHex = hex.length % 2 === 0 ? hex : `0${hex}`;
+  const byteLength = normalizedHex.length / 2;
+  const bytes = new Uint8Array(byteLength);
+
+  for (let index = 0; index < byteLength; index += 1) {
+    const start = index * 2;
+    bytes[index] = Number.parseInt(normalizedHex.slice(start, start + 2), 16);
+  }
+
+  return bytes.buffer;
+}
+
 // Only polyfill on native — web already has native WebCrypto
 if (Platform.OS !== 'web') {
+  const shouldForceOverrideDigest = Platform.OS === 'android';
+
   const ALGORITHM_MAP: Record<string, ExpoCrypto.CryptoDigestAlgorithm> = {
     'SHA-1': ExpoCrypto.CryptoDigestAlgorithm.SHA1,
     'SHA-256': ExpoCrypto.CryptoDigestAlgorithm.SHA256,
@@ -38,13 +73,14 @@ if (Platform.OS !== 'web') {
     const algoName = typeof algorithm === 'string' ? algorithm : algorithm.name;
     const expoAlgo = ALGORITHM_MAP[algoName] ?? ExpoCrypto.CryptoDigestAlgorithm.SHA256;
 
-    if (data instanceof ArrayBuffer) {
-      return ExpoCrypto.digest(expoAlgo, data);
-    }
+    const inputBytes = toUint8Array(data);
+    const inputString = bytesToUtf8(inputBytes);
 
-    const view = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-    const normalizedBuffer = view.slice().buffer;
-    return ExpoCrypto.digest(expoAlgo, normalizedBuffer);
+    const digestHex = await ExpoCrypto.digestStringAsync(expoAlgo, inputString, {
+      encoding: ExpoCrypto.CryptoEncoding.HEX,
+    });
+
+    return hexToArrayBuffer(digestHex);
   }
 
   // react-native-get-random-values (imported above) ensures globalThis.crypto
@@ -58,6 +94,12 @@ if (Platform.OS !== 'web') {
   } else if (!globalThis.crypto.subtle) {
     Object.defineProperty(globalThis.crypto, 'subtle', {
       value: { digest: subtleDigest },
+      writable: true,
+      configurable: true,
+    });
+  } else if (shouldForceOverrideDigest) {
+    Object.defineProperty(globalThis.crypto.subtle, 'digest', {
+      value: subtleDigest,
       writable: true,
       configurable: true,
     });

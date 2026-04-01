@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export enum DataPersistKeys {
   USER = 'USER',
+  CHECKOUT_SESSION = 'CHECKOUT_SESSION',
   // add more keys here
 }
 

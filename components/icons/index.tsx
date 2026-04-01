@@ -2,24 +2,31 @@ import type { ComponentProps } from 'react';
 import {
   AlertCircle,
   Bell,
+  ChevronLeft,
   CircleHelp,
   Check,
   ChevronRight,
   Chrome,
+  CreditCard,
   Eye,
   EyeOff,
   Grid2x2,
   Heart,
   Home,
+  Lock,
   MapPin,
+  MoreHorizontal,
   Package,
   Pencil,
   Pill,
   Search,
+  Settings2,
   ShoppingCart,
   Star,
   Trash2,
+  Truck,
   User,
+  Wrench,
   X,
   XCircle,
 } from '@tamagui/lucide-icons';
@@ -82,6 +89,10 @@ export function ChevronRightIcon(props: IconProps) {
   return <ChevronRight {...props} />;
 }
 
+export function ChevronLeftIcon(props: IconProps) {
+  return <ChevronLeft {...props} />;
+}
+
 export function XCircleIcon(props: IconProps) {
   return <XCircle {...props} />;
 }
@@ -112,4 +123,28 @@ export function GoogleIcon(props: IconProps) {
 
 export function CloseIcon(props: IconProps) {
   return <X {...props} />;
+}
+
+export function LockIcon(props: IconProps) {
+  return <Lock {...props} />;
+}
+
+export function MoreIcon(props: IconProps) {
+  return <MoreHorizontal {...props} />;
+}
+
+export function CreditCardIcon(props: IconProps) {
+  return <CreditCard {...props} />;
+}
+
+export function TruckIcon(props: IconProps) {
+  return <Truck {...props} />;
+}
+
+export function WrenchIcon(props: IconProps) {
+  return <Wrench {...props} />;
+}
+
+export function SettingsIcon(props: IconProps) {
+  return <Settings2 {...props} />;
 }

@@ -1,5 +1,18 @@
 // Jest setup file untuk menangani animasi React Native
 import 'react-native-gesture-handler/jestSetup';
+import { act } from 'react-test-renderer';
+
+// Mock @react-native-community/netinfo to avoid native module errors
+jest.mock('@react-native-community/netinfo', () => ({
+  fetch: jest.fn(() =>
+    Promise.resolve({
+      isConnected: true,
+      isInternetReachable: true,
+      type: 'wifi',
+    }),
+  ),
+  addEventListener: jest.fn(() => jest.fn()), // Returns unsubscribe function
+}));
 
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
@@ -7,6 +20,42 @@ jest.mock('react-native-reanimated', () => {
   Reanimated.default.call = () => {};
   return Reanimated;
 });
+
+// Mock @react-native-async-storage/async-storage
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  setItem: jest.fn(() => Promise.resolve()),
+  getItem: jest.fn(() => Promise.resolve(null)),
+  removeItem: jest.fn(() => Promise.resolve()),
+  multiSet: jest.fn(() => Promise.resolve()),
+  multiGet: jest.fn(() => Promise.resolve([])),
+  clear: jest.fn(() => Promise.resolve()),
+  getAllKeys: jest.fn(() => Promise.resolve([])),
+}));
+
+// Mock Supabase client
+jest.mock('@/utils/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+      onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+    },
+    from: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      update: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      delete: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      on: jest.fn(() => ({ unsubscribe: jest.fn() })),
+    })),
+    channel: jest.fn(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn(() => Promise.resolve('SUBSCRIBED')),
+      unsubscribe: jest.fn(() => Promise.resolve()),
+    })),
+    removeChannel: jest.fn(() => Promise.resolve()),
+  },
+}));
 
 // Setup untuk menangani Animated API warnings dari Tamagui
 // Tamagui menggunakan SpringAnimation yang memicu update state secara async
@@ -81,8 +130,12 @@ beforeAll(() => {
 afterEach(() => {
   // Run pending timers setelah setiap test untuk memastikan animasi selesai
   // Ini membantu memastikan semua animasi async selesai sebelum test berikutnya
-  jest.runOnlyPendingTimers();
-  jest.clearAllTimers();
+  if (jest.isMockFunction(setTimeout)) {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.clearAllTimers();
+  }
 });
 
 afterAll(() => {

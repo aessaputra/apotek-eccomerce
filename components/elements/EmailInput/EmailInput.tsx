@@ -3,6 +3,7 @@ import { TextInput } from 'react-native';
 import { XStack, useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 import { FORM_FIELD } from '@/constants/ui';
+import { fonts } from '@/utils/fonts';
 
 export interface EmailInputProps {
   value: string;
@@ -22,7 +23,7 @@ export interface EmailInputProps {
     | 'number-pad'
     | 'decimal-pad';
   editable?: boolean;
-  accessibilityLabel?: string;
+  'aria-label'?: string;
 }
 
 /**
@@ -42,7 +43,7 @@ function EmailInput({
   autoCorrect = false,
   keyboardType = 'email-address',
   editable = true,
-  accessibilityLabel,
+  'aria-label': ariaLabel,
 }: EmailInputProps) {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -53,22 +54,19 @@ function EmailInput({
     ? getThemeColor(theme, 'danger')
     : isFocused
       ? getThemeColor(theme, 'primary')
-      : getThemeColor(theme, 'surfaceBorder');
+      : getThemeColor(theme, 'borderColorHover');
 
   return (
     <XStack
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: FORM_FIELD.HORIZONTAL_PADDING,
-        overflow: 'hidden',
-        backgroundColor: surfaceColor,
-        borderWidth: isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH,
-        borderRadius: FORM_FIELD.BORDER_RADIUS,
-        borderColor: borderColorValue,
-        height: FORM_FIELD.HEIGHT,
-        opacity: disabled ? 0.6 : 1,
-      }}>
+      alignItems="center"
+      paddingHorizontal={FORM_FIELD.HORIZONTAL_PADDING}
+      overflow="hidden"
+      backgroundColor={surfaceColor}
+      borderWidth={isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH}
+      borderRadius={FORM_FIELD.BORDER_RADIUS}
+      borderColor={borderColorValue}
+      height={FORM_FIELD.HEIGHT}
+      opacity={disabled ? 0.6 : 1}>
       <TextInput
         style={{
           flex: 1,
@@ -76,7 +74,7 @@ function EmailInput({
           padding: 0,
           margin: 0,
           fontSize: 16,
-          fontFamily: theme.bodyFont?.val || 'System',
+          fontFamily: theme.bodyFont?.val || fonts.poppins.regular,
           color: textColor,
         }}
         placeholder={placeholder}
@@ -87,7 +85,7 @@ function EmailInput({
         autoCorrect={autoCorrect}
         keyboardType={keyboardType}
         editable={editable && !disabled}
-        underlineColorAndroid="transparent"
+        underlineColorAndroid={getThemeColor(theme, 'colorTransparent')}
         textAlignVertical="center"
         onFocus={() => {
           setIsFocused(true);
@@ -97,7 +95,7 @@ function EmailInput({
           setIsFocused(false);
           onBlur?.();
         }}
-        accessibilityLabel={accessibilityLabel || placeholder || 'Email'}
+        aria-label={ariaLabel || placeholder || 'Email'}
         testID="email-input"
       />
     </XStack>

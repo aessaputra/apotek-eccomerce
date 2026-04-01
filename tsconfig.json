@@ -16,5 +16,8 @@
     "**/*.ts",
     "**/*.tsx",
     "types/tamagui.d.ts"
+  ],
+  "exclude": [
+    "supabase/functions/**/*"
   ]
 }

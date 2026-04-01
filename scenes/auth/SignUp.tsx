@@ -1,15 +1,17 @@
 import { useState, useMemo } from 'react';
-import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
+import { YStack, XStack, Text, Image, useMedia, useTheme, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link, useRouter } from 'expo-router';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signUp } from '@/services/auth.service';
+import { getAuthErrorMessage, isUserAlreadyExistsError } from '@/constants/auth.errors';
 import { images } from '@/utils/images';
-import { PRIMARY_BUTTON_TITLE_STYLE, CARD_SHADOW } from '@/constants/ui';
+import { PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
+import { getThemeColor } from '@/utils/theme';
 import {
   validateEmail,
   validatePassword,
@@ -32,13 +34,15 @@ import {
  */
 export default function SignUp() {
   const media = useMedia();
+  const theme = useTheme();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
 
   /**
    * Handles form submission with validation
@@ -78,25 +82,22 @@ export default function SignUp() {
       const { data, error: err } = await signUp({
         email: trimmedEmail,
         password,
-        // full_name can be collected later in profile page for better conversion rate
       });
       if (err) {
-        setError(err.message ?? 'Pendaftaran gagal. Coba lagi.');
-        // Only set emailError if error is email-related
-        const errorMessage = err.message?.toLowerCase() ?? '';
-        if (
-          errorMessage.includes('email') ||
-          errorMessage.includes('user already registered') ||
-          errorMessage.includes('invalid login credentials')
-        ) {
+        const errorMessage = getAuthErrorMessage(err);
+        setError(errorMessage);
+
+        if (isUserAlreadyExistsError(err)) {
           setEmailError(true);
         }
         return;
       }
       if (data?.session) {
-        // AuthProvider.onAuthStateChange akan handle navigation via Redux
       } else if (data?.user && !data.session) {
-        setError('Periksa email Anda untuk tautan konfirmasi.');
+        router.push({
+          pathname: '/(auth)/verify-email',
+          params: { email: trimmedEmail },
+        });
       }
     } catch {
       setError('Terjadi kesalahan saat mendaftar. Silakan coba lagi.');
@@ -109,15 +110,14 @@ export default function SignUp() {
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView edges={['top']}>
       <YStack
         flex={1}
         backgroundColor="$background"
         alignItems="center"
         justifyContent="center"
         padding="$4">
-        <KeyboardAvoidingView
-          style={{ flex: 1, alignSelf: 'stretch' }}
+        <KeyboardAvoidingWrapper
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
           <ScrollView
@@ -162,7 +162,7 @@ export default function SignUp() {
                   lineHeight={38}>
                   Daftar
                 </Text>
-                <Text fontSize={15} color="$colorPress" lineHeight={22}>
+                <Text fontSize={15} color="$colorHover" lineHeight={22}>
                   Buat akun baru untuk belanja obat dan layanan kesehatan dengan lebih cepat.
                 </Text>
               </YStack>
@@ -174,9 +174,9 @@ export default function SignUp() {
                 paddingHorizontal={media.gtMd ? 40 : media.gtSm ? 32 : 24}
                 backgroundColor="$surface"
                 borderWidth={1}
-                borderColor="$surfaceBorder"
+                borderColor="$borderColorHover"
                 elevation={4}
-                {...CARD_SHADOW}
+                {...getCardShadow(getThemeColor(theme, 'shadowColor'))}
                 gap="$4"
                 animation="quick"
                 enterStyle={{ opacity: 0, y: 20 }}
@@ -211,13 +211,13 @@ export default function SignUp() {
                       error={emailError}
                       disabled={loading}
                       keyboardType="email-address"
-                      accessibilityLabel="Email"
+                      aria-label="Email"
                       onFocus={() => setFocusedField('email')}
                       onBlur={() => setFocusedField(null)}
                     />
                     {focusedField === 'email' && !emailError && (
                       <YStack marginTop="$1">
-                        <Text fontSize={12} color="$colorPress" opacity={0.7}>
+                        <Text fontSize={12} color="$colorHover">
                           Pastikan email Anda valid untuk verifikasi akun
                         </Text>
                       </YStack>
@@ -246,7 +246,7 @@ export default function SignUp() {
                           animation="quick"
                           enterStyle={{ opacity: 0 }}
                           opacity={1}>
-                          <Text fontSize={12} fontWeight="500" color="$colorPress" opacity={0.7}>
+                          <Text fontSize={12} fontWeight="500" color="$colorHover">
                             {passwordStrength.text}
                           </Text>
                           <XStack gap="$1">
@@ -261,7 +261,7 @@ export default function SignUp() {
                                     ? level === PasswordStrength.WEAK
                                       ? '$danger'
                                       : level === PasswordStrength.MEDIUM
-                                        ? '$yellow9'
+                                        ? '$warning'
                                         : '$primary'
                                     : '$surfaceBorder'
                                 }
@@ -289,7 +289,7 @@ export default function SignUp() {
                     />
                     {focusedField === 'password' && !passwordError && (
                       <YStack marginTop="$1">
-                        <Text fontSize={12} color="$colorPress" opacity={0.7}>
+                        <Text fontSize={12} color="$colorHover">
                           Gunakan kombinasi huruf dan angka untuk keamanan lebih baik
                         </Text>
                       </YStack>
@@ -299,11 +299,9 @@ export default function SignUp() {
                   {/* Submit Button dengan enhanced styling dan micro-interactions */}
                   <Button
                     title="Buat Akun"
-                    style={{
-                      paddingVertical: 16,
-                      borderRadius: 14,
-                      height: 56,
-                    }}
+                    paddingVertical={16}
+                    borderRadius={14}
+                    height={56}
                     backgroundColor="$primary"
                     titleStyle={{
                       ...PRIMARY_BUTTON_TITLE_STYLE,
@@ -313,7 +311,7 @@ export default function SignUp() {
                     }}
                     onPress={handleSubmit}
                     isLoading={loading}
-                    loaderColor="$white"
+                    loaderColor="$onPrimary"
                     animation="quick"
                     hoverStyle={{
                       scale: 1.02,
@@ -335,7 +333,7 @@ export default function SignUp() {
                         <Text
                           fontSize={15}
                           fontWeight="600"
-                          color="$colorPress"
+                          color="$colorSubtle"
                           letterSpacing={0.2}>
                           Sudah punya akun?{' '}
                           <Text fontWeight="800" color="$primary" textDecorationLine="underline">
@@ -349,8 +347,17 @@ export default function SignUp() {
               </YStack>
             </YStack>
           </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAvoidingWrapper>
       </YStack>
     </SafeAreaView>
   );
 }
+
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+});
+
+const KeyboardAvoidingWrapper = styled(KeyboardAvoidingView, {
+  flex: 1,
+  alignSelf: 'stretch',
+});

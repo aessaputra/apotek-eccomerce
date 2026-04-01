@@ -18,7 +18,7 @@ export default function HeaderCartIcon({
   const theme = useTheme();
   const defaultColor = forHeaderRight
     ? getThemeColor(theme, 'white', THEME_FALLBACKS.white)
-    : getThemeColor(theme, 'background', THEME_FALLBACKS.background);
+    : getThemeColor(theme, 'color', THEME_FALLBACKS.color);
   const color = colorProp ?? defaultColor;
   const router = useRouter();
   return (
@@ -32,11 +32,11 @@ export default function HeaderCartIcon({
         padding={12}
         alignItems="center"
         justifyContent="center"
-        onPress={() => router.push('/(main)/(tabs)/cart')}
+        onPress={() => router.push('/cart')}
         hitSlop={12}
         cursor="pointer"
-        accessibilityRole="button"
-        accessibilityLabel="Keranjang">
+        role="button"
+        aria-label="Keranjang">
         <CartIcon size={ICON_SIZES.BUTTON} color={color} />
       </XStack>
     </XStack>

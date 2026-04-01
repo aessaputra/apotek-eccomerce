@@ -1,20 +1,28 @@
 import { useState } from 'react';
-import { YStack, XStack, Text, Image, useMedia } from 'tamagui';
+import { YStack, XStack, Text, Image, useMedia, useTheme, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link, useRouter } from 'expo-router';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import OAuthButton from '@/components/elements/OAuthButton';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { signInWithPassword, signInWithGoogle } from '@/services/auth.service';
+import {
+  getAuthErrorMessage,
+  isCancellationError,
+  isEmailNotVerifiedError,
+} from '@/constants/auth.errors';
 import { images } from '@/utils/images';
 import { validateEmail } from '@/utils/validation';
-import { PRIMARY_BUTTON_TITLE_STYLE, CARD_SHADOW } from '@/constants/ui';
+import { PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
+import { getThemeColor } from '@/utils/theme';
 
 export default function Login() {
   const media = useMedia();
+  const theme = useTheme();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,19 +57,27 @@ export default function Login() {
         password,
       });
       if (err) {
-        setError(err.message ?? 'Login gagal. Periksa email dan password.');
-        const errorMessage = err.message?.toLowerCase() ?? '';
+        const errorMessage = getAuthErrorMessage(err);
+        setError(errorMessage);
+
+        if (isEmailNotVerifiedError(err)) {
+          router.push({
+            pathname: '/(auth)/verify-email',
+            params: { email: trimmedEmail },
+          });
+          return;
+        }
+
+        const lowerMessage = err.message?.toLowerCase() ?? '';
         if (
-          errorMessage.includes('email') ||
-          errorMessage.includes('invalid login credentials') ||
-          errorMessage.includes('user not found')
+          lowerMessage.includes('email') ||
+          lowerMessage.includes('invalid login credentials') ||
+          lowerMessage.includes('user not found')
         ) {
           setEmailError(true);
         }
         return;
       }
-      // Setelah login berhasil, AuthProvider.onAuthStateChange
-      // akan menangani role/ban check dan set Redux state.
     } catch {
       setError('Terjadi kesalahan saat login. Silakan coba lagi.');
     } finally {
@@ -75,28 +91,34 @@ export default function Login() {
     try {
       const { error: err } = await signInWithGoogle();
       if (err) {
-        setError(err.message ?? 'Login dengan Google gagal.');
+        if (isCancellationError(err)) return;
+        const errorMessage = getAuthErrorMessage(err);
+        setError(errorMessage);
         return;
       }
-      // Setelah setSession berhasil, AuthProvider.onAuthStateChange
-      // akan menangani role/ban check dan update Redux state.
-    } catch {
-      setError('Terjadi kesalahan saat login dengan Google.');
+    } catch (thrown: unknown) {
+      if (__DEV__) {
+        console.log('[Login] handleGoogleLogin exception:', thrown);
+      }
+
+      const errorMessage = thrown instanceof Error ? thrown.message : String(thrown ?? '');
+      if (!isCancellationError({ message: errorMessage })) {
+        setError('Terjadi kesalahan saat login dengan Google. Silakan coba lagi.');
+      }
     } finally {
       setOauthLoading(false);
     }
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView edges={['top']}>
       <YStack
         flex={1}
         backgroundColor="$background"
         alignItems="center"
         justifyContent="center"
         padding="$4">
-        <KeyboardAvoidingView
-          style={{ flex: 1, alignSelf: 'stretch' }}
+        <KeyboardAvoidingWrapper
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
           <ScrollView
@@ -141,7 +163,7 @@ export default function Login() {
                   lineHeight={38}>
                   Masuk
                 </Text>
-                <Text fontSize={15} color="$colorPress" lineHeight={22}>
+                <Text fontSize={15} color="$colorHover" lineHeight={22}>
                   Gunakan akun Anda untuk mengakses layanan kesehatan dan belanja obat dengan aman.
                 </Text>
               </YStack>
@@ -153,9 +175,9 @@ export default function Login() {
                 paddingHorizontal={media.gtMd ? 40 : media.gtSm ? 32 : 24}
                 backgroundColor="$surface"
                 borderWidth={1}
-                borderColor="$surfaceBorder"
+                borderColor="$borderColorHover"
                 elevation={4}
-                {...CARD_SHADOW}
+                {...getCardShadow(getThemeColor(theme, 'shadowColor'))}
                 gap="$4"
                 animation="quick"
                 enterStyle={{ opacity: 0, y: 20 }}
@@ -178,7 +200,7 @@ export default function Login() {
                       error={emailError}
                       disabled={loading}
                       keyboardType="email-address"
-                      accessibilityLabel="Email"
+                      aria-label="Email"
                     />
                   </YStack>
 
@@ -211,7 +233,7 @@ export default function Login() {
                     }}
                     onPress={handleSubmit}
                     isLoading={loading}
-                    loaderColor="$white"
+                    loaderColor="$onPrimary"
                     animation="quick"
                     hoverStyle={{
                       backgroundColor: '$primary',
@@ -234,7 +256,7 @@ export default function Login() {
                         <Text
                           fontSize={15}
                           fontWeight="600"
-                          color="$colorPress"
+                          color="$colorSubtle"
                           letterSpacing={0.2}>
                           Belum punya akun?{' '}
                           <Text fontWeight="800" color="$primary" textDecorationLine="underline">
@@ -255,11 +277,11 @@ export default function Login() {
                 animation="quick"
                 enterStyle={{ opacity: 0 }}
                 opacity={1}>
-                <XStack flex={1} height={1.5} backgroundColor="$surfaceBorder" borderRadius={1} />
-                <Text fontSize={13} fontWeight="600" color="$colorPress" letterSpacing={0.5}>
+                <XStack flex={1} height={1.5} backgroundColor="$borderColor" borderRadius={1} />
+                <Text fontSize={13} fontWeight="600" color="$colorHover" letterSpacing={0.5}>
                   ATAU
                 </Text>
-                <XStack flex={1} height={1.5} backgroundColor="$surfaceBorder" borderRadius={1} />
+                <XStack flex={1} height={1.5} backgroundColor="$borderColor" borderRadius={1} />
               </XStack>
 
               {/* Google OAuth Button dengan enhanced spacing dan responsive width */}
@@ -278,8 +300,17 @@ export default function Login() {
               </YStack>
             </YStack>
           </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAvoidingWrapper>
       </YStack>
     </SafeAreaView>
   );
 }
+
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+});
+
+const KeyboardAvoidingWrapper = styled(KeyboardAvoidingView, {
+  flex: 1,
+  alignSelf: 'stretch',
+});

@@ -1,74 +1,55 @@
-import { Pressable } from 'react-native';
-import { type ComponentType, useCallback } from 'react';
-import { YStack, XStack, Text, Card, useTheme } from 'tamagui';
-import * as Haptics from 'expo-haptics';
-import { getThemeColor } from '@/utils/theme';
+import { YStack, XStack, Text, Card, styled } from 'tamagui';
 import type { Address } from '@/types/address';
-import { ICON_SIZES, MIN_TOUCH_TARGET } from '@/constants/ui';
-import { DeleteIcon, EditIcon, StarIcon, type IconProps } from '@/components/icons';
+import { DEFAULT_ACCENT_BORDER_WIDTH, PRESS_OPACITY } from '@/constants/address';
 
 export interface AddressCardProps {
   address: Address;
   isDefault?: boolean;
+  selected?: boolean;
   onPress?: () => void;
   onEdit?: () => void;
-  onDelete?: () => void;
-  onSetDefault?: () => void;
-  showActions?: boolean;
+  badgeText?: string | null;
 }
 
-interface ActionIconButtonProps {
-  onPress: () => void;
-  icon: ComponentType<IconProps>;
-  iconColor: string;
-  accessibilityLabel: string;
-  accessibilityHint: string;
-}
+const StyledCard = styled(Card, {
+  p: '$4',
+  mb: '$3',
+  bw: 1,
+  br: '$5',
+  elevation: 2,
+  animation: 'quick',
 
-const ACTION_BUTTON_STYLE = {
-  minWidth: MIN_TOUCH_TARGET,
-  minHeight: MIN_TOUCH_TARGET,
-  justifyContent: 'center' as const,
-  alignItems: 'center' as const,
-};
+  variants: {
+    isDefault: {
+      true: {
+        backgroundColor: '$surface',
+        borderColor: '$primary',
+        borderLeftWidth: DEFAULT_ACCENT_BORDER_WIDTH,
+        borderLeftColor: '$primary',
+      },
+      false: {
+        backgroundColor: '$surface',
+        borderColor: '$surfaceBorder',
+      },
+    },
+    selected: {
+      true: {
+        borderWidth: 2,
+        borderColor: '$primary',
+      },
+      false: {},
+    },
+  } as const,
+});
 
-function ActionIconButton({
-  onPress,
-  icon: Icon,
-  iconColor,
-  accessibilityLabel,
-  accessibilityHint,
-}: ActionIconButtonProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={ACTION_BUTTON_STYLE}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}>
-      <Icon size={ICON_SIZES.BUTTON} color={iconColor} />
-    </Pressable>
-  );
-}
-
-/**
- * AddressCard component untuk menampilkan alamat pengiriman
- * Mengikuti mobile design principles: touch target minimal 44px, clear visual hierarchy
- */
 export default function AddressCard({
   address,
   isDefault = false,
+  selected = false,
   onPress,
   onEdit,
-  onDelete,
-  onSetDefault,
-  showActions = false,
+  badgeText,
 }: AddressCardProps) {
-  const theme = useTheme();
-  const primaryColor = getThemeColor(theme, 'primary');
-  const colorPress = getThemeColor(theme, 'colorPress');
-  const dangerColor = getThemeColor(theme, 'danger');
-
   const formattedAddress = [
     address.street_address,
     address.city,
@@ -78,102 +59,60 @@ export default function AddressCard({
     .filter(Boolean)
     .join(', ');
 
-  const handleSetDefaultPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onSetDefault?.();
-  }, [onSetDefault]);
-
-  const handleEditPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onEdit?.();
-  }, [onEdit]);
-
-  const handleDeletePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onDelete?.();
-  }, [onDelete]);
+  const displayBadge = badgeText ?? (isDefault ? 'Default' : null);
 
   return (
-    <Pressable
+    <StyledCard
+      isDefault={isDefault}
+      selected={selected}
       onPress={onPress}
       disabled={!onPress}
-      accessibilityRole={onPress ? 'button' : 'none'}
-      accessibilityLabel={onPress ? `Alamat ${address.receiver_name}` : undefined}
-      accessibilityHint={onPress ? 'Tekan untuk melihat detail alamat' : undefined}>
-      <Card
-        padding="$4"
-        marginBottom="$3"
-        backgroundColor="$surface"
-        borderWidth={1}
-        borderColor={isDefault ? '$primary' : '$surfaceBorder'}
-        borderRadius="$4"
-        elevation={0}>
-        <YStack gap="$2">
-          {/* Header dengan nama penerima dan badge default */}
-          <XStack justifyContent="space-between" alignItems="flex-start">
-            <YStack flex={1} gap="$1">
-              <XStack gap="$2" alignItems="center">
-                <Text fontSize="$4" fontWeight="600" color="$color">
-                  {address.receiver_name}
-                </Text>
-                {isDefault && (
-                  <XStack
-                    paddingHorizontal="$2"
-                    paddingVertical="$1"
-                    borderRadius="$2"
-                    backgroundColor="$primary"
-                    alignItems="center"
-                    accessibilityLabel="Alamat default"
-                    accessibilityRole="text">
-                    <Text fontSize="$1" fontWeight="600" color="$white">
-                      Default
-                    </Text>
-                  </XStack>
-                )}
-              </XStack>
-              <Text fontSize="$3" color="$colorPress">
-                {address.phone_number}
-              </Text>
-            </YStack>
-            {showActions && (
-              <XStack gap="$2">
-                {!isDefault && onSetDefault && (
-                  <ActionIconButton
-                    onPress={handleSetDefaultPress}
-                    icon={StarIcon}
-                    iconColor={primaryColor}
-                    accessibilityLabel="Jadikan alamat default"
-                    accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman default"
-                  />
-                )}
-                {onEdit && (
-                  <ActionIconButton
-                    onPress={handleEditPress}
-                    icon={EditIcon}
-                    iconColor={colorPress}
-                    accessibilityLabel="Edit alamat"
-                    accessibilityHint="Mengedit alamat pengiriman"
-                  />
-                )}
-                {onDelete && (
-                  <ActionIconButton
-                    onPress={handleDeletePress}
-                    icon={DeleteIcon}
-                    iconColor={dangerColor}
-                    accessibilityLabel="Hapus alamat"
-                    accessibilityHint="Menghapus alamat pengiriman ini"
-                  />
-                )}
-              </XStack>
-            )}
-          </XStack>
+      role={onPress ? 'button' : 'none'}
+      aria-label={onPress ? `Alamat ${address.receiver_name}` : undefined}
+      pressStyle={{ opacity: PRESS_OPACITY }}>
+      <YStack gap="$2">
+        <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
+          <YStack flex={1} minWidth={0} gap="$1">
+            <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={1}>
+              {address.receiver_name}
+            </Text>
+            <Text fontSize="$3" color="$colorSubtle" numberOfLines={1}>
+              {address.phone_number}
+            </Text>
+          </YStack>
 
-          {/* Alamat lengkap */}
-          <Text fontSize="$3" color="$color" lineHeight="$4">
-            {formattedAddress}
-          </Text>
-        </YStack>
-      </Card>
-    </Pressable>
+          {onEdit && (
+            <Text
+              fontSize="$3"
+              color="$primary"
+              fontWeight="600"
+              onPress={e => {
+                e.stopPropagation();
+                onEdit();
+              }}>
+              Ubah
+            </Text>
+          )}
+        </XStack>
+
+        <Text fontSize="$3" color="$colorSubtle" numberOfLines={3}>
+          {formattedAddress}
+        </Text>
+
+        {displayBadge && (
+          <XStack
+            alignSelf="flex-start"
+            borderWidth={1}
+            borderColor="$primary"
+            borderRadius="$2"
+            px="$2"
+            py="$0.5">
+            <Text fontSize="$2" color="$primary" fontWeight="600">
+              {displayBadge}
+            </Text>
+          </XStack>
+        )}
+      </YStack>
+    </StyledCard>
   );
 }

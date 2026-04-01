@@ -1,8 +1,8 @@
-import { useTheme, YStack } from 'tamagui';
+import { Platform } from 'react-native';
+import { YStack } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
-import { MIN_TOUCH_TARGET, BOTTOM_BAR_SHADOW, PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
-import { getThemeColor } from '@/utils/theme';
+import { MIN_TOUCH_TARGET, PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 /**
  * Standard vertical padding for the action bar (8px).
@@ -23,69 +23,58 @@ export interface BottomActionBarProps {
   isLoading?: boolean;
   /** Whether the button is disabled */
   disabled?: boolean;
+  extraBottomOffset?: number;
+  keyboardAnchored?: boolean;
   /** Accessibility label for screen readers */
-  accessibilityLabel: string;
+  'aria-label': string;
   /** Accessibility hint providing additional context for screen readers */
-  accessibilityHint: string;
+  'aria-describedby': string;
 }
-
-/**
- * BottomActionBar Component
- *
- * A bottom action bar that works with KeyboardAvoidingView.
- *
- * **Keyboard strategy:**
- * This component should be placed as a child of KeyboardAvoidingView, alongside
- * a ScrollView. When the keyboard appears, KeyboardAvoidingView will automatically
- * push this button up above the keyboard.
- *
- * This pattern works consistently on both iOS and Android when using
- * softwareKeyboardLayoutMode: 'resize' in app.config.ts.
- */
 export default function BottomActionBar({
   buttonTitle,
   onPress,
   isLoading = false,
   disabled = false,
-  accessibilityLabel,
-  accessibilityHint,
+  extraBottomOffset = 0,
+  keyboardAnchored = false,
+  'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedBy,
 }: BottomActionBarProps) {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
 
   const bottomInset = insets.bottom;
   const innerPaddingBottom = VERTICAL_PADDING + Math.max(0, bottomInset);
-  const backgroundColor = getThemeColor(theme, 'background');
+  const anchoredOnAndroid = Platform.OS === 'android' && keyboardAnchored;
+  const bottomOffset = anchoredOnAndroid ? extraBottomOffset : 0;
 
   return (
     <YStack
+      position={anchoredOnAndroid ? 'absolute' : 'relative'}
+      bottom={anchoredOnAndroid ? bottomOffset : undefined}
+      left={anchoredOnAndroid ? 0 : undefined}
+      right={anchoredOnAndroid ? 0 : undefined}
       borderTopWidth={1}
-      borderColor="$borderColor"
+      borderTopColor="$borderColor"
+      backgroundColor="$background"
       px="$4"
       pt="$2"
       pb={innerPaddingBottom}
       elevation={8}
-      {...BOTTOM_BAR_SHADOW}
-      accessibilityRole="toolbar"
-      accessibilityLabel="Bottom action bar"
-      accessibilityHint="Action bar with primary action button"
-      style={{
-        backgroundColor,
-      }}>
+      role="toolbar"
+      aria-label="Bottom action bar"
+      aria-describedby="Action bar with primary action button">
       <Button
         title={buttonTitle}
         width="100%"
         backgroundColor="$primary"
         titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
-        style={{
-          borderRadius: BUTTON_BORDER_RADIUS,
-          minHeight: MIN_TOUCH_TARGET,
-        }}
+        borderRadius={BUTTON_BORDER_RADIUS}
+        minHeight={MIN_TOUCH_TARGET}
         onPress={onPress}
         isLoading={isLoading}
         disabled={disabled}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityHint={accessibilityHint}
+        aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
         accessibilityState={{
           disabled: disabled || isLoading,
           busy: isLoading,
