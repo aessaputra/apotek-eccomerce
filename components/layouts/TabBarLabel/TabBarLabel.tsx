@@ -16,6 +16,7 @@ const LabelText = styled(Text, {
   ellipsizeMode: 'tail',
   textAlign: 'center',
   fontSize: TAB_BAR_LABEL_SIZES.lg,
+  fontFamily: 'poppins_semiBold',
   fontWeight: '500',
   lineHeight: 17,
   maxWidth: TAB_BAR_LABEL_WIDTH,

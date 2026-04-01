@@ -184,6 +184,11 @@ function Router() {
     [renderTabButton, renderTabIcon],
   );
 
+  // Gate Tabs render until fonts are loaded to prevent fallback font on Android cold start
+  if (!assetsReady) {
+    return null;
+  }
+
   return (
     <Fragment>
       <Tabs detachInactiveScreens={false} screenOptions={screenOptions}>
