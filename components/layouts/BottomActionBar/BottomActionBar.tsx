@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { YStack } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
@@ -22,30 +23,20 @@ export interface BottomActionBarProps {
   isLoading?: boolean;
   /** Whether the button is disabled */
   disabled?: boolean;
+  extraBottomOffset?: number;
+  keyboardAnchored?: boolean;
   /** Accessibility label for screen readers */
   'aria-label': string;
   /** Accessibility hint providing additional context for screen readers */
   'aria-describedby': string;
 }
-
-/**
- * BottomActionBar Component
- *
- * A bottom action bar that works with KeyboardAvoidingView.
- *
- * **Keyboard strategy:**
- * This component should be placed as a child of KeyboardAvoidingView, alongside
- * a ScrollView. When the keyboard appears, KeyboardAvoidingView will automatically
- * push this button up above the keyboard.
- *
- * This pattern works consistently on both iOS and Android when using
- * softwareKeyboardLayoutMode: 'resize' in app.config.ts.
- */
 export default function BottomActionBar({
   buttonTitle,
   onPress,
   isLoading = false,
   disabled = false,
+  extraBottomOffset = 0,
+  keyboardAnchored = false,
   'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedBy,
 }: BottomActionBarProps) {
@@ -53,9 +44,15 @@ export default function BottomActionBar({
 
   const bottomInset = insets.bottom;
   const innerPaddingBottom = VERTICAL_PADDING + Math.max(0, bottomInset);
+  const anchoredOnAndroid = Platform.OS === 'android' && keyboardAnchored;
+  const bottomOffset = anchoredOnAndroid ? extraBottomOffset : 0;
 
   return (
     <YStack
+      position={anchoredOnAndroid ? 'absolute' : 'relative'}
+      bottom={anchoredOnAndroid ? bottomOffset : undefined}
+      left={anchoredOnAndroid ? 0 : undefined}
+      right={anchoredOnAndroid ? 0 : undefined}
       borderTopWidth={1}
       borderTopColor="$borderColor"
       backgroundColor="$background"

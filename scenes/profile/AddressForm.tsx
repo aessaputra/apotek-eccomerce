@@ -1,7 +1,8 @@
 import { useEffect, useCallback, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { YStack, Spinner, styled, ScrollView } from 'tamagui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AddressFieldsForm from '@/components/AddressForm/AddressForm';
@@ -31,14 +32,40 @@ const FormContent = styled(YStack, {
   flexGrow: 1,
 });
 
+const KeyboardAvoidingWrapper = styled(KeyboardAvoidingView, {
+  flex: 1,
+});
+
 export default function AddressFormScreen() {
   const router = useRouter();
+  const headerHeight = useHeaderHeight();
   const { user } = useAppSlice();
   const { id } = useLocalSearchParams<RouteParams<'profile/address-form'>>();
   const isEdit = !!id;
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const insets = useSafeAreaInsets();
-  const scrollPaddingBottom = BOTTOM_BAR_HEIGHT + insets.bottom + FORM_SCROLL_PADDING.SPACIOUS;
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const showListener = Keyboard.addListener('keyboardDidShow', e => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
+
+  const keyboardGap = 16;
+  const extraBottomOffset = Platform.OS === 'android' ? keyboardHeight : 0;
+  const scrollPaddingBottom =
+    BOTTOM_BAR_HEIGHT + insets.bottom + FORM_SCROLL_PADDING.SPACIOUS + keyboardHeight + keyboardGap;
 
   const {
     values,
@@ -154,44 +181,56 @@ export default function AddressFormScreen() {
 
   return (
     <SafeAreaView edges={['bottom']}>
-      <FormScrollView
-        contentContainerStyle={{
-          paddingBottom: scrollPaddingBottom,
-        }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag">
-        <FormContent gap="$4">
-          <ErrorMessage message={displayedError} onDismiss={handleDismissError} marginBottom="$0" />
+      <KeyboardAvoidingWrapper
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
+        <YStack flex={1}>
+          <FormScrollView
+            contentContainerStyle={{
+              paddingBottom: scrollPaddingBottom,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag">
+            <FormContent gap="$4">
+              <ErrorMessage
+                message={displayedError}
+                onDismiss={handleDismissError}
+                marginBottom="$0"
+              />
 
-          <AddressFieldsForm
-            values={values}
-            errors={errors}
-            isSaving={saving}
-            refs={refs}
-            onFieldSave={setFieldValue}
-            onFieldValidate={validateField}
-            onFieldCommitted={handleFieldCommitted}
-            onAreaSelect={setArea}
-            onAreaClear={clearArea}
+              <AddressFieldsForm
+                values={values}
+                errors={errors}
+                isSaving={saving}
+                refs={refs}
+                onFieldSave={setFieldValue}
+                onFieldValidate={validateField}
+                onFieldCommitted={handleFieldCommitted}
+                onAreaSelect={setArea}
+                onAreaClear={clearArea}
+              />
+
+              <DefaultAddressToggle
+                isDefault={values.isDefault}
+                isSaving={saving}
+                onToggle={handleDefaultToggle}
+              />
+            </FormContent>
+          </FormScrollView>
+
+          <BottomActionBar
+            buttonTitle={isEdit ? 'Simpan Perubahan' : 'Simpan Alamat'}
+            onPress={handleSave}
+            isLoading={saving}
+            disabled={saving}
+            extraBottomOffset={extraBottomOffset}
+            keyboardAnchored={Platform.OS === 'android'}
+            aria-label={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
+            aria-describedby="Menyimpan data alamat pengiriman"
           />
-
-          <DefaultAddressToggle
-            isDefault={values.isDefault}
-            isSaving={saving}
-            onToggle={handleDefaultToggle}
-          />
-        </FormContent>
-      </FormScrollView>
-
-      <BottomActionBar
-        buttonTitle={isEdit ? 'Simpan Perubahan' : 'Simpan Alamat'}
-        onPress={handleSave}
-        isLoading={saving}
-        disabled={saving}
-        aria-label={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
-        aria-describedby="Menyimpan data alamat pengiriman"
-      />
+        </YStack>
+      </KeyboardAvoidingWrapper>
 
       <AppAlertDialog
         open={successDialogOpen}
