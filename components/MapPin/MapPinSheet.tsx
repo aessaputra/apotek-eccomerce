@@ -137,9 +137,9 @@ function MapPinSheet({ isOpen, onClose, onConfirm, initialCoords }: MapPinSheetP
         exitStyle={{ opacity: 0 }}
         backgroundColor="$sheetOverlay"
       />
-      <Sheet.Frame backgroundColor="$background">
-        <YStack flex={1}>
-          <YStack flex={1} overflow="hidden">
+      <Sheet.Frame backgroundColor="$background" pointerEvents="box-none">
+        <YStack flex={1} pointerEvents="box-none">
+          <YStack flex={1} overflow="hidden" pointerEvents="auto">
             {MapView && Marker ? (
               <MapView
                 ref={mapRef}
@@ -176,7 +176,8 @@ function MapPinSheet({ isOpen, onClose, onConfirm, initialCoords }: MapPinSheetP
               alignItems="center"
               justifyContent="center"
               pressStyle={{ opacity: 0.7 }}
-              onPress={onClose}>
+              onPress={onClose}
+              pointerEvents="auto">
               <X size={20} color="$color" />
             </XStack>
           </YStack>
@@ -188,7 +189,8 @@ function MapPinSheet({ isOpen, onClose, onConfirm, initialCoords }: MapPinSheetP
             gap="$2"
             backgroundColor="$background"
             borderTopWidth={1}
-            borderTopColor="$surfaceBorder">
+            borderTopColor="$surfaceBorder"
+            pointerEvents="auto">
             <XStack gap="$2" alignItems="center">
               <MapPin size={16} color="$primary" />
               <Text fontSize="$3" color="$colorMuted" flex={1} numberOfLines={1}>

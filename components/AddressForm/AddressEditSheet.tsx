@@ -105,13 +105,16 @@ function AddressEditSheet({
       <Sheet.Frame
         backgroundColor="$surfaceSubtle"
         borderTopLeftRadius="$6"
-        borderTopRightRadius="$6">
-        <YStack flex={1}>
+        borderTopRightRadius="$6"
+        pointerEvents="box-none">
+        <YStack flex={1} pointerEvents="box-none">
           <Sheet.ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive">
-            <ScrollContent gap="$3">
+            keyboardDismissMode="interactive"
+            scrollEventThrottle={16}
+            nestedScrollEnabled>
+            <ScrollContent gap="$3" pointerEvents="box-none">
               <Text fontSize="$6" fontWeight="700" color="$color">
                 {title}
               </Text>
@@ -141,7 +144,7 @@ function AddressEditSheet({
             </ScrollContent>
           </Sheet.ScrollView>
 
-          <YStack p="$4" pt="$2" pb={Math.max(insets.bottom, 12)}>
+          <YStack p="$4" pt="$2" pb={Math.max(insets.bottom, 12)} pointerEvents="auto">
             <SaveButton
               title="Simpan"
               onPress={handleSave}

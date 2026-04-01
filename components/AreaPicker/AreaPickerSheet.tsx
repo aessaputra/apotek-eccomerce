@@ -53,8 +53,9 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
         paddingBottom={insets.bottom}
         backgroundColor="$surfaceSubtle"
         borderTopLeftRadius="$6"
-        borderTopRightRadius="$6">
-        <YStack flex={1} gap="$3">
+        borderTopRightRadius="$6"
+        pointerEvents="box-none">
+        <YStack flex={1} gap="$3" pointerEvents="box-none">
           <Text fontSize="$6" fontWeight="700" color="$color">
             Pilih Area Pengiriman
           </Text>
@@ -67,7 +68,8 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
             paddingHorizontal="$3"
             minHeight={56}
             alignItems="center"
-            gap="$2">
+            gap="$2"
+            pointerEvents="auto">
             <Search size={20} color="$colorMuted" />
             <Input
               flex={1}
@@ -122,8 +124,12 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
             </YStack>
           )}
 
-          <ScrollView flex={1} keyboardShouldPersistTaps="handled">
-            <YStack gap="$1">
+          <ScrollView
+            flex={1}
+            keyboardShouldPersistTaps="handled"
+            scrollEventThrottle={16}
+            nestedScrollEnabled>
+            <YStack gap="$1" pointerEvents="box-none">
               {results.map(area => (
                 <Card
                   key={area.id}
@@ -134,7 +140,8 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
                   borderColor={selectedAreaId === area.id ? '$primary' : '$surfaceBorder'}
                   padding="$3"
                   backgroundColor="$surface"
-                  onPress={() => handleSelect(area)}>
+                  onPress={() => handleSelect(area)}
+                  pointerEvents="auto">
                   <Text fontSize="$4" fontWeight="600" color="$color">
                     {area.name}
                   </Text>

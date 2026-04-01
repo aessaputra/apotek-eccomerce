@@ -116,9 +116,17 @@ function WelcomeSheet({ open, onOpenChange }: WelcomeSheetProps) {
       <Sheet.Frame
         backgroundColor="$surfaceSubtle"
         borderTopLeftRadius="$6"
-        borderTopRightRadius="$6">
-        <Sheet.ScrollView showsVerticalScrollIndicator={false}>
-          <ContentStack px="$4" pt="$3" pb={Math.max(insets.bottom + 12, 20)}>
+        borderTopRightRadius="$6"
+        pointerEvents="box-none">
+        <Sheet.ScrollView
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          nestedScrollEnabled>
+          <ContentStack
+            px="$4"
+            pt="$3"
+            pb={Math.max(insets.bottom + 12, 20)}
+            pointerEvents="box-none">
             <HeaderText>🎉 Selamat datang!</HeaderText>
 
             <DescriptionText>
@@ -142,7 +150,7 @@ function WelcomeSheet({ open, onOpenChange }: WelcomeSheetProps) {
               {`Setup selesai. Selamat berbelanja di Apotek Eccomerce.\n\nHappy coding!`}
             </DescriptionText>
 
-            <ButtonContainer>
+            <ButtonContainer pointerEvents="auto">
               <GradientButton
                 title="OK"
                 titleStyle={{ ...PRIMARY_BUTTON_TITLE_STYLE, textAlign: 'center' }}

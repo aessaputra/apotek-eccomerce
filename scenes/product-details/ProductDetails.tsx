@@ -550,8 +550,14 @@ export default function ProductDetails() {
         <Sheet.Frame
           backgroundColor="$surfaceSubtle"
           borderTopLeftRadius="$6"
-          borderTopRightRadius="$6">
-          <YStack px="$4" pt="$3" pb={Math.max(insets.bottom + 12, 20)} gap="$4">
+          borderTopRightRadius="$6"
+          pointerEvents="box-none">
+          <YStack
+            px="$4"
+            pt="$3"
+            pb={Math.max(insets.bottom + 12, 20)}
+            gap="$4"
+            pointerEvents="box-none">
             <XStack alignItems="center" gap="$3">
               {imageUrl ? (
                 <Image
@@ -583,7 +589,11 @@ export default function ProductDetails() {
               </YStack>
             </XStack>
 
-            <XStack alignItems="center" justifyContent="space-between" gap="$3">
+            <XStack
+              alignItems="center"
+              justifyContent="space-between"
+              gap="$3"
+              pointerEvents="auto">
               <Text fontSize={14} color="$colorSubtle" fontWeight="600">
                 Jumlah
               </Text>
@@ -597,7 +607,11 @@ export default function ProductDetails() {
               />
             </XStack>
 
-            <XStack alignItems="center" justifyContent="space-between" gap="$3">
+            <XStack
+              alignItems="center"
+              justifyContent="space-between"
+              gap="$3"
+              pointerEvents="auto">
               <YStack gap="$1">
                 <Text fontSize={14} color="$colorSubtle" fontWeight="600">
                   Total
