@@ -70,7 +70,6 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
       borderWidth={1}
       borderColor="$surfaceBorder"
       borderRadius="$5"
-      elevation={2}
       gap="$2"
       pressStyle={{ opacity: 0.95, scale: 0.98 }}
       onPress={onPress}

@@ -52,7 +52,6 @@ const SurfaceIconButton = styled(Card, {
   borderColor: '$surfaceBorder',
   alignItems: 'center',
   justifyContent: 'center',
-  elevation: 1,
   pressStyle: { opacity: 0.9 },
 });
 
@@ -73,7 +72,6 @@ const BannerCard = styled(Card, {
   borderColor: '$surfaceBorder',
   borderRadius: '$4',
   padding: '$3.5',
-  elevation: 2,
 });
 
 const IllustrationPanel = styled(YStack, {
@@ -94,7 +92,6 @@ const SearchShell = styled(Card, {
   paddingLeft: '$2',
   paddingRight: '$3',
   gap: '$2',
-  elevation: 1,
   pressStyle: { opacity: 0.92 },
 });
 
