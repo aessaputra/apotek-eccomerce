@@ -1,5 +1,7 @@
 import { supabase } from './supabase.service';
 import type { Database } from '@/types/supabase';
+import { classifyError, isRetryableError, translateErrorMessage } from '@/utils/error';
+import { withRetry } from '@/utils/retry';
 
 export type Order = Database['public']['Tables']['orders']['Row'];
 export const ORDERS_PAGE_SIZE = 20;
@@ -149,8 +151,83 @@ export interface GetUserOrdersParams {
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
 
+interface ErrorLike {
+  message?: unknown;
+  details?: unknown;
+  hint?: unknown;
+  code?: unknown;
+  name?: unknown;
+  error?: unknown;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as ErrorLike).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+
+  return '';
+}
+
 function isAbortError(error: unknown): error is Error {
-  return error instanceof Error && error.name === 'AbortError';
+  if (error instanceof Error) {
+    return error.name === 'AbortError';
+  }
+
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const { name, code } = error as ErrorLike;
+  return (
+    (typeof name === 'string' && name === 'AbortError') ||
+    (typeof code === 'string' && code === 'ABORT_ERR')
+  );
+}
+
+function withAbortSignal<T>(query: T, signal?: AbortSignal): T {
+  if (!signal) {
+    return query;
+  }
+
+  if (
+    typeof query === 'object' &&
+    query !== null &&
+    'abortSignal' in query &&
+    typeof (query as { abortSignal?: unknown }).abortSignal === 'function'
+  ) {
+    return (query as { abortSignal: (value: AbortSignal) => T }).abortSignal(signal);
+  }
+
+  return query;
+}
+
+function getNestedErrorMessage(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return '';
+  }
+
+  const record = value as ErrorLike;
+  const nestedError = getNestedErrorMessage(record.error);
+  if (nestedError) {
+    return nestedError;
+  }
+
+  return getErrorMessage(value);
 }
 
 function getPayloadBytes(value: unknown): number {
@@ -167,21 +244,55 @@ function logSupabaseError(context: string, error: unknown): void {
   }
 
   if (error instanceof Error) {
-    console.error(`[order.service] ${context}:`, {
+    console.warn(`[order.service] ${context}:`, {
       message: error.message,
       name: error.name,
       stack: error.stack?.split('\n').slice(0, 3).join('\n'),
     });
   } else {
-    console.error(`[order.service] ${context}:`, error);
+    const message = getNestedErrorMessage(error);
+
+    if (error && typeof error === 'object') {
+      const { code, details, hint, name } = error as ErrorLike;
+
+      console.warn(`[order.service] ${context}:`, {
+        message: message || DATABASE_ERROR_MESSAGE,
+        name: typeof name === 'string' ? name : 'UnknownError',
+        code: typeof code === 'string' ? code : undefined,
+        details: typeof details === 'string' ? details : undefined,
+        hint: typeof hint === 'string' ? hint : undefined,
+      });
+      return;
+    }
+
+    console.warn(`[order.service] ${context}:`, message || String(error));
   }
 }
 
-function toUserError(error: unknown, fallback: string): Error {
-  if (error instanceof Error) {
+function toAbortError(error: unknown): Error {
+  if (error instanceof Error && error.name === 'AbortError') {
     return error;
   }
-  return new Error(fallback);
+
+  const message = getNestedErrorMessage(error).trim();
+  const abortError = new Error(message || 'The operation was aborted.');
+  abortError.name = 'AbortError';
+  return abortError;
+}
+
+function normalizeSupabaseError(error: unknown, fallback: string): Error {
+  if (isAbortError(error)) {
+    return toAbortError(error);
+  }
+
+  const classifiedError = classifyError(error);
+  const translatedMessage = translateErrorMessage(classifiedError).trim();
+  if (translatedMessage) {
+    return new Error(translatedMessage);
+  }
+
+  const nestedMessage = getNestedErrorMessage(error).trim();
+  return new Error(nestedMessage || fallback);
 }
 
 /**
@@ -191,33 +302,43 @@ export async function getOrdersOptimized(
   userId: string,
   params: GetUserOrdersParams = {},
 ): Promise<OrderListResult> {
-  const offset = params.offset ?? 0;
-  const limit = params.limit ?? ORDERS_PAGE_SIZE;
-  const requestedLimit = Math.max(limit, 1);
+  const offset = Math.max(params.offset ?? 0, 0);
+  const pageSize = Math.max(params.limit ?? ORDERS_PAGE_SIZE, 1);
+  const fetchLimit = pageSize + 1;
   const startedAt = Date.now();
 
   try {
-    let query = supabase
-      .from('orders')
-      .select(ORDER_LIST_SELECT)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + requestedLimit);
+    const data = await withRetry(
+      async () => {
+        const query = withAbortSignal(
+          supabase
+            .from('orders')
+            .select(ORDER_LIST_SELECT)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + fetchLimit - 1),
+          params.signal,
+        );
 
-    if (params.signal) {
-      query = query.abortSignal(params.signal);
-    }
+        const { data: rows, error } = await query;
 
-    const { data, error } = await query;
+        if (error) {
+          throw error;
+        }
 
-    if (error) {
-      logSupabaseError('getOrdersOptimized query failed', error);
-      return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE), metrics: null };
-    }
+        return rows;
+      },
+      {
+        maxRetries: 2,
+        baseDelay: 250,
+        maxDelay: 1000,
+        shouldRetry: error => !isAbortError(error) && isRetryableError(classifyError(error)),
+      },
+    );
 
     const rows = (data ?? []) as unknown as OrderListItem[];
-    const hasMore = rows.length > requestedLimit;
-    const normalizedData = hasMore ? rows.slice(0, requestedLimit) : rows;
+    const hasMore = rows.length > pageSize;
+    const normalizedData = hasMore ? rows.slice(0, pageSize) : rows;
     const fetchedAt = Date.now();
 
     return {
@@ -228,7 +349,7 @@ export async function getOrdersOptimized(
         payloadBytes: getPayloadBytes(normalizedData),
         fetchedAt,
         offset,
-        limit: requestedLimit,
+        limit: pageSize,
         hasMore,
       },
     };
@@ -236,7 +357,9 @@ export async function getOrdersOptimized(
     logSupabaseError('getOrdersOptimized unexpected error', error);
     return {
       data: null,
-      error: isAbortError(error) ? error : toUserError(error, DATABASE_ERROR_MESSAGE),
+      error: isAbortError(error)
+        ? toAbortError(error)
+        : normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE),
       metrics: null,
     };
   }
@@ -262,13 +385,13 @@ export async function getOrderById(orderId: string): Promise<OrderDetailResult> 
 
     if (error) {
       logSupabaseError('getOrderById query failed', error);
-      return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
+      return { data: null, error: normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE) };
     }
 
     return { data: data as unknown as OrderWithItems, error: null };
   } catch (error) {
     logSupabaseError('getOrderById unexpected error', error);
-    return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
+    return { data: null, error: normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE) };
   }
 }
 
