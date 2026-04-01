@@ -46,7 +46,7 @@ const SectionTitle = styled(Text, {
 const SurfaceIconButton = styled(Card, {
   width: 44,
   height: 44,
-  borderRadius: '$10',
+  borderRadius: '$4',
   backgroundColor: '$surface',
   borderWidth: 1,
   borderColor: '$surfaceBorder',
