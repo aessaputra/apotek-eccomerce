@@ -29,11 +29,10 @@ const baseAddress: Address = {
   phone_number: '081234567890',
   street_address: 'Jl. Sudirman No. 1',
   city: 'Jakarta',
-  city_id: 'DEST-AREA-ID',
+  city_id: null,
   province: 'DKI Jakarta',
   province_id: null,
-  district_id: null,
-  subdistrict_id: null,
+  area_id: 'DEST-AREA-ID',
   area_name: null,
   postal_code: '12345',
   is_default: true,
@@ -142,7 +141,7 @@ describe('shipping.service', () => {
     });
 
     const { data, error } = await getShippingRatesForAddress({
-      address: { ...baseAddress, city_id: null, district_id: null, subdistrict_id: null },
+      address: { ...baseAddress, area_id: null },
       package_weight_grams: 700,
     });
 
@@ -173,9 +172,7 @@ describe('shipping.service', () => {
     const { data, error } = await getShippingRatesForAddress({
       address: {
         ...baseAddress,
-        city_id: null,
-        district_id: null,
-        subdistrict_id: null,
+        area_id: null,
         postal_code: '421831',
       },
       package_weight_grams: 500,

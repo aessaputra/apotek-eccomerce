@@ -153,13 +153,7 @@ const ORIGIN_LATITUDE = config.originLatitude;
 const ORIGIN_LONGITUDE = config.originLongitude;
 
 function normalizeAreaId(address: Address): string | null {
-  return (
-    address.area_id ||
-    address.subdistrict_id ||
-    address.district_id ||
-    address.city_id ||
-    address.province_id
-  );
+  return address.area_id || null;
 }
 
 function parseCoord(value: number | string | null | undefined): number | null {
