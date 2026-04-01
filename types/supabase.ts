@@ -15,7 +15,6 @@ export type Database = {
           city_id: string | null;
           country_code: string | null;
           created_at: string;
-          district_id: string | null;
           id: string;
           is_default: boolean | null;
           latitude: number | null;
@@ -27,7 +26,6 @@ export type Database = {
           province_id: string | null;
           receiver_name: string;
           street_address: string;
-          subdistrict_id: string | null;
         };
         Insert: {
           area_id?: string | null;
@@ -36,7 +34,6 @@ export type Database = {
           city_id?: string | null;
           country_code?: string | null;
           created_at?: string;
-          district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
           latitude?: number | null;
@@ -48,7 +45,6 @@ export type Database = {
           province_id?: string | null;
           receiver_name: string;
           street_address: string;
-          subdistrict_id?: string | null;
         };
         Update: {
           area_id?: string | null;
@@ -57,7 +53,6 @@ export type Database = {
           city_id?: string | null;
           country_code?: string | null;
           created_at?: string;
-          district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
           latitude?: number | null;
@@ -69,7 +64,6 @@ export type Database = {
           province_id?: string | null;
           receiver_name?: string;
           street_address?: string;
-          subdistrict_id?: string | null;
         };
       };
       cart_items: {
