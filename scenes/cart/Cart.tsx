@@ -593,7 +593,6 @@ export default function Cart() {
                     ) : selectedAddress ? (
                       <Card
                         bordered
-                        elevate
                         size="$4"
                         backgroundColor="$surface"
                         borderColor="$surfaceBorder"
@@ -667,7 +666,6 @@ export default function Cart() {
 
                     <Card
                       bordered
-                      elevate
                       size="$4"
                       backgroundColor="$surface"
                       borderColor="$surfaceBorder"
@@ -725,7 +723,11 @@ export default function Cart() {
                       ) : null}
                     </Card>
 
-                    <Card bordered elevate size="$4">
+                    <Card
+                      bordered
+                      size="$4"
+                      backgroundColor="$surface"
+                      borderColor="$surfaceBorder">
                       <Card.Header padded>
                         <Text fontSize="$4" fontWeight="600" color="$color">
                           Ringkasan Pesanan

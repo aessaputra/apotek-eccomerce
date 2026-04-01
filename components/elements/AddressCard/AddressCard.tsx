@@ -16,7 +16,6 @@ const StyledCard = styled(Card, {
   mb: '$3',
   bw: 1,
   br: '$5',
-  elevation: 2,
   animation: 'quick',
 
   variants: {
