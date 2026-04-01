@@ -36,12 +36,12 @@ describe('<AddressCard />', () => {
 
   test('shows default badge when isDefault is true', async () => {
     render(<AddressCard address={mockAddress} isDefault />);
-    expect(screen.getByText('Default')).not.toBeNull();
+    expect(screen.getByText('Utama')).not.toBeNull();
   });
 
   test('does not show default badge when isDefault is false', async () => {
     render(<AddressCard address={mockAddress} isDefault={false} />);
-    expect(screen.queryByText('Default')).toBeNull();
+    expect(screen.queryByText('Utama')).toBeNull();
   });
 
   test('calls onPress when card is pressed', async () => {

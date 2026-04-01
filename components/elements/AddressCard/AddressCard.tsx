@@ -58,7 +58,7 @@ export default function AddressCard({
     .filter(Boolean)
     .join(', ');
 
-  const displayBadge = badgeText ?? (isDefault ? 'Default' : null);
+  const displayBadge = badgeText ?? (isDefault ? 'Utama' : null);
 
   return (
     <StyledCard

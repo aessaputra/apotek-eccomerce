@@ -37,7 +37,6 @@ const SafeAreaView = styled(RNSafeAreaView, {
 });
 
 type AddressSection = {
-  title: 'Alamat Default' | 'Alamat Lainnya';
   data: Address[];
 };
 
@@ -127,16 +126,17 @@ export default function AddressList() {
     router.push('/profile/address-form');
   }, [router]);
 
-  const defaultAddress = addresses.find(a => a.is_default);
-  const otherAddresses = addresses.filter(a => !a.is_default);
+  const orderedAddresses = useMemo(() => {
+    const defaultAddress = addresses.find(address => address.is_default);
+    const otherAddresses = addresses.filter(address => !address.is_default);
 
-  const sections: AddressSection[] = [];
-  if (defaultAddress) {
-    sections.push({ title: 'Alamat Default', data: [defaultAddress] });
-  }
-  if (otherAddresses.length > 0) {
-    sections.push({ title: 'Alamat Lainnya', data: otherAddresses });
-  }
+    return defaultAddress ? [defaultAddress, ...otherAddresses] : otherAddresses;
+  }, [addresses]);
+
+  const sections = useMemo<AddressSection[]>(
+    () => (orderedAddresses.length > 0 ? [{ data: orderedAddresses }] : []),
+    [orderedAddresses],
+  );
 
   const listContentContainerStyle = useMemo(
     () => ({
@@ -147,30 +147,11 @@ export default function AddressList() {
     [addresses.length, scrollPaddingBottom],
   );
 
-  const renderSectionHeader = useCallback(({ section }: { section: AddressSection }) => {
-    if (section.data.length === 0) return null;
-    return (
-      <Text
-        fontSize="$3"
-        fontWeight="600"
-        color="$colorSubtle"
-        textTransform="uppercase"
-        letterSpacing={0.5}
-        marginBottom="$2"
-        marginTop="$3">
-        {section.title}
-      </Text>
-    );
-  }, []);
-
   const renderItem = useCallback(
-    ({ item, index, section }: { item: Address; index: number; section: AddressSection }) => {
-      const animationIndex =
-        section.title === 'Alamat Lainnya' && defaultAddress ? index + 1 : index;
-
+    ({ item, index }: { item: Address; index: number; section: AddressSection }) => {
       return (
         <ReanimatedView
-          entering={FadeInDown.delay(animationIndex * ENTRANCE_STAGGER_DELAY_MS).duration(
+          entering={FadeInDown.delay(index * ENTRANCE_STAGGER_DELAY_MS).duration(
             ENTRANCE_DURATION_MS,
           )}
           exiting={FadeOutLeft.duration(EXIT_DURATION_MS)}
@@ -186,7 +167,7 @@ export default function AddressList() {
         </ReanimatedView>
       );
     },
-    [handleEdit, handleDelete, handleSetDefault, defaultAddress],
+    [handleEdit, handleDelete, handleSetDefault],
   );
 
   const renderEmpty = useCallback(() => {
@@ -234,7 +215,6 @@ export default function AddressList() {
         <SectionList<Address, AddressSection>
           sections={sections}
           renderItem={renderItem}
-          renderSectionHeader={renderSectionHeader}
           keyExtractor={item => item.id}
           contentContainerStyle={listContentContainerStyle}
           ListEmptyComponent={renderEmpty}
