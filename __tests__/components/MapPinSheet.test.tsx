@@ -117,7 +117,7 @@ describe('<MapPinSheet />', () => {
       />,
     );
 
-    expect(screen.getAllByText('Konfirmasi Lokasi').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Konfirmasi').length).toBeGreaterThan(0);
   });
 
   test('updates coordinates from map press and confirms selection', async () => {
@@ -137,7 +137,8 @@ describe('<MapPinSheet />', () => {
 
     expect(screen.getByText('-6.300000, 106.900000')).not.toBeNull();
 
-    fireEvent.press(screen.getByText('Konfirmasi Lokasi'));
+    fireEvent.press(screen.getByText('Konfirmasi'));
+    fireEvent.press(screen.getByText('Ya, Konfirmasi'));
 
     expect(onConfirm).toHaveBeenCalledWith({ latitude: -6.3, longitude: 106.9 });
     expect(onClose).toHaveBeenCalledTimes(1);

@@ -9,7 +9,7 @@ export interface UseAreaSearchReturn {
   results: BiteshipArea[];
   isLoading: boolean;
   error: string | null;
-  search: (input: string) => Promise<void>;
+  search: (input: string) => Promise<BiteshipArea[]>;
   clearAll: () => void;
 }
 
@@ -29,11 +29,11 @@ export function useAreaSearch(): UseAreaSearchReturn {
     setIsLoading(false);
   }, []);
 
-  const search = useCallback(async (input: string) => {
+  const search = useCallback(async (input: string): Promise<BiteshipArea[]> => {
     if (!input.trim() || input.trim().length < 3) {
       setResults([]);
       setError(null);
-      return;
+      return [];
     }
 
     const requestId = Date.now();
@@ -47,20 +47,23 @@ export function useAreaSearch(): UseAreaSearchReturn {
 
       // Ignore stale responses
       if (currentRequestRef.current !== requestId) {
-        return;
+        return [];
       }
 
       if (searchError) {
         setError(searchError.message);
         setResults([]);
+        return [];
       } else {
         setResults(data);
+        return data;
       }
     } catch {
       if (currentRequestRef.current === requestId) {
         setError('Gagal mencari area. Silakan coba lagi.');
         setResults([]);
       }
+      return [];
     } finally {
       if (currentRequestRef.current === requestId) {
         setIsLoading(false);

@@ -22,6 +22,8 @@ export interface UseAddressFormReturn {
   errors: AddressFormErrors;
   // General error message
   generalError: string | null;
+  // Map confirmation state - true if user has confirmed location on map
+  mapConfirmed: boolean;
   // Refs for focus management
   refs: {
     receiverNameRef: React.RefObject<RNTextInput | null>;
@@ -47,6 +49,9 @@ export interface UseAddressFormReturn {
   resetForm: () => void;
   populateFromAddress: (address: Address) => void;
   clearFieldError: (field: keyof AddressFormErrors) => void;
+  // Map confirmation actions
+  setMapConfirmed: (confirmed: boolean) => void;
+  resetMapConfirmation: () => void;
 }
 
 /**
@@ -62,6 +67,9 @@ export function useAddressForm(): UseAddressFormReturn {
 
   // General error message
   const [generalError, setGeneralError] = useState<string | null>(null);
+
+  // Map confirmation state - tracks if user has confirmed location on map
+  const [mapConfirmed, setMapConfirmedState] = useState(false);
 
   // Refs for focus management
   const receiverNameRef = useRef<RNTextInput | null>(null);
@@ -211,12 +219,30 @@ export function useAddressForm(): UseAddressFormReturn {
     });
     setErrors(initialFormErrors);
     setGeneralError(null);
+    const hasSavedCoords =
+      parseCoord(address.latitude) !== null && parseCoord(address.longitude) !== null;
+    setMapConfirmedState(hasSavedCoords);
+  }, []);
+
+  /**
+   * Set map confirmation state
+   */
+  const setMapConfirmed = useCallback((confirmed: boolean) => {
+    setMapConfirmedState(confirmed);
+  }, []);
+
+  /**
+   * Reset map confirmation - called when address fields change or coordinates change
+   */
+  const resetMapConfirmation = useCallback(() => {
+    setMapConfirmedState(false);
   }, []);
 
   return {
     values,
     errors,
     generalError,
+    mapConfirmed,
     refs: {
       receiverNameRef,
       phoneNumberRef,
@@ -234,5 +260,7 @@ export function useAddressForm(): UseAddressFormReturn {
     resetForm,
     populateFromAddress,
     clearFieldError,
+    setMapConfirmed,
+    resetMapConfirmation,
   };
 }

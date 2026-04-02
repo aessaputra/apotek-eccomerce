@@ -12,8 +12,11 @@ import ErrorMessage from '@/components/elements/ErrorMessage';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { useAddressForm } from '@/hooks/useAddressForm';
+import { useAddressSuggestions } from '@/hooks/useAddressSuggestions';
 import { useAddressData } from '@/hooks/useAddressData';
 import { buildAddressPayload } from '@/services/address.service';
+import { reverseGeocodeCoordinates } from '@/services/googlePlaces.service';
+import type { AddressSuggestion } from '@/types/geocoding';
 import type { RouteParams } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 
@@ -43,7 +46,14 @@ export default function AddressFormScreen() {
   const { id } = useLocalSearchParams<RouteParams<'profile/address-form'>>();
   const isEdit = !!id;
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [mapConfirmRequiredDialogOpen, setMapConfirmRequiredDialogOpen] = useState(false);
+  const [mapOpenRequestKey, setMapOpenRequestKey] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [areaProximity, setAreaProximity] = useState<{
+    latitude: number;
+    longitude: number;
+    bbox?: number[];
+  } | null>(null);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -79,6 +89,9 @@ export default function AddressFormScreen() {
     setArea,
     clearArea,
     refs,
+    mapConfirmed,
+    setMapConfirmed,
+    resetMapConfirmation,
   } = useAddressForm();
 
   const {
@@ -89,6 +102,18 @@ export default function AddressFormScreen() {
     saveAddress,
     clearError: clearDataError,
   } = useAddressData();
+
+  const {
+    query: addressSuggestionQuery,
+    setQuery: setAddressSuggestionQuery,
+    results: addressSuggestions,
+    isLoading: addressSuggestionsLoading,
+    isRetrieving: addressSuggestionSelecting,
+    error: addressSuggestionError,
+    clearAll: clearAddressSuggestions,
+    loadInitialSuggestions,
+    selectSuggestion,
+  } = useAddressSuggestions(areaProximity);
 
   useEffect(() => {
     if (!isEdit || !id || !user?.id) return;
@@ -108,7 +133,7 @@ export default function AddressFormScreen() {
   const saving = dataSaving;
   const displayedError = generalError ?? dataError;
 
-  const handleFieldCommitted = useCallback(() => {
+  const clearTransientErrors = useCallback(() => {
     if (generalError) {
       setGeneralError(null);
     }
@@ -117,12 +142,108 @@ export default function AddressFormScreen() {
     }
   }, [clearDataError, dataError, generalError, setGeneralError]);
 
+  const handleAddressFieldCommitted = useCallback(() => {
+    clearTransientErrors();
+    setFieldValue('latitude', null);
+    setFieldValue('longitude', null);
+    resetMapConfirmation();
+  }, [clearTransientErrors, resetMapConfirmation, setFieldValue]);
+
   const handleDefaultToggle = useCallback(
     (value: boolean) => {
       setFieldValue('isDefault', value);
-      handleFieldCommitted();
+      clearTransientErrors();
     },
-    [handleFieldCommitted, setFieldValue],
+    [clearTransientErrors, setFieldValue],
+  );
+
+  const handleStreetAddressInput = useCallback(
+    (text: string) => {
+      setAddressSuggestionQuery(text);
+    },
+    [setAddressSuggestionQuery],
+  );
+
+  const handleLoadInitialSuggestions = useCallback(() => {
+    if (areaProximity) {
+      loadInitialSuggestions(areaProximity);
+    }
+  }, [areaProximity, loadInitialSuggestions]);
+
+  const handleSuggestionSelect = useCallback(
+    async (suggestion: AddressSuggestion) => {
+      const selectedAddress = await selectSuggestion(suggestion);
+
+      if (!selectedAddress) {
+        return;
+      }
+
+      clearTransientErrors();
+      setFieldValue('streetAddress', selectedAddress.streetAddress);
+
+      if (!values.areaId) {
+        setFieldValue('city', selectedAddress.city);
+        setFieldValue('province', selectedAddress.province);
+        setFieldValue('postalCode', selectedAddress.postalCode);
+      }
+
+      setFieldValue('latitude', selectedAddress.latitude);
+      setFieldValue('longitude', selectedAddress.longitude);
+      setAreaProximity({
+        latitude: selectedAddress.latitude,
+        longitude: selectedAddress.longitude,
+      });
+      setMapConfirmed(false);
+      clearAddressSuggestions();
+      setMapOpenRequestKey(current => current + 1);
+    },
+    [
+      clearAddressSuggestions,
+      clearTransientErrors,
+      selectSuggestion,
+      setFieldValue,
+      setMapConfirmed,
+      values.areaId,
+    ],
+  );
+
+  const handleCoordinatesChange = useCallback(
+    async (coords: { latitude: number; longitude: number } | null) => {
+      if (!coords) {
+        return;
+      }
+
+      const { data: reversedAddress, error } = await reverseGeocodeCoordinates(coords);
+
+      if (error || !reversedAddress) {
+        return;
+      }
+
+      const cityChanged =
+        reversedAddress.city.trim().toLowerCase() !== values.city.trim().toLowerCase();
+      const provinceChanged =
+        reversedAddress.province.trim().toLowerCase() !== values.province.trim().toLowerCase();
+      const postalChanged = reversedAddress.postalCode.trim() !== values.postalCode.trim();
+
+      if (values.areaId && (cityChanged || provinceChanged || postalChanged)) {
+        clearArea();
+        setFieldValue('city', reversedAddress.city || values.city);
+        setFieldValue('province', reversedAddress.province || values.province);
+        setFieldValue('postalCode', reversedAddress.postalCode || values.postalCode);
+        setGeneralError(
+          'Area pengiriman berubah setelah titik peta dipindahkan. Pilih ulang area pengiriman.',
+        );
+      }
+    },
+    [
+      clearArea,
+      setFieldValue,
+      setGeneralError,
+      values.areaId,
+      values.city,
+      values.postalCode,
+      values.province,
+    ],
   );
 
   const handleDismissError = useCallback(() => {
@@ -138,6 +259,19 @@ export default function AddressFormScreen() {
     if (!validateAll()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setGeneralError('Mohon perbaiki kesalahan pada form');
+      return;
+    }
+
+    const hasCoordinates = values.latitude != null && values.longitude != null;
+    if (!hasCoordinates) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setGeneralError('Pilih salah satu rekomendasi alamat jalan terlebih dulu.');
+      return;
+    }
+
+    if (!mapConfirmed) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setMapConfirmRequiredDialogOpen(true);
       return;
     }
 
@@ -166,7 +300,7 @@ export default function AddressFormScreen() {
     if (success) {
       setSuccessDialogOpen(true);
     }
-  }, [id, saveAddress, setGeneralError, user?.id, validateAll, values]);
+  }, [id, saveAddress, setGeneralError, user?.id, validateAll, values, mapConfirmed]);
 
   if (loading) {
     return (
@@ -205,9 +339,23 @@ export default function AddressFormScreen() {
                 refs={refs}
                 onFieldSave={setFieldValue}
                 onFieldValidate={validateField}
-                onFieldCommitted={handleFieldCommitted}
-                onAreaSelect={setArea}
-                onAreaClear={clearArea}
+                onFieldCommitted={handleAddressFieldCommitted}
+                onAreaSelect={async area => {
+                  setArea(area);
+                  setAreaProximity(null);
+                }}
+                onCoordinatesChange={handleCoordinatesChange}
+                onMapConfirmed={setMapConfirmed}
+                openMapRequestKey={mapOpenRequestKey}
+                addressSuggestionQuery={addressSuggestionQuery}
+                addressSuggestions={addressSuggestions}
+                addressSuggestionError={addressSuggestionError}
+                addressSuggestionsLoading={addressSuggestionsLoading}
+                addressSuggestionSelecting={addressSuggestionSelecting}
+                onStreetAddressInput={handleStreetAddressInput}
+                onSuggestionSelect={handleSuggestionSelect}
+                onLoadInitialSuggestions={handleLoadInitialSuggestions}
+                hasAreaProximity={!!areaProximity}
               />
 
               <DefaultAddressToggle
@@ -238,6 +386,24 @@ export default function AddressFormScreen() {
         description="Data alamat telah berhasil disimpan."
         confirmText="OK"
         onConfirm={() => router.back()}
+      />
+
+      <AppAlertDialog
+        open={mapConfirmRequiredDialogOpen}
+        onOpenChange={setMapConfirmRequiredDialogOpen}
+        title="Konfirmasi Lokasi Diperlukan"
+        description="Lokasi peta harus cocok dengan alamat agar pengiriman berhasil. Silakan buka peta lalu konfirmasi titik alamat Anda."
+        confirmText="Buka Peta"
+        cancelText="Batal"
+        onConfirm={() => {
+          setMapConfirmRequiredDialogOpen(false);
+          setMapOpenRequestKey(current => current + 1);
+        }}
+        onCancel={() => setMapConfirmRequiredDialogOpen(false)}
+        confirmColor="$primary"
+        confirmTextColor="$onPrimary"
+        cancelColor="$background"
+        cancelTextColor="$colorSubtle"
       />
     </SafeAreaView>
   );
