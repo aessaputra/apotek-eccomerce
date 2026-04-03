@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { Card, Image, Text, YStack, styled, XStack, useTheme } from 'tamagui';
-import { LinearGradient } from 'expo-linear-gradient';
 import type {
   HomeBannerCTA,
   HomeBannerItem,
@@ -68,7 +67,6 @@ const BANNER_THEME_CONFIG: Record<
     bodyColor: string;
     ctaBgToken: string;
     ctaText: string;
-    scrimGradient: readonly [string, string];
     fallbackBg: string;
     borderColor: string;
   }
@@ -78,7 +76,6 @@ const BANNER_THEME_CONFIG: Record<
     bodyColor: 'rgba(255,255,255,0.92)',
     ctaBgToken: '$warning',
     ctaText: '#FFFFFF',
-    scrimGradient: ['transparent', 'rgba(0,0,0,0.75)'] as const,
     fallbackBg: '$warningSoft',
     borderColor: 'rgba(255,255,255,0.3)',
   },
@@ -87,7 +84,6 @@ const BANNER_THEME_CONFIG: Record<
     bodyColor: 'rgba(255,255,255,0.92)',
     ctaBgToken: '$primary',
     ctaText: '#FFFFFF',
-    scrimGradient: ['transparent', 'rgba(0,0,0,0.75)'] as const,
     fallbackBg: '$infoSoft',
     borderColor: 'rgba(255,255,255,0.3)',
   },
@@ -96,7 +92,6 @@ const BANNER_THEME_CONFIG: Record<
     bodyColor: 'rgba(255,255,255,0.88)',
     ctaBgToken: '$secondary',
     ctaText: '#FFFFFF',
-    scrimGradient: ['transparent', 'rgba(0,0,0,0.7)'] as const,
     fallbackBg: '$surfaceSubtle',
     borderColor: 'rgba(255,255,255,0.25)',
   },
@@ -179,23 +174,6 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
         />
       ) : (
         <YStack flex={1} backgroundColor={theme.fallbackBg} />
-      )}
-
-      {hasMediaUrl && (
-        <LinearGradient
-          colors={theme.scrimGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '70%',
-            zIndex: 5,
-          }}
-          testID={`home-banner-scrim-${banner.placementKey}`}
-        />
       )}
 
       <ContentOverlay>
