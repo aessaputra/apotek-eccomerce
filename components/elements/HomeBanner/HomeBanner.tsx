@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Card, Image, Text, YStack, styled, XStack, useTheme } from 'tamagui';
+import { Card, Image, Text, YStack, styled, XStack } from 'tamagui';
 import type {
   HomeBannerCTA,
   HomeBannerItem,
@@ -7,7 +7,6 @@ import type {
   HomeBannerPlacement,
 } from '@/types/homeBanner';
 import { ChevronRightIcon } from '@/components/icons';
-import { getThemeColor } from '@/utils/theme';
 
 export interface HomeBannerProps {
   banner: HomeBannerItem | null | undefined;
@@ -65,8 +64,6 @@ const BANNER_THEME_CONFIG: Record<
   {
     titleColor: string;
     bodyColor: string;
-    ctaBgToken: string;
-    ctaTextToken: string;
     fallbackBg: string;
     borderColor: string;
   }
@@ -74,38 +71,25 @@ const BANNER_THEME_CONFIG: Record<
   promotional: {
     titleColor: '#FFFFFF',
     bodyColor: 'rgba(255,255,255,0.92)',
-    ctaBgToken: 'primary',
-    ctaTextToken: 'onPrimary',
     fallbackBg: '$warningSoft',
     borderColor: 'rgba(255,255,255,0.3)',
   },
   informational: {
     titleColor: '#FFFFFF',
     bodyColor: 'rgba(255,255,255,0.92)',
-    ctaBgToken: 'primary',
-    ctaTextToken: 'onPrimary',
     fallbackBg: '$infoSoft',
     borderColor: 'rgba(255,255,255,0.3)',
   },
   branding: {
     titleColor: '#FFFFFF',
     bodyColor: 'rgba(255,255,255,0.88)',
-    ctaBgToken: 'primary',
-    ctaTextToken: 'onPrimary',
     fallbackBg: '$surfaceSubtle',
     borderColor: 'rgba(255,255,255,0.25)',
   },
 };
 
-function useBannerTheme(intent: HomeBannerIntent) {
-  const theme = useTheme();
-  const config = BANNER_THEME_CONFIG[intent];
-
-  return {
-    ...config,
-    ctaBg: getThemeColor(theme, config.ctaBgToken),
-    ctaText: getThemeColor(theme, config.ctaTextToken),
-  };
+function getBannerTheme(intent: HomeBannerIntent) {
+  return BANNER_THEME_CONFIG[intent];
 }
 
 export const HomeBannerSkeleton = memo(function HomeBannerSkeleton({
@@ -136,7 +120,7 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
   const hasMediaUrl = Boolean(banner?.mediaUrl);
   const hasVisibleContent = hasText || hasValidCTA || hasMediaUrl;
 
-  const theme = useBannerTheme(banner?.intent ?? 'promotional');
+  const theme = banner ? getBannerTheme(banner.intent) : BANNER_THEME_CONFIG.promotional;
   const cta = banner?.cta;
   const aspectRatio = banner ? getAspectRatio(banner.placementKey) : 3 / 1;
 
@@ -210,7 +194,7 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
         {hasValidCTA && cta ? (
           <BannerAction
             onPress={() => onCTAPress?.(cta)}
-            backgroundColor={theme.ctaBg}
+            backgroundColor="$primary"
             role="button"
             accessible
             accessibilityRole="button"
@@ -218,10 +202,10 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
             borderWidth={1}
             borderColor={theme.borderColor}
             testID={`home-banner-cta-${banner.placementKey}`}>
-            <Text color={theme.ctaText} fontSize={12} fontWeight="700">
+            <Text color="$onPrimary" fontSize={12} fontWeight="700">
               {cta.label}
             </Text>
-            <ChevronRightIcon size={14} color={theme.ctaText} />
+            <ChevronRightIcon size={14} color="$onPrimary" />
           </BannerAction>
         ) : null}
       </ContentOverlay>
