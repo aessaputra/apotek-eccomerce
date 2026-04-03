@@ -1,7 +1,14 @@
 import { memo } from 'react';
-import { Card, Image, Text, YStack, styled, XStack } from 'tamagui';
+import { Card, Image, Text, YStack, styled, XStack, useTheme } from 'tamagui';
+import { LinearGradient } from 'expo-linear-gradient';
+import type {
+  HomeBannerCTA,
+  HomeBannerItem,
+  HomeBannerIntent,
+  HomeBannerPlacement,
+} from '@/types/homeBanner';
 import { ChevronRightIcon } from '@/components/icons';
-import type { HomeBannerCTA, HomeBannerItem, HomeBannerIntent } from '@/types/homeBanner';
+import { getThemeColor } from '@/utils/theme';
 
 export interface HomeBannerProps {
   banner: HomeBannerItem | null | undefined;
@@ -10,136 +17,146 @@ export interface HomeBannerProps {
 
 export interface HomeBannerSkeletonProps {
   showIllustration?: boolean;
+  placement?: HomeBannerPlacement;
 }
 
-/**
- * Banner container with image-led layout.
- * Uses aspect ratio for consistent sizing across placements.
- */
+function getAspectRatio(placement: HomeBannerPlacement): number {
+  return placement === 'home_banner_top' ? 3 / 1 : 2 / 1;
+}
+
 const BannerContainer = styled(Card, {
-  borderRadius: '$4',
+  borderRadius: '$5',
   overflow: 'hidden',
-  aspectRatio: 21 / 9,
   width: '100%',
+  shadowColor: '$shadowColor',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 8,
 });
 
-/**
- * Gradient overlay for text readability over images.
- * Positioned at bottom of banner with fade-up effect.
- */
 const ContentOverlay = styled(YStack, {
   position: 'absolute',
   bottom: 0,
   left: 0,
   right: 0,
-  padding: '$3',
-  gap: '$1.5',
+  padding: '$3.5',
+  gap: '$2',
+  zIndex: 10,
 });
 
-/**
- * CTA button styled for visibility over image backgrounds.
- */
 const BannerAction = styled(XStack, {
   alignSelf: 'flex-start',
   alignItems: 'center',
+  justifyContent: 'center',
   gap: '$1',
-  backgroundColor: '$surface',
   borderRadius: '$10',
-  paddingVertical: '$1',
-  paddingHorizontal: '$2.5',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  minHeight: 32,
-  pressStyle: { opacity: 0.92 },
+  paddingVertical: '$1.5',
+  paddingHorizontal: '$3',
+  minHeight: 44,
+  pressStyle: { scale: 0.96, opacity: 0.9 },
 });
 
-/**
- * Skeleton block for loading states.
- */
 const SkeletonBlock = styled(YStack, {
   backgroundColor: '$surfaceBorder',
   borderRadius: '$3',
 });
 
-function getBannerColors(intent: HomeBannerIntent) {
-  if (intent === 'branding') {
-    return {
-      titleColor: '$color',
-      bodyColor: '$colorSubtle',
-    } as const;
+const BANNER_THEME_CONFIG: Record<
+  HomeBannerIntent,
+  {
+    titleColor: string;
+    bodyColor: string;
+    ctaBgToken: string;
+    ctaText: string;
+    scrimGradient: readonly [string, string];
+    fallbackBg: string;
+    borderColor: string;
   }
+> = {
+  promotional: {
+    titleColor: '#FFFFFF',
+    bodyColor: 'rgba(255,255,255,0.92)',
+    ctaBgToken: '$warning',
+    ctaText: '#FFFFFF',
+    scrimGradient: ['transparent', 'rgba(0,0,0,0.75)'] as const,
+    fallbackBg: '$warningSoft',
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  informational: {
+    titleColor: '#FFFFFF',
+    bodyColor: 'rgba(255,255,255,0.92)',
+    ctaBgToken: '$primary',
+    ctaText: '#FFFFFF',
+    scrimGradient: ['transparent', 'rgba(0,0,0,0.75)'] as const,
+    fallbackBg: '$infoSoft',
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  branding: {
+    titleColor: '#FFFFFF',
+    bodyColor: 'rgba(255,255,255,0.88)',
+    ctaBgToken: '$secondary',
+    ctaText: '#FFFFFF',
+    scrimGradient: ['transparent', 'rgba(0,0,0,0.7)'] as const,
+    fallbackBg: '$surfaceSubtle',
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+};
 
-  if (intent === 'promotional') {
-    return {
-      titleColor: '$color',
-      bodyColor: '$colorSubtle',
-    } as const;
-  }
+function useBannerTheme(intent: HomeBannerIntent) {
+  const theme = useTheme();
+  const config = BANNER_THEME_CONFIG[intent];
 
   return {
-    titleColor: '$color',
-    bodyColor: '$colorSubtle',
-  } as const;
+    ...config,
+    ctaBg: getThemeColor(theme, config.ctaBgToken),
+  };
 }
 
-/**
- * Renders skeleton placeholder while banner data loads.
- */
 export const HomeBannerSkeleton = memo(function HomeBannerSkeleton({
   showIllustration = true,
+  placement = 'home_banner_top',
 }: HomeBannerSkeletonProps) {
+  const aspectRatio = getAspectRatio(placement);
   return (
-    <BannerContainer testID="home-banner-skeleton">
-      <YStack flex={1} backgroundColor="$surface" justifyContent="flex-end" padding="$3" gap="$2">
+    <BannerContainer testID="home-banner-skeleton" aspectRatio={aspectRatio}>
+      <YStack flex={1} backgroundColor="$surface" justifyContent="flex-end" padding="$3.5" gap="$2">
         {showIllustration ? (
           <SkeletonBlock width="100%" height="100%" position="absolute" top={0} left={0} />
         ) : null}
-        <YStack gap="$1.5" zIndex={1}>
-          <SkeletonBlock width="70%" height={18} />
-          <SkeletonBlock width="50%" height={14} />
-          <SkeletonBlock width={88} height={32} borderRadius="$10" />
+        <YStack gap="$2" zIndex={1}>
+          <SkeletonBlock width="65%" height={20} borderRadius="$2" />
+          <SkeletonBlock width="45%" height={14} borderRadius="$2" />
+          <SkeletonBlock width={96} height={36} borderRadius="$10" marginTop="$1" />
         </YStack>
       </YStack>
     </BannerContainer>
   );
 });
 
-/**
- * HomeBanner displays promotional, informational, or branding content.
- *
- * Presentation modes:
- * - Content Banner Mode: When title or body exists, renders image-led banner
- *   with bottom-anchored text + CTA overlay with scrim gradient.
- * - Image-Only Banner Mode: When no text/CTA but mediaUrl exists, renders
- *   full-image treatment without empty text blocks.
- *
- * @see HomeBanner Presentation Spec.md
- */
 function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
-  if (!banner) {
-    return null;
-  }
-
-  const hasText = Boolean(banner.title || banner.body);
-  const hasValidCTA = Boolean(banner.cta?.label);
-  const hasMediaUrl = Boolean(banner.mediaUrl);
-
+  const hasText = Boolean(banner?.title || banner?.body);
+  const hasValidCTA =
+    banner?.ctaKind === 'route' && Boolean(banner?.cta?.label && banner?.cta?.route);
+  const hasMediaUrl = Boolean(banner?.mediaUrl);
   const hasVisibleContent = hasText || hasValidCTA || hasMediaUrl;
-  if (!hasVisibleContent) {
+
+  const theme = useBannerTheme(banner?.intent ?? 'promotional');
+  const cta = banner?.cta;
+  const aspectRatio = banner ? getAspectRatio(banner.placementKey) : 3 / 1;
+
+  if (!banner || !hasVisibleContent) {
     return null;
   }
-
-  const colors = getBannerColors(banner.intent);
-  const cta = banner.cta;
 
   if (!hasText && !hasValidCTA && hasMediaUrl) {
     return (
-      <BannerContainer testID={`home-banner-${banner.placementKey}`}>
+      <BannerContainer testID={`home-banner-${banner.placementKey}`} aspectRatio={aspectRatio}>
         <Image
           source={{ uri: banner.mediaUrl! }}
           width="100%"
           height="100%"
           resizeMode="cover"
+          accessible={false}
           testID={`home-banner-image-${banner.placementKey}`}
         />
       </BannerContainer>
@@ -147,7 +164,7 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
   }
 
   return (
-    <BannerContainer testID={`home-banner-${banner.placementKey}`}>
+    <BannerContainer testID={`home-banner-${banner.placementKey}`} aspectRatio={aspectRatio}>
       {hasMediaUrl ? (
         <Image
           source={{ uri: banner.mediaUrl! }}
@@ -157,56 +174,75 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
           position="absolute"
           top={0}
           left={0}
+          accessible={false}
           testID={`home-banner-image-${banner.placementKey}`}
         />
       ) : (
-        <YStack
-          flex={1}
-          backgroundColor={banner.intent === 'branding' ? '$surface' : '$surfaceSubtle'}
-        />
+        <YStack flex={1} backgroundColor={theme.fallbackBg} />
       )}
 
-      {hasMediaUrl ? (
-        <YStack
-          position="absolute"
-          bottom={0}
-          left={0}
-          right={0}
-          height="60%"
-          backgroundColor="rgba(0, 0, 0, 0.5)"
-          opacity={0.6}
+      {hasMediaUrl && (
+        <LinearGradient
+          colors={theme.scrimGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '70%',
+            zIndex: 5,
+          }}
+          testID={`home-banner-scrim-${banner.placementKey}`}
         />
-      ) : null}
+      )}
 
       <ContentOverlay>
         {banner.title ? (
           <Text
-            color={hasMediaUrl ? '$white' : colors.titleColor}
-            fontSize={14}
-            lineHeight={18}
+            color={hasMediaUrl ? theme.titleColor : '$color'}
+            fontSize={15}
+            lineHeight={20}
             fontWeight="700"
-            numberOfLines={2}>
+            letterSpacing={-0.3}
+            numberOfLines={2}
+            textShadowColor={hasMediaUrl ? 'rgba(0,0,0,0.5)' : undefined}
+            textShadowOffset={hasMediaUrl ? { width: 0, height: 1 } : undefined}
+            textShadowRadius={hasMediaUrl ? 3 : undefined}>
             {banner.title}
           </Text>
         ) : null}
 
         {banner.body ? (
           <Text
-            color={hasMediaUrl ? '$white' : colors.bodyColor}
-            fontSize={12}
-            lineHeight={16}
+            color={hasMediaUrl ? theme.bodyColor : '$colorSubtle'}
+            fontSize={13}
+            lineHeight={17}
             fontWeight="500"
-            numberOfLines={2}>
+            numberOfLines={2}
+            textShadowColor={hasMediaUrl ? 'rgba(0,0,0,0.4)' : undefined}
+            textShadowOffset={hasMediaUrl ? { width: 0, height: 1 } : undefined}
+            textShadowRadius={hasMediaUrl ? 2 : undefined}>
             {banner.body}
           </Text>
         ) : null}
 
         {hasValidCTA && cta ? (
-          <BannerAction onPress={() => onCTAPress?.(cta)} role="button" aria-label={cta.label}>
-            <Text color="$primary" fontSize={11} fontWeight="700">
+          <BannerAction
+            onPress={() => onCTAPress?.(cta)}
+            backgroundColor={theme.ctaBg}
+            role="button"
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={cta.label}
+            borderWidth={1}
+            borderColor={theme.borderColor}
+            testID={`home-banner-cta-${banner.placementKey}`}>
+            <Text color={theme.ctaText} fontSize={12} fontWeight="700">
               {cta.label}
             </Text>
-            <ChevronRightIcon size={14} color="$primary" />
+            <ChevronRightIcon size={14} color={theme.ctaText} />
           </BannerAction>
         ) : null}
       </ContentOverlay>
