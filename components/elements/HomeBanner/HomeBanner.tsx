@@ -66,7 +66,7 @@ const BANNER_THEME_CONFIG: Record<
     titleColor: string;
     bodyColor: string;
     ctaBgToken: string;
-    ctaText: string;
+    ctaTextToken: string;
     fallbackBg: string;
     borderColor: string;
   }
@@ -74,8 +74,8 @@ const BANNER_THEME_CONFIG: Record<
   promotional: {
     titleColor: '#FFFFFF',
     bodyColor: 'rgba(255,255,255,0.92)',
-    ctaBgToken: '$warning',
-    ctaText: '#FFFFFF',
+    ctaBgToken: '$primary',
+    ctaTextToken: '$onPrimary',
     fallbackBg: '$warningSoft',
     borderColor: 'rgba(255,255,255,0.3)',
   },
@@ -83,15 +83,15 @@ const BANNER_THEME_CONFIG: Record<
     titleColor: '#FFFFFF',
     bodyColor: 'rgba(255,255,255,0.92)',
     ctaBgToken: '$primary',
-    ctaText: '#FFFFFF',
+    ctaTextToken: '$onPrimary',
     fallbackBg: '$infoSoft',
     borderColor: 'rgba(255,255,255,0.3)',
   },
   branding: {
     titleColor: '#FFFFFF',
     bodyColor: 'rgba(255,255,255,0.88)',
-    ctaBgToken: '$secondary',
-    ctaText: '#FFFFFF',
+    ctaBgToken: '$primary',
+    ctaTextToken: '$onPrimary',
     fallbackBg: '$surfaceSubtle',
     borderColor: 'rgba(255,255,255,0.25)',
   },
@@ -104,6 +104,7 @@ function useBannerTheme(intent: HomeBannerIntent) {
   return {
     ...config,
     ctaBg: getThemeColor(theme, config.ctaBgToken),
+    ctaText: getThemeColor(theme, config.ctaTextToken),
   };
 }
 
