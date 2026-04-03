@@ -3,12 +3,15 @@ import { RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Image, ScrollView, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
-import { CartIcon, PillIcon, SearchIcon, StarIcon } from '@/components/icons';
+import { CartIcon, SearchIcon } from '@/components/icons';
 import CategoryItem, { CategorySkeleton } from '@/components/elements/CategoryItem';
 import ProductCard, { ProductCardSkeleton } from '@/components/elements/ProductCard';
+import HomeBanner, { HomeBannerSkeleton } from '@/components/elements/HomeBanner';
+import { HOME_BANNER_CTA_ROUTE_MAP } from '@/constants/homeBanner.constants';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useAppSlice } from '@/slices';
 import { useHomeData } from '@/hooks';
+import type { HomeBannerCTA } from '@/types/homeBanner';
 import { getThemeColor } from '@/utils/theme';
 
 const ScreenRoot = styled(YStack, {
@@ -55,32 +58,6 @@ const SurfaceIconButton = styled(Card, {
   pressStyle: { opacity: 0.9 },
 });
 
-const PillAction = styled(XStack, {
-  alignSelf: 'flex-start',
-  backgroundColor: '$surface',
-  borderRadius: '$10',
-  paddingVertical: '$1',
-  paddingHorizontal: '$3',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  pressStyle: { opacity: 0.92 },
-});
-
-const BannerCard = styled(Card, {
-  backgroundColor: '$infoSoft',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  borderRadius: '$4',
-  padding: '$3.5',
-});
-
-const IllustrationPanel = styled(YStack, {
-  borderRadius: '$4',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '$surface',
-});
-
 const SearchShell = styled(Card, {
   alignItems: 'center',
   flexDirection: 'row',
@@ -114,8 +91,16 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { user } = useAppSlice();
-  const { categories, products, isLoadingCategories, isLoadingProducts, isRefreshing, refresh } =
-    useHomeData();
+  const {
+    banners,
+    categories,
+    products,
+    isLoadingBanners,
+    isLoadingCategories,
+    isLoadingProducts,
+    isRefreshing,
+    refresh,
+  } = useHomeData();
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
@@ -148,7 +133,7 @@ export default function Home() {
         : 'scroll';
   const isLargeScreen = media.gtSm;
 
-  const handleOpenOrders = () => {
+  const handleOpenCart = () => {
     router.push('/cart');
   };
 
@@ -179,6 +164,13 @@ export default function Home() {
   const userName = user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer';
   const userAvatarUrl = user?.avatar_url;
   const userInitial = userName.charAt(0).toUpperCase();
+
+  const handleBannerCTAPress = useCallback(
+    (cta: HomeBannerCTA) => {
+      router.push(HOME_BANNER_CTA_ROUTE_MAP[cta.route]);
+    },
+    [router],
+  );
 
   return (
     <ScreenRoot>
@@ -221,7 +213,7 @@ export default function Home() {
 
             <XStack gap="$2" alignItems="center">
               <SurfaceIconButton
-                onPress={handleOpenOrders}
+                onPress={handleOpenCart}
                 role="button"
                 aria-label="Cart"
                 aria-describedby="Open cart page">
@@ -253,29 +245,11 @@ export default function Home() {
             </SearchShell>
           </YStack>
 
-          <BannerCard>
-            <XStack alignItems="center" gap="$3" justifyContent="space-between">
-              <YStack flex={1} minWidth={0} gap="$2">
-                <Text color="$color" fontSize={14} lineHeight={18} fontWeight="700">
-                  Your last order has{`\n`}been proceed
-                </Text>
-                <PillAction
-                  onPress={handleOpenOrders}
-                  role="button"
-                  aria-label="Track last order"
-                  aria-describedby="Open order tracking details">
-                  <Text color="$primary" fontSize={11} fontWeight="700">
-                    Track now
-                  </Text>
-                </PillAction>
-              </YStack>
-
-              <IllustrationPanel width={74} height={66}>
-                <PillIcon size={30} color={iconColor} />
-                <XStack width={24} height={4} borderRadius="$10" backgroundColor="$infoSoft" />
-              </IllustrationPanel>
-            </XStack>
-          </BannerCard>
+          {isLoadingBanners && !banners.home_banner_top ? (
+            <HomeBannerSkeleton />
+          ) : (
+            <HomeBanner banner={banners.home_banner_top} onCTAPress={handleBannerCTAPress} />
+          )}
 
           <YStack gap="$2.5">
             <SectionTitle>Categories</SectionTitle>
@@ -348,29 +322,11 @@ export default function Home() {
             )}
           </YStack>
 
-          <BannerCard>
-            <XStack alignItems="center" justifyContent="space-between" gap="$2.5">
-              <YStack flex={1} minWidth={0} gap="$2.5">
-                <Text color="$color" fontSize={15} lineHeight={20} fontWeight="700">
-                  Explore great doctors{`\n`}for your better life
-                </Text>
-                <PillAction
-                  onPress={handleOpenDetails}
-                  role="button"
-                  aria-label="Explore doctors"
-                  aria-describedby="Open doctor discovery">
-                  <Text color="$primary" fontSize={12} fontWeight="700">
-                    Explore life
-                  </Text>
-                </PillAction>
-              </YStack>
-
-              <IllustrationPanel width={88} height={78} gap="$1">
-                <StarIcon size={18} color={iconColor} />
-                <PillIcon size={24} color={iconColor} />
-              </IllustrationPanel>
-            </XStack>
-          </BannerCard>
+          {isLoadingBanners && !banners.home_banner_bottom ? (
+            <HomeBannerSkeleton />
+          ) : (
+            <HomeBanner banner={banners.home_banner_bottom} onCTAPress={handleBannerCTAPress} />
+          )}
         </ContentStack>
       </ScrollView>
     </ScreenRoot>

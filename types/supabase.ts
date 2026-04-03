@@ -129,6 +129,50 @@ export type Database = {
           slug?: string;
         };
       };
+      home_banners: {
+        Row: {
+          body: string | null;
+          created_at: string;
+          cta_kind: string;
+          cta_label: string | null;
+          cta_route: string | null;
+          id: string;
+          intent: string;
+          is_active: boolean;
+          media_path: string | null;
+          placement_key: string;
+          title: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          body?: string | null;
+          created_at?: string;
+          cta_kind: string;
+          cta_label?: string | null;
+          cta_route?: string | null;
+          id?: string;
+          intent: string;
+          is_active?: boolean;
+          media_path?: string | null;
+          placement_key: string;
+          title?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          body?: string | null;
+          created_at?: string;
+          cta_kind?: string;
+          cta_label?: string | null;
+          cta_route?: string | null;
+          id?: string;
+          intent?: string;
+          is_active?: boolean;
+          media_path?: string | null;
+          placement_key?: string;
+          title?: string | null;
+          updated_at?: string;
+        };
+      };
       order_items: {
         Row: {
           created_at: string;
