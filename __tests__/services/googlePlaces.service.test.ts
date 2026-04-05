@@ -1,10 +1,12 @@
-import { describe, expect, test, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, test } from '@jest/globals';
 import {
-  getPlacePredictions,
-  getPlaceDetails,
-  convertPlaceDetailsToAddress,
-  reverseGeocodeCoordinates,
   __clearPlaceDetailsCache,
+  __clearRecommendationCache,
+  convertPlaceDetailsToAddress,
+  getAddressRecommendations,
+  getPlaceDetails,
+  getPlacePredictions,
+  reverseGeocodeCoordinates,
 } from '@/services/googlePlaces.service';
 
 jest.mock('@/utils/config', () => ({
@@ -14,13 +16,50 @@ jest.mock('@/utils/config', () => ({
   },
 }));
 
+function createReverseGeocodeResponse(params: {
+  placeId: string;
+  formattedAddress: string;
+  latitude: number;
+  longitude: number;
+}): Response {
+  return {
+    ok: true,
+    json: async () => ({
+      results: [
+        {
+          place_id: params.placeId,
+          formatted_address: params.formattedAddress,
+          address_components: [
+            { long_name: 'Jalan Test', short_name: 'Jl. Test', types: ['route'] },
+            { long_name: 'Kota Serang', short_name: 'Serang', types: ['locality'] },
+            {
+              long_name: 'Banten',
+              short_name: 'Banten',
+              types: ['administrative_area_level_1'],
+            },
+            { long_name: '42183', short_name: '42183', types: ['postal_code'] },
+          ],
+          geometry: { location: { lat: params.latitude, lng: params.longitude } },
+        },
+      ],
+      status: 'OK',
+    }),
+  } as Response;
+}
+
 describe('googlePlaces.service', () => {
   const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
   global.fetch = mockFetch;
 
   beforeEach(() => {
-    mockFetch.mockClear();
+    jest.clearAllMocks();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
     __clearPlaceDetailsCache();
+    __clearRecommendationCache();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('getPlacePredictions', () => {
@@ -162,9 +201,203 @@ describe('googlePlaces.service', () => {
       expect(result1.data?.placeId).toBe('ChIJ123');
       expect(mockFetch).toHaveBeenCalledTimes(1);
 
-      const result2 = await getPlaceDetails('ChIJ123', 'session-456');
+      const result2 = await getPlaceDetails('ChIJ123', '');
       expect(result2.data?.placeId).toBe('ChIJ123');
       expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getAddressRecommendations', () => {
+    test('reverse geocodes center + 6 hex ring points and returns deduplicated results', async () => {
+      mockFetch
+        .mockResolvedValueOnce(
+          createReverseGeocodeResponse({
+            placeId: 'place-1',
+            formattedAddress:
+              'Jalan Ciruas Petir, RT.14/RW.4, Kp. Ampian, Ds. Pipitan, Walantaka, Kota Serang, Banten 42183',
+            latitude: -6.12,
+            longitude: 106.17,
+          }),
+        )
+        .mockResolvedValueOnce(
+          createReverseGeocodeResponse({
+            placeId: 'place-1',
+            formattedAddress:
+              'Jalan Ciruas Petir, RT.14/RW.4, Kp. Ampian, Ds. Pipitan, Walantaka, Kota Serang, Banten 42183',
+            latitude: -6.1201,
+            longitude: 106.1701,
+          }),
+        )
+        .mockResolvedValueOnce(
+          createReverseGeocodeResponse({
+            placeId: 'place-2',
+            formattedAddress: 'Jalan Raya Serang, Walantaka, Kota Serang, Banten 42183',
+            latitude: -6.121,
+            longitude: 106.171,
+          }),
+        )
+        .mockResolvedValueOnce(
+          createReverseGeocodeResponse({
+            placeId: 'place-3',
+            formattedAddress: 'Jalan Raya Serang Barat, Walantaka, Kota Serang, Banten 42183',
+            latitude: -6.122,
+            longitude: 106.172,
+          }),
+        )
+        .mockResolvedValueOnce(
+          createReverseGeocodeResponse({
+            placeId: 'place-4',
+            formattedAddress: 'Jalan Walantaka, Pipitan, Kota Serang, Banten 42183',
+            latitude: -6.123,
+            longitude: 106.173,
+          }),
+        )
+        .mockResolvedValueOnce(
+          createReverseGeocodeResponse({
+            placeId: 'place-5',
+            formattedAddress: 'Jalan Pipitan, Walantaka, Kota Serang, Banten 42183',
+            latitude: -6.124,
+            longitude: 106.174,
+          }),
+        )
+        .mockResolvedValueOnce(
+          createReverseGeocodeResponse({
+            placeId: 'place-6',
+            formattedAddress: 'Jalan Ampian, Pipitan, Kota Serang, Banten 42183',
+            latitude: -6.125,
+            longitude: 106.175,
+          }),
+        );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data).toHaveLength(6);
+      expect(result.data[0]).toEqual(
+        expect.objectContaining({
+          placeId: 'place-1',
+          name: 'Jalan Ciruas Petir',
+          primaryText: 'Jalan Ciruas Petir',
+        }),
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(7);
+    });
+
+    test('uses cached recommendations on repeated calls', async () => {
+      for (let index = 0; index < 7; index += 1) {
+        mockFetch.mockResolvedValueOnce(
+          createReverseGeocodeResponse({
+            placeId: `place-${index + 1}`,
+            formattedAddress: `Jalan ${index + 1}, Walantaka, Kota Serang, Banten 42183`,
+            latitude: -6.12 + index * 0.001,
+            longitude: 106.17 + index * 0.001,
+          }),
+        );
+      }
+
+      const first = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+      const second = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(first.error).toBeNull();
+      expect(second.error).toBeNull();
+      expect(second.data).toEqual(first.data);
+      expect(mockFetch).toHaveBeenCalledTimes(7);
+    });
+
+    test('tries second ring at 80m when first ring yields fewer than 4 unique results', async () => {
+      const firstRingResponses = [
+        createReverseGeocodeResponse({
+          placeId: 'place-1',
+          formattedAddress: 'Jalan Ciruas Petir, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.12,
+          longitude: 106.17,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-1',
+          formattedAddress: 'Jalan Ciruas Petir, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.1201,
+          longitude: 106.1701,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-2',
+          formattedAddress: 'Jalan Pipitan, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.121,
+          longitude: 106.171,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-2',
+          formattedAddress: 'Jalan Pipitan, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.1211,
+          longitude: 106.1711,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-1',
+          formattedAddress: 'Jalan Ciruas Petir, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.1202,
+          longitude: 106.1702,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-2',
+          formattedAddress: 'Jalan Pipitan, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.1212,
+          longitude: 106.1712,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-1',
+          formattedAddress: 'Jalan Ciruas Petir, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.1203,
+          longitude: 106.1703,
+        }),
+      ];
+
+      const secondRingResponses = [
+        createReverseGeocodeResponse({
+          placeId: 'place-3',
+          formattedAddress: 'Jalan Ampian, Pipitan, Kota Serang, Banten 42183',
+          latitude: -6.13,
+          longitude: 106.18,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-4',
+          formattedAddress: 'Jalan Walantaka, Pipitan, Kota Serang, Banten 42183',
+          latitude: -6.131,
+          longitude: 106.181,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-5',
+          formattedAddress: 'Jalan Ciruas Baru, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.132,
+          longitude: 106.182,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-6',
+          formattedAddress: 'Jalan Serang Timur, Pipitan, Kota Serang, Banten 42183',
+          latitude: -6.133,
+          longitude: 106.183,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-7',
+          formattedAddress: 'Jalan Pipitan Selatan, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.134,
+          longitude: 106.184,
+        }),
+        createReverseGeocodeResponse({
+          placeId: 'place-8',
+          formattedAddress: 'Jalan Cibanten, Walantaka, Kota Serang, Banten 42183',
+          latitude: -6.135,
+          longitude: 106.185,
+        }),
+      ];
+
+      [...firstRingResponses, ...secondRingResponses].forEach(response => {
+        mockFetch.mockResolvedValueOnce(response);
+      });
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data).toHaveLength(6);
+      expect(mockFetch).toHaveBeenCalledTimes(13);
     });
   });
 
@@ -218,23 +451,15 @@ describe('googlePlaces.service', () => {
   });
 
   describe('reverseGeocodeCoordinates', () => {
-    test('makes request to Legacy Geocoding API', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          results: [
-            {
-              place_id: 'ChIJ123',
-              formatted_address: 'Jl. Sudirman, Jakarta',
-              address_components: [
-                { long_name: 'Jakarta', short_name: 'Jakarta', types: ['locality'] },
-              ],
-              geometry: { location: { lat: -6.2, lng: 106.8 } },
-            },
-          ],
-          status: 'OK',
+    test('makes request to Legacy Geocoding API and returns fullAddress', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createReverseGeocodeResponse({
+          placeId: 'ChIJ123',
+          formattedAddress: 'Jl. Sudirman, Jakarta',
+          latitude: -6.2,
+          longitude: 106.8,
         }),
-      } as Response);
+      );
 
       const result = await reverseGeocodeCoordinates({
         latitude: -6.2,
@@ -247,6 +472,7 @@ describe('googlePlaces.service', () => {
       );
       expect(result.data?.placeId).toBe('ChIJ123');
       expect(result.data?.latitude).toBe(-6.2);
+      expect(result.data?.fullAddress).toBe('Jl. Sudirman, Jakarta');
     });
 
     test('returns error when no results found', async () => {

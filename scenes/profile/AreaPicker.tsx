@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Location from 'expo-location';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, MapPin, Search } from '@tamagui/lucide-icons';
-import { Card, Input, ScrollView, Sheet, Spinner, Text, XStack, YStack } from 'tamagui';
+import { Card, Input, ScrollView, Spinner, Text, XStack, YStack, styled } from 'tamagui';
 import Button from '@/components/elements/Button';
-import type { BiteshipArea } from '@/types/shipping';
+import type { RouteParams } from '@/types/routes.types';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
+import type { BiteshipArea } from '@/types/shipping';
 import {
-  getRegionalDistrictsByRegency,
   getPostalCodesByDistrict,
+  getRegionalDistrictsByRegency,
   getRegionalProvinces,
   getRegionalRegenciesByProvince,
   reverseGeocodeCoordinates,
   searchBiteshipArea,
 } from '@/services';
+import { setPendingAreaSelection } from '@/utils/areaPickerSession';
+import type { PendingAreaSelection } from '@/utils/areaPickerSession';
 
 type SelectionStage = 'province' | 'city' | 'district' | 'postal';
 
@@ -29,18 +33,16 @@ type CurrentLocationAddress = {
   postalCode: string;
 };
 
-export interface AreaPickerSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSelect: (area: BiteshipArea) => void;
-  selectedAreaId?: string;
-}
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+  backgroundColor: '$background',
+});
 
 function normalize(text: string | undefined | null): string {
   return (text || '').trim().toUpperCase();
 }
 
-function normalizeAdminName(text: string | undefined | null): string {
+export function normalizeAdminName(text: string | undefined | null): string {
   return normalize(text)
     .replace(/^KABUPATEN\s+/, '')
     .replace(/^KOTA\s+/, '')
@@ -52,6 +54,46 @@ function normalizeAdminName(text: string | undefined | null): string {
     .replace(/DAERAH ISTIMEWA YOGYAKARTA/g, 'DI YOGYAKARTA')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+export function normalizeExactAdminName(text: string | undefined | null): string {
+  return normalize(text).replace(/\s+/g, ' ').trim();
+}
+
+type AdminAreaType = 'kabupaten' | 'kota' | 'unknown';
+
+function getAdminAreaType(text: string | undefined | null): AdminAreaType {
+  const normalized = normalizeExactAdminName(text);
+
+  if (/^(KABUPATEN|KAB\.?)/.test(normalized)) {
+    return 'kabupaten';
+  }
+
+  if (/^KOTA\s+/.test(normalized)) {
+    return 'kota';
+  }
+
+  return 'unknown';
+}
+
+export function adminNamesMatch(
+  candidate: string | undefined | null,
+  target: string | undefined | null,
+): boolean {
+  const normalizedCandidate = normalizeExactAdminName(candidate);
+  const normalizedTarget = normalizeExactAdminName(target);
+  const candidateType = getAdminAreaType(candidate);
+  const targetType = getAdminAreaType(target);
+
+  if (normalizedCandidate && normalizedTarget && normalizedCandidate === normalizedTarget) {
+    return true;
+  }
+
+  if (candidateType !== 'unknown' && targetType !== 'unknown' && candidateType !== targetType) {
+    return false;
+  }
+
+  return normalizeAdminName(candidate) === normalizeAdminName(target);
 }
 
 function buildPostalOptions(postalCodes: string[]): PostalOption[] {
@@ -76,8 +118,34 @@ function normalizeCurrentLocationAddress(
   };
 }
 
-function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaPickerSheetProps) {
-  const insets = useSafeAreaInsets();
+export function buildPendingAreaSelection(
+  area: BiteshipArea,
+  fallbackHierarchy: {
+    provinceName?: string;
+    regencyName?: string;
+    districtName?: string;
+    postalCode?: string;
+  },
+  hierarchy?: {
+    provinceName?: string;
+    regencyName?: string;
+    districtName?: string;
+    postalCode?: string;
+  },
+): PendingAreaSelection {
+  return {
+    area,
+    provinceName: hierarchy?.provinceName ?? fallbackHierarchy.provinceName,
+    regencyName: hierarchy?.regencyName ?? fallbackHierarchy.regencyName,
+    districtName: hierarchy?.districtName ?? fallbackHierarchy.districtName,
+    postalCode:
+      hierarchy?.postalCode ?? fallbackHierarchy.postalCode ?? String(area.postal_code ?? ''),
+  };
+}
+
+export default function AreaPickerScreen() {
+  const router = useRouter();
+  useLocalSearchParams<RouteParams<'profile/area-picker'>>();
   const requestIdRef = useRef(0);
 
   const [stage, setStage] = useState<SelectionStage>('province');
@@ -107,8 +175,6 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
   }, []);
 
   useEffect(() => {
-    if (!open) return;
-
     resetState();
 
     const loadProvinces = async () => {
@@ -122,7 +188,7 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
     };
 
     void loadProvinces();
-  }, [open, resetState]);
+  }, [resetState]);
 
   const filteredProvinces = useMemo(() => {
     const trimmed = normalize(query);
@@ -151,12 +217,9 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
   const matchesHierarchy = useCallback(
     (area: BiteshipArea, provinceName: string, regencyName: string, districtName: string) => {
       return (
-        normalizeAdminName(area.administrative_division_level_1_name) ===
-          normalizeAdminName(provinceName) &&
-        normalizeAdminName(area.administrative_division_level_2_name) ===
-          normalizeAdminName(regencyName) &&
-        normalizeAdminName(area.administrative_division_level_3_name) ===
-          normalizeAdminName(districtName)
+        adminNamesMatch(area.administrative_division_level_1_name, provinceName) &&
+        adminNamesMatch(area.administrative_division_level_2_name, regencyName) &&
+        adminNamesMatch(area.administrative_division_level_3_name, districtName)
       );
     },
     [],
@@ -216,6 +279,39 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
       return null;
     },
     [matchesHierarchy],
+  );
+
+  const handleAreaSelection = useCallback(
+    (
+      area: BiteshipArea,
+      hierarchy?: {
+        provinceName?: string;
+        regencyName?: string;
+        districtName?: string;
+        postalCode?: string;
+      },
+    ) => {
+      setPendingAreaSelection(
+        buildPendingAreaSelection(
+          area,
+          {
+            provinceName: selectedProvince?.name,
+            regencyName: selectedCity?.name,
+            districtName: selectedDistrict?.name,
+            postalCode: selectedPostalLabel ?? undefined,
+          },
+          hierarchy,
+        ),
+      );
+      router.back();
+    },
+    [
+      router,
+      selectedCity?.name,
+      selectedDistrict?.name,
+      selectedPostalLabel,
+      selectedProvince?.name,
+    ],
   );
 
   const loadCities = useCallback(async (province: RegionalProvince) => {
@@ -353,16 +449,27 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
       }
 
       if (!current) {
-        const lastKnown = await Location.getLastKnownPositionAsync({
-          maxAge: 10 * 60 * 1000,
-        });
-        if (lastKnown) {
-          current = lastKnown;
-        } else {
-          setStageError('Gagal membaca lokasi saat ini. Silakan pilih manual.');
-          return;
+        try {
+          const lastKnown = await Location.getLastKnownPositionAsync({
+            maxAge: 10 * 60 * 1000,
+          });
+          if (lastKnown) {
+            current = lastKnown;
+          }
+        } catch (lastKnownError) {
+          if (__DEV__) {
+            console.warn('[AreaPicker] lastKnownPosition failed:', lastKnownError);
+          }
         }
       }
+
+      if (!current) {
+        setStageError(
+          'Lokasi saat ini tidak tersedia. Pastikan GPS aktif lalu coba lagi, atau pilih manual.',
+        );
+        return;
+      }
+
       const { data: reversed, error: reverseError } = await reverseGeocodeCoordinates({
         latitude: current.coords.latitude,
         longitude: current.coords.longitude,
@@ -380,7 +487,7 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
         ? {
             province: reversed.province,
             city: reversed.city,
-            district: reversed.streetAddress,
+            district: reversed.district,
             postalCode: reversed.postalCode,
           }
         : expoReverse[0]
@@ -398,7 +505,9 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
         : null;
 
       if (!resolvedAddress) {
-        setStageError('Gagal membaca lokasi saat ini. Silakan pilih manual.');
+        setStageError(
+          'Alamat dari lokasi saat ini tidak dapat dikenali. Silakan pilih area secara manual.',
+        );
         return;
       }
 
@@ -420,27 +529,48 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
         return;
       }
 
-      const matchedRegency = regencies.find(option => {
-        return normalizeAdminName(option.name) === normalizeAdminName(resolvedAddress.city);
+      const districtSearchResults = await Promise.all(
+        regencies.map(async regency => {
+          const { data: districts } = await getRegionalDistrictsByRegency(regency.code);
+          return {
+            regency,
+            districts: districts || [],
+          };
+        }),
+      );
+
+      const exactMatchedRegency = regencies.find(option => {
+        return (
+          normalizeExactAdminName(option.name) === normalizeExactAdminName(resolvedAddress.city)
+        );
       });
 
-      let finalMatchedRegency = matchedRegency;
+      const fuzzyMatchedRegencies = regencies.filter(option =>
+        adminNamesMatch(option.name, resolvedAddress.city),
+      );
+
+      let finalMatchedRegency = exactMatchedRegency;
+
+      if (!finalMatchedRegency && fuzzyMatchedRegencies.length === 1) {
+        finalMatchedRegency = fuzzyMatchedRegencies[0];
+      }
+
+      if (!finalMatchedRegency && fuzzyMatchedRegencies.length > 1) {
+        const disambiguatedRegency = districtSearchResults.find(({ regency, districts }) => {
+          return (
+            fuzzyMatchedRegencies.some(match => match.code === regency.code) &&
+            districts.some(d => adminNamesMatch(d.name, resolvedAddress.district))
+          );
+        });
+
+        if (disambiguatedRegency) {
+          finalMatchedRegency = disambiguatedRegency.regency;
+        }
+      }
 
       if (!finalMatchedRegency) {
-        const districtSearchResults = await Promise.all(
-          regencies.map(async regency => {
-            const { data: districts } = await getRegionalDistrictsByRegency(regency.code);
-            return {
-              regency,
-              districts: districts || [],
-            };
-          }),
-        );
-
         const foundDistrict = districtSearchResults.find(({ districts }) =>
-          districts.some(
-            d => normalizeAdminName(d.name) === normalizeAdminName(resolvedAddress.city),
-          ),
+          districts.some(d => adminNamesMatch(d.name, resolvedAddress.city)),
         );
 
         if (foundDistrict) {
@@ -453,11 +583,6 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
         setCityOptions(regencies);
         setStage('city');
         setStageError('Kota atau kabupaten tidak cocok otomatis. Silakan pilih manual.');
-        return;
-      }
-
-      if (!finalMatchedRegency) {
-        setStageError('Kota atau kabupaten dari lokasi saat ini tidak ditemukan.');
         return;
       }
 
@@ -524,8 +649,12 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
           );
 
           if (resolvedArea) {
-            onSelect(resolvedArea);
-            onOpenChange(false);
+            handleAreaSelection(resolvedArea, {
+              provinceName: matchedProvince.name,
+              regencyName: finalMatchedRegency.name,
+              districtName: districtCandidate.name,
+              postalCode: selectedOption.label,
+            });
             return;
           }
         }
@@ -540,7 +669,7 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
     } finally {
       setIsLoadingStage(false);
     }
-  }, [onOpenChange, onSelect, provinceOptions, resolveAreaByPostal, resolvePostalOptions]);
+  }, [handleAreaSelection, provinceOptions, resolveAreaByPostal, resolvePostalOptions]);
 
   const navigateToStage = useCallback(
     (targetStage: SelectionStage, options?: { clearDescendants?: boolean }) => {
@@ -583,8 +712,8 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
       return;
     }
 
-    onOpenChange(false);
-  }, [navigateToStage, onOpenChange, stage]);
+    router.back();
+  }, [navigateToStage, router, stage]);
 
   const stageTitle =
     stage === 'province'
@@ -709,8 +838,7 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
               return;
             }
 
-            onSelect(resolvedArea);
-            onOpenChange(false);
+            handleAreaSelection(resolvedArea);
           }}>
           <XStack justifyContent="space-between" alignItems="center">
             <Text fontSize="$5" color={isSelected ? '$primary' : '$color'}>
@@ -724,58 +852,55 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
   };
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={onOpenChange}
-      modal
-      dismissOnOverlayPress
-      dismissOnSnapToBottom={false}
-      snapPoints={[94]}
-      animation="medium">
-      <Sheet.Overlay
-        animation="lazy"
-        enterStyle={{ opacity: 0 }}
-        exitStyle={{ opacity: 0 }}
-        backgroundColor="$sheetOverlay"
-      />
-      <Sheet.Frame backgroundColor="$background" paddingBottom={insets.bottom}>
-        <YStack flex={1} gap="$3" paddingTop="$2" paddingHorizontal="$4">
-          <XStack alignItems="center" gap="$3">
-            <XStack
-              width={40}
-              height={40}
-              borderRadius={20}
-              alignItems="center"
-              justifyContent="center"
-              pressStyle={{ opacity: 0.8, scale: 0.96 }}
-              onPress={handleBack}>
-              <ArrowLeft size={22} color="$color" />
-            </XStack>
+    <SafeAreaView edges={['top', 'bottom']}>
+      <YStack flex={1}>
+        <XStack
+          alignItems="center"
+          paddingHorizontal="$4"
+          paddingVertical="$3"
+          gap="$3"
+          borderBottomWidth={1}
+          borderBottomColor="$surfaceBorder"
+          backgroundColor="$background">
+          <XStack
+            width={40}
+            height={40}
+            borderRadius={20}
+            alignItems="center"
+            justifyContent="center"
+            pressStyle={{ opacity: 0.8, scale: 0.96 }}
+            onPress={handleBack}>
+            <ArrowLeft size={22} color="$color" />
+          </XStack>
 
-            <XStack
+          <Text flex={1} fontSize="$7" fontWeight="700" color="$color">
+            Pilih Area
+          </Text>
+        </XStack>
+
+        <YStack flex={1} paddingHorizontal="$4" paddingTop="$3" gap="$3">
+          <XStack
+            backgroundColor="$surface"
+            borderWidth={1}
+            borderColor="$surfaceBorder"
+            borderRadius="$5"
+            minHeight={48}
+            alignItems="center"
+            paddingHorizontal="$3"
+            gap="$2">
+            <Search size={18} color="$colorMuted" />
+            <Input
               flex={1}
-              backgroundColor="$surface"
-              borderWidth={1}
-              borderColor="$surfaceBorder"
-              borderRadius="$5"
-              minHeight={48}
-              alignItems="center"
-              paddingHorizontal="$3"
-              gap="$2">
-              <Search size={18} color="$colorMuted" />
-              <Input
-                flex={1}
-                backgroundColor="$colorTransparent"
-                borderWidth={0}
-                padding={0}
-                fontSize="$4"
-                color="$color"
-                placeholder="Cari Kota, Kecamatan, atau Kode Pos"
-                placeholderTextColor="$placeholderColor"
-                value={query}
-                onChangeText={setQuery}
-              />
-            </XStack>
+              backgroundColor="$colorTransparent"
+              borderWidth={0}
+              padding={0}
+              fontSize="$4"
+              color="$color"
+              placeholder="Cari Kota, Kecamatan, atau Kode Pos"
+              placeholderTextColor="$placeholderColor"
+              value={query}
+              onChangeText={setQuery}
+            />
           </XStack>
 
           <Button
@@ -808,8 +933,8 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
                 alignItems="center"
                 gap="$2"
                 minHeight={44}
-                accessibilityRole="button"
-                accessibilityLabel={
+                role="button"
+                aria-label={
                   selectedProvince ? `Ubah provinsi ${selectedProvince.name}` : 'Pilih provinsi'
                 }
                 onPress={() => selectedProvince && navigateToStage('province')}>
@@ -831,8 +956,8 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
                   alignItems="center"
                   gap="$2"
                   minHeight={44}
-                  accessibilityRole="button"
-                  accessibilityLabel={
+                  role="button"
+                  aria-label={
                     selectedCity ? `Ubah kota ${selectedCity.name}` : 'Pilih kota atau kabupaten'
                   }
                   onPress={() => selectedCity && navigateToStage('city')}>
@@ -861,8 +986,8 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
                   alignItems="center"
                   gap="$2"
                   minHeight={44}
-                  accessibilityRole="button"
-                  accessibilityLabel={
+                  role="button"
+                  aria-label={
                     selectedDistrict ? `Ubah kecamatan ${selectedDistrict.name}` : 'Pilih kecamatan'
                   }
                   onPress={() => selectedDistrict && navigateToStage('district')}>
@@ -928,9 +1053,7 @@ function AreaPickerSheet({ open, onOpenChange, onSelect, selectedAreaId }: AreaP
             <YStack>{renderContent()}</YStack>
           </ScrollView>
         </YStack>
-      </Sheet.Frame>
-    </Sheet>
+      </YStack>
+    </SafeAreaView>
   );
 }
-
-export default AreaPickerSheet;

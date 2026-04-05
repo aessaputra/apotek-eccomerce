@@ -1,5 +1,6 @@
 import config from '@/utils/config';
 import type {
+  AddressSuggestion,
   GooglePlaceDetails,
   GooglePlaceDetailsNew,
   GooglePlacePrediction,
@@ -13,13 +14,243 @@ const GOOGLE_GEOCODING_API_BASE = 'https://maps.googleapis.com/maps/api';
 // Cache configuration for cost optimization
 // Place IDs are permanent - safe to cache for extended periods
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const RECOMMENDATION_CACHE_TTL_MS = 10 * 60 * 1000;
+const RECOMMENDATION_TARGET_COUNT = 6;
+const HEX_RING_OFFSET_METERS = 40;
 
 interface CachedPlaceDetails {
   data: GooglePlaceDetails;
   cachedAt: number;
 }
 
+interface CachedAddressRecommendations {
+  data: AddressSuggestion[];
+  cachedAt: number;
+}
+
+interface CachedReverseGeocodeResult {
+  data: SelectedAddressSuggestion;
+  cachedAt: number;
+}
+
 const placeDetailsCache = new Map<string, CachedPlaceDetails>();
+const reverseGeocodeCache = new Map<string, CachedReverseGeocodeResult>();
+const recommendationCache = new Map<string, CachedAddressRecommendations>();
+
+function getRecommendationCacheKey(lat: number, lng: number): string {
+  return `rec:${lat.toFixed(3)},${lng.toFixed(3)}`;
+}
+
+function getReverseGeocodeCacheKey(lat: number, lng: number): string {
+  return `${lat.toFixed(5)},${lng.toFixed(5)}`;
+}
+
+function generateHexOffsets(
+  center: { latitude: number; longitude: number },
+  radiusMeters: number,
+): Array<{ latitude: number; longitude: number }> {
+  const points: Array<{ latitude: number; longitude: number }> = [];
+  const latOffset = radiusMeters / 111320;
+  const cosLatitude = Math.cos((center.latitude * Math.PI) / 180);
+  const lngOffset = radiusMeters / (111320 * (Math.abs(cosLatitude) < 1e-6 ? 1e-6 : cosLatitude));
+
+  for (let index = 0; index < 6; index += 1) {
+    const angle = (index * 60 * Math.PI) / 180;
+    points.push({
+      latitude: center.latitude + latOffset * Math.cos(angle),
+      longitude: center.longitude + lngOffset * Math.sin(angle),
+    });
+  }
+
+  return points;
+}
+
+function deduplicateAddressResults(
+  results: Array<{
+    placeId: string;
+    formattedAddress: string;
+    suggestion: AddressSuggestion;
+  }>,
+): AddressSuggestion[] {
+  const seenPlaceIds = new Set<string>();
+  const seenNormalizedAddresses = new Set<string>();
+  const unique: AddressSuggestion[] = [];
+
+  for (const item of results) {
+    if (seenPlaceIds.has(item.placeId)) {
+      continue;
+    }
+    seenPlaceIds.add(item.placeId);
+
+    const normalizedAddress = item.formattedAddress
+      .toLowerCase()
+      .replace(/[.,\-\/]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (seenNormalizedAddresses.has(normalizedAddress)) {
+      continue;
+    }
+    seenNormalizedAddresses.add(normalizedAddress);
+
+    unique.push(item.suggestion);
+  }
+
+  return unique;
+}
+
+function mapSelectedAddressToSuggestion(
+  address: SelectedAddressSuggestion,
+): AddressSuggestion | null {
+  const fullAddress = address.fullAddress?.trim() ?? '';
+  if (!fullAddress) {
+    return null;
+  }
+
+  const segments = fullAddress
+    .split(',')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+  const primaryText = segments[0] ?? fullAddress;
+  const secondaryText = segments.length > 1 ? segments.slice(1).join(', ') : fullAddress;
+
+  return {
+    id: address.placeId,
+    placeId: address.placeId,
+    name: primaryText,
+    fullAddress,
+    primaryText,
+    secondaryText,
+    latitude: address.latitude,
+    longitude: address.longitude,
+  };
+}
+
+export async function getAddressRecommendations(
+  location: { latitude: number; longitude: number },
+  signal?: AbortSignal,
+): Promise<{ data: AddressSuggestion[]; error: Error | null }> {
+  const configurationError = ensureConfigured();
+  if (configurationError) {
+    return { data: [], error: configurationError };
+  }
+
+  const cacheKey = getRecommendationCacheKey(location.latitude, location.longitude);
+  const cached = recommendationCache.get(cacheKey);
+  if (cached && Date.now() - cached.cachedAt < RECOMMENDATION_CACHE_TTL_MS) {
+    if (__DEV__) {
+      console.log('[GooglePlaces] Address recommendation cache hit');
+    }
+    return { data: cached.data, error: null };
+  }
+
+  const allPoints = [location, ...generateHexOffsets(location, HEX_RING_OFFSET_METERS)];
+
+  if (__DEV__) {
+    console.log('[GooglePlaces] Reverse geocoding', allPoints.length, 'points for recommendations');
+  }
+
+  const results = await Promise.all(
+    allPoints.map(point =>
+      reverseGeocodeCoordinates({
+        latitude: point.latitude,
+        longitude: point.longitude,
+        signal,
+      }),
+    ),
+  );
+
+  const abortError = results.find(result => result.error?.name === 'AbortError')?.error;
+  if (abortError) {
+    return { data: [], error: abortError };
+  }
+
+  const failedCount = results.filter(result => result.error && !result.data).length;
+  if (failedCount === results.length) {
+    const firstError = results.find(result => result.error)?.error;
+    return {
+      data: [],
+      error: firstError ?? new Error('Gagal memuat rekomendasi alamat.'),
+    };
+  }
+
+  const candidates: Array<{
+    placeId: string;
+    formattedAddress: string;
+    suggestion: AddressSuggestion;
+  }> = [];
+
+  for (const result of results) {
+    if (!result.data) {
+      continue;
+    }
+
+    const suggestion = mapSelectedAddressToSuggestion(result.data);
+    if (!suggestion) {
+      continue;
+    }
+
+    candidates.push({
+      placeId: result.data.placeId,
+      formattedAddress: suggestion.fullAddress,
+      suggestion,
+    });
+  }
+
+  let unique = deduplicateAddressResults(candidates);
+
+  if (unique.length < 4) {
+    if (__DEV__) {
+      console.log('[GooglePlaces] Too few results, trying second ring at 80m');
+    }
+
+    const secondRing = generateHexOffsets(location, 80);
+    const secondResults = await Promise.all(
+      secondRing.map(point =>
+        reverseGeocodeCoordinates({
+          latitude: point.latitude,
+          longitude: point.longitude,
+          signal,
+        }),
+      ),
+    );
+
+    const secondAbortError = secondResults.find(
+      result => result.error?.name === 'AbortError',
+    )?.error;
+    if (secondAbortError) {
+      return { data: [], error: secondAbortError };
+    }
+
+    for (const result of secondResults) {
+      if (!result.data) {
+        continue;
+      }
+
+      const suggestion = mapSelectedAddressToSuggestion(result.data);
+      if (!suggestion) {
+        continue;
+      }
+
+      candidates.push({
+        placeId: result.data.placeId,
+        formattedAddress: suggestion.fullAddress,
+        suggestion,
+      });
+    }
+
+    unique = deduplicateAddressResults(candidates);
+  }
+
+  const finalResults = unique.slice(0, RECOMMENDATION_TARGET_COUNT);
+  recommendationCache.set(cacheKey, { data: finalResults, cachedAt: Date.now() });
+
+  if (__DEV__) {
+    console.log('[GooglePlaces] Address recommendations:', finalResults.length);
+  }
+
+  return { data: finalResults, error: null };
+}
 
 function getCachedPlaceDetails(placeId: string): GooglePlaceDetails | null {
   const cached = placeDetailsCache.get(placeId);
@@ -44,6 +275,12 @@ function setCachedPlaceDetails(placeId: string, data: GooglePlaceDetails): void 
 // Exported for testing only
 export function __clearPlaceDetailsCache(): void {
   placeDetailsCache.clear();
+}
+
+// Exported for testing only
+export function __clearRecommendationCache(): void {
+  recommendationCache.clear();
+  reverseGeocodeCache.clear();
 }
 
 const AUTOCOMPLETE_FIELD_MASK =
@@ -258,10 +495,14 @@ export async function getPlaceDetails(
 
   const normalizedPlaceId = normalizePlaceId(placeId);
 
-  // Check cache first (cost optimization: avoid API call if cached)
-  const cached = getCachedPlaceDetails(normalizedPlaceId);
-  if (cached) {
-    return { data: cached, error: null };
+  // Skip cache when sessionToken is present — Google requires the Place Details
+  // request to close an autocomplete billing session. Returning cached data would
+  // leave the session open and defeat session-token cost optimization.
+  if (!sessionToken) {
+    const cached = getCachedPlaceDetails(normalizedPlaceId);
+    if (cached) {
+      return { data: cached, error: null };
+    }
   }
 
   const params = new URLSearchParams({
@@ -320,6 +561,7 @@ export async function getPlaceDetails(
 export function convertPlaceDetailsToAddress(placeDetails: GooglePlaceDetails): {
   streetAddress: string;
   city: string;
+  district: string;
   province: string;
   postalCode: string;
   latitude: number;
@@ -332,14 +574,22 @@ export function convertPlaceDetailsToAddress(placeDetails: GooglePlaceDetails): 
   const subLocality =
     components.find(c => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'))
       ?.longName ?? '';
+  const neighborhood = components.find(c => c.types.includes('neighborhood'))?.longName ?? '';
+  const adminArea2 =
+    components.find(c => c.types.includes('administrative_area_level_2'))?.longName ?? '';
+  const adminArea3 =
+    components.find(c => c.types.includes('administrative_area_level_3'))?.longName ?? '';
+  const adminArea4 =
+    components.find(c => c.types.includes('administrative_area_level_4'))?.longName ?? '';
 
-  // Fallback chain for city (Indonesian addresses vary in structure)
   const city =
     components.find(c => c.types.includes('locality'))?.longName ??
-    components.find(c => c.types.includes('administrative_area_level_2'))?.longName ??
-    components.find(c => c.types.includes('administrative_area_level_3'))?.longName ??
-    components.find(c => c.types.includes('sublocality'))?.longName ??
+    adminArea2 ??
+    adminArea3 ??
+    subLocality ??
     '';
+
+  const district = adminArea3 || adminArea4 || subLocality || neighborhood || '';
 
   const administrativeArea =
     components.find(c => c.types.includes('administrative_area_level_1'))?.longName ?? '';
@@ -351,6 +601,7 @@ export function convertPlaceDetailsToAddress(placeDetails: GooglePlaceDetails): 
   return {
     streetAddress: subLocality ? `${streetAddress}, ${subLocality}` : streetAddress,
     city,
+    district,
     province: administrativeArea,
     postalCode,
     latitude: placeDetails.coordinates.latitude,
@@ -366,6 +617,15 @@ export async function reverseGeocodeCoordinates(params: {
   const configurationError = ensureConfigured();
   if (configurationError) {
     return { data: null, error: configurationError };
+  }
+
+  const cacheKey = getReverseGeocodeCacheKey(params.latitude, params.longitude);
+  const cached = reverseGeocodeCache.get(cacheKey);
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+    if (__DEV__) {
+      console.log('[GooglePlaces] Reverse geocode cache hit');
+    }
+    return { data: cached.data, error: null };
   }
 
   const urlParams = new URLSearchParams({
@@ -422,27 +682,40 @@ export async function reverseGeocodeCoordinates(params: {
   const subLocality =
     components.find(c => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'))
       ?.long_name ?? '';
-  const administrativeArea =
+  const adminArea1 =
     components.find(c => c.types.includes('administrative_area_level_1'))?.long_name ?? '';
+  const adminArea2 =
+    components.find(c => c.types.includes('administrative_area_level_2'))?.long_name ?? '';
+  const adminArea3 =
+    components.find(c => c.types.includes('administrative_area_level_3'))?.long_name ?? '';
+  const adminArea4 =
+    components.find(c => c.types.includes('administrative_area_level_4'))?.long_name ?? '';
+  const neighborhood = components.find(c => c.types.includes('neighborhood'))?.long_name ?? '';
   const postalCode = components.find(c => c.types.includes('postal_code'))?.long_name ?? '';
 
   const streetParts = [route, streetNumber].filter(Boolean);
   const streetAddress =
     streetParts.length > 0 ? streetParts.join(' ') : result.formatted_address.split(',')[0];
 
+  const city = locality || adminArea2 || adminArea3 || '';
+  const district = adminArea3 || adminArea4 || subLocality || neighborhood || '';
+
   const address: SelectedAddressSuggestion = {
     id: result.place_id,
     placeId: result.place_id,
     fullAddress: result.formatted_address,
     streetAddress: subLocality ? `${streetAddress}, ${subLocality}` : streetAddress,
-    city: locality,
-    province: administrativeArea,
+    city,
+    province: adminArea1,
     postalCode,
+    district,
     countryCode: 'ID',
     latitude: result.geometry.location.lat,
     longitude: result.geometry.location.lng,
     accuracy: null,
   };
+
+  reverseGeocodeCache.set(cacheKey, { data: address, cachedAt: Date.now() });
 
   return { data: address, error: null };
 }

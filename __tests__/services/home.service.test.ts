@@ -43,7 +43,10 @@ function createBannerRow(partial: Partial<HomeBannerRow> = {}): HomeBannerRow {
 }
 
 describe('home.service home banners', () => {
+  let consoleWarnSpy: jest.SpiedFunction<typeof console.warn>;
+
   beforeEach(() => {
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockFrom.mockReset();
     mockSelect.mockReset();
     mockEq.mockReset();
@@ -61,6 +64,10 @@ describe('home.service home banners', () => {
         data: { publicUrl: `https://cdn.example.com/${path}` },
       };
     });
+  });
+
+  afterEach(() => {
+    consoleWarnSpy.mockRestore();
   });
 
   it('resolves public URLs for banner media paths', () => {

@@ -53,40 +53,89 @@ function MapPinSheet({
   );
   const [isLocating, setIsLocating] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const hasInteracted = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
 
+    let regionAnimationTimeout: ReturnType<typeof setTimeout> | undefined;
+    let isCancelled = false;
+
     hasInteracted.current = false;
 
-    if (initialCoords) {
-      setSelectedCoords(initialCoords);
-      if (Platform.OS !== 'web') {
-        setTimeout(() => {
-          if (mapRef.current && !hasInteracted.current) {
-            mapRef.current.animateToRegion({ ...initialCoords, ...DEFAULT_DELTA });
-          }
-        }, 300);
-      }
-      return;
-    }
+    const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error('Location request timeout')), ms),
+        ),
+      ]);
+    };
 
-    setSelectedCoords(JAKARTA_FALLBACK);
-    setIsLocating(true);
-    Location.requestForegroundPermissionsAsync()
-      .then(({ status }) => {
-        if (status !== 'granted') {
+    const initialiseLocation = async () => {
+      if (initialCoords) {
+        setSelectedCoords(initialCoords);
+        setLocationMessage(null);
+        if (Platform.OS !== 'web') {
+          regionAnimationTimeout = setTimeout(() => {
+            if (mapRef.current && !hasInteracted.current && !isCancelled) {
+              mapRef.current.animateToRegion({ ...initialCoords, ...DEFAULT_DELTA });
+            }
+          }, 300);
+        }
+        return;
+      }
+
+      setSelectedCoords(JAKARTA_FALLBACK);
+      setLocationMessage(null);
+      setIsLocating(true);
+
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== 'granted') {
+          if (isCancelled) {
+            return;
+          }
+
+          setLocationMessage(
+            'Izin lokasi tidak diberikan. Geser pin secara manual atau aktifkan lokasi di Pengaturan perangkat.',
+          );
           setIsLocating(false);
           return;
         }
 
-        return Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-      })
-      .then(location => {
-        if (location && !hasInteracted.current) {
+        let location: Location.LocationObject | Location.LocationObjectCoords | null = null;
+
+        try {
+          location = await withTimeout(
+            Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+              mayShowUserSettingsDialog: true,
+            }),
+            15000,
+          );
+        } catch {
+          const lastKnown = await Location.getLastKnownPositionAsync({
+            maxAge: 10 * 60 * 1000,
+          });
+          location = lastKnown;
+        }
+
+        if (isCancelled) {
+          return;
+        }
+
+        if (!location) {
+          setLocationMessage(
+            'Lokasi saat ini tidak tersedia. Geser pin secara manual untuk menyesuaikan.',
+          );
+          setIsLocating(false);
+          return;
+        }
+
+        if (!hasInteracted.current) {
           const coords = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
@@ -100,10 +149,26 @@ function MapPinSheet({
           }
         }
         setIsLocating(false);
-      })
-      .catch(() => {
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+
+        setLocationMessage(
+          'Lokasi saat ini tidak tersedia. Geser pin secara manual untuk menyesuaikan.',
+        );
         setIsLocating(false);
-      });
+      }
+    };
+
+    void initialiseLocation();
+
+    return () => {
+      isCancelled = true;
+      if (regionAnimationTimeout) {
+        clearTimeout(regionAnimationTimeout);
+      }
+    };
   }, [isOpen, initialCoords]);
 
   const handleMapPress = useCallback((event: MapPressEvent) => {
@@ -123,6 +188,7 @@ function MapPinSheet({
   const handleConfirmLocation = useCallback(() => {
     onConfirm(selectedCoords);
     setShowConfirmDialog(false);
+    setShowDiscardDialog(false);
     onClose();
   }, [onConfirm, selectedCoords, onClose]);
 
@@ -130,11 +196,27 @@ function MapPinSheet({
     setShowConfirmDialog(false);
   }, []);
 
+  const handleDismissRequest = useCallback(() => {
+    if (hasInteracted.current) {
+      setShowDiscardDialog(true);
+      return;
+    }
+
+    onClose();
+  }, [onClose]);
+
+  const handleDiscardChanges = useCallback(() => {
+    setShowDiscardDialog(false);
+    onClose();
+  }, [onClose]);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (!open) onClose();
+      if (!open) {
+        handleDismissRequest();
+      }
     },
-    [onClose],
+    [handleDismissRequest],
   );
 
   const coordLabel = isLocating
@@ -223,7 +305,9 @@ function MapPinSheet({
               justifyContent="center"
               pressStyle={{ opacity: 0.8, scale: 0.95 }}
               animation="quick"
-              onPress={onClose}
+              onPress={handleDismissRequest}
+              accessibilityRole="button"
+              accessibilityLabel="Tutup peta"
               pointerEvents="auto">
               <X size={22} color="$color" />
             </XStack>
@@ -302,6 +386,12 @@ function MapPinSheet({
               </Text>
             </XStack>
 
+            {locationMessage ? (
+              <Text fontSize="$2" color="$colorMuted">
+                {locationMessage}
+              </Text>
+            ) : null}
+
             <Button
               title="Konfirmasi"
               backgroundColor="$primary"
@@ -329,6 +419,21 @@ function MapPinSheet({
         confirmTextColor="$onPrimary"
         cancelColor="$background"
         cancelTextColor="$colorSubtle"
+      />
+
+      <AppAlertDialog
+        open={showDiscardDialog}
+        onOpenChange={setShowDiscardDialog}
+        title="Batalkan Penyesuaian Pin?"
+        description="Perubahan titik lokasi belum disimpan. Jika ditutup sekarang, posisi pin yang baru akan hilang."
+        confirmText="Tutup"
+        cancelText="Lanjut Edit"
+        onConfirm={handleDiscardChanges}
+        onCancel={() => setShowDiscardDialog(false)}
+        confirmColor="$background"
+        confirmTextColor="$color"
+        cancelColor="$primary"
+        cancelTextColor="$onPrimary"
       />
     </Sheet>
   );

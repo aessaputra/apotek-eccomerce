@@ -3,6 +3,7 @@ import { Alert, Platform, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { YStack, Spinner, styled, ScrollView } from 'tamagui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AddressFieldsForm from '@/components/AddressForm/AddressForm';
@@ -12,13 +13,13 @@ import ErrorMessage from '@/components/elements/ErrorMessage';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { useAddressForm } from '@/hooks/useAddressForm';
-import { useAddressSuggestions } from '@/hooks/useAddressSuggestions';
 import { useAddressData } from '@/hooks/useAddressData';
 import { buildAddressPayload } from '@/services/address.service';
 import { reverseGeocodeCoordinates } from '@/services/googlePlaces.service';
-import type { AddressSuggestion } from '@/types/geocoding';
 import type { RouteParams } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
+import { consumePendingAddressSelection } from '@/utils/addressSearchSession';
+import { consumePendingAreaSelection } from '@/utils/areaPickerSession';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -103,18 +104,6 @@ export default function AddressFormScreen() {
     clearError: clearDataError,
   } = useAddressData();
 
-  const {
-    query: addressSuggestionQuery,
-    setQuery: setAddressSuggestionQuery,
-    results: addressSuggestions,
-    isLoading: addressSuggestionsLoading,
-    isRetrieving: addressSuggestionSelecting,
-    error: addressSuggestionError,
-    clearAll: clearAddressSuggestions,
-    loadInitialSuggestions,
-    selectSuggestion,
-  } = useAddressSuggestions(areaProximity);
-
   useEffect(() => {
     if (!isEdit || !id || !user?.id) return;
 
@@ -142,12 +131,77 @@ export default function AddressFormScreen() {
     }
   }, [clearDataError, dataError, generalError, setGeneralError]);
 
-  const handleAddressFieldCommitted = useCallback(() => {
-    clearTransientErrors();
-    setFieldValue('latitude', null);
-    setFieldValue('longitude', null);
-    resetMapConfirmation();
-  }, [clearTransientErrors, resetMapConfirmation, setFieldValue]);
+  const applySelectedArea = useCallback(
+    (selectedArea: {
+      area: {
+        id: string;
+        name: string;
+        administrative_division_level_2_name?: string;
+        administrative_division_level_2_type?: string;
+        administrative_division_level_3_name?: string;
+        administrative_division_level_1_name?: string;
+        postal_code?: number;
+      };
+      provinceName?: string;
+      regencyName?: string;
+      districtName?: string;
+      postalCode?: string;
+    }) => {
+      const formatLevel2Display = (name: string, type?: string) => {
+        const normalizedType = (type ?? '').trim().toLowerCase();
+
+        if (/^kab(upaten)?\b/i.test(name)) {
+          return name.replace(/^kabupaten\s+/i, 'Kab. ').replace(/^kab\s+/i, 'Kab. ');
+        }
+
+        if (/^kota\b/i.test(name)) {
+          return name;
+        }
+
+        if (normalizedType === 'kabupaten' || normalizedType === 'regency') {
+          return `Kab. ${name}`;
+        }
+
+        if (normalizedType === 'kota' || normalizedType === 'city') {
+          return `Kota ${name}`;
+        }
+
+        return name;
+      };
+
+      const area = selectedArea.area;
+      const resolvedDistrictName =
+        selectedArea.districtName || area.administrative_division_level_3_name || area.name;
+      const resolvedRegencyName =
+        selectedArea.regencyName || area.administrative_division_level_2_name || '';
+      const resolvedProvinceName =
+        selectedArea.provinceName || area.administrative_division_level_1_name || '';
+      const resolvedPostalCode = selectedArea.postalCode || area.postal_code?.toString() || '';
+
+      const areaDisplayName = [
+        resolvedDistrictName,
+        formatLevel2Display(resolvedRegencyName, area.administrative_division_level_2_type),
+        resolvedProvinceName,
+        resolvedPostalCode,
+      ]
+        .filter(Boolean)
+        .join(', ');
+
+      clearTransientErrors();
+      setArea({
+        id: area.id,
+        name: areaDisplayName || area.name,
+        city: resolvedRegencyName,
+        province: resolvedProvinceName,
+        postalCode: resolvedPostalCode,
+      });
+      setAreaProximity(null);
+      setFieldValue('latitude', null);
+      setFieldValue('longitude', null);
+      resetMapConfirmation();
+    },
+    [clearTransientErrors, resetMapConfirmation, setArea, setFieldValue],
+  );
 
   const handleDefaultToggle = useCallback(
     (value: boolean) => {
@@ -157,27 +211,15 @@ export default function AddressFormScreen() {
     [clearTransientErrors, setFieldValue],
   );
 
-  const handleStreetAddressInput = useCallback(
-    (text: string) => {
-      setAddressSuggestionQuery(text);
-    },
-    [setAddressSuggestionQuery],
-  );
-
-  const handleLoadInitialSuggestions = useCallback(() => {
-    if (areaProximity) {
-      loadInitialSuggestions(areaProximity);
-    }
-  }, [areaProximity, loadInitialSuggestions]);
-
-  const handleSuggestionSelect = useCallback(
-    async (suggestion: AddressSuggestion) => {
-      const selectedAddress = await selectSuggestion(suggestion);
-
-      if (!selectedAddress) {
-        return;
-      }
-
+  const applySelectedAddress = useCallback(
+    (selectedAddress: {
+      streetAddress: string;
+      city: string;
+      province: string;
+      postalCode: string;
+      latitude: number;
+      longitude: number;
+    }) => {
       clearTransientErrors();
       setFieldValue('streetAddress', selectedAddress.streetAddress);
 
@@ -194,18 +236,55 @@ export default function AddressFormScreen() {
         longitude: selectedAddress.longitude,
       });
       setMapConfirmed(false);
-      clearAddressSuggestions();
       setMapOpenRequestKey(current => current + 1);
     },
-    [
-      clearAddressSuggestions,
-      clearTransientErrors,
-      selectSuggestion,
-      setFieldValue,
-      setMapConfirmed,
-      values.areaId,
-    ],
+    [clearTransientErrors, setFieldValue, setMapConfirmed, values.areaId],
   );
+
+  useFocusEffect(
+    useCallback(() => {
+      const selectedArea = consumePendingAreaSelection();
+      if (selectedArea) {
+        applySelectedArea(selectedArea);
+      }
+
+      const selectedAddress = consumePendingAddressSelection();
+      if (selectedAddress) {
+        applySelectedAddress(selectedAddress);
+      }
+    }, [applySelectedAddress, applySelectedArea]),
+  );
+
+  const handleOpenAreaPicker = useCallback(() => {
+    const params: RouteParams<'profile/area-picker'> = {};
+
+    if (values.areaId.trim()) {
+      params.selectedAreaId = values.areaId.trim();
+    }
+
+    router.push({
+      pathname: '/profile/area-picker',
+      params,
+    });
+  }, [router, values.areaId]);
+
+  const handleOpenStreetAddressSearch = useCallback(() => {
+    const params: RouteParams<'profile/address-search'> = {};
+
+    if (values.streetAddress.trim()) {
+      params.query = values.streetAddress.trim();
+    }
+
+    if (areaProximity) {
+      params.latitude = String(areaProximity.latitude);
+      params.longitude = String(areaProximity.longitude);
+    }
+
+    router.push({
+      pathname: '/profile/address-search',
+      params,
+    });
+  }, [areaProximity, router, values.streetAddress]);
 
   const handleCoordinatesChange = useCallback(
     async (coords: { latitude: number; longitude: number } | null) => {
@@ -339,23 +418,11 @@ export default function AddressFormScreen() {
                 refs={refs}
                 onFieldSave={setFieldValue}
                 onFieldValidate={validateField}
-                onFieldCommitted={handleAddressFieldCommitted}
-                onAreaSelect={async area => {
-                  setArea(area);
-                  setAreaProximity(null);
-                }}
                 onCoordinatesChange={handleCoordinatesChange}
                 onMapConfirmed={setMapConfirmed}
                 openMapRequestKey={mapOpenRequestKey}
-                addressSuggestionQuery={addressSuggestionQuery}
-                addressSuggestions={addressSuggestions}
-                addressSuggestionError={addressSuggestionError}
-                addressSuggestionsLoading={addressSuggestionsLoading}
-                addressSuggestionSelecting={addressSuggestionSelecting}
-                onStreetAddressInput={handleStreetAddressInput}
-                onSuggestionSelect={handleSuggestionSelect}
-                onLoadInitialSuggestions={handleLoadInitialSuggestions}
-                hasAreaProximity={!!areaProximity}
+                onAreaPickerPress={handleOpenAreaPicker}
+                onStreetAddressPress={handleOpenStreetAddressSearch}
               />
 
               <DefaultAddressToggle

@@ -1,5 +1,5 @@
 import { YStack, Text, XStack } from 'tamagui';
-import { ChevronRight, CheckCircle } from '@tamagui/lucide-icons';
+import { ChevronRight } from '@tamagui/lucide-icons';
 
 export interface AreaPickerTriggerProps {
   areaName: string;
@@ -7,6 +7,15 @@ export interface AreaPickerTriggerProps {
   error?: string | null;
   disabled?: boolean;
   onPress: () => void;
+}
+
+function formatSelectionLine(value: string): string {
+  return value
+    .trim()
+    .replace(/^KABUPATEN\s+/i, 'KAB. ')
+    .replace(/^KAB\s+/i, 'KAB. ')
+    .replace(/^KOTA\s+/i, 'KOTA ')
+    .toUpperCase();
 }
 
 function AreaPickerTrigger({
@@ -18,58 +27,78 @@ function AreaPickerTrigger({
 }: AreaPickerTriggerProps) {
   const hasFullSelection = !!areaId && !!areaName;
   const hasPartialSelection = !!areaId && !areaName;
+  const selectionLines = areaName
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(formatSelectionLine);
 
   const getBorderColor = () => {
     if (error) return '$danger';
-    if (hasFullSelection) return '$success';
     return '$surfaceBorder';
   };
 
   return (
     <YStack gap="$1">
-      <XStack justifyContent="space-between" alignItems="center" marginBottom="$1.5">
-        <Text fontSize="$3" color="$color" fontWeight="500">
-          Provinsi, Kota, Kecamatan, Kode Pos
-          <Text color="$danger"> *</Text>
-        </Text>
-        {hasFullSelection && (
-          <XStack gap="$1" alignItems="center">
-            <CheckCircle size={14} color="$success" />
-            <Text fontSize="$2" color="$success" fontWeight="500">
-              Terpilih
-            </Text>
-          </XStack>
-        )}
-      </XStack>
+      {!hasFullSelection && (
+        <XStack justifyContent="space-between" alignItems="center" marginBottom="$1.5">
+          <Text fontSize="$3" color="$color" fontWeight="500">
+            Provinsi, Kota, Kecamatan, Kode Pos
+            <Text color="$danger"> *</Text>
+          </Text>
+        </XStack>
+      )}
 
       <YStack
         backgroundColor="$background"
-        borderWidth={1.5}
+        borderWidth={hasFullSelection ? 0 : 1.5}
+        borderBottomWidth={hasFullSelection ? 1 : 1.5}
         borderColor={getBorderColor()}
-        borderRadius="$4"
-        paddingHorizontal="$4"
-        paddingVertical="$3"
-        minHeight={56}
+        borderRadius={hasFullSelection ? 0 : '$4'}
+        paddingHorizontal={hasFullSelection ? '$0.5' : '$4'}
+        paddingTop={hasFullSelection ? '$1' : '$3'}
+        paddingBottom={hasFullSelection ? '$3' : '$3'}
+        minHeight={hasFullSelection ? 88 : 56}
         justifyContent="center"
         opacity={disabled ? 0.5 : 1}
         pressStyle={{ opacity: 0.9, scale: 0.995 }}
         animation="quick"
         onPress={disabled ? undefined : onPress}>
-        <XStack justifyContent="space-between" alignItems="center">
+        <XStack
+          justifyContent="space-between"
+          alignItems={hasFullSelection ? 'flex-start' : 'center'}>
           <YStack flex={1} gap="$1">
-            <Text
-              fontSize="$4"
-              color={hasFullSelection ? '$color' : '$colorMuted'}
-              fontWeight={hasFullSelection ? '500' : '400'}
-              numberOfLines={1}>
-              {hasFullSelection
-                ? areaName
-                : hasPartialSelection
+            {hasFullSelection ? (
+              <>
+                <Text fontSize="$3" color="$colorMuted" fontWeight="400">
+                  Provinsi, Kota, Kecamatan, Kode Pos
+                </Text>
+                <YStack gap="$1">
+                  {selectionLines.map(line => (
+                    <Text
+                      key={line}
+                      fontSize="$5"
+                      lineHeight="$1"
+                      color="$color"
+                      fontWeight="400"
+                      textTransform="uppercase"
+                      numberOfLines={1}>
+                      {line}
+                    </Text>
+                  ))}
+                </YStack>
+              </>
+            ) : (
+              <Text fontSize="$4" color="$colorMuted" fontWeight="400" numberOfLines={1}>
+                {hasPartialSelection
                   ? 'Area tersimpan, silakan pilih ulang untuk menyegarkan detail'
                   : 'Pilih provinsi, kota, kecamatan, kode pos'}
-            </Text>
+              </Text>
+            )}
           </YStack>
-          <ChevronRight size={20} color={hasFullSelection ? '$success' : '$colorMuted'} />
+          <YStack paddingTop={hasFullSelection ? '$4' : '$0'} paddingLeft="$2">
+            <ChevronRight size={20} color="$colorMuted" />
+          </YStack>
         </XStack>
       </YStack>
 

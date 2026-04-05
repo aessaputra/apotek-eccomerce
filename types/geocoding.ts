@@ -10,6 +10,9 @@ export interface AddressSuggestion {
   fullAddress: string;
   primaryText: string;
   secondaryText: string;
+  primaryType?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface SelectedAddressSuggestion {
@@ -18,6 +21,7 @@ export interface SelectedAddressSuggestion {
   fullAddress: string;
   streetAddress: string;
   city: string;
+  district: string;
   province: string;
   postalCode: string;
   countryCode: string;
@@ -85,6 +89,7 @@ export interface GooglePlaceDetailsNew {
     languageCode?: string;
   };
   formattedAddress?: string;
+  shortFormattedAddress?: string;
   addressComponents?: Array<{
     longText?: string;
     shortText?: string;

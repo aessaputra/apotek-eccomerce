@@ -81,8 +81,10 @@ jest.mock('expo-location', () => ({
   __esModule: true,
   requestForegroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
+  getLastKnownPositionAsync: jest.fn(),
   PermissionStatus: {
     GRANTED: 'granted',
+    DENIED: 'denied',
   },
   Accuracy: {
     Balanced: 'balanced',
@@ -93,8 +95,14 @@ const mockedRequestForegroundPermissionsAsync = jest.mocked(
   Location.requestForegroundPermissionsAsync,
 );
 const mockedGetCurrentPositionAsync = jest.mocked(Location.getCurrentPositionAsync);
+const mockedGetLastKnownPositionAsync = jest.mocked(Location.getLastKnownPositionAsync);
 
 describe('<MapPinSheet />', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetLastKnownPositionAsync.mockResolvedValue(null);
+  });
+
   test('renders selected coordinates in light and dark themes', async () => {
     render(
       <MapPinSheet
@@ -170,8 +178,103 @@ describe('<MapPinSheet />', () => {
       expect(mockedRequestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
     });
 
+    expect(mockedGetCurrentPositionAsync).toHaveBeenCalledWith({
+      accuracy: Location.Accuracy.Balanced,
+      mayShowUserSettingsDialog: true,
+    });
+
     await waitFor(() => {
       expect(screen.getByText('-6.250000, 106.750000')).not.toBeNull();
     });
+  });
+
+  test('shows permission guidance when location permission is denied', async () => {
+    mockedRequestForegroundPermissionsAsync.mockResolvedValue({
+      status: Location.PermissionStatus.DENIED,
+      canAskAgain: true,
+      granted: false,
+      expires: 'never',
+    });
+
+    render(<MapPinSheet isOpen onClose={jest.fn()} onConfirm={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Izin lokasi tidak diberikan. Geser pin secara manual atau aktifkan lokasi di Pengaturan perangkat.',
+        ),
+      ).not.toBeNull();
+    });
+  });
+
+  test('falls back to last known position when live GPS lookup fails', async () => {
+    mockedRequestForegroundPermissionsAsync.mockResolvedValue({
+      status: Location.PermissionStatus.GRANTED,
+      canAskAgain: true,
+      granted: true,
+      expires: 'never',
+    });
+    mockedGetCurrentPositionAsync.mockRejectedValue(new Error('GPS unavailable'));
+    mockedGetLastKnownPositionAsync.mockResolvedValue({
+      coords: {
+        latitude: -6.22,
+        longitude: 106.82,
+        accuracy: null,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null,
+      },
+      timestamp: Date.now(),
+    });
+
+    render(<MapPinSheet isOpen onClose={jest.fn()} onConfirm={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('-6.220000, 106.820000')).not.toBeNull();
+    });
+  });
+
+  test('asks for confirmation before closing after pin changes', async () => {
+    const onClose = jest.fn();
+
+    render(
+      <MapPinSheet
+        isOpen
+        onClose={onClose}
+        onConfirm={jest.fn()}
+        initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId('map-view'));
+
+    fireEvent.press(screen.getByLabelText('Tutup peta'));
+
+    expect(screen.getByText('Batalkan Penyesuaian Pin?')).not.toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText('Tutup'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('calls onEditAddressPress when user taps Ubah', () => {
+    const onEditAddressPress = jest.fn();
+
+    render(
+      <MapPinSheet
+        isOpen
+        onClose={jest.fn()}
+        onConfirm={jest.fn()}
+        initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+        selectedAddressSummary="Jalan Ciruas Petir, Walantaka, Kota Serang"
+        onEditAddressPress={onEditAddressPress}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Ubah'));
+
+    expect(onEditAddressPress).toHaveBeenCalledTimes(1);
   });
 });

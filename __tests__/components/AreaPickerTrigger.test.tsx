@@ -13,7 +13,7 @@ describe('<AreaPickerTrigger />', () => {
 
     renderWithDarkTheme(
       <AreaPickerTrigger
-        areaName="Kelapa Gading"
+        areaName="Banten, Kabupaten Serang, Ciruas, 42182"
         areaId="area-1"
         onPress={jest.fn()}
         error={null}
@@ -21,7 +21,10 @@ describe('<AreaPickerTrigger />', () => {
       />,
     );
 
-    expect(screen.getByText('Kelapa Gading')).not.toBeNull();
+    expect(screen.getByText('BANTEN')).not.toBeNull();
+    expect(screen.getByText('KAB. SERANG')).not.toBeNull();
+    expect(screen.getByText('CIRUAS')).not.toBeNull();
+    expect(screen.getByText('42182')).not.toBeNull();
   });
 
   test('renders partial selection and error text', async () => {

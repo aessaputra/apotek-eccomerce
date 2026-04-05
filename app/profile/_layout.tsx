@@ -40,6 +40,18 @@ function ProfileStackLayout() {
         }}
       />
       <Stack.Screen
+        name="address-search"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="area-picker"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="support"
         options={{
           title: 'Dukungan',

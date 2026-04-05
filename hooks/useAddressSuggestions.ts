@@ -6,6 +6,7 @@ import {
   getPlacePredictions,
   getPlaceDetails,
   convertPlaceDetailsToAddress,
+  getAddressRecommendations,
 } from '@/services/googlePlaces.service';
 import type {
   AddressSuggestion,
@@ -63,6 +64,12 @@ export function useAddressSuggestions(
     setIsRetrieving(false);
   }, []);
 
+  const nextRequestId = useCallback(() => {
+    const requestId = currentRequestRef.current + 1;
+    currentRequestRef.current = requestId;
+    return requestId;
+  }, []);
+
   const search = useCallback(
     async (input: string, locationBias?: GeocodingProximity | null) => {
       const trimmed = input.trim();
@@ -72,7 +79,7 @@ export function useAddressSuggestions(
       }
 
       if (trimmed.length < 2) {
-        currentRequestRef.current += 1;
+        nextRequestId();
         currentAbortController.current?.abort();
         currentAbortController.current = null;
         setResults([]);
@@ -88,8 +95,7 @@ export function useAddressSuggestions(
         return;
       }
 
-      const requestId = Date.now();
-      currentRequestRef.current = requestId;
+      const requestId = nextRequestId();
       currentAbortController.current?.abort();
 
       const controller = new AbortController();
@@ -146,7 +152,7 @@ export function useAddressSuggestions(
         }
       }
     },
-    [getSessionToken, hasConfiguredToken],
+    [getSessionToken, hasConfiguredToken, nextRequestId],
   );
 
   const loadInitialSuggestions = useCallback(
@@ -165,8 +171,7 @@ export function useAddressSuggestions(
         return;
       }
 
-      const requestId = Date.now();
-      currentRequestRef.current = requestId;
+      const requestId = nextRequestId();
       currentAbortController.current?.abort();
 
       const controller = new AbortController();
@@ -176,15 +181,13 @@ export function useAddressSuggestions(
       setError(null);
 
       try {
-        const { data, error: searchError } = await getPlacePredictions('jalan', getSessionToken(), {
-          country: 'id',
-          locationBias: {
+        const { data, error: searchError } = await getAddressRecommendations(
+          {
             latitude: locationBiasRef.current.latitude,
             longitude: locationBiasRef.current.longitude,
-            radius: 10000,
           },
-          signal: controller.signal,
-        });
+          controller.signal,
+        );
 
         if (currentRequestRef.current !== requestId) {
           return;
@@ -196,18 +199,12 @@ export function useAddressSuggestions(
           return;
         }
 
-        const suggestions: AddressSuggestion[] = data.map(prediction => ({
-          id: prediction.placeId,
-          placeId: prediction.placeId,
-          name: prediction.mainText,
-          fullAddress: prediction.description,
-          primaryText: prediction.mainText,
-          secondaryText: prediction.secondaryText,
-        }));
-
-        setResults(suggestions);
+        setResults(data);
         setError(null);
       } catch (searchError) {
+        if (__DEV__) {
+          console.warn('[useAddressSuggestions] initial recommendations failed', searchError);
+        }
         if (currentRequestRef.current === requestId) {
           setResults([]);
           setError('Gagal memuat rekomendasi alamat.');
@@ -218,7 +215,7 @@ export function useAddressSuggestions(
         }
       }
     },
-    [getSessionToken, hasConfiguredToken],
+    [hasConfiguredToken, nextRequestId],
   );
 
   const selectSuggestion = useCallback(
@@ -255,6 +252,7 @@ export function useAddressSuggestions(
           fullAddress: data.formattedAddress,
           streetAddress: address.streetAddress,
           city: address.city,
+          district: address.district,
           province: address.province,
           postalCode: address.postalCode,
           countryCode: 'ID',
@@ -279,15 +277,18 @@ export function useAddressSuggestions(
     if (debouncedQuery.trim().length >= 2) {
       search(debouncedQuery);
     } else {
-      currentRequestRef.current += 1;
+      nextRequestId();
       currentAbortController.current?.abort();
       currentAbortController.current = null;
       sessionTokenRef.current = null;
-      setResults([]);
       setError(null);
-      setIsLoading(false);
+
+      if (debouncedQuery.trim().length > 0) {
+        setResults([]);
+        setIsLoading(false);
+      }
     }
-  }, [debouncedQuery, search]);
+  }, [debouncedQuery, nextRequestId, search]);
 
   return {
     query,

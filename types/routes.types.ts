@@ -35,6 +35,8 @@ export type ProfileRoutes = {
   'profile/index': undefined;
   'profile/addresses': undefined;
   'profile/address-form': { id?: string };
+  'profile/address-search': { query?: string; latitude?: string; longitude?: string };
+  'profile/area-picker': { selectedAreaId?: string };
   'profile/edit-profile': undefined;
   'profile/details': undefined;
   'profile/support': undefined;
@@ -56,6 +58,8 @@ export type ProfileStackParams = {
   index: undefined;
   addresses: undefined;
   'address-form': { id?: string };
+  'address-search': { query?: string; latitude?: string; longitude?: string };
+  'area-picker': { selectedAreaId?: string };
   'edit-profile': undefined;
   details: undefined;
   support: undefined;

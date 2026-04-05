@@ -97,7 +97,14 @@ function createProduct(index: number): ProductWithImages {
 }
 
 describe('useHomeData', () => {
+  let consoleWarnSpy: jest.SpiedFunction<typeof console.warn>;
+
+  beforeEach(() => {
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
   afterEach(() => {
+    consoleWarnSpy.mockRestore();
     focusEffectCallback = undefined;
     mockGetCategories.mockReset();
     mockGetHomeBannersByPlacement.mockReset();

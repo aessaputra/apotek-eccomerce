@@ -1,6 +1,9 @@
-import { Card, Spinner, Text, YStack, XStack } from 'tamagui';
-import { MapPin, SearchX, AlertCircle } from '@tamagui/lucide-icons';
+import { Spinner, Text, YStack, XStack } from 'tamagui';
+import { MapPin, Search, SearchX, AlertCircle } from '@tamagui/lucide-icons';
 import type { AddressSuggestion } from '@/types/geocoding';
+
+const INITIAL_RECOMMENDATION_LIMIT = 6;
+const SEARCH_RECOMMENDATION_LIMIT = 5;
 
 export interface AddressSuggestionListProps {
   query: string;
@@ -22,17 +25,26 @@ function AddressSuggestionList({
   onSelect,
 }: AddressSuggestionListProps) {
   const trimmedQuery = query.trim();
+  const displayedResults = results.slice(
+    0,
+    showInitialRecommendations ? INITIAL_RECOMMENDATION_LIMIT : SEARCH_RECOMMENDATION_LIMIT,
+  );
+  const sectionTitle = showInitialRecommendations ? 'Rekomendasi dekat kamu' : 'Hasil pencarian';
+  const SectionIcon = showInitialRecommendations ? MapPin : Search;
 
-  if (trimmedQuery.length < 3 && !showInitialRecommendations) {
+  if (trimmedQuery.length < 2 && !showInitialRecommendations) {
     return null;
   }
 
   if (isLoading) {
     return (
       <YStack gap="$2" paddingTop="$2">
-        <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
-          Rekomendasi Alamat
-        </Text>
+        <XStack gap="$2" alignItems="center">
+          <SectionIcon size={14} color="$colorMuted" />
+          <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
+            {sectionTitle}
+          </Text>
+        </XStack>
         <YStack
           backgroundColor="$surface"
           borderRadius="$4"
@@ -53,9 +65,12 @@ function AddressSuggestionList({
   if (error) {
     return (
       <YStack gap="$2" paddingTop="$2">
-        <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
-          Rekomendasi Alamat
-        </Text>
+        <XStack gap="$2" alignItems="center">
+          <SectionIcon size={14} color="$colorMuted" />
+          <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
+            {sectionTitle}
+          </Text>
+        </XStack>
         <YStack
           backgroundColor="$surface"
           borderRadius="$4"
@@ -76,9 +91,12 @@ function AddressSuggestionList({
   if (results.length === 0 && !showInitialRecommendations) {
     return (
       <YStack gap="$2" paddingTop="$2">
-        <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
-          Rekomendasi Alamat
-        </Text>
+        <XStack gap="$2" alignItems="center">
+          <SectionIcon size={14} color="$colorMuted" />
+          <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
+            {sectionTitle}
+          </Text>
+        </XStack>
         <YStack
           backgroundColor="$surface"
           borderRadius="$4"
@@ -99,51 +117,68 @@ function AddressSuggestionList({
     );
   }
 
+  if (results.length === 0 && showInitialRecommendations) {
+    return (
+      <YStack gap="$2" paddingTop="$2">
+        <XStack gap="$2" alignItems="center">
+          <SectionIcon size={14} color="$colorMuted" />
+          <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
+            {sectionTitle}
+          </Text>
+        </XStack>
+        <YStack
+          backgroundColor="$surface"
+          borderRadius="$4"
+          borderWidth={1}
+          borderColor="$surfaceBorder"
+          padding="$4"
+          alignItems="center"
+          gap="$3">
+          <MapPin size={20} color="$colorMuted" />
+          <Text fontSize="$3" color="$colorMuted" textAlign="center">
+            Belum ada rekomendasi tempat di sekitarmu.
+          </Text>
+          <Text fontSize="$2" color="$colorMuted" textAlign="center">
+            Aktifkan lokasi atau ketik nama jalan dan patokan yang lebih spesifik.
+          </Text>
+        </YStack>
+      </YStack>
+    );
+  }
+
   return (
     <YStack gap="$2" paddingTop="$2">
-      <XStack justifyContent="space-between" alignItems="center">
+      <XStack gap="$2" alignItems="center">
+        <SectionIcon size={14} color="$colorMuted" />
         <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
-          {showInitialRecommendations
-            ? 'Rekomendasi tempat berdasarkan alamatmu'
-            : 'Rekomendasi Alamat'}
+          {sectionTitle}
         </Text>
-        {results.length > 0 && (
-          <Text fontSize="$2" color="$colorMuted">
-            {results.length} hasil
-          </Text>
-        )}
       </XStack>
 
-      <YStack gap="$2">
-        {results.map(suggestion => (
-          <Card
+      <YStack gap="$1">
+        {displayedResults.map(suggestion => (
+          <XStack
             key={suggestion.id}
-            borderRadius="$4"
-            borderWidth={1.5}
-            borderColor="$surfaceBorder"
-            backgroundColor="$surface"
-            padding="$4"
-            pressStyle={{ opacity: 0.9, scale: 0.98 }}
+            paddingVertical="$3"
+            paddingHorizontal="$2"
+            gap="$3"
+            alignItems="flex-start"
+            pressStyle={{ opacity: 0.7, backgroundColor: '$backgroundHover' }}
+            borderRadius="$3"
             disabled={isSelecting}
-            animation="quick"
             onPress={() => onSelect(suggestion)}>
-            <YStack gap="$2">
+            <YStack paddingTop="$0.5">
+              <MapPin size={18} color="$colorMuted" />
+            </YStack>
+            <YStack flex={1} gap="$0.5">
               <Text fontSize="$4" color="$color" fontWeight="600" numberOfLines={2}>
                 {suggestion.primaryText}
               </Text>
-
               <Text fontSize="$3" color="$colorSubtle" numberOfLines={2}>
                 {suggestion.secondaryText}
               </Text>
-
-              <XStack gap="$1.5" alignItems="center" marginTop="$1">
-                <MapPin size={14} color="$primary" />
-                <Text fontSize="$2" color="$primary" fontWeight="500">
-                  Pilih alamat ini
-                </Text>
-              </XStack>
             </YStack>
-          </Card>
+          </XStack>
         ))}
       </YStack>
     </YStack>

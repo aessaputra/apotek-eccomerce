@@ -2,13 +2,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { YStack, XStack, Text } from 'tamagui';
 import type { TextInput as RNTextInput } from 'react-native';
 import FormInput from '@/components/elements/FormInput';
-import { AreaPickerTrigger, AreaPickerSheet } from '@/components/AreaPicker';
+import { AreaPickerTrigger } from '@/components/AreaPicker';
 import { MapPinSheet } from '@/components/MapPin';
-import StreetAddressSearchSheet from './StreetAddressSearchSheet';
 import type { MapCoords } from '@/components/MapPin';
-import type { AddressSuggestion } from '@/types/geocoding';
 import type { AddressFormErrors, AddressFormValues } from '@/utils/addressValidation';
-import type { BiteshipArea } from '@/types/shipping';
 
 export interface AddressFormProps {
   values: AddressFormValues;
@@ -24,26 +21,11 @@ export interface AddressFormProps {
   };
   onFieldSave: <K extends keyof AddressFormValues>(field: K, value: AddressFormValues[K]) => void;
   onFieldValidate: (field: keyof AddressFormErrors, value: string) => void;
-  onFieldCommitted?: () => void;
-  onAreaSelect: (area: {
-    id: string;
-    name: string;
-    city: string;
-    province: string;
-    postalCode: string;
-  }) => void;
   onCoordinatesChange?: (coords: MapCoords | null) => void;
   onMapConfirmed?: (confirmed: boolean) => void;
   openMapRequestKey?: number;
-  addressSuggestionQuery?: string;
-  addressSuggestions?: AddressSuggestion[];
-  addressSuggestionError?: string | null;
-  addressSuggestionsLoading?: boolean;
-  addressSuggestionSelecting?: boolean;
-  onStreetAddressInput?: (text: string) => void;
-  onSuggestionSelect?: (suggestion: AddressSuggestion) => void;
-  onLoadInitialSuggestions?: () => void;
-  hasAreaProximity?: boolean;
+  onAreaPickerPress?: () => void;
+  onStreetAddressPress?: () => void;
 }
 
 function AddressForm({
@@ -53,24 +35,13 @@ function AddressForm({
   refs,
   onFieldSave,
   onFieldValidate,
-  onFieldCommitted,
-  onAreaSelect,
   onCoordinatesChange,
   onMapConfirmed,
   openMapRequestKey,
-  addressSuggestionQuery = '',
-  addressSuggestions = [],
-  addressSuggestionError = null,
-  addressSuggestionsLoading = false,
-  addressSuggestionSelecting = false,
-  onStreetAddressInput,
-  onSuggestionSelect,
-  onLoadInitialSuggestions,
-  hasAreaProximity = false,
+  onAreaPickerPress,
+  onStreetAddressPress,
 }: AddressFormProps) {
-  const [areaPickerOpen, setAreaPickerOpen] = useState(false);
   const [mapPinOpen, setMapPinOpen] = useState(false);
-  const [streetSearchOpen, setStreetSearchOpen] = useState(false);
 
   useEffect(() => {
     if (!openMapRequestKey) return;
@@ -91,20 +62,6 @@ function AddressForm({
     values.latitude != null && values.longitude != null
       ? { latitude: values.latitude, longitude: values.longitude }
       : null;
-
-  const handleAreaSelect = useCallback(
-    (area: BiteshipArea) => {
-      onAreaSelect({
-        id: area.id,
-        name: area.name,
-        city: area.administrative_division_level_2_name || '',
-        province: area.administrative_division_level_1_name || '',
-        postalCode: area.postal_code?.toString() || '',
-      });
-      onFieldCommitted?.();
-    },
-    [onAreaSelect, onFieldCommitted],
-  );
 
   const handleReceiverNameChange = useCallback(
     (text: string) => {
@@ -133,9 +90,12 @@ function AddressForm({
   }, [onFieldSave, onFieldValidate, values.phoneNumber]);
 
   const handleOpenStreetSearch = useCallback(() => {
-    setStreetSearchOpen(true);
-    onStreetAddressInput?.(values.streetAddress);
-  }, [onStreetAddressInput, values.streetAddress]);
+    onStreetAddressPress?.();
+  }, [onStreetAddressPress]);
+
+  const handleOpenAreaPicker = useCallback(() => {
+    onAreaPickerPress?.();
+  }, [onAreaPickerPress]);
 
   return (
     <YStack gap="$4" marginBottom="$4">
@@ -169,7 +129,7 @@ function AddressForm({
           editable={!isSaving}
           returnKeyType="next"
           helperText="Nomor aktif untuk dihubungi kurir"
-          onSubmitEditing={() => refs.streetAddressRef.current?.focus()}
+          onSubmitEditing={handleOpenStreetSearch}
         />
       </YStack>
 
@@ -179,14 +139,7 @@ function AddressForm({
           areaId={values.areaId}
           error={errors.areaId}
           disabled={isSaving}
-          onPress={() => setAreaPickerOpen(true)}
-        />
-
-        <AreaPickerSheet
-          open={areaPickerOpen}
-          onOpenChange={setAreaPickerOpen}
-          onSelect={handleAreaSelect}
-          selectedAreaId={values.areaId}
+          onPress={handleOpenAreaPicker}
         />
       </YStack>
 
@@ -228,25 +181,6 @@ function AddressForm({
           </Text>
         ) : null}
       </YStack>
-
-      <StreetAddressSearchSheet
-        open={streetSearchOpen}
-        onOpenChange={setStreetSearchOpen}
-        query={addressSuggestionQuery}
-        isSaving={isSaving}
-        isLoading={addressSuggestionsLoading}
-        isSelecting={addressSuggestionSelecting}
-        error={addressSuggestionError}
-        results={addressSuggestions}
-        onQueryChange={text => {
-          onFieldSave('streetAddress', text);
-          onStreetAddressInput?.(text);
-          onFieldCommitted?.();
-        }}
-        onSelectSuggestion={suggestion => onSuggestionSelect?.(suggestion)}
-        onLoadSuggestions={onLoadInitialSuggestions}
-        showInitialRecommendations={hasAreaProximity}
-      />
 
       <MapPinSheet
         isOpen={mapPinOpen}
