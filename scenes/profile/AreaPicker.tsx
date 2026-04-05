@@ -909,237 +909,142 @@ export default function AreaPickerScreen() {
             </XStack>
           </YStack>
 
-          <XStack
-            alignItems="center"
-            justifyContent="center"
+          <Button
+            title="Gunakan Lokasi Saat Ini"
+            backgroundColor="$surface"
+            borderRadius="$4"
+            borderWidth={1}
+            borderColor="$surfaceBorder"
+            minHeight={56}
             gap="$2"
-            paddingVertical="$2"
-            pressStyle={{ opacity: 0.7 }}
-            onPress={() => void handleUseCurrentLocation()}>
+            onPress={() => void handleUseCurrentLocation()}
+            titleStyle={{ color: '$color', fontSize: '$4', fontWeight: '500' }}>
             <MapPin size={16} color="$primary" />
-            <Text fontSize="$3" color="$primary" fontWeight="500">
-              Gunakan lokasi saat ini
-            </Text>
-          </XStack>
+          </Button>
 
-          <YStack gap="$4" paddingVertical="$2">
+          <YStack gap="$3">
             <XStack justifyContent="space-between" alignItems="center">
-              <Text fontSize="$4" fontWeight="600" color="$color">
-                Progress
+              <Text fontSize="$3" color="$colorMuted">
+                Lokasi Terpilih
               </Text>
               {(selectedProvince || selectedCity || selectedDistrict) && (
-                <Text
-                  fontSize="$3"
-                  color="$primary"
-                  fontWeight="500"
-                  pressStyle={{ opacity: 0.7 }}
-                  onPress={resetState}>
+                <Text color="$primary" fontSize="$3" fontWeight="500" onPress={resetState}>
                   Atur Ulang
                 </Text>
               )}
             </XStack>
 
-            <YStack gap="$0" paddingLeft="$1">
+            <YStack gap="$1" paddingLeft="$2">
               <XStack
                 alignItems="center"
-                gap="$3"
-                minHeight={48}
+                gap="$2"
+                minHeight={44}
                 role="button"
                 aria-label={
                   selectedProvince ? `Ubah provinsi ${selectedProvince.name}` : 'Pilih provinsi'
                 }
                 onPress={() => selectedProvince && navigateToStage('province')}>
                 <YStack
-                  width={28}
-                  height={28}
-                  borderRadius={14}
-                  backgroundColor={
-                    stage === 'province'
-                      ? '$primary'
-                      : selectedProvince
-                        ? '$surface'
-                        : '$surfaceBorder'
-                  }
-                  borderWidth={2}
-                  borderColor={
-                    stage === 'province' || selectedProvince ? '$primary' : '$surfaceBorder'
-                  }
-                  alignItems="center"
-                  justifyContent="center">
-                  <Text
-                    fontSize="$2"
-                    fontWeight="700"
-                    color={stage === 'province' || selectedProvince ? '$onPrimary' : '$colorMuted'}>
-                    1
-                  </Text>
-                </YStack>
+                  width={2}
+                  height={stage === 'province' ? 20 : '100%'}
+                  backgroundColor={stage === 'province' ? '$primary' : '$colorMuted'}
+                />
                 <Text
-                  flex={1}
-                  fontSize="$4"
+                  fontSize="$5"
                   color={selectedProvince ? '$color' : '$colorMuted'}
                   fontWeight={stage === 'province' ? '600' : '400'}>
                   {selectedProvince?.name.toUpperCase() || 'Pilih Provinsi'}
                 </Text>
-                {selectedProvince && <Check size={16} color="$primary" />}
               </XStack>
 
               {(selectedProvince || stage !== 'province') && (
-                <YStack
-                  width={2}
-                  height={24}
-                  backgroundColor={selectedProvince ? '$primary' : '$surfaceBorder'}
-                  marginLeft="$3"
-                />
-              )}
-
-              {(selectedProvince || stage !== 'province') && (
-                <>
-                  <XStack
-                    alignItems="center"
-                    gap="$3"
-                    minHeight={48}
-                    role="button"
-                    aria-label={
-                      selectedCity ? `Ubah kota ${selectedCity.name}` : 'Pilih kota atau kabupaten'
+                <XStack
+                  alignItems="center"
+                  gap="$2"
+                  minHeight={44}
+                  role="button"
+                  aria-label={
+                    selectedCity ? `Ubah kota ${selectedCity.name}` : 'Pilih kota atau kabupaten'
+                  }
+                  onPress={() => selectedCity && navigateToStage('city')}>
+                  <YStack
+                    width={2}
+                    height={stage === 'city' ? 20 : '100%'}
+                    backgroundColor={
+                      stage === 'city'
+                        ? '$primary'
+                        : selectedCity
+                          ? '$colorMuted'
+                          : '$colorDisabled'
                     }
-                    onPress={() => selectedCity && navigateToStage('city')}>
-                    <YStack
-                      width={28}
-                      height={28}
-                      borderRadius={14}
-                      backgroundColor={
-                        stage === 'city' ? '$primary' : selectedCity ? '$surface' : '$surfaceBorder'
-                      }
-                      borderWidth={2}
-                      borderColor={stage === 'city' || selectedCity ? '$primary' : '$surfaceBorder'}
-                      alignItems="center"
-                      justifyContent="center">
-                      <Text
-                        fontSize="$2"
-                        fontWeight="700"
-                        color={stage === 'city' || selectedCity ? '$onPrimary' : '$colorMuted'}>
-                        2
-                      </Text>
-                    </YStack>
-                    <Text
-                      flex={1}
-                      fontSize="$4"
-                      color={selectedCity ? '$color' : '$colorMuted'}
-                      fontWeight={stage === 'city' ? '600' : '400'}>
-                      {selectedCity?.name.toUpperCase() || 'Pilih Kota/Kabupaten'}
-                    </Text>
-                    {selectedCity && <Check size={16} color="$primary" />}
-                  </XStack>
-
-                  {(selectedCity || stage === 'district' || stage === 'postal') && (
-                    <YStack
-                      width={2}
-                      height={24}
-                      backgroundColor={selectedCity ? '$primary' : '$surfaceBorder'}
-                      marginLeft="$3"
-                    />
-                  )}
-                </>
+                  />
+                  <Text
+                    fontSize="$5"
+                    color={selectedCity ? '$color' : '$colorMuted'}
+                    fontWeight={stage === 'city' ? '600' : '400'}>
+                    {selectedCity?.name.toUpperCase() || 'Pilih Kota/Kabupaten'}
+                  </Text>
+                </XStack>
               )}
 
               {(selectedCity || stage === 'district' || stage === 'postal') && (
-                <>
-                  <XStack
-                    alignItems="center"
-                    gap="$3"
-                    minHeight={48}
-                    role="button"
-                    aria-label={
-                      selectedDistrict
-                        ? `Ubah kecamatan ${selectedDistrict.name}`
-                        : 'Pilih kecamatan'
+                <XStack
+                  alignItems="center"
+                  gap="$2"
+                  minHeight={44}
+                  role="button"
+                  aria-label={
+                    selectedDistrict ? `Ubah kecamatan ${selectedDistrict.name}` : 'Pilih kecamatan'
+                  }
+                  onPress={() => selectedDistrict && navigateToStage('district')}>
+                  <YStack
+                    width={2}
+                    height={stage === 'district' ? 20 : '100%'}
+                    backgroundColor={
+                      stage === 'district'
+                        ? '$primary'
+                        : selectedDistrict
+                          ? '$colorMuted'
+                          : '$colorDisabled'
                     }
-                    onPress={() => selectedDistrict && navigateToStage('district')}>
-                    <YStack
-                      width={28}
-                      height={28}
-                      borderRadius={14}
-                      backgroundColor={
-                        stage === 'district'
-                          ? '$primary'
-                          : selectedDistrict
-                            ? '$surface'
-                            : '$surfaceBorder'
-                      }
-                      borderWidth={2}
-                      borderColor={
-                        stage === 'district' || selectedDistrict ? '$primary' : '$surfaceBorder'
-                      }
-                      alignItems="center"
-                      justifyContent="center">
-                      <Text
-                        fontSize="$2"
-                        fontWeight="700"
-                        color={
-                          stage === 'district' || selectedDistrict ? '$onPrimary' : '$colorMuted'
-                        }>
-                        3
-                      </Text>
-                    </YStack>
-                    <Text
-                      flex={1}
-                      fontSize="$4"
-                      color={selectedDistrict ? '$color' : '$colorMuted'}
-                      fontWeight={stage === 'district' ? '600' : '400'}>
-                      {selectedDistrict?.name.toUpperCase() || 'Pilih Kecamatan'}
-                    </Text>
-                    {selectedDistrict && <Check size={16} color="$primary" />}
-                  </XStack>
-
-                  {(selectedDistrict || stage === 'postal') && (
-                    <YStack
-                      width={2}
-                      height={24}
-                      backgroundColor={selectedDistrict ? '$primary' : '$surfaceBorder'}
-                      marginLeft="$3"
-                    />
-                  )}
-                </>
+                  />
+                  <Text
+                    fontSize="$5"
+                    color={selectedDistrict ? '$color' : '$colorMuted'}
+                    fontWeight={stage === 'district' ? '600' : '400'}>
+                    {selectedDistrict?.name.toUpperCase() || 'Pilih Kecamatan'}
+                  </Text>
+                </XStack>
               )}
 
               {(selectedDistrict || stage === 'postal') && (
-                <XStack alignItems="center" gap="$3" minHeight={48}>
+                <XStack alignItems="center" gap="$2" minHeight={44}>
                   <YStack
-                    width={28}
-                    height={28}
-                    borderRadius={14}
+                    width={2}
+                    height={20}
                     backgroundColor={
                       stage === 'postal'
                         ? '$primary'
                         : selectedPostalOption
-                          ? '$surface'
-                          : '$surfaceBorder'
+                          ? '$colorMuted'
+                          : '$colorDisabled'
                     }
-                    borderWidth={2}
-                    borderColor={
-                      stage === 'postal' || selectedPostalOption ? '$primary' : '$surfaceBorder'
-                    }
-                    alignItems="center"
-                    justifyContent="center">
-                    <Text
-                      fontSize="$2"
-                      fontWeight="700"
-                      color={
-                        stage === 'postal' || selectedPostalOption ? '$onPrimary' : '$colorMuted'
-                      }>
-                      4
-                    </Text>
-                  </YStack>
+                  />
                   {selectedPostalOption ? (
-                    <XStack flex={1} alignItems="center" gap="$2">
-                      <Text fontSize="$4" color="$primary" fontWeight="600">
+                    <Card
+                      borderRadius="$4"
+                      borderWidth={1.5}
+                      borderColor="$surfaceBorder"
+                      padding="$3"
+                      backgroundColor="$background"
+                      flex={1}>
+                      <Text fontSize="$5" color="$primary">
                         {selectedPostalOption.label}
                       </Text>
-                      <Check size={16} color="$primary" />
-                    </XStack>
+                    </Card>
                   ) : (
                     <Text
-                      fontSize="$4"
+                      fontSize="$5"
                       color="$colorMuted"
                       fontWeight={stage === 'postal' ? '600' : '400'}>
                       {stage === 'postal' ? 'Pilih Kode Pos' : 'Kode Pos'}
