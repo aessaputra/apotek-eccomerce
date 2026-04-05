@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { YStack, XStack, Text } from 'tamagui';
+import { ChevronRight } from '@tamagui/lucide-icons';
 import type { TextInput as RNTextInput } from 'react-native';
 import FormInput from '@/components/elements/FormInput';
 import { AreaPickerTrigger } from '@/components/AreaPicker';
@@ -102,33 +103,29 @@ function AddressForm({
       <YStack gap="$3">
         <FormInput
           ref={refs.receiverNameRef}
-          label="Nama Penerima"
           required
           value={values.receiverName}
           onChangeText={handleReceiverNameChange}
           onBlur={handleReceiverNameBlur}
           error={errors.receiverName}
-          placeholder="Contoh: Budi Santoso"
+          placeholder="Nama Penerima"
           autoCapitalize="words"
           editable={!isSaving}
           returnKeyType="next"
-          helperText="Nama lengkap sesuai KTP untuk pengiriman"
           onSubmitEditing={() => refs.phoneNumberRef.current?.focus()}
         />
 
         <FormInput
           ref={refs.phoneNumberRef}
-          label="Nomor Telepon"
           required
           value={values.phoneNumber}
           onChangeText={handlePhoneNumberChange}
           onBlur={handlePhoneNumberBlur}
           error={errors.phoneNumber}
-          placeholder="08xxxxxxxxxx"
+          placeholder="Nomor Telepon"
           keyboardType="phone-pad"
           editable={!isSaving}
           returnKeyType="next"
-          helperText="Nomor aktif untuk dihubungi kurir"
           onSubmitEditing={handleOpenStreetSearch}
         />
       </YStack>
@@ -144,11 +141,6 @@ function AddressForm({
       </YStack>
 
       <YStack gap="$1">
-        <Text fontSize="$3" color="$color" fontWeight="500">
-          Nama Jalan, Gedung, No. Rumah
-          <Text color="$danger"> *</Text>
-        </Text>
-
         <YStack
           backgroundColor="$background"
           borderWidth={1}
@@ -167,11 +159,9 @@ function AddressForm({
               fontSize="$4"
               color={values.streetAddress ? '$color' : '$placeholderColor'}
               numberOfLines={2}>
-              {values.streetAddress || 'Nama jalan, gedung, no. rumah'}
+              {values.streetAddress || 'Nama Jalan, Gedung, No. Rumah'}
             </Text>
-            <Text fontSize="$4" color="$colorMuted">
-              ›
-            </Text>
+            <ChevronRight size={20} color="$colorMuted" />
           </XStack>
         </YStack>
 

@@ -70,8 +70,8 @@ export default function SwipeableAddressRow({
             onPress={handleSetDefault}
             backgroundColor="$primary"
             role="button"
-            aria-label="Jadikan alamat default"
-            aria-describedby="Mengatur alamat ini sebagai alamat pengiriman default">
+            aria-label="Jadikan alamat utama"
+            aria-describedby="Mengatur alamat ini sebagai alamat pengiriman utama">
             <StarIcon size={24} color="$onPrimary" />
           </SwipeButton>
         )}

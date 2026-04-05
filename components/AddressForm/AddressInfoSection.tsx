@@ -73,13 +73,12 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
           <YStack gap="$3">
             <FormInput
               ref={refs.streetAddressRef}
-              label="Alamat Lengkap"
               required
               value={streetAddress}
               onChangeText={onStreetAddressChange}
               onBlur={onStreetAddressBlur}
               error={streetAddressError}
-              placeholder="Jalan, RT/RW, Nomor rumah"
+              placeholder="Alamat Lengkap"
               autoCapitalize="words"
               editable={!isSaving}
               multiline
@@ -94,12 +93,12 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
               <YStack flex={1}>
                 <FormInput
                   ref={refs.cityRef}
-                  label="Kota"
                   required
                   value={city}
                   onChangeText={onCityChange}
                   onBlur={onCityBlur}
                   error={cityError}
+                  placeholder="Kota"
                   autoCapitalize="words"
                   editable={!isSaving}
                   returnKeyType="next"
@@ -111,13 +110,12 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
               <YStack flex={1}>
                 <FormInput
                   ref={refs.postalCodeRef}
-                  label="Kode Pos"
                   required
                   value={postalCode}
                   onChangeText={onPostalCodeChange}
                   onBlur={onPostalCodeBlur}
                   error={postalCodeError}
-                  placeholder="5 digit"
+                  placeholder="Kode Pos"
                   keyboardType="numeric"
                   editable={!isSaving}
                   returnKeyType="next"
@@ -130,9 +128,9 @@ const AddressInfoSection = forwardRef<RNTextInput, AddressInfoSectionProps>(
 
             <FormInput
               ref={refs.provinceRef}
-              label="Provinsi"
               value={province}
               onChangeText={onProvinceChange}
+              placeholder="Provinsi"
               autoCapitalize="words"
               editable={!isSaving}
               returnKeyType="done"

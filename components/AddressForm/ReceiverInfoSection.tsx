@@ -60,12 +60,12 @@ const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
           <YStack gap="$3">
             <FormInput
               ref={receiverNameRef}
-              label="Nama Penerima"
               required
               value={receiverName}
               onChangeText={onReceiverNameChange}
               onBlur={onReceiverNameBlur}
               error={receiverNameError}
+              placeholder="Nama Penerima"
               autoCapitalize="words"
               editable={!isSaving}
               returnKeyType="next"
@@ -75,13 +75,12 @@ const ReceiverInfoSection = forwardRef<RNTextInput, ReceiverInfoSectionProps>(
             />
             <FormInput
               ref={phoneNumberRef}
-              label="Nomor Telepon"
               required
               value={phoneNumber}
               onChangeText={onPhoneNumberChange}
               onBlur={onPhoneNumberBlur}
               error={phoneNumberError}
-              placeholder="08xx xxxx xxxx"
+              placeholder="Nomor Telepon"
               keyboardType="phone-pad"
               editable={!isSaving}
               returnKeyType="next"

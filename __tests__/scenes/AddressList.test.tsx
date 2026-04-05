@@ -152,6 +152,6 @@ describe('<AddressList />', () => {
     expect(screen.getByLabelText('Alamat Alamat Kedua')).not.toBeNull();
     expect(screen.getAllByLabelText('Edit alamat')).toHaveLength(2);
     expect(screen.getAllByLabelText('Hapus alamat')).toHaveLength(2);
-    expect(screen.getAllByLabelText('Jadikan alamat default')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Jadikan alamat utama')).toHaveLength(1);
   });
 });

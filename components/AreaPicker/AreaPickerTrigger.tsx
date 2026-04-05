@@ -40,15 +40,6 @@ function AreaPickerTrigger({
 
   return (
     <YStack gap="$1">
-      {!hasFullSelection && (
-        <XStack justifyContent="space-between" alignItems="center" marginBottom="$1.5">
-          <Text fontSize="$3" color="$color" fontWeight="500">
-            Provinsi, Kota, Kecamatan, Kode Pos
-            <Text color="$danger"> *</Text>
-          </Text>
-        </XStack>
-      )}
-
       <YStack
         backgroundColor="$background"
         borderWidth={hasFullSelection ? 0 : 1.5}
@@ -69,25 +60,20 @@ function AreaPickerTrigger({
           alignItems={hasFullSelection ? 'flex-start' : 'center'}>
           <YStack flex={1} gap="$1">
             {hasFullSelection ? (
-              <>
-                <Text fontSize="$3" color="$colorMuted" fontWeight="400">
-                  Provinsi, Kota, Kecamatan, Kode Pos
-                </Text>
-                <YStack gap="$1">
-                  {selectionLines.map(line => (
-                    <Text
-                      key={line}
-                      fontSize="$5"
-                      lineHeight="$1"
-                      color="$color"
-                      fontWeight="400"
-                      textTransform="uppercase"
-                      numberOfLines={1}>
-                      {line}
-                    </Text>
-                  ))}
-                </YStack>
-              </>
+              <YStack gap="$1">
+                {selectionLines.map(line => (
+                  <Text
+                    key={line}
+                    fontSize="$5"
+                    lineHeight="$1"
+                    color="$color"
+                    fontWeight="400"
+                    textTransform="uppercase"
+                    numberOfLines={1}>
+                    {line}
+                  </Text>
+                ))}
+              </YStack>
             ) : (
               <Text fontSize="$4" color="$colorMuted" fontWeight="400" numberOfLines={1}>
                 {hasPartialSelection
@@ -105,12 +91,6 @@ function AreaPickerTrigger({
       {error && (
         <Text fontSize="$2" color="$danger" marginTop="$1">
           {error}
-        </Text>
-      )}
-
-      {!hasFullSelection && !error && (
-        <Text fontSize="$2" color="$colorMuted" marginTop="$1">
-          Menentukan area pengiriman yang dipakai Biteship
         </Text>
       )}
     </YStack>

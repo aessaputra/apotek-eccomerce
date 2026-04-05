@@ -101,7 +101,7 @@ export default function AddressList() {
       if (!user?.id) return;
       const { error } = await setDefaultAddress(addressId, user.id);
       if (error) {
-        Alert.alert('Error', 'Gagal mengatur alamat default: ' + error.message);
+        Alert.alert('Error', 'Gagal mengatur alamat utama: ' + error.message);
       } else {
         loadAddresses();
       }

@@ -21,7 +21,7 @@ describe('<DefaultAddressToggle />', () => {
   test('renders copy in light and dark themes', async () => {
     render(<DefaultAddressToggle isDefault={false} isSaving={false} onToggle={jest.fn()} />);
 
-    expect(screen.getByText('Jadikan alamat default')).not.toBeNull();
+    expect(screen.getByText('Jadikan alamat utama')).not.toBeNull();
     expect(
       screen.getByText('Alamat ini akan digunakan secara otomatis saat checkout'),
     ).not.toBeNull();
@@ -30,14 +30,14 @@ describe('<DefaultAddressToggle />', () => {
       <DefaultAddressToggle isDefault={true} isSaving={false} onToggle={jest.fn()} />,
     );
 
-    expect(screen.getAllByText('Jadikan alamat default').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Jadikan alamat utama').length).toBeGreaterThan(0);
   });
 
   test('toggles value and triggers haptics when pressed', async () => {
     const onToggle = jest.fn();
     render(<DefaultAddressToggle isDefault={false} isSaving={false} onToggle={onToggle} />);
 
-    fireEvent.press(screen.getByLabelText('Jadikan alamat default'));
+    fireEvent.press(screen.getByLabelText('Jadikan alamat utama'));
 
     expect(mockImpactAsync).toHaveBeenCalledTimes(1);
     expect(onToggle).toHaveBeenCalledWith(true);
@@ -47,7 +47,7 @@ describe('<DefaultAddressToggle />', () => {
     const onToggle = jest.fn();
     render(<DefaultAddressToggle isDefault={true} isSaving={true} onToggle={onToggle} />);
 
-    fireEvent.press(screen.getByLabelText('Jadikan alamat default'));
+    fireEvent.press(screen.getByLabelText('Jadikan alamat utama'));
 
     expect(mockImpactAsync).not.toHaveBeenCalled();
     expect(onToggle).not.toHaveBeenCalled();

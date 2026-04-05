@@ -9,7 +9,6 @@ describe('<AreaPickerTrigger />', () => {
     );
 
     expect(screen.getByText('Pilih provinsi, kota, kecamatan, kode pos')).not.toBeNull();
-    expect(screen.getByText('Menentukan area pengiriman yang dipakai Biteship')).not.toBeNull();
 
     renderWithDarkTheme(
       <AreaPickerTrigger
