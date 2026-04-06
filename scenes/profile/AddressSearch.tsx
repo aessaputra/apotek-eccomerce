@@ -129,12 +129,12 @@ export default function AddressSearchScreen() {
   }, [initialQuery, setQuery]);
 
   useEffect(() => {
-    if (query.trim().length >= 2 || initialQuery.trim().length >= 2) {
+    if (query.trim().length >= 2) {
       return;
     }
 
     loadSuggestionsForCurrentLocation();
-  }, [initialQuery, loadSuggestionsForCurrentLocation, query]);
+  }, [loadSuggestionsForCurrentLocation, query]);
 
   const handleSelectSuggestion = useCallback(
     async (suggestion: AddressSuggestion) => {

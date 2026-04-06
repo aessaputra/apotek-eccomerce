@@ -204,4 +204,23 @@ describe('<AddressSearchScreen />', () => {
       });
     });
   });
+
+  it('reloads nearby recommendations when a seeded initial query is cleared', async () => {
+    mockRouteParams = { query: 'Jalan Ciruas' };
+    mockSuggestionState.query = 'Jalan Ciruas';
+
+    const { rerender } = render(<AddressSearchScreen />);
+
+    expect(mockLoadInitialSuggestions).not.toHaveBeenCalled();
+
+    mockSuggestionState.query = '';
+    rerender(<AddressSearchScreen />);
+
+    await waitFor(() => {
+      expect(mockLoadInitialSuggestions).toHaveBeenCalledWith({
+        latitude: -6.2,
+        longitude: 106.8,
+      });
+    });
+  });
 });
