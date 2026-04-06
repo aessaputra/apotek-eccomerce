@@ -18,6 +18,7 @@ import type { AddressSuggestion } from '@/types/geocoding';
 import type { GeocodingProximity } from '@/types/geocoding';
 import type { RouteParams } from '@/types/routes.types';
 import { setPendingAddressSelection } from '@/utils/addressSearchSession';
+import { ADDRESS_PLACEHOLDER_STREET } from '@/constants/address';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -198,7 +199,7 @@ export default function AddressSearchScreen() {
                 fontSize="$4"
                 minHeight={56}
                 color="$color"
-                placeholder="Nama Jalan, Gedung, No. Rumah"
+                placeholder={ADDRESS_PLACEHOLDER_STREET}
                 placeholderTextColor={placeholderColor}
                 value={query}
                 autoCorrect={false}

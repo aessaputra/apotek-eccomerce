@@ -7,6 +7,7 @@ import { AreaPickerTrigger } from '@/components/AreaPicker';
 import { MapPinSheet } from '@/components/MapPin';
 import type { MapCoords } from '@/components/MapPin';
 import type { AddressFormErrors, AddressFormValues } from '@/utils/addressValidation';
+import { ADDRESS_PLACEHOLDER_STREET } from '@/constants/address';
 
 export interface AddressFormProps {
   values: AddressFormValues;
@@ -159,7 +160,7 @@ function AddressForm({
               fontSize="$4"
               color={values.streetAddress ? '$color' : '$placeholderColor'}
               numberOfLines={2}>
-              {values.streetAddress || 'Nama Jalan, Gedung, No. Rumah'}
+              {values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
             </Text>
             <ChevronRight size={20} color="$colorMuted" />
           </XStack>

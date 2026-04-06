@@ -20,6 +20,11 @@ import type { RouteParams } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 import { consumePendingAddressSelection } from '@/utils/addressSearchSession';
 import { consumePendingAreaSelection } from '@/utils/areaPickerSession';
+import {
+  formatLevel2Display,
+  resolveAreaNames,
+  buildAreaDisplayName,
+} from '@/utils/areaFormatters';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -147,53 +152,20 @@ export default function AddressFormScreen() {
       districtName?: string;
       postalCode?: string;
     }) => {
-      const formatLevel2Display = (name: string, type?: string) => {
-        const normalizedType = (type ?? '').trim().toLowerCase();
-
-        if (/^kab(upaten)?\b/i.test(name)) {
-          return name.replace(/^kabupaten\s+/i, 'Kab. ').replace(/^kab\s+/i, 'Kab. ');
-        }
-
-        if (/^kota\b/i.test(name)) {
-          return name;
-        }
-
-        if (normalizedType === 'kabupaten' || normalizedType === 'regency') {
-          return `Kab. ${name}`;
-        }
-
-        if (normalizedType === 'kota' || normalizedType === 'city') {
-          return `Kota ${name}`;
-        }
-
-        return name;
-      };
-
       const area = selectedArea.area;
-      const resolvedDistrictName =
-        selectedArea.districtName || area.administrative_division_level_3_name || area.name;
-      const resolvedRegencyName =
-        selectedArea.regencyName || area.administrative_division_level_2_name || '';
-      const resolvedProvinceName =
-        selectedArea.provinceName || area.administrative_division_level_1_name || '';
-      const resolvedPostalCode = selectedArea.postalCode || area.postal_code?.toString() || '';
-
-      const areaDisplayName = [
-        resolvedDistrictName,
-        formatLevel2Display(resolvedRegencyName, area.administrative_division_level_2_type),
-        resolvedProvinceName,
-        resolvedPostalCode,
-      ]
-        .filter(Boolean)
-        .join(', ');
+      const resolved = resolveAreaNames(selectedArea as Parameters<typeof resolveAreaNames>[0]);
+      const areaDisplayName = buildAreaDisplayName({
+        ...resolved,
+        regency: formatLevel2Display(resolved.regency, area.administrative_division_level_2_type),
+      });
 
       clearTransientErrors();
       setArea({
         id: area.id,
         name: areaDisplayName || area.name,
-        city: resolvedRegencyName,
-        province: resolvedProvinceName,
-        postalCode: resolvedPostalCode,
+        city: resolved.regency,
+        province: resolved.province,
+        postalCode: resolved.postalCode,
       });
       setAreaProximity(null);
       setFieldValue('latitude', null);

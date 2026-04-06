@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { TextInput as RNTextInput } from 'react-native';
 import type { Address } from '@/types/address';
+import { parseCoordinate } from '@/utils/coordinates';
 import {
   type AddressFormValues,
   type AddressFormErrors,
@@ -191,19 +192,7 @@ export function useAddressForm(): UseAddressFormReturn {
     setGeneralError(null);
   }, []);
 
-  /**
-   * Populate form from existing address data
-   */
   const populateFromAddress = useCallback((address: Address) => {
-    const parseCoord = (v: number | string | null | undefined): number | null => {
-      if (typeof v === 'number' && Number.isFinite(v)) return v;
-      if (typeof v === 'string') {
-        const n = Number.parseFloat(v);
-        return Number.isFinite(n) ? n : null;
-      }
-      return null;
-    };
-
     setValues({
       receiverName: address.receiver_name,
       phoneNumber: address.phone_number,
@@ -214,13 +203,13 @@ export function useAddressForm(): UseAddressFormReturn {
       postalCode: address.postal_code,
       province: address.province || '',
       isDefault: address.is_default ?? false,
-      latitude: parseCoord(address.latitude),
-      longitude: parseCoord(address.longitude),
+      latitude: parseCoordinate(address.latitude),
+      longitude: parseCoordinate(address.longitude),
     });
     setErrors(initialFormErrors);
     setGeneralError(null);
     const hasSavedCoords =
-      parseCoord(address.latitude) !== null && parseCoord(address.longitude) !== null;
+      parseCoordinate(address.latitude) !== null && parseCoordinate(address.longitude) !== null;
     setMapConfirmedState(hasSavedCoords);
   }, []);
 

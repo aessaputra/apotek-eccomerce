@@ -1,4 +1,5 @@
 import { supabase } from '@/utils/supabase';
+import { parseCoordinate } from '@/utils/coordinates';
 import type { Address, AddressInsert, AddressUpdate } from '@/types/address';
 
 export interface ByteshipShippingAddress {
@@ -27,23 +28,6 @@ function requireField(value: string | null | undefined, fieldName: string): stri
   }
 
   return normalized;
-}
-
-function parseCoordinate(value: number | string | null | undefined): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim();
-    if (!normalized) {
-      return null;
-    }
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
 }
 
 function withAbortSignal<T>(query: T, signal?: AbortSignal): T {
