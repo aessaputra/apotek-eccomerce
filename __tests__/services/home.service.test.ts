@@ -34,7 +34,7 @@ function createBannerRow(partial: Partial<HomeBannerRow> = {}): HomeBannerRow {
     media_path: null,
     cta_kind: 'route',
     cta_label: 'Open',
-    cta_route: 'orders',
+    cta_route: 'home/all-products',
     is_active: true,
     created_at: '2026-04-03T00:00:00Z',
     updated_at: '2026-04-03T00:00:00Z',
@@ -82,7 +82,7 @@ describe('home.service home banners', () => {
     );
 
     expect(record).not.toBeNull();
-    expect(record?.cta?.route).toBe('orders');
+    expect(record?.cta?.route).toBe('home/all-products');
     expect(record?.mediaUrl).toBe('https://cdn.example.com/banners/home_banner_top/banner.webp');
   });
 
@@ -110,7 +110,7 @@ describe('home.service home banners', () => {
         createBannerRow({
           id: 'banner-top',
           placement_key: 'home_banner_top',
-          cta_route: 'cart',
+          cta_route: 'home/all-products',
         }),
         createBannerRow({
           id: 'banner-bottom',
@@ -127,7 +127,7 @@ describe('home.service home banners', () => {
     const banners = await getHomeBannersByPlacement();
 
     expect(mockFrom).toHaveBeenCalledWith('home_banners');
-    expect(banners.home_banner_top?.cta?.route).toBe('cart');
+    expect(banners.home_banner_top?.cta?.route).toBe('home/all-products');
     expect(banners.home_banner_bottom?.placementKey).toBe('home_banner_bottom');
   });
 });

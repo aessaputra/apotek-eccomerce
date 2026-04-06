@@ -432,6 +432,77 @@ export async function getProductsOptimized(
   }
 }
 
+export const ALL_PRODUCTS_CACHE_KEY = '__ALL__';
+
+export async function getAllProductsOptimized(
+  params: GetProductsOptimizedParams = {},
+): Promise<ProductListResult> {
+  const offset = params.offset ?? 0;
+  const requestedLimit = Math.max(params.limit ?? PRODUCTS_PAGE_SIZE, 1);
+  const startedAt = Date.now();
+
+  try {
+    const data = await withRetry(
+      async () => {
+        let query = supabase
+          .from('products')
+          .select(PRODUCT_LIST_SELECT)
+          .eq('is_active', true)
+          .gt('stock', 0)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + requestedLimit);
+
+        if (params.signal) {
+          query = query.abortSignal(params.signal);
+        }
+
+        const { data: rows, error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        return rows;
+      },
+      {
+        maxRetries: 2,
+        baseDelay: 250,
+        maxDelay: 1000,
+        shouldRetry: error => !isAbortError(error) && isRetryableError(classifyError(error)),
+      },
+    );
+
+    const rows = (
+      (data ?? []) as unknown as Array<ProductRow & { product_images?: ProductListImage[] | null }>
+    ).map(normalizeProductListRow);
+    const hasMore = rows.length > requestedLimit;
+    const normalizedData = hasMore ? rows.slice(0, requestedLimit) : rows;
+    const fetchedAt = Date.now();
+
+    return {
+      data: normalizedData,
+      error: null,
+      metrics: {
+        durationMs: fetchedAt - startedAt,
+        payloadBytes: getPayloadBytes(normalizedData),
+        fetchedAt,
+        offset,
+        limit: requestedLimit,
+        hasMore,
+      },
+    };
+  } catch (error) {
+    logHomeServiceError('getAllProductsOptimized unexpected error', error);
+    return {
+      data: null,
+      error: isAbortError(error)
+        ? error
+        : toUserError(error, 'Failed to load products. Please try again.'),
+      metrics: null,
+    };
+  }
+}
+
 /**
  * Fetch product images for a list of product IDs
  */

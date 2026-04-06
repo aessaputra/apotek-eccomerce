@@ -12,7 +12,7 @@ const mockBanner: HomeBannerItem = {
   mediaPath: null,
   mediaUrl: null,
   ctaKind: 'route',
-  cta: { label: 'Learn More', route: 'home/details' },
+  cta: { label: 'Learn More', route: 'home/all-products' },
   isActive: true,
   createdAt: '2026-04-03T00:00:00Z',
   updatedAt: '2026-04-03T00:00:00Z',
@@ -112,7 +112,7 @@ describe('<HomeBanner />', () => {
             title: null,
             body: null,
             ctaKind: 'route',
-            cta: { label: 'Shop Now', route: 'orders' },
+            cta: { label: 'Shop Now', route: 'home/all-products' },
             mediaUrl: 'https://example.com/banner.webp',
           }}
           onCTAPress={onCTAPress}

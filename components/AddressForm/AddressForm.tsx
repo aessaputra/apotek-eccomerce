@@ -8,6 +8,7 @@ import { MapPinSheet } from '@/components/MapPin';
 import type { MapCoords } from '@/components/MapPin';
 import type { AddressFormErrors, AddressFormValues } from '@/utils/addressValidation';
 import { ADDRESS_PLACEHOLDER_STREET } from '@/constants/address';
+import { sanitizeAddressCandidate } from '@/services/googlePlaces.service';
 
 export interface AddressFormProps {
   values: AddressFormValues;
@@ -179,7 +180,7 @@ function AddressForm({
         onConfirm={handleMapPinConfirm}
         initialCoords={currentMapCoords ?? undefined}
         selectedAddressSummary={[
-          values.streetAddress,
+          sanitizeAddressCandidate(values.streetAddress) || values.streetAddress,
           values.areaName,
           values.city,
           values.province,

@@ -15,7 +15,10 @@ import { useAppSlice } from '@/slices';
 import { useAddressForm } from '@/hooks/useAddressForm';
 import { useAddressData } from '@/hooks/useAddressData';
 import { buildAddressPayload } from '@/services/address.service';
-import { reverseGeocodeCoordinates } from '@/services/googlePlaces.service';
+import {
+  reverseGeocodeCoordinates,
+  sanitizeAddressCandidate,
+} from '@/services/googlePlaces.service';
 import type { RouteParams } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 import { consumePendingAddressSelection } from '@/utils/addressSearchSession';
@@ -193,7 +196,9 @@ export default function AddressFormScreen() {
       longitude: number;
     }) => {
       clearTransientErrors();
-      setFieldValue('streetAddress', selectedAddress.streetAddress);
+      const sanitizedStreetAddress =
+        sanitizeAddressCandidate(selectedAddress.streetAddress) || selectedAddress.streetAddress;
+      setFieldValue('streetAddress', sanitizedStreetAddress);
 
       if (!values.areaId) {
         setFieldValue('city', selectedAddress.city);

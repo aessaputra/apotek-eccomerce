@@ -8,7 +8,7 @@ export type HomeBannerIntent = 'promotional' | 'informational' | 'branding';
 
 export type HomeBannerCtaKind = 'none' | 'route';
 
-export type HomeBannerCtaRoute = 'orders' | 'cart' | 'home/details';
+export type HomeBannerCtaRoute = 'home/all-products';
 
 export interface HomeBannerCTA {
   label: string;

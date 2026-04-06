@@ -21,6 +21,11 @@
       "sourceType": "github",
       "computedHash": "556f3bd3b59be46990bab40f922eb6ebfb711979a11836a6f78c78d658e82a41"
     },
+    "create-agentsmd": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "bfbdbb76b17cca970d1d624e36ce72b6847860d740581c8865da796c1fef8552"
+    },
     "expo-deployment": {
       "source": "expo/skills",
       "sourceType": "github",
@@ -30,6 +35,11 @@
       "source": "vercel-labs/skills",
       "sourceType": "github",
       "computedHash": "d31e234f0c90694a670222cdd1dafa853e051d7066beda389f1097c22dadd461"
+    },
+    "google-maps-api": {
+      "source": "tivojn/google-maps-api-skill",
+      "sourceType": "github",
+      "computedHash": "5e052e505bfac4945d2f19f32125242233d29428233c8c71f6ce08a827d8b681"
     },
     "native-data-fetching": {
       "source": "expo/skills",

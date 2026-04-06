@@ -6,34 +6,36 @@ Tamagui-based component library. All UI uses Tamagui primitives (`XStack`, `YSta
 
 ```
 components/
-├── elements/              # Atomic UI (23 components)
-│   ├── Button/            # Primary CTA, themed with $primary
-│   ├── FormInput/         # Text input with label + error
-│   ├── EmailInput/        # Email-specific input
-│   ├── PasswordInput/     # Password with show/hide toggle
+├── elements/              # Atomic UI (25 items)
+│   ├── AddressCard/       # Address display card
+│   ├── AppAlertDialog/    # Confirmation dialog
 │   ├── Avatar/            # User avatar with gradient fallback
 │   ├── BottomSheet/       # @gorhom/bottom-sheet wrapper
-│   ├── GradientButton/    # Linear gradient CTA
-│   ├── Image/             # Expo Image wrapper
-│   ├── ProductCard/       # Product display card
-│   ├── ProductImageGallery/ # Swipeable image gallery
+│   ├── Button/            # Primary CTA, themed with $primary
+│   ├── CartItemCard/      # Cart item card component
 │   ├── CartItemRow/       # Single cart item display
-│   ├── CartSummary/       # Cart total/subtotal
 │   ├── CartLoadingSkeleton/ # Cart loading state
-│   ├── EmptyCartState/    # Empty cart placeholder
-│   ├── QuantitySelector/  # +/- quantity control
-│   ├── AddressCard/       # Address display card
+│   ├── CartSummary/       # Cart total/subtotal
 │   ├── CategoryItem/      # Category chip/button
 │   ├── DotIndicators/     # Carousel page indicators
+│   ├── EmailInput/        # Email-specific input
+│   ├── EmptyCartState/    # Empty cart placeholder
 │   ├── ErrorMessage/      # Error display
+│   ├── FormInput/         # Text input with label + error
+│   ├── GradientButton/    # Linear gradient CTA
+│   ├── HomeBanner/        # Home screen banner
+│   ├── Image/             # Expo Image wrapper
 │   ├── OAuthButton/       # Google OAuth button
-│   ├── StickyBottomBar/   # Fixed bottom action bar
-│   ├── AppAlertDialog/    # Confirmation dialog
-│   └── SearchProductGrid.tsx  # (exception: no folder)
+│   ├── PasswordInput/     # Password with show/hide toggle
+│   ├── ProductCard/       # Product display card
+│   ├── ProductImageGallery/ # Swipeable image gallery
+│   ├── QuantitySelector/  # +/- quantity control
+│   ├── SearchProductGrid.tsx  # (exception: no folder)
+│   └── StickyBottomBar/   # Fixed bottom action bar
 ├── AddressForm/           # Complex: address form + area picker + map
 ├── AreaPicker/            # Area/district selector
 ├── MapPin/                # Map pin with react-native-maps (dynamic require for web)
-├── layouts/               # Layout components
+├── layouts/               # Layout components (11 items)
 │   └── TabBarIconWithPill/ # Tab bar icon with notification badge
 └── icons/                 # Custom icon components
 ```

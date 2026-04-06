@@ -26,9 +26,7 @@ export const HOME_BANNER_CTA_KINDS = [
 ] as const satisfies readonly HomeBannerCtaKind[];
 
 export const HOME_BANNER_CTA_ROUTES = [
-  'orders',
-  'cart',
-  'home/details',
+  'home/all-products',
 ] as const satisfies readonly HomeBannerCtaRoute[];
 
 export const HOME_BANNER_MEDIA_PREFIX_BY_PLACEMENT: Record<HomeBannerPlacement, string> = {
@@ -37,9 +35,7 @@ export const HOME_BANNER_MEDIA_PREFIX_BY_PLACEMENT: Record<HomeBannerPlacement, 
 };
 
 export const HOME_BANNER_CTA_ROUTE_MAP: Record<HomeBannerCtaRoute, TypedHref> = {
-  orders: '/orders',
-  cart: '/cart',
-  'home/details': '/home/details',
+  'home/all-products': '/home/all-products',
 };
 
 export function createEmptyHomeBanners(): HomeBannersByPlacement {

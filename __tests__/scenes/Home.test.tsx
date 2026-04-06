@@ -69,7 +69,7 @@ function createHomeData(): UseHomeDataReturn {
         mediaPath: null,
         mediaUrl: null,
         ctaKind: 'route',
-        cta: { label: 'Open orders', route: 'orders' },
+        cta: { label: 'Open orders', route: 'home/all-products' },
         isActive: true,
         createdAt: '2026-04-03T00:00:00Z',
         updatedAt: '2026-04-03T00:00:00Z',
@@ -135,7 +135,7 @@ describe('<Home />', () => {
 
     fireEvent.press(screen.getByText('Open orders'));
 
-    expect(mockPush).toHaveBeenCalledWith('/orders');
+    expect(mockPush).toHaveBeenCalledWith('/home/all-products');
   });
 
   it('renders banner skeletons while banner data is initially loading', () => {

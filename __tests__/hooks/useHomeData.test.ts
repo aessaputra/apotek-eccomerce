@@ -55,7 +55,7 @@ function createHomeBanners(): HomeBannersByPlacement {
       mediaPath: null,
       mediaUrl: null,
       ctaKind: 'route',
-      cta: { label: 'Open Orders', route: 'orders' },
+      cta: { label: 'Open Orders', route: 'home/all-products' },
       isActive: true,
       createdAt: '2026-04-03T00:00:00Z',
       updatedAt: '2026-04-03T00:00:00Z',

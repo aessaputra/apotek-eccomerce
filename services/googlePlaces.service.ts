@@ -101,7 +101,7 @@ function startsWithPlusCode(value: string): boolean {
   return Boolean(leadingSegment) && isPlusCode(leadingSegment);
 }
 
-function sanitizeAddressCandidate(value?: string): string {
+export function sanitizeAddressCandidate(value?: string): string {
   const trimmedValue = value?.trim() ?? '';
   if (!trimmedValue || startsWithPlusCode(trimmedValue)) {
     return '';
@@ -124,19 +124,30 @@ function buildPostalAddressText(place: NearbyPlace): string {
 
 function buildAddressComponentsText(place: NearbyPlace): string {
   const components = place.addressComponents ?? [];
+
+  // Build address from components in logical order (most specific to least specific)
+  const streetNumber =
+    components.find(component => component.types?.includes('street_number'))?.longText?.trim() ??
+    '';
   const route =
     components.find(component => component.types?.includes('route'))?.longText?.trim() ?? '';
+  const subLocality =
+    components.find(component => component.types?.includes('sublocality'))?.longText?.trim() ?? '';
   const locality =
     components.find(component => component.types?.includes('locality'))?.longText?.trim() ?? '';
-  const administrativeArea =
+  const adminArea2 =
     components
       .find(component => component.types?.includes('administrative_area_level_2'))
       ?.longText?.trim() ?? '';
   const postalCode =
     components.find(component => component.types?.includes('postal_code'))?.longText?.trim() ?? '';
 
+  // Combine street parts: "No. 123 Jalan ABC"
+  const streetParts = [route, streetNumber].filter(Boolean);
+  const streetAddress = streetParts.length > 0 ? streetParts.join(' ') : '';
+
   return sanitizeAddressCandidate(
-    [route, locality, administrativeArea, postalCode].filter(Boolean).join(', '),
+    [streetAddress, subLocality, locality, adminArea2, postalCode].filter(Boolean).join(', '),
   );
 }
 
@@ -214,13 +225,20 @@ function getNearbySecondaryText(place: NearbyPlace, primaryText: string): string
 
 function mapNearbyPlaceToSuggestion(place: NearbyPlace): AddressSuggestion | null {
   const placeId = place.id ?? '';
+  if (!placeId) {
+    return null;
+  }
+
+  // Best practice: Prioritize shortFormattedAddress (less likely to contain Plus Codes)
+  // Then formattedAddress, then build from components as fallback
   const fullAddress = getFirstSafeCandidate([
-    place.formattedAddress,
     place.shortFormattedAddress,
+    place.formattedAddress,
     buildPostalAddressText(place),
     buildAddressComponentsText(place),
   ]);
-  if (!placeId || !fullAddress) {
+
+  if (!fullAddress) {
     return null;
   }
 
@@ -709,7 +727,11 @@ export function convertPlaceDetailsToAddress(placeDetails: GooglePlaceDetails): 
   const postalCode = components.find(c => c.types.includes('postal_code'))?.longName ?? '';
 
   const streetParts = [route, streetNumber].filter(Boolean);
-  const streetAddress = streetParts.length > 0 ? streetParts.join(' ') : placeDetails.name;
+  const rawStreetAddress = streetParts.length > 0 ? streetParts.join(' ') : placeDetails.name;
+  // Filter out Plus Codes (e.g., "V6FJ+Q3G") from street address
+  const sanitizedRaw = sanitizeAddressCandidate(rawStreetAddress);
+  const sanitizedFallback = sanitizeAddressCandidate(placeDetails.formattedAddress.split(',')[0]);
+  const streetAddress = sanitizedRaw || sanitizedFallback || 'Lokasi';
 
   return {
     streetAddress: subLocality ? `${streetAddress}, ${subLocality}` : streetAddress,
@@ -811,8 +833,12 @@ export async function reverseGeocodeCoordinates(params: {
   const postalCode = components.find(c => c.types.includes('postal_code'))?.long_name ?? '';
 
   const streetParts = [route, streetNumber].filter(Boolean);
-  const streetAddress =
+  const rawStreetAddress =
     streetParts.length > 0 ? streetParts.join(' ') : result.formatted_address.split(',')[0];
+  // Filter out Plus Codes (e.g., "V6FJ+Q3G") from street address
+  const sanitizedFromParts = sanitizeAddressCandidate(streetParts.join(' '));
+  const sanitizedFallback = sanitizeAddressCandidate(result.formatted_address.split(',')[0]);
+  const streetAddress = sanitizedFromParts || sanitizedFallback || 'Lokasi';
 
   const city = locality || adminArea2 || adminArea3 || '';
   const district = adminArea3 || adminArea4 || subLocality || neighborhood || '';

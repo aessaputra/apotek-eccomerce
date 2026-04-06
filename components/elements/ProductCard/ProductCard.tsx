@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { Card, Image, Text, XStack, YStack } from 'tamagui';
+import { Card, Text, XStack, YStack } from 'tamagui';
+import Image from '@/components/elements/Image';
 import { CartIcon, PillIcon } from '@/components/icons';
 import { formatPrice } from '@/services/home.service';
 
@@ -85,7 +86,12 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
         backgroundColor={accentColor}
         overflow="hidden">
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} width="100%" height="100%" resizeMode="cover" />
+          <Image
+            source={{ uri: imageUrl }}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+            recyclingKey={imageUrl}
+          />
         ) : (
           <>
             <PillIcon size={34} color={iconColor} />

@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-03-26
-**Commit:** 83c823c
+**Generated:** 2026-04-06
+**Commit:** 26d2160
 **Branch:** dev
 
 ## OVERVIEW
@@ -15,22 +15,24 @@ Expo SDK 54 pharmacy e-commerce app (React Native 0.81.5, React 19.1, TypeScript
 ├── app/                # Expo Router v6 routes (THIN RE-EXPORTS to scenes/)
 ├── scenes/             # Actual screen components (Home, Auth, Cart, Orders, Profile)
 ├── components/         # Reusable UI — see components/AGENTS.md
-│   ├── elements/       # Atomic UI components (Button, Avatar, FormInput...)
+│   ├── elements/       # Atomic UI components (23 components)
 │   ├── layouts/        # Layout components (TabBarIconWithPill)
 │   ├── icons/          # Custom icon components
-│   ├── AddressForm/       # Complex composite (address form + area picker + map)
+│   ├── AddressForm/    # Complex composite (address form + area picker + map)
+│   ├── AreaPicker/     # Area/district selector
 │   └── MapPin/         # Map integration component
 ├── services/           # API abstraction layer — see services/AGENTS.md
-├── hooks/              # Custom React hooks (auth, address, cart, home data, theme)
+├── hooks/              # Custom React hooks (20 hooks)
 ├── slices/             # Redux Toolkit slices (single app.slice.ts)
-├── providers/          # AuthProvider + Redux store provider
-├── types/              # TypeScript types (address, auth, cart, order, product, shipping, user, supabase)
+├── stores/             # Zustand store (areaPickerStore.ts - address form state)
+├── providers/          # AuthProvider + Redux + Query providers
+├── types/              # TypeScript types (13 type files)
 ├── constants/          # App constants (address, auth, ui)
-├── utils/              # Utilities (config, crypto, device, fonts, images, store, supabase client)
-├── supabase/           # Edge functions + migrations — see supabase/AGENTS.md
+├── utils/              # Utilities (config, crypto, device, fonts, images, store, supabase)
 ├── assets/             # Poppins fonts + images
 ├── android/            # Native Android project (local dev builds)
 ├── test-utils/         # renderWithTheme.tsx (Tamagui test wrapper)
+├── __tests__/          # 74 test files (centralized, not co-located)
 └── tamagui.config.ts   # Tamagui theme config
 ```
 
@@ -43,12 +45,12 @@ Expo SDK 54 pharmacy e-commerce app (React Native 0.81.5, React 19.1, TypeScript
 | Add a UI component | `components/elements/[Name]/`                            | Follow `Name.tsx` + `index.ts` + `Name.test.tsx` pattern         |
 | Add an API call    | `services/[domain].service.ts`                           | Never call Supabase directly from components                     |
 | Add Redux state    | `slices/app.slice.ts` → register in `utils/store.ts`     | Single slice currently                                           |
+| Add Zustand state  | `stores/[name]Store.ts`                                  | For local/form state (e.g., areaPickerStore.ts)                  |
 | Add a custom hook  | `hooks/use[Name].ts`                                     | Co-locate test as `use[Name].test.ts`                            |
 | Add a type         | `types/[domain].types.ts`                                | One file per domain                                              |
 | Route param types  | `types/routes.types.ts`                                  | Keep route params in sync with `useLocalSearchParams` usage      |
 | Add a constant     | `constants/[domain].constants.ts`                        |                                                                  |
 | Auth flow          | `providers/AuthProvider.tsx` + `app/_layout.tsx`         | Auth guard in root layout useEffect                              |
-| Backend logic      | `supabase/functions/[name]/index.ts`                     | Deno runtime, see supabase/AGENTS.md                             |
 | Env variables      | `.env.dev` → `app.config.ts` (extra) → `utils/config.ts` | dotenvx managed                                                  |
 | CI/CD              | `.github/workflows/test.yml` + `preview.yml`             | Tests on PR; EAS Update on push                                  |
 
@@ -104,6 +106,8 @@ Expo SDK 54 pharmacy e-commerce app (React Native 0.81.5, React 19.1, TypeScript
 - **UI Framework**: Tamagui (not StyleSheet, not NativeWind) — all components use Tamagui primitives
 - **Theme Mode**: Tamagui `brand` + `brand_dark`, selected automatically from system color scheme
 - **Language**: Indonesian UI labels (`Beranda`, `Pesanan`, `Akun`) — backend/code in English
+- **State Management**: Redux Toolkit (global) + Zustand (local/form state in `stores/`)
+- **Test Location**: Centralized in `__tests__/` (NOT co-located with source)
 - **Mocking pattern**: Inline `jest.mock()` in each test file, no `__mocks__/` directories
 - **Fake timers**: Global in jest.setup.js for Reanimated/Animated components
 - **act() suppression**: jest.setup.js suppresses act warnings for Tamagui Animated + Icon components
@@ -141,11 +145,14 @@ npm run dev:doctor             # Expo health check
 
 - **Node 20.x** required (specified in `eas.json` build config)
 - **`legacy-peer-deps=true`** in `.npmrc` — required for dependency resolution
-- **17 Supabase migrations** in `supabase/migrations/` — schema history
 - **Coverage** enabled by default for: components, hooks, scenes, services, slices, utils, providers
 - **No E2E tests** — only unit/integration via Jest + React Testing Library
+- **74 test files** in `__tests__/` directory
+- **~36k lines** of TypeScript/TSX code
+- **38 large files** (>300 lines) — complexity hotspots
 - **Android native dir** exists for local dev builds — EAS handles production builds
 - **`app.json` owner**: `"i-have-no-company"` — update before publishing
+- **Tamagui babel plugin disabled** intentionally — runs at runtime only via metro plugin
 
 ## DARK-THEME COLOR SYSTEM
 

@@ -6,19 +6,22 @@ API abstraction layer. ALL Supabase calls go through here — components and hoo
 
 ```
 services/
-├── index.ts               # Barrel re-export (all services)
-├── supabase.service.ts    # Low-level Supabase client helpers
-├── auth.service.ts        # Sign in/up, Google OAuth, session, password reset
-├── profile.service.ts     # User profile CRUD
-├── user.service.ts        # User metadata operations
-├── address.service.ts     # Address CRUD + default address
-├── home.service.ts        # Categories, products, product details, cart mutations
-├── cart.service.ts        # Cart operations (add, update, remove, clear)
-├── order.service.ts       # Order creation + history
-├── checkout.service.ts    # Checkout flow (calls edge functions)
-├── shipping.service.ts    # Shipping rate calculation (Biteship)
+├── index.ts                    # Barrel re-export (all services)
+├── supabase.service.ts         # Low-level Supabase client helpers
+├── auth.service.ts             # Sign in/up, Google OAuth, session, password reset
+├── profile.service.ts          # User profile CRUD
+├── user.service.ts             # User metadata operations
+├── address.service.ts          # Address CRUD + default address
+├── regional.service.ts         # Regional/province data
+├── googlePlaces.service.ts     # Google Places API integration
+├── home.service.ts             # Categories, products, product details
+├── cart.service.ts             # Cart operations (add, update, remove, clear)
+├── order.service.ts            # Order creation + history
+├── checkout.service.ts         # Checkout flow (calls edge functions)
+├── shipping.service.ts         # Shipping rate calculation (Biteship)
 ├── address.service.test.ts
-└── shipping.service.test.ts
+├── shipping.service.test.ts
+└── home.service.test.ts
 ```
 
 ## CONVENTIONS
@@ -38,6 +41,9 @@ services/
 | Add product query  | `home.service.ts`            | Uses Supabase `.select()` with joins                       |
 | Add shipping logic | `shipping.service.ts`        | Proxies to Biteship via Supabase edge function             |
 | Add payment logic  | `checkout.service.ts`        | Calls `create-snap-token` edge function                    |
+| Add address logic  | `address.service.ts`         | User addresses with default selection                      |
+| Add regional data  | `regional.service.ts`        | Provinces, cities, districts                               |
+| Add Google Places  | `googlePlaces.service.ts`    | Address autocomplete and place details                     |
 | Add new domain     | Create `[domain].service.ts` | Add to `index.ts` barrel                                   |
 
 ## ANTI-PATTERNS

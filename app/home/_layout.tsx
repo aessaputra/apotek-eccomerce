@@ -62,6 +62,14 @@ function HomeStackLayout() {
           headerTitleAlign: 'center',
         })}
       />
+      <Stack.Screen
+        name="all-products"
+        options={{
+          title: 'Semua Produk',
+          headerShown: true,
+          headerTitleAlign: 'center',
+        }}
+      />
     </Stack>
   );
 }

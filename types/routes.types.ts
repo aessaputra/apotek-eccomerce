@@ -13,6 +13,7 @@ export type HomeRoutes = {
   'home/details': undefined;
   'home/product-details': { id: string; name?: string };
   'home/category-product-list': { categoryId: string; categoryName?: string };
+  'home/all-products': undefined;
 };
 
 // Cart routes
@@ -70,6 +71,7 @@ export type HomeStackParams = {
   details: undefined;
   'product-details': { id: string; name?: string };
   'category-product-list': { categoryId: string; categoryName?: string };
+  'all-products': undefined;
 };
 
 export type CartStackParams = {

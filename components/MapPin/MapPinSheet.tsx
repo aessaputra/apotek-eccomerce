@@ -48,6 +48,8 @@ function MapPinSheet({
 }: MapPinSheetProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<import('react-native-maps').default | null>(null);
+  const regionAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isCancelledRef = useRef(false);
   const [selectedCoords, setSelectedCoords] = useState<MapCoords>(
     initialCoords ?? JAKARTA_FALLBACK,
   );
@@ -58,11 +60,19 @@ function MapPinSheet({
   const hasInteracted = useRef(false);
 
   useEffect(() => {
+    return () => {
+      isCancelledRef.current = true;
+      if (regionAnimationTimeoutRef.current) {
+        clearTimeout(regionAnimationTimeoutRef.current);
+        regionAnimationTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isOpen) return;
 
-    let regionAnimationTimeout: ReturnType<typeof setTimeout> | undefined;
-    let isCancelled = false;
-
+    isCancelledRef.current = false;
     hasInteracted.current = false;
 
     const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
@@ -79,10 +89,14 @@ function MapPinSheet({
         setSelectedCoords(initialCoords);
         setLocationMessage(null);
         if (Platform.OS !== 'web') {
-          regionAnimationTimeout = setTimeout(() => {
-            if (mapRef.current && !hasInteracted.current && !isCancelled) {
+          if (regionAnimationTimeoutRef.current) {
+            clearTimeout(regionAnimationTimeoutRef.current);
+          }
+          regionAnimationTimeoutRef.current = setTimeout(() => {
+            if (mapRef.current && !hasInteracted.current && !isCancelledRef.current) {
               mapRef.current.animateToRegion({ ...initialCoords, ...DEFAULT_DELTA });
             }
+            regionAnimationTimeoutRef.current = null;
           }, 300);
         }
         return;
@@ -95,7 +109,7 @@ function MapPinSheet({
       try {
         const permission = await Location.requestForegroundPermissionsAsync();
         if (permission.status !== 'granted') {
-          if (isCancelled) {
+          if (isCancelledRef.current) {
             return;
           }
 
@@ -123,7 +137,7 @@ function MapPinSheet({
           location = lastKnown;
         }
 
-        if (isCancelled) {
+        if (isCancelledRef.current) {
           return;
         }
 
@@ -150,7 +164,7 @@ function MapPinSheet({
         }
         setIsLocating(false);
       } catch {
-        if (isCancelled) {
+        if (isCancelledRef.current) {
           return;
         }
 
@@ -162,13 +176,6 @@ function MapPinSheet({
     };
 
     void initialiseLocation();
-
-    return () => {
-      isCancelled = true;
-      if (regionAnimationTimeout) {
-        clearTimeout(regionAnimationTimeout);
-      }
-    };
   }, [isOpen, initialCoords]);
 
   const handleMapPress = useCallback((event: MapPressEvent) => {
@@ -231,7 +238,13 @@ function MapPinSheet({
       dismissOnSnapToBottom={false}
       disableDrag
       snapPoints={[100]}
-      animation="medium">
+      animation="medium"
+      animationConfig={{
+        type: 'spring',
+        damping: 24,
+        mass: 0.9,
+        stiffness: 200,
+      }}>
       <Sheet.Overlay
         animation="lazy"
         enterStyle={{ opacity: 0 }}
@@ -346,28 +359,6 @@ function MapPinSheet({
                 </XStack>
               </YStack>
             ) : null}
-
-            <YStack
-              position="absolute"
-              alignSelf="center"
-              top="42%"
-              backgroundColor="$primary"
-              borderRadius="$6"
-              paddingHorizontal="$4"
-              paddingVertical="$2.5"
-              gap="$1"
-              alignItems="center"
-              shadowColor="$shadowColor"
-              shadowOpacity={0.22}
-              shadowRadius={14}
-              shadowOffset={{ width: 0, height: 8 }}>
-              <Text fontSize="$4" color="$onPrimary" fontWeight="700">
-                Alamatmu di sini
-              </Text>
-              <Text fontSize="$2" color="$onPrimary" textAlign="center">
-                Mohon periksa kembali lokasi peta
-              </Text>
-            </YStack>
           </YStack>
 
           <YStack
@@ -379,6 +370,21 @@ function MapPinSheet({
             borderTopWidth={1}
             borderTopColor="$surfaceBorder"
             pointerEvents="auto">
+            <YStack
+              backgroundColor="$surface"
+              borderRadius="$4"
+              paddingHorizontal="$3"
+              paddingVertical="$2"
+              gap="$1"
+              alignItems="center">
+              <Text fontSize="$3" color="$color" fontWeight="600" textAlign="center">
+                Alamatmu di sini
+              </Text>
+              <Text fontSize="$2" color="$colorSubtle" textAlign="center">
+                Mohon periksa kembali lokasi peta
+              </Text>
+            </YStack>
+
             <XStack gap="$2" alignItems="center">
               <MapPin size={16} color="$primary" />
               <Text fontSize="$3" color="$colorSubtle" flex={1} numberOfLines={1}>

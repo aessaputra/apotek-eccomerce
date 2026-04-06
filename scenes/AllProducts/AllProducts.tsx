@@ -1,0 +1,297 @@
+import React, { useCallback, useState } from 'react';
+import { FlatList, Platform, RefreshControl, useWindowDimensions } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Spinner, Text, YStack, styled, useMedia, useTheme } from 'tamagui';
+import ProductCard from '@/components/elements/ProductCard';
+import { TAB_BAR_HEIGHT } from '@/constants/ui';
+import { useAllProductsPaginated } from '@/hooks';
+import { addProductToCart, type ProductListItem } from '@/services';
+import { useAppSlice } from '@/slices';
+import { getThemeColor } from '@/utils/theme';
+
+const ScreenRoot = styled(YStack, {
+  flex: 1,
+  backgroundColor: '$background',
+});
+
+const ContentStack = styled(YStack, {
+  width: '100%',
+  maxWidth: 560,
+  alignSelf: 'center',
+  gap: '$3.5',
+
+  $gtSm: {
+    maxWidth: 720,
+    gap: '$4',
+  },
+
+  $gtMd: {
+    maxWidth: 920,
+    gap: '$4.5',
+  },
+
+  $gtLg: {
+    maxWidth: 1080,
+  },
+});
+
+const EmptyState = styled(YStack, {
+  minHeight: 220,
+  borderRadius: '$5',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  backgroundColor: '$surface',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '$4',
+  gap: '$2',
+});
+
+interface ProductGridItemProps {
+  item: ProductListItem;
+  width: number;
+  iconColor: string;
+  onPress: (productId: string, productName: string) => void;
+  onAddToCart: (productId: string) => void;
+}
+
+const ProductGridItem = React.memo(function ProductGridItem({
+  item,
+  width,
+  iconColor,
+  onPress,
+  onAddToCart,
+}: ProductGridItemProps) {
+  return (
+    <YStack pb="$2.5" mb="$2.5" width={width}>
+      <ProductCard
+        item={item}
+        width={width}
+        iconColor={iconColor}
+        onPress={() => onPress(item.id, item.name)}
+        onAddToCart={() => onAddToCart(item.id)}
+      />
+    </YStack>
+  );
+});
+
+function LoadingState() {
+  return (
+    <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
+      <Spinner size="large" color="$primary" />
+      <Text fontSize="$4" color="$colorSubtle">
+        Loading products...
+      </Text>
+    </YStack>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <ContentStack px="$4">
+      <EmptyState>
+        <Text fontSize={16} fontWeight="700" color="$color" textAlign="center">
+          Failed to load products
+        </Text>
+        <Text fontSize={13} color="$colorSubtle" textAlign="center">
+          {message}
+        </Text>
+      </EmptyState>
+    </ContentStack>
+  );
+}
+
+function ListFooter({
+  isFetchingMore,
+  isRevalidating,
+}: {
+  isFetchingMore: boolean;
+  isRevalidating: boolean;
+}) {
+  if (!isFetchingMore && !isRevalidating) {
+    return <YStack height={12} />;
+  }
+
+  return (
+    <YStack alignItems="center" justifyContent="center" py="$3" gap="$2">
+      <Spinner color="$primary" size="small" />
+      <Text fontSize="$2" color="$colorSubtle">
+        {isFetchingMore ? 'Loading more products...' : 'Refreshing product cache...'}
+      </Text>
+    </YStack>
+  );
+}
+
+export default function AllProducts() {
+  const router = useRouter();
+  const media = useMedia();
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const { user } = useAppSlice();
+  const [cartFeedback, setCartFeedback] = useState<string | null>(null);
+
+  const {
+    products,
+    error,
+    hasMore,
+    isInitialLoading,
+    isRefreshing,
+    isFetchingMore,
+    isRevalidating,
+    refresh,
+    refreshIfNeeded,
+    loadMore,
+  } = useAllProductsPaginated();
+
+  const topPadding = media.gtSm ? 16 : 12;
+  const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
+  const columns = media.gtMd ? 3 : 2;
+  const maxWidth = media.gtLg ? 1080 : media.gtMd ? 920 : 720;
+  const contentPaddingHorizontal = media.gtLg ? 24 : media.gtMd ? 22 : media.gtSm ? 20 : 16;
+  const itemGap = media.gtSm ? 12 : 10;
+  const iconColor = getThemeColor(theme, 'colorPress');
+  const listWidth = Math.min(screenWidth, maxWidth);
+  const cardWidth = Math.max(
+    140,
+    Math.floor(
+      (listWidth - contentPaddingHorizontal * 2 - itemGap * Math.max(columns - 1, 0)) / columns,
+    ),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshIfNeeded();
+    }, [refreshIfNeeded]),
+  );
+
+  const handleRefresh = useCallback(() => {
+    void refresh();
+  }, [refresh]);
+
+  const handleOpenProductDetails = useCallback(
+    (productId: string, productName: string) => {
+      router.push({
+        pathname: '/home/product-details',
+        params: { id: productId, name: productName },
+      });
+    },
+    [router],
+  );
+
+  const handleAddToCart = useCallback(
+    async (productId: string) => {
+      if (!user?.id) {
+        setCartFeedback('Silakan login untuk menambahkan produk ke keranjang.');
+        setTimeout(() => setCartFeedback(null), 3000);
+        return;
+      }
+
+      const { error: cartError } = await addProductToCart(user.id, productId, 1);
+
+      if (cartError) {
+        setCartFeedback(cartError.message || 'Gagal menambahkan produk ke keranjang.');
+      } else {
+        setCartFeedback('Produk berhasil ditambahkan ke keranjang.');
+      }
+
+      setTimeout(() => setCartFeedback(null), 3000);
+    },
+    [user?.id],
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: ProductListItem }) => (
+      <ProductGridItem
+        item={item}
+        width={cardWidth}
+        iconColor={iconColor}
+        onPress={handleOpenProductDetails}
+        onAddToCart={handleAddToCart}
+      />
+    ),
+    [cardWidth, handleAddToCart, handleOpenProductDetails, iconColor],
+  );
+
+  const handleLoadMore = useCallback(() => {
+    if (!hasMore) {
+      return;
+    }
+
+    void loadMore();
+  }, [hasMore, loadMore]);
+
+  if (isInitialLoading && products.length === 0) {
+    return (
+      <ScreenRoot>
+        <YStack pt={topPadding} flex={1}>
+          <LoadingState />
+        </YStack>
+      </ScreenRoot>
+    );
+  }
+
+  return (
+    <ScreenRoot>
+      <FlatList
+        data={products}
+        key={columns}
+        numColumns={columns}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        style={{ width: listWidth, alignSelf: 'center' }}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        initialNumToRender={columns * 4}
+        maxToRenderPerBatch={columns * 4}
+        updateCellsBatchingPeriod={50}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        contentContainerStyle={{
+          paddingHorizontal: contentPaddingHorizontal,
+          paddingBottom: TAB_BAR_HEIGHT + insets.bottom,
+          flexGrow: products.length === 0 ? 1 : 0,
+        }}
+        columnWrapperStyle={columns > 1 ? { gap: itemGap } : undefined}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={getThemeColor(theme, 'primary')}
+          />
+        }
+        ListHeaderComponent={
+          <ContentStack pt={topPadding} px={horizontalPadding} pb="$3">
+            {cartFeedback ? (
+              <Text fontSize={13} color="$primary" pt="$2">
+                {cartFeedback}
+              </Text>
+            ) : null}
+          </ContentStack>
+        }
+        ListEmptyComponent={
+          error ? (
+            <ErrorState message={error} />
+          ) : (
+            <ContentStack px={horizontalPadding}>
+              <EmptyState>
+                <Text fontSize={16} fontWeight="700" color="$color" textAlign="center">
+                  Tidak ada produk
+                </Text>
+                <Text fontSize={13} color="$colorSubtle" textAlign="center">
+                  Belum ada produk aktif tersedia.
+                </Text>
+              </EmptyState>
+            </ContentStack>
+          )
+        }
+        ListFooterComponent={
+          <ListFooter isFetchingMore={isFetchingMore} isRevalidating={isRevalidating} />
+        }
+      />
+    </ScreenRoot>
+  );
+}
