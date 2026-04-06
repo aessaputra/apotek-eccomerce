@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "d38d7eef32534d75370b72be089faee9f58e84a33b7273d601e42eb308017dfb"
     },
+    "checkout-payments": {
+      "source": "santiagoxor/pintureria-digital",
+      "sourceType": "github",
+      "computedHash": "6a70d32b4e4553c8559c2493cc6e4a685dae0534855bec37f1b6b3f4d0125e55"
+    },
     "code-smell-detector": {
       "source": "rysweet/amplihack",
       "sourceType": "github",
@@ -25,6 +30,11 @@
       "source": "github/awesome-copilot",
       "sourceType": "github",
       "computedHash": "bfbdbb76b17cca970d1d624e36ce72b6847860d740581c8865da796c1fef8552"
+    },
+    "create-specification": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "45b9ef98b0fb82ba0e1aee65dfb464fa1f8494a14a557b9788d73aae87e9e618"
     },
     "expo-deployment": {
       "source": "expo/skills",
