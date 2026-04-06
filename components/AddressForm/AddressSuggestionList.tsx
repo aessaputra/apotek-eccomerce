@@ -30,7 +30,7 @@ function AddressSuggestionList({
     showInitialRecommendations ? INITIAL_RECOMMENDATION_LIMIT : SEARCH_RECOMMENDATION_LIMIT,
   );
   const sectionTitle = showInitialRecommendations ? 'Rekomendasi dekat kamu' : 'Hasil pencarian';
-  const SectionIcon = showInitialRecommendations ? MapPin : Search;
+  const SectionIcon = showInitialRecommendations ? null : Search;
 
   if (trimmedQuery.length < 2 && !showInitialRecommendations) {
     return null;
@@ -40,7 +40,7 @@ function AddressSuggestionList({
     return (
       <YStack gap="$2" paddingTop="$2">
         <XStack gap="$2" alignItems="center">
-          <SectionIcon size={14} color="$colorMuted" />
+          {SectionIcon ? <SectionIcon size={14} color="$colorMuted" /> : null}
           <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
             {sectionTitle}
           </Text>
@@ -66,7 +66,7 @@ function AddressSuggestionList({
     return (
       <YStack gap="$2" paddingTop="$2">
         <XStack gap="$2" alignItems="center">
-          <SectionIcon size={14} color="$colorMuted" />
+          {SectionIcon ? <SectionIcon size={14} color="$colorMuted" /> : null}
           <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
             {sectionTitle}
           </Text>
@@ -92,7 +92,7 @@ function AddressSuggestionList({
     return (
       <YStack gap="$2" paddingTop="$2">
         <XStack gap="$2" alignItems="center">
-          <SectionIcon size={14} color="$colorMuted" />
+          {SectionIcon ? <SectionIcon size={14} color="$colorMuted" /> : null}
           <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
             {sectionTitle}
           </Text>
@@ -121,7 +121,7 @@ function AddressSuggestionList({
     return (
       <YStack gap="$2" paddingTop="$2">
         <XStack gap="$2" alignItems="center">
-          <SectionIcon size={14} color="$colorMuted" />
+          {SectionIcon ? <SectionIcon size={14} color="$colorMuted" /> : null}
           <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
             {sectionTitle}
           </Text>
@@ -149,7 +149,7 @@ function AddressSuggestionList({
   return (
     <YStack gap="$2" paddingTop="$2">
       <XStack gap="$2" alignItems="center">
-        <SectionIcon size={14} color="$colorMuted" />
+        {SectionIcon ? <SectionIcon size={14} color="$colorMuted" /> : null}
         <Text fontSize="$3" color="$colorSubtle" fontWeight="500">
           {sectionTitle}
         </Text>
