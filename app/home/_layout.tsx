@@ -41,7 +41,7 @@ function HomeStackLayout() {
         }}
       />
       <Stack.Screen
-        name="details"
+        name="search"
         options={{
           headerShown: false,
         }}

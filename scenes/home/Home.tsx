@@ -137,8 +137,8 @@ export default function Home() {
     router.push('/cart');
   };
 
-  const handleOpenDetails = () => {
-    router.push('/home/details');
+  const handleOpenSearch = () => {
+    router.push('/home/search');
   };
 
   const handleCategoryPress = useCallback(
@@ -234,7 +234,7 @@ export default function Home() {
             </Text>
 
             <SearchShell
-              onPress={handleOpenDetails}
+              onPress={handleOpenSearch}
               role="button"
               aria-label="Search products"
               aria-describedby="Open product discovery details">
