@@ -14,6 +14,7 @@ import TabBarButton from '@/components/layouts/TabBarButton';
 import TabBarIcon from '@/components/layouts/TabBarIcon';
 import WelcomeSheet from '@/components/layouts/WelcomeSheet';
 import Provider, { AuthProvider } from '@/providers';
+import { QueryProvider } from '@/providers/QueryProvider';
 import { useAppSlice } from '@/slices';
 import { DEFAULT_THEME_VALUES } from '@/themes';
 import {
@@ -219,9 +220,11 @@ function Router() {
 export default function RootLayout() {
   return (
     <Provider>
-      <AuthProvider>
-        <Router />
-      </AuthProvider>
+      <QueryProvider>
+        <AuthProvider>
+          <Router />
+        </AuthProvider>
+      </QueryProvider>
     </Provider>
   );
 }

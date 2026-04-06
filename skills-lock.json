@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "d38d7eef32534d75370b72be089faee9f58e84a33b7273d601e42eb308017dfb"
     },
+    "code-smell-detector": {
+      "source": "rysweet/amplihack",
+      "sourceType": "github",
+      "computedHash": "c225f62ccfc0dc6c70f0eea5ce18602329b04338fec18bea380c524f8bb09a69"
+    },
     "context7-auto-research": {
       "source": "davila7/claude-code-templates",
       "sourceType": "github",

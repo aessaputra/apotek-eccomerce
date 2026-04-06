@@ -263,6 +263,35 @@ export async function getAreaById(
   }
 }
 
+export async function searchPostalCodesByArea(
+  province: string,
+  city: string,
+  district: string,
+): Promise<{ data: BiteshipArea[]; error: Error | null }> {
+  try {
+    const searchQuery = `${district}, ${city}, ${province}`;
+    const { data, error } = await invokeBiteship({
+      action: 'maps',
+      payload: { input: searchQuery },
+    });
+
+    if (error) {
+      return { data: [], error };
+    }
+
+    const response = (data || {}) as BiteshipProxyResponse<BiteshipArea[]>;
+    const areas = Array.isArray(response.areas)
+      ? response.areas
+      : Array.isArray(response.data as unknown[] | undefined)
+        ? ((response.data as unknown[]).filter(Boolean) as BiteshipArea[])
+        : [];
+
+    return { data: areas, error: null };
+  } catch (error) {
+    return { data: [], error: error as Error };
+  }
+}
+
 async function resolveDestinationAreaId(
   address: Address,
 ): Promise<{ areaId: string | null; error: Error | null }> {

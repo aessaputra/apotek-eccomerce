@@ -4,6 +4,7 @@ import type {
   RegionalProvince,
   RegionalRegency,
 } from '@/types/regional';
+import { normalizeAreaNameForApi } from '@/utils/areaNormalization';
 
 const REGIONAL_BASE_URL = 'https://wilayah.id/api';
 const POSTAL_BASE_URL =
@@ -12,15 +13,6 @@ const POSTAL_BASE_URL =
 type RegionalApiEnvelope<T> = {
   data?: T[];
 };
-
-function normalizeAreaName(value: string): string {
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(/^KABUPATEN\s+/, '')
-    .replace(/^KOTA\s+/, '')
-    .replace(/\s+/g, ' ');
-}
 
 async function fetchRegional<T>(path: string): Promise<{ data: T[]; error: Error | null }> {
   try {
@@ -109,7 +101,9 @@ export async function getPostalCodesByDistrict(
     );
 
     const matchedDistrict = districtResults.find(district => {
-      return district && normalizeAreaName(district.name) === normalizeAreaName(districtName);
+      return (
+        district && normalizeAreaNameForApi(district.name) === normalizeAreaNameForApi(districtName)
+      );
     });
 
     if (!matchedDistrict) {
