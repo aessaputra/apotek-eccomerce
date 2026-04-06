@@ -26,9 +26,38 @@ const DEEP_LINK_PATTERNS = [
   'simulator.sandbox.midtrans.com',
 ];
 
+const TRUSTED_PAYMENT_HOSTS = [
+  // Production
+  'app.midtrans.com',
+  'midtrans.com',
+  'snap.midtrans.com',
+  '3ds.midtrans.com',
+  'secure.midtrans.com',
+  'api.midtrans.com',
+  'cdn.midtrans.com',
+  // Sandbox
+  'app.sandbox.midtrans.com',
+  'sandbox.midtrans.com',
+  'snap-sandbox.midtrans.com',
+  'api.sandbox.midtrans.com',
+  // Payment methods
+  'gojek.midtrans.com',
+  'gopay.midtrans.com',
+  'qris.midtrans.com',
+];
+
 function isDeepLink(url: string): boolean {
   const lowerUrl = url.toLowerCase();
   return DEEP_LINK_PATTERNS.some(pattern => lowerUrl.includes(pattern));
+}
+
+function isTrustedPaymentUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    return TRUSTED_PAYMENT_HOSTS.some(host => urlObj.hostname.endsWith(host));
+  } catch {
+    return false;
+  }
 }
 
 function translateCheckoutError(message: string | undefined, fallback: string): string {
@@ -93,6 +122,11 @@ export default function Payment() {
   const resolvedOrderId = useMemo(
     () => (Array.isArray(orderId) ? orderId[0] : orderId) ?? '',
     [orderId],
+  );
+
+  const isValidPaymentUrl = useMemo(
+    () => isTrustedPaymentUrl(resolvedPaymentUrl),
+    [resolvedPaymentUrl],
   );
 
   const [isPolling, setIsPolling] = useState(false);
@@ -235,25 +269,31 @@ export default function Payment() {
     return null;
   }, []);
 
-  if (!resolvedPaymentUrl) {
+  if (!resolvedPaymentUrl || !isValidPaymentUrl) {
     return (
       <YStack
         flex={1}
         backgroundColor="$background"
         alignItems="center"
         justifyContent="center"
-        px="$5">
-        <Text textAlign="center" color="$danger" fontWeight="700" mb="$2">
-          Link pembayaran tidak ditemukan.
+        px="$5"
+        gap="$3">
+        <Text textAlign="center" color="$danger" fontWeight="700">
+          {!resolvedPaymentUrl
+            ? 'Link pembayaran tidak ditemukan.'
+            : 'Link pembayaran tidak valid.'}
+        </Text>
+        <Text textAlign="center" color="$colorSubtle" fontSize="$3">
+          Silakan coba lagi atau hubungi customer service.
         </Text>
         <TamaguiButton
           backgroundColor="$primary"
           color="$onPrimary"
           borderRadius="$3"
           minHeight={44}
-          onPress={() => router.replace('/cart')}
-          aria-label="Kembali ke keranjang">
-          Kembali ke Keranjang
+          onPress={() => router.replace(ORDERS_ROUTE)}
+          aria-label="Kembali ke pesanan">
+          Kembali ke Pesanan
         </TamaguiButton>
       </YStack>
     );
@@ -354,6 +394,11 @@ export default function Payment() {
               const navigationStatus = handlePaymentNavigation(url);
               if (navigationStatus) {
                 void finalizePaymentFlow(navigationStatus);
+                return false;
+              }
+
+              if (!isTrustedPaymentUrl(url)) {
+                setPaymentError('Navigasi ke halaman tidak dikenal diblokir untuk keamanan.');
                 return false;
               }
 

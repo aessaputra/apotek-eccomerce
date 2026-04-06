@@ -17,10 +17,45 @@ function OrdersStackLayout() {
         }}
       />
       <Stack.Screen
+        name="unpaid"
+        options={{
+          title: 'Belum Bayar',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
+        name="packing"
+        options={{
+          title: 'Dikemas',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
+        name="shipped"
+        options={{
+          title: 'Dikirim',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
+        name="completed"
+        options={{
+          title: 'Selesai',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
         name="success"
         options={{
           title: 'Pembayaran Berhasil',
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="[orderId]"
+        options={{
+          title: 'Detail Pesanan',
+          headerTitleAlign: 'center',
         }}
       />
     </Stack>

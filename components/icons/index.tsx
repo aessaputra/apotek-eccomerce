@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 import {
   AlertCircle,
   Bell,
+  CheckCircle2,
   ChevronLeft,
   CircleHelp,
   Check,
@@ -26,6 +27,7 @@ import {
   Trash2,
   Truck,
   User,
+  Wallet,
   Wrench,
   X,
   XCircle,
@@ -147,4 +149,12 @@ export function WrenchIcon(props: IconProps) {
 
 export function SettingsIcon(props: IconProps) {
   return <Settings2 {...props} />;
+}
+
+export function WalletIcon(props: IconProps) {
+  return <Wallet {...props} />;
+}
+
+export function CheckCircleIcon(props: IconProps) {
+  return <CheckCircle2 {...props} />;
 }

@@ -6,6 +6,7 @@ export { useAddressSuggestions } from './useAddressSuggestions';
 export { useHomeData } from './useHomeData';
 export { useAllProductsPaginated } from './useAllProductsPaginated';
 export { useOrdersPaginated } from './useOrdersPaginated';
+export { useUnpaidOrdersPaginated } from './useUnpaidOrdersPaginated';
 export { useProductsPaginated } from './useProductsPaginated';
 export { useDebounce } from './useDebounce';
 export { useCartAddress } from './useCartAddress';
@@ -18,6 +19,10 @@ export type { UseAddressSuggestionsReturn } from './useAddressSuggestions';
 export type { UseHomeDataReturn, HomeDataState } from './useHomeData';
 export type { UseAllProductsPaginatedReturn } from './useAllProductsPaginated';
 export type { UseOrdersPaginatedReturn, OrdersPerformanceSnapshot } from './useOrdersPaginated';
+export type {
+  UseUnpaidOrdersPaginatedReturn,
+  UnpaidOrdersPerformanceSnapshot,
+} from './useUnpaidOrdersPaginated';
 export type {
   UseProductsPaginatedReturn,
   ProductsPerformanceSnapshot,

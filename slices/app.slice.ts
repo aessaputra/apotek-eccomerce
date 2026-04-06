@@ -120,6 +120,7 @@ export interface AppState {
   user?: User;
   cartClearedAt: number | null;
   ordersCache: Record<string, OrdersCacheEntry | undefined>;
+  unpaidOrdersCache: Record<string, OrdersCacheEntry | undefined>;
   productsCache: Record<string, ProductsCacheEntry | undefined>;
 }
 
@@ -129,6 +130,7 @@ const initialState: AppState = {
   user: undefined,
   cartClearedAt: null,
   ordersCache: {},
+  unpaidOrdersCache: {},
   productsCache: {},
 };
 
@@ -199,6 +201,56 @@ const slice = createSlice({
     },
     clearOrdersCacheEntry: (state: AppState, { payload }: PayloadAction<string>) => {
       delete state.ordersCache[payload];
+    },
+    upsertUnpaidOrdersCachePage: (
+      state: AppState,
+      { payload }: PayloadAction<UpsertOrdersCachePagePayload>,
+    ) => {
+      const currentEntry = state.unpaidOrdersCache[payload.userId] ?? createOrdersCacheEntry();
+      const nextItems =
+        payload.replace || payload.offset === 0
+          ? payload.items
+          : mergeOrders(currentEntry.items, payload.items);
+
+      state.unpaidOrdersCache[payload.userId] = {
+        ...currentEntry,
+        items: nextItems,
+        hasMore: payload.hasMore,
+        lastFetchedAt: payload.fetchedAt,
+        lastUpdatedAt: Date.now(),
+        payloadBytes: payload.payloadBytes,
+        queryDurationMs: payload.durationMs,
+        status: 'success',
+        error: null,
+      };
+    },
+    setUnpaidOrdersCacheStatus: (
+      state: AppState,
+      { payload }: PayloadAction<SetOrdersCacheStatusPayload>,
+    ) => {
+      const currentEntry = state.unpaidOrdersCache[payload.userId] ?? createOrdersCacheEntry();
+      state.unpaidOrdersCache[payload.userId] = {
+        ...currentEntry,
+        status: payload.status,
+        error: payload.error ?? null,
+      };
+    },
+    invalidateUnpaidOrdersCache: (state: AppState, { payload }: PayloadAction<string>) => {
+      const currentEntry = state.unpaidOrdersCache[payload];
+
+      if (!currentEntry) {
+        return;
+      }
+
+      state.unpaidOrdersCache[payload] = {
+        ...currentEntry,
+        lastFetchedAt: null,
+        status: 'idle',
+        error: null,
+      };
+    },
+    clearUnpaidOrdersCacheEntry: (state: AppState, { payload }: PayloadAction<string>) => {
+      delete state.unpaidOrdersCache[payload];
     },
     upsertProductsCachePage: (
       state: AppState,

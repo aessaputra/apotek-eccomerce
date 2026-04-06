@@ -470,7 +470,7 @@ export async function pollOrderPaymentStatus(
     }
 
     const paymentStatus = data?.payment_status ?? '';
-    const terminalStates = ['settlement', 'capture', 'cancel', 'deny', 'expire'];
+    const terminalStates = ['settlement', 'capture', 'cancel', 'deny', 'expire', 'failure'];
     if (terminalStates.includes(paymentStatus)) {
       return { data, error: null };
     }

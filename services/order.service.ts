@@ -147,6 +147,7 @@ export interface GetUserOrdersParams {
   offset?: number;
   limit?: number;
   signal?: AbortSignal;
+  paymentStatus?: 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel';
 }
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
@@ -310,17 +311,20 @@ export async function getOrdersOptimized(
   try {
     const data = await withRetry(
       async () => {
-        const query = withAbortSignal(
-          supabase
-            .from('orders')
-            .select(ORDER_LIST_SELECT)
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .range(offset, offset + fetchLimit - 1),
-          params.signal,
-        );
+        let query = supabase
+          .from('orders')
+          .select(ORDER_LIST_SELECT)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + fetchLimit - 1);
 
-        const { data: rows, error } = await query;
+        if (params.paymentStatus) {
+          query = query.eq('payment_status', params.paymentStatus);
+        }
+
+        const queryWithSignal = withAbortSignal(query, params.signal);
+
+        const { data: rows, error } = await queryWithSignal;
 
         if (error) {
           throw error;
