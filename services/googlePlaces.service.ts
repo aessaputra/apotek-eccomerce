@@ -16,7 +16,6 @@ const GOOGLE_GEOCODING_API_BASE = 'https://maps.googleapis.com/maps/api';
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RECOMMENDATION_CACHE_TTL_MS = 10 * 60 * 1000;
 const RECOMMENDATION_TARGET_COUNT = 6;
-const HEX_RING_OFFSET_METERS = 40;
 
 interface CachedPlaceDetails {
   data: GooglePlaceDetails;
@@ -45,85 +44,283 @@ function getReverseGeocodeCacheKey(lat: number, lng: number): string {
   return `${lat.toFixed(5)},${lng.toFixed(5)}`;
 }
 
-function generateHexOffsets(
-  center: { latitude: number; longitude: number },
-  radiusMeters: number,
-): Array<{ latitude: number; longitude: number }> {
-  const points: Array<{ latitude: number; longitude: number }> = [];
-  const latOffset = radiusMeters / 111320;
-  const cosLatitude = Math.cos((center.latitude * Math.PI) / 180);
-  const lngOffset = radiusMeters / (111320 * (Math.abs(cosLatitude) < 1e-6 ? 1e-6 : cosLatitude));
-
-  for (let index = 0; index < 6; index += 1) {
-    const angle = (index * 60 * Math.PI) / 180;
-    points.push({
-      latitude: center.latitude + latOffset * Math.cos(angle),
-      longitude: center.longitude + lngOffset * Math.sin(angle),
-    });
-  }
-
-  return points;
+interface NearbyPlaceResult {
+  places?: Array<{
+    id?: string;
+    displayName?: {
+      text?: string;
+      languageCode?: string;
+    };
+    formattedAddress?: string;
+    shortFormattedAddress?: string;
+    primaryType?: string;
+    primaryTypeDisplayName?: {
+      text?: string;
+      languageCode?: string;
+    };
+    postalAddress?: {
+      addressLines?: string[];
+      locality?: string;
+      administrativeArea?: string;
+      postalCode?: string;
+    };
+    addressComponents?: Array<{
+      longText?: string;
+      shortText?: string;
+      types?: string[];
+    }>;
+    location?: {
+      latitude?: number;
+      longitude?: number;
+    };
+  }>;
 }
 
-function deduplicateAddressResults(
-  results: Array<{
-    placeId: string;
-    formattedAddress: string;
-    suggestion: AddressSuggestion;
-  }>,
-): AddressSuggestion[] {
+type NearbyPlace = NonNullable<NearbyPlaceResult['places']>[number];
+
+const PLUS_CODE_REGEX = /^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{2,3}$/i;
+
+function normalizeAddressText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[.,\-/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getLeadingAddressSegment(value: string): string {
+  return value.split(',')[0]?.trim() ?? '';
+}
+
+function isPlusCode(value: string): boolean {
+  return PLUS_CODE_REGEX.test(value.trim());
+}
+
+function startsWithPlusCode(value: string): boolean {
+  const leadingSegment = getLeadingAddressSegment(value);
+  return Boolean(leadingSegment) && isPlusCode(leadingSegment);
+}
+
+function sanitizeAddressCandidate(value?: string): string {
+  const trimmedValue = value?.trim() ?? '';
+  if (!trimmedValue || startsWithPlusCode(trimmedValue)) {
+    return '';
+  }
+  return trimmedValue;
+}
+
+function buildPostalAddressText(place: NearbyPlace): string {
+  const parts = [
+    ...(place.postalAddress?.addressLines ?? []),
+    place.postalAddress?.locality,
+    place.postalAddress?.administrativeArea,
+    place.postalAddress?.postalCode,
+  ]
+    .map(part => part?.trim() ?? '')
+    .filter(Boolean);
+
+  return sanitizeAddressCandidate(parts.join(', '));
+}
+
+function buildAddressComponentsText(place: NearbyPlace): string {
+  const components = place.addressComponents ?? [];
+  const route =
+    components.find(component => component.types?.includes('route'))?.longText?.trim() ?? '';
+  const locality =
+    components.find(component => component.types?.includes('locality'))?.longText?.trim() ?? '';
+  const administrativeArea =
+    components
+      .find(component => component.types?.includes('administrative_area_level_2'))
+      ?.longText?.trim() ?? '';
+  const postalCode =
+    components.find(component => component.types?.includes('postal_code'))?.longText?.trim() ?? '';
+
+  return sanitizeAddressCandidate(
+    [route, locality, administrativeArea, postalCode].filter(Boolean).join(', '),
+  );
+}
+
+function getFirstSafeCandidate(candidates: Array<string | undefined>): string {
+  for (const candidate of candidates) {
+    const sanitizedCandidate = sanitizeAddressCandidate(candidate);
+    if (sanitizedCandidate) {
+      return sanitizedCandidate;
+    }
+  }
+
+  return '';
+}
+
+function getNearbyPrimaryText(place: NearbyPlace): string {
+  return (
+    getFirstSafeCandidate([
+      place.displayName?.text,
+      place.primaryTypeDisplayName?.text,
+      place.primaryType,
+      place.shortFormattedAddress,
+      place.formattedAddress,
+      buildPostalAddressText(place),
+      buildAddressComponentsText(place),
+    ]) || 'Lokasi'
+  );
+}
+
+function getNearbySecondaryText(place: NearbyPlace, primaryText: string): string {
+  const shortFormattedAddress = sanitizeAddressCandidate(place.shortFormattedAddress);
+  if (
+    shortFormattedAddress &&
+    normalizeAddressText(shortFormattedAddress) !== normalizeAddressText(primaryText)
+  ) {
+    return shortFormattedAddress;
+  }
+
+  const formattedAddress = sanitizeAddressCandidate(place.formattedAddress);
+  if (formattedAddress) {
+    const segments = formattedAddress
+      .split(',')
+      .map(segment => segment.trim())
+      .filter(Boolean);
+
+    if (
+      segments.length > 0 &&
+      normalizeAddressText(segments[0] ?? '') === normalizeAddressText(primaryText)
+    ) {
+      const remainder = sanitizeAddressCandidate(segments.slice(1).join(', '));
+      if (remainder) {
+        return remainder;
+      }
+    }
+
+    if (normalizeAddressText(formattedAddress) !== normalizeAddressText(primaryText)) {
+      return formattedAddress;
+    }
+  }
+
+  const postalAddress = buildPostalAddressText(place);
+  if (postalAddress && normalizeAddressText(postalAddress) !== normalizeAddressText(primaryText)) {
+    return postalAddress;
+  }
+
+  const addressComponents = buildAddressComponentsText(place);
+  if (
+    addressComponents &&
+    normalizeAddressText(addressComponents) !== normalizeAddressText(primaryText)
+  ) {
+    return addressComponents;
+  }
+
+  return '';
+}
+
+function mapNearbyPlaceToSuggestion(place: NearbyPlace): AddressSuggestion | null {
+  const placeId = place.id ?? '';
+  const fullAddress = getFirstSafeCandidate([
+    place.formattedAddress,
+    place.shortFormattedAddress,
+    buildPostalAddressText(place),
+    buildAddressComponentsText(place),
+  ]);
+  if (!placeId || !fullAddress) {
+    return null;
+  }
+
+  const primaryText = getNearbyPrimaryText(place);
+  if (primaryText === 'Lokasi' || startsWithPlusCode(primaryText)) {
+    return null;
+  }
+
+  return {
+    id: placeId,
+    placeId,
+    name: primaryText,
+    fullAddress,
+    primaryText,
+    secondaryText: getNearbySecondaryText(place, primaryText),
+    latitude: place.location?.latitude,
+    longitude: place.location?.longitude,
+    buildingName: place.displayName?.text?.trim() || undefined,
+  };
+}
+
+function deduplicateSuggestions(results: AddressSuggestion[]): AddressSuggestion[] {
   const seenPlaceIds = new Set<string>();
   const seenNormalizedAddresses = new Set<string>();
   const unique: AddressSuggestion[] = [];
 
-  for (const item of results) {
-    if (seenPlaceIds.has(item.placeId)) {
+  for (const suggestion of results) {
+    if (seenPlaceIds.has(suggestion.placeId)) {
       continue;
     }
-    seenPlaceIds.add(item.placeId);
+    seenPlaceIds.add(suggestion.placeId);
 
-    const normalizedAddress = item.formattedAddress
-      .toLowerCase()
-      .replace(/[.,\-\/]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
+    const normalizedAddress = normalizeAddressText(suggestion.fullAddress);
     if (seenNormalizedAddresses.has(normalizedAddress)) {
       continue;
     }
     seenNormalizedAddresses.add(normalizedAddress);
 
-    unique.push(item.suggestion);
+    unique.push(suggestion);
   }
 
   return unique;
 }
 
-function mapSelectedAddressToSuggestion(
-  address: SelectedAddressSuggestion,
-): AddressSuggestion | null {
-  const fullAddress = address.fullAddress?.trim() ?? '';
-  if (!fullAddress) {
-    return null;
+async function searchNearbyPlaces(
+  location: { latitude: number; longitude: number },
+  signal?: AbortSignal,
+): Promise<{ data: AddressSuggestion[]; error: Error | null }> {
+  const configurationError = ensureConfigured();
+  if (configurationError) {
+    return { data: [], error: configurationError };
   }
 
-  const segments = fullAddress
-    .split(',')
-    .map(segment => segment.trim())
-    .filter(Boolean);
-  const primaryText = segments[0] ?? fullAddress;
-  const secondaryText = segments.length > 1 ? segments.slice(1).join(', ') : fullAddress;
-
-  return {
-    id: address.placeId,
-    placeId: address.placeId,
-    name: primaryText,
-    fullAddress,
-    primaryText,
-    secondaryText,
-    latitude: address.latitude,
-    longitude: address.longitude,
+  const requestBody = {
+    locationRestriction: {
+      circle: {
+        center: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        radius: 500.0,
+      },
+    },
+    maxResultCount: 10,
+    rankPreference: 'DISTANCE',
+    languageCode: 'id',
+    regionCode: 'ID',
   };
+
+  const url = `${GOOGLE_PLACES_API_BASE}/places:searchNearby`;
+
+  if (__DEV__) {
+    console.log('[GooglePlaces] Nearby search for location:', location);
+  }
+
+  const { data, error } = await fetchPlacesJson<NearbyPlaceResult>({
+    url,
+    method: 'POST',
+    body: requestBody,
+    signal,
+    fieldMask: NEARBY_SEARCH_FIELD_MASK,
+  });
+
+  if (error) {
+    return { data: [], error };
+  }
+
+  if (!data?.places || data.places.length === 0) {
+    return { data: [], error: null };
+  }
+
+  const suggestions = data.places
+    .map(mapNearbyPlaceToSuggestion)
+    .filter((suggestion): suggestion is AddressSuggestion => suggestion !== null);
+
+  if (__DEV__) {
+    console.log('[GooglePlaces] Nearby search results:', suggestions.length);
+  }
+
+  return { data: suggestions, error: null };
 }
 
 export async function getAddressRecommendations(
@@ -144,105 +341,13 @@ export async function getAddressRecommendations(
     return { data: cached.data, error: null };
   }
 
-  const allPoints = [location, ...generateHexOffsets(location, HEX_RING_OFFSET_METERS)];
+  const { data: nearbyResults, error: nearbyError } = await searchNearbyPlaces(location, signal);
 
-  if (__DEV__) {
-    console.log('[GooglePlaces] Reverse geocoding', allPoints.length, 'points for recommendations');
+  if (nearbyError) {
+    return { data: [], error: nearbyError };
   }
 
-  const results = await Promise.all(
-    allPoints.map(point =>
-      reverseGeocodeCoordinates({
-        latitude: point.latitude,
-        longitude: point.longitude,
-        signal,
-      }),
-    ),
-  );
-
-  const abortError = results.find(result => result.error?.name === 'AbortError')?.error;
-  if (abortError) {
-    return { data: [], error: abortError };
-  }
-
-  const failedCount = results.filter(result => result.error && !result.data).length;
-  if (failedCount === results.length) {
-    const firstError = results.find(result => result.error)?.error;
-    return {
-      data: [],
-      error: firstError ?? new Error('Gagal memuat rekomendasi alamat.'),
-    };
-  }
-
-  const candidates: Array<{
-    placeId: string;
-    formattedAddress: string;
-    suggestion: AddressSuggestion;
-  }> = [];
-
-  for (const result of results) {
-    if (!result.data) {
-      continue;
-    }
-
-    const suggestion = mapSelectedAddressToSuggestion(result.data);
-    if (!suggestion) {
-      continue;
-    }
-
-    candidates.push({
-      placeId: result.data.placeId,
-      formattedAddress: suggestion.fullAddress,
-      suggestion,
-    });
-  }
-
-  let unique = deduplicateAddressResults(candidates);
-
-  if (unique.length < 4) {
-    if (__DEV__) {
-      console.log('[GooglePlaces] Too few results, trying second ring at 80m');
-    }
-
-    const secondRing = generateHexOffsets(location, 80);
-    const secondResults = await Promise.all(
-      secondRing.map(point =>
-        reverseGeocodeCoordinates({
-          latitude: point.latitude,
-          longitude: point.longitude,
-          signal,
-        }),
-      ),
-    );
-
-    const secondAbortError = secondResults.find(
-      result => result.error?.name === 'AbortError',
-    )?.error;
-    if (secondAbortError) {
-      return { data: [], error: secondAbortError };
-    }
-
-    for (const result of secondResults) {
-      if (!result.data) {
-        continue;
-      }
-
-      const suggestion = mapSelectedAddressToSuggestion(result.data);
-      if (!suggestion) {
-        continue;
-      }
-
-      candidates.push({
-        placeId: result.data.placeId,
-        formattedAddress: suggestion.fullAddress,
-        suggestion,
-      });
-    }
-
-    unique = deduplicateAddressResults(candidates);
-  }
-
-  const finalResults = unique.slice(0, RECOMMENDATION_TARGET_COUNT);
+  const finalResults = deduplicateSuggestions(nearbyResults).slice(0, RECOMMENDATION_TARGET_COUNT);
   recommendationCache.set(cacheKey, { data: finalResults, cachedAt: Date.now() });
 
   if (__DEV__) {
@@ -288,6 +393,8 @@ const AUTOCOMPLETE_FIELD_MASK =
 // Essentials SKU fields only (excluding displayName which triggers Pro SKU)
 // Cost: $0.007/request vs $0.015/request with displayName
 const PLACE_DETAILS_FIELD_MASK = 'id,formattedAddress,addressComponents,location,types';
+const NEARBY_SEARCH_FIELD_MASK =
+  'places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.primaryType,places.primaryTypeDisplayName,places.postalAddress,places.addressComponents,places.location';
 
 function getGoogleApiKey(): string {
   return config.googleApiKey?.trim() ?? '';
@@ -454,13 +561,19 @@ export async function getPlacePredictions(
       const prediction = suggestion.placePrediction;
       const placeId = normalizePlaceId(prediction?.placeId ?? prediction?.place);
       const description = prediction?.text?.text ?? '';
-      const mainText =
-        prediction?.structuredFormat?.mainText?.text ?? description.split(',')[0] ?? '';
-      const secondaryText =
+      const mainText = sanitizeAddressCandidate(
+        prediction?.structuredFormat?.mainText?.text ?? description.split(',')[0] ?? '',
+      );
+      const secondaryText = sanitizeAddressCandidate(
         prediction?.structuredFormat?.secondaryText?.text ??
-        description.split(',').slice(1).join(',').trim();
+          description.split(',').slice(1).join(',').trim(),
+      );
 
       if (!prediction || !placeId || !description) {
+        return null;
+      }
+
+      if (!mainText || startsWithPlusCode(description)) {
         return null;
       }
 
@@ -655,6 +768,7 @@ export async function reverseGeocodeCoordinates(params: {
         short_name: string;
         types: string[];
       }>;
+      types: string[];
       geometry: {
         location: {
           lat: number;
@@ -675,6 +789,9 @@ export async function reverseGeocodeCoordinates(params: {
 
   const result = data.results[0];
   const components = result.address_components;
+
+  // Extract building name from premise type (e.g., "Adismart Ciruas", "Gedung X")
+  const premise = components.find(c => c.types.includes('premise'))?.long_name ?? '';
 
   const route = components.find(c => c.types.includes('route'))?.long_name ?? '';
   const streetNumber = components.find(c => c.types.includes('street_number'))?.long_name ?? '';
@@ -713,6 +830,7 @@ export async function reverseGeocodeCoordinates(params: {
     latitude: result.geometry.location.lat,
     longitude: result.geometry.location.lng,
     accuracy: null,
+    buildingName: premise || undefined,
   };
 
   reverseGeocodeCache.set(cacheKey, { data: address, cachedAt: Date.now() });

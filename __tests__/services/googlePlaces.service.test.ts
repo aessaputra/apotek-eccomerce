@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from '@jest/globals';
+import type { SelectedAddressSuggestion } from '@/types/geocoding';
 import {
   __clearPlaceDetailsCache,
   __clearRecommendationCache,
@@ -43,6 +44,49 @@ function createReverseGeocodeResponse(params: {
         },
       ],
       status: 'OK',
+    }),
+  } as Response;
+}
+
+function createNearbySearchResponse(params: {
+  places: Array<{
+    id: string;
+    displayName: string;
+    formattedAddress: string;
+    shortFormattedAddress?: string;
+    primaryType?: string;
+    primaryTypeDisplayName?: string;
+    postalAddress?: {
+      addressLines?: string[];
+      locality?: string;
+      administrativeArea?: string;
+      postalCode?: string;
+    };
+    addressComponents?: Array<{
+      longText?: string;
+      shortText?: string;
+      types?: string[];
+    }>;
+    latitude: number;
+    longitude: number;
+  }>;
+}): Response {
+  return {
+    ok: true,
+    json: async () => ({
+      places: params.places.map(place => ({
+        id: place.id,
+        displayName: { text: place.displayName, languageCode: 'id' },
+        formattedAddress: place.formattedAddress,
+        shortFormattedAddress: place.shortFormattedAddress,
+        primaryType: place.primaryType,
+        primaryTypeDisplayName: place.primaryTypeDisplayName
+          ? { text: place.primaryTypeDisplayName, languageCode: 'id' }
+          : undefined,
+        postalAddress: place.postalAddress,
+        addressComponents: place.addressComponents,
+        location: { latitude: place.latitude, longitude: place.longitude },
+      })),
     }),
   } as Response;
 }
@@ -142,6 +186,75 @@ describe('googlePlaces.service', () => {
       expect(result.error).toBeDefined();
       expect(result.data).toEqual([]);
     });
+
+    test('filters autocomplete predictions when main text is a Plus Code', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          suggestions: [
+            {
+              placePrediction: {
+                place: 'places/plus-1',
+                placeId: 'plus-1',
+                text: { text: 'V6FJ+Q3G, Pelawad, Ciruas' },
+                structuredFormat: {
+                  mainText: { text: 'V6FJ+Q3G' },
+                  secondaryText: { text: 'Pelawad, Ciruas' },
+                },
+                types: ['geocode'],
+              },
+            },
+            {
+              placePrediction: {
+                place: 'places/safe-1',
+                placeId: 'safe-1',
+                text: { text: 'Jalan Raya Serang, Ciruas' },
+                structuredFormat: {
+                  mainText: { text: 'Jalan Raya Serang' },
+                  secondaryText: { text: 'Ciruas' },
+                },
+                types: ['route'],
+              },
+            },
+          ],
+        }),
+      } as Response);
+
+      const result = await getPlacePredictions('jalan', 'session-123');
+
+      expect(result.error).toBeNull();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]?.placeId).toBe('safe-1');
+    });
+
+    test('clears autocomplete secondary text when it starts with a Plus Code', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          suggestions: [
+            {
+              placePrediction: {
+                place: 'places/safe-2',
+                placeId: 'safe-2',
+                text: { text: 'Adismart Ciruas, V6FJ+R22' },
+                structuredFormat: {
+                  mainText: { text: 'Adismart Ciruas' },
+                  secondaryText: { text: 'V6FJ+R22' },
+                },
+                types: ['establishment'],
+              },
+            },
+          ],
+        }),
+      } as Response);
+
+      const result = await getPlacePredictions('adis', 'session-123');
+
+      expect(result.error).toBeNull();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]?.mainText).toBe('Adismart Ciruas');
+      expect(result.data[0]?.secondaryText).toBe('');
+    });
   });
 
   describe('getPlaceDetails', () => {
@@ -208,92 +321,100 @@ describe('googlePlaces.service', () => {
   });
 
   describe('getAddressRecommendations', () => {
-    test('reverse geocodes center + 6 hex ring points and returns deduplicated results', async () => {
-      mockFetch
-        .mockResolvedValueOnce(
-          createReverseGeocodeResponse({
-            placeId: 'place-1',
-            formattedAddress:
-              'Jalan Ciruas Petir, RT.14/RW.4, Kp. Ampian, Ds. Pipitan, Walantaka, Kota Serang, Banten 42183',
-            latitude: -6.12,
-            longitude: 106.17,
-          }),
-        )
-        .mockResolvedValueOnce(
-          createReverseGeocodeResponse({
-            placeId: 'place-1',
-            formattedAddress:
-              'Jalan Ciruas Petir, RT.14/RW.4, Kp. Ampian, Ds. Pipitan, Walantaka, Kota Serang, Banten 42183',
-            latitude: -6.1201,
-            longitude: 106.1701,
-          }),
-        )
-        .mockResolvedValueOnce(
-          createReverseGeocodeResponse({
-            placeId: 'place-2',
-            formattedAddress: 'Jalan Raya Serang, Walantaka, Kota Serang, Banten 42183',
-            latitude: -6.121,
-            longitude: 106.171,
-          }),
-        )
-        .mockResolvedValueOnce(
-          createReverseGeocodeResponse({
-            placeId: 'place-3',
-            formattedAddress: 'Jalan Raya Serang Barat, Walantaka, Kota Serang, Banten 42183',
-            latitude: -6.122,
-            longitude: 106.172,
-          }),
-        )
-        .mockResolvedValueOnce(
-          createReverseGeocodeResponse({
-            placeId: 'place-4',
-            formattedAddress: 'Jalan Walantaka, Pipitan, Kota Serang, Banten 42183',
-            latitude: -6.123,
-            longitude: 106.173,
-          }),
-        )
-        .mockResolvedValueOnce(
-          createReverseGeocodeResponse({
-            placeId: 'place-5',
-            formattedAddress: 'Jalan Pipitan, Walantaka, Kota Serang, Banten 42183',
-            latitude: -6.124,
-            longitude: 106.174,
-          }),
-        )
-        .mockResolvedValueOnce(
-          createReverseGeocodeResponse({
-            placeId: 'place-6',
-            formattedAddress: 'Jalan Ampian, Pipitan, Kota Serang, Banten 42183',
-            latitude: -6.125,
-            longitude: 106.175,
-          }),
-        );
+    test('searches nearby places and returns results with building names', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-1',
+              displayName: 'Mie Gacoan Ciruas Serang',
+              formattedAddress:
+                'Mie Gacoan Ciruas Serang, Jalan Raya Serang Jkt, Pelawad, Ciruas, Kab. Serang, Banten 42182',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+            {
+              id: 'place-2',
+              displayName: 'Adismart Ciruas',
+              formattedAddress:
+                'Adismart Ciruas, Jalan Raya Serang Jkt, Citerep, Ciruas, Kab. Serang, Banten 42182',
+              latitude: -6.121,
+              longitude: 106.171,
+            },
+            {
+              id: 'place-3',
+              displayName: 'Kantor Upt. Pengawasan Ketenagakerjaan',
+              formattedAddress:
+                'Kantor Upt. Pengawasan Ketenagakerjaan, Jalan Raya Serang Jakarta, Ranjeng, Ciruas, Kab. Serang, Banten 42182',
+              latitude: -6.122,
+              longitude: 106.172,
+            },
+          ],
+        }),
+      );
 
       const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
 
       expect(result.error).toBeNull();
-      expect(result.data).toHaveLength(6);
+      expect(result.data.length).toBeGreaterThanOrEqual(3);
       expect(result.data[0]).toEqual(
         expect.objectContaining({
           placeId: 'place-1',
-          name: 'Jalan Ciruas Petir',
-          primaryText: 'Jalan Ciruas Petir',
+          name: 'Mie Gacoan Ciruas Serang',
+          primaryText: 'Mie Gacoan Ciruas Serang',
+          secondaryText: 'Jalan Raya Serang Jkt, Pelawad, Ciruas, Kab. Serang, Banten 42182',
+          buildingName: 'Mie Gacoan Ciruas Serang',
         }),
       );
-      expect(mockFetch).toHaveBeenCalledTimes(7);
+    });
+
+    test('prefers shortFormattedAddress for secondary text', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-1',
+              displayName: 'Adismart Ciruas',
+              formattedAddress:
+                'Adismart Ciruas, Jalan Raya Serang Jkt, Citerep, Ciruas, Kab. Serang, Banten 42182, Indonesia',
+              shortFormattedAddress:
+                'Jalan Raya Serang Jkt, Citerep, Ciruas, Kab. Serang, Banten 42182',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+          ],
+        }),
+      );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data[0]?.secondaryText).toBe(
+        'Jalan Raya Serang Jkt, Citerep, Ciruas, Kab. Serang, Banten 42182',
+      );
     });
 
     test('uses cached recommendations on repeated calls', async () => {
-      for (let index = 0; index < 7; index += 1) {
-        mockFetch.mockResolvedValueOnce(
-          createReverseGeocodeResponse({
-            placeId: `place-${index + 1}`,
-            formattedAddress: `Jalan ${index + 1}, Walantaka, Kota Serang, Banten 42183`,
-            latitude: -6.12 + index * 0.001,
-            longitude: 106.17 + index * 0.001,
-          }),
-        );
-      }
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-1',
+              displayName: 'Mie Gacoan',
+              formattedAddress: 'Mie Gacoan, Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+            {
+              id: 'place-2',
+              displayName: 'Adismart',
+              formattedAddress: 'Adismart, Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.121,
+              longitude: 106.171,
+            },
+          ],
+        }),
+      );
 
       const first = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
       const second = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
@@ -301,103 +422,172 @@ describe('googlePlaces.service', () => {
       expect(first.error).toBeNull();
       expect(second.error).toBeNull();
       expect(second.data).toEqual(first.data);
-      expect(mockFetch).toHaveBeenCalledTimes(7);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    test('tries second ring at 80m when first ring yields fewer than 4 unique results', async () => {
-      const firstRingResponses = [
-        createReverseGeocodeResponse({
-          placeId: 'place-1',
-          formattedAddress: 'Jalan Ciruas Petir, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.12,
-          longitude: 106.17,
+    test('deduplicates nearby search results by address', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-1',
+              displayName: 'Mie Gacoan',
+              formattedAddress: 'Mie Gacoan, Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+            {
+              id: 'place-2',
+              displayName: 'Mie Gacoan Cabang',
+              formattedAddress: 'Mie Gacoan, Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.121,
+              longitude: 106.171,
+            },
+            {
+              id: 'place-3',
+              displayName: 'Adismart',
+              formattedAddress: 'Adismart, Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.122,
+              longitude: 106.172,
+            },
+          ],
         }),
-        createReverseGeocodeResponse({
-          placeId: 'place-1',
-          formattedAddress: 'Jalan Ciruas Petir, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.1201,
-          longitude: 106.1701,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-2',
-          formattedAddress: 'Jalan Pipitan, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.121,
-          longitude: 106.171,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-2',
-          formattedAddress: 'Jalan Pipitan, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.1211,
-          longitude: 106.1711,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-1',
-          formattedAddress: 'Jalan Ciruas Petir, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.1202,
-          longitude: 106.1702,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-2',
-          formattedAddress: 'Jalan Pipitan, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.1212,
-          longitude: 106.1712,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-1',
-          formattedAddress: 'Jalan Ciruas Petir, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.1203,
-          longitude: 106.1703,
-        }),
-      ];
-
-      const secondRingResponses = [
-        createReverseGeocodeResponse({
-          placeId: 'place-3',
-          formattedAddress: 'Jalan Ampian, Pipitan, Kota Serang, Banten 42183',
-          latitude: -6.13,
-          longitude: 106.18,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-4',
-          formattedAddress: 'Jalan Walantaka, Pipitan, Kota Serang, Banten 42183',
-          latitude: -6.131,
-          longitude: 106.181,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-5',
-          formattedAddress: 'Jalan Ciruas Baru, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.132,
-          longitude: 106.182,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-6',
-          formattedAddress: 'Jalan Serang Timur, Pipitan, Kota Serang, Banten 42183',
-          latitude: -6.133,
-          longitude: 106.183,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-7',
-          formattedAddress: 'Jalan Pipitan Selatan, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.134,
-          longitude: 106.184,
-        }),
-        createReverseGeocodeResponse({
-          placeId: 'place-8',
-          formattedAddress: 'Jalan Cibanten, Walantaka, Kota Serang, Banten 42183',
-          latitude: -6.135,
-          longitude: 106.185,
-        }),
-      ];
-
-      [...firstRingResponses, ...secondRingResponses].forEach(response => {
-        mockFetch.mockResolvedValueOnce(response);
-      });
+      );
 
       const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
 
       expect(result.error).toBeNull();
-      expect(result.data).toHaveLength(6);
-      expect(mockFetch).toHaveBeenCalledTimes(13);
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].placeId).toBe('place-1');
+      expect(result.data[1].placeId).toBe('place-3');
+    });
+
+    test('falls back to primary type label when displayName is empty', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-1',
+              displayName: '',
+              formattedAddress: 'Jalan Raya Serang, Ciruas, Banten 42182',
+              primaryType: 'restaurant',
+              primaryTypeDisplayName: 'Restoran',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+          ],
+        }),
+      );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data[0]?.primaryText).toBe('Restoran');
+      expect(result.data[0]?.secondaryText).toBe('Jalan Raya Serang, Ciruas, Banten 42182');
+      expect(result.data[0]?.buildingName).toBeUndefined();
+    });
+
+    test('filters Nearby Search results when displayName is a Plus Code', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-plus-1',
+              displayName: 'V6FJ+Q3G',
+              formattedAddress: 'V6FJ+Q3G, Pelawad, Ciruas, Banten 42182',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+            {
+              id: 'place-plus-2',
+              displayName: 'V6FJ+R22',
+              formattedAddress: 'V6FJ+R22, Pelawad, Ciruas, Banten 42182',
+              latitude: -6.121,
+              longitude: 106.171,
+            },
+            {
+              id: 'place-good-1',
+              displayName: 'Adismart Ciruas',
+              formattedAddress: 'Adismart Ciruas, Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.122,
+              longitude: 106.172,
+            },
+          ],
+        }),
+      );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]?.placeId).toBe('place-good-1');
+      expect(result.data.every(suggestion => !suggestion.primaryText.includes('+'))).toBe(true);
+    });
+
+    test('filters Nearby Search results when formattedAddress starts with a Plus Code', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-plus-address',
+              displayName: 'Warung',
+              formattedAddress: 'V6FJ+Q3G, Pelawad, Ciruas, Banten 42182',
+              shortFormattedAddress: 'V6FJ+Q3G',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+            {
+              id: 'place-safe',
+              displayName: 'Apotek Sehat',
+              formattedAddress: 'Apotek Sehat, Jalan Raya Serang, Ciruas, Banten 42182',
+              shortFormattedAddress: 'Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.121,
+              longitude: 106.171,
+            },
+          ],
+        }),
+      );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]?.placeId).toBe('place-safe');
+    });
+
+    test('falls back to structured postal address when Google address strings are Plus Codes', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-structured-fallback',
+              displayName: '',
+              formattedAddress: 'V6FJ+R22, Pelawad, Ciruas, Banten 42182',
+              shortFormattedAddress: 'V6FJ+R22',
+              postalAddress: {
+                addressLines: ['Jalan Raya Serang'],
+                locality: 'Ciruas',
+                administrativeArea: 'Banten',
+                postalCode: '42182',
+              },
+              addressComponents: [
+                { longText: 'Jalan Raya Serang', shortText: 'Jl. Raya Serang', types: ['route'] },
+                { longText: 'Ciruas', shortText: 'Ciruas', types: ['locality'] },
+                { longText: '42182', shortText: '42182', types: ['postal_code'] },
+              ],
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+          ],
+        }),
+      );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]?.primaryText).toBe('Jalan Raya Serang, Ciruas, Banten, 42182');
+      expect(result.data[0]?.secondaryText).toBe('Jalan Raya Serang, Ciruas, 42182');
     });
   });
 
@@ -487,6 +677,191 @@ describe('googlePlaces.service', () => {
       });
 
       expect(result.error?.message).toContain('Alamat dari titik peta tidak ditemukan');
+    });
+  });
+
+  describe('Nearby Search formatting', () => {
+    test('Nearby Search returns displayName instead of Plus Codes', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-1',
+              displayName: 'Mie Gacoan Ciruas',
+              formattedAddress: 'Mie Gacoan Ciruas, Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+            {
+              id: 'place-2',
+              displayName: 'Toko Kelontong',
+              formattedAddress: 'Toko Kelontong, Jalan Raya Serang, Ciruas, Banten 42182',
+              latitude: -6.121,
+              longitude: 106.171,
+            },
+          ],
+        }),
+      );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data.length).toBeGreaterThanOrEqual(2);
+      expect(result.data.every(suggestion => !suggestion.primaryText.includes('+'))).toBe(true);
+      expect(result.data[0].buildingName).toBe('Mie Gacoan Ciruas');
+    });
+
+    test('extracts building name from displayName in Nearby Search results', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-with-building',
+              displayName: 'Adismart Ciruas',
+              formattedAddress:
+                'Adismart Ciruas, Jalan Raya Serang Jkt, Citerep, Ciruas, Kab. Serang, Banten 42182',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+          ],
+        }),
+      );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data[0].placeId).toBe('place-with-building');
+      expect(result.data[0].buildingName).toBe('Adismart Ciruas');
+      expect(result.data[0].fullAddress).toContain('Adismart Ciruas');
+    });
+
+    test('returns undefined buildingName when displayName is empty', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createNearbySearchResponse({
+          places: [
+            {
+              id: 'place-no-name',
+              displayName: '',
+              formattedAddress: 'Jalan Raya Serang, Citerep, Ciruas, Kab. Serang, Banten 42182',
+              latitude: -6.12,
+              longitude: 106.17,
+            },
+          ],
+        }),
+      );
+
+      const result = await getAddressRecommendations({ latitude: -6.12, longitude: 106.17 });
+
+      expect(result.error).toBeNull();
+      expect(result.data[0].placeId).toBe('place-no-name');
+      expect(result.data[0].buildingName).toBeUndefined();
+    });
+  });
+
+  describe('reverseGeocodeCoordinates building name', () => {
+    test('extracts building name from premise type in address_components', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              place_id: 'place-with-building',
+              formatted_address:
+                'Adismart Ciruas, Jalan Raya Serang Jkt, Citerep, Ciruas, Kab. Serang, Banten 42182',
+              address_components: [
+                {
+                  long_name: 'Adismart Ciruas',
+                  short_name: 'Adismart Ciruas',
+                  types: ['premise'],
+                },
+                { long_name: 'Jalan Raya Serang', short_name: 'Jl. Raya Serang', types: ['route'] },
+                {
+                  long_name: 'Ciruas',
+                  short_name: 'Ciruas',
+                  types: ['administrative_area_level_3'],
+                },
+                {
+                  long_name: 'Kabupaten Serang',
+                  short_name: 'Serang',
+                  types: ['administrative_area_level_2'],
+                },
+                {
+                  long_name: 'Banten',
+                  short_name: 'Banten',
+                  types: ['administrative_area_level_1'],
+                },
+                { long_name: '42182', short_name: '42182', types: ['postal_code'] },
+              ],
+              types: ['premise'],
+              geometry: { location: { lat: -6.12, lng: 106.17 } },
+            },
+          ],
+          status: 'OK',
+        }),
+      } as Response);
+
+      const result = await reverseGeocodeCoordinates({
+        latitude: -6.12,
+        longitude: 106.17,
+      });
+
+      expect(result.data?.placeId).toBe('place-with-building');
+      expect(result.data?.buildingName).toBe('Adismart Ciruas');
+      expect(result.data?.fullAddress).toContain('Adismart Ciruas');
+    });
+
+    test('returns undefined buildingName when no premise type', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              place_id: 'street-only-place',
+              formatted_address: 'Jalan Raya Serang, Citerep, Ciruas, Kab. Serang, Banten 42182',
+              address_components: [
+                { long_name: 'Jalan Raya Serang', short_name: 'Jl. Raya Serang', types: ['route'] },
+                {
+                  long_name: 'Ciruas',
+                  short_name: 'Ciruas',
+                  types: ['administrative_area_level_3'],
+                },
+              ],
+              types: ['route'],
+              geometry: { location: { lat: -6.12, lng: 106.17 } },
+            },
+          ],
+          status: 'OK',
+        }),
+      } as Response);
+
+      const result = await reverseGeocodeCoordinates({
+        latitude: -6.12,
+        longitude: 106.17,
+      });
+
+      expect(result.data?.placeId).toBe('street-only-place');
+      expect(result.data?.buildingName).toBeUndefined();
+    });
+
+    test('includes buildingName in AddressSuggestion type', () => {
+      const selectedAddress: SelectedAddressSuggestion = {
+        id: 'test-id',
+        placeId: 'test-place-id',
+        fullAddress:
+          'Adismart Ciruas, Jalan Raya Serang, Citerep, Ciruas, Kab. Serang, Banten 42182',
+        streetAddress: 'Jalan Raya Serang',
+        city: 'Ciruas',
+        district: 'Ciruas',
+        province: 'Banten',
+        postalCode: '42182',
+        countryCode: 'ID',
+        latitude: -6.12,
+        longitude: 106.17,
+        accuracy: null,
+        buildingName: 'Adismart Ciruas',
+      };
+
+      expect(selectedAddress.buildingName).toBe('Adismart Ciruas');
     });
   });
 });

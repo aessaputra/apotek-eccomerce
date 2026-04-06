@@ -13,6 +13,7 @@ export interface AddressSuggestion {
   primaryType?: string;
   latitude?: number;
   longitude?: number;
+  buildingName?: string;
 }
 
 export interface SelectedAddressSuggestion {
@@ -28,6 +29,7 @@ export interface SelectedAddressSuggestion {
   latitude: number;
   longitude: number;
   accuracy: string | null;
+  buildingName?: string;
 }
 
 export interface GooglePlacePrediction {
