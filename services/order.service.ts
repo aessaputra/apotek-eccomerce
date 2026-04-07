@@ -10,9 +10,11 @@ export const ORDERS_CACHE_TTL_MS = 5 * 60 * 1000;
 const ORDER_LIST_SELECT = `
   id,
   created_at,
+  expired_at,
   midtrans_order_id,
   gross_amount,
   total_amount,
+  courier_code,
   courier_service,
   payment_status,
   status,
@@ -25,7 +27,11 @@ const ORDER_LIST_SELECT = `
     products (
       id,
       name,
-      slug
+      slug,
+      product_images (
+        url,
+        sort_order
+      )
     )
   )
 `;
@@ -66,6 +72,10 @@ export interface OrderListProduct {
   id: string;
   name: string;
   slug: string;
+  product_images?: {
+    url: string;
+    sort_order: number;
+  }[];
 }
 
 export interface OrderListOrderItem {
@@ -80,9 +90,11 @@ export interface OrderListOrderItem {
 export interface OrderListItem {
   id: string;
   created_at: string;
+  expired_at: string | null;
   midtrans_order_id: string | null;
   gross_amount: number | null;
   total_amount: number;
+  courier_code: string | null;
   courier_service: string | null;
   payment_status: string;
   status: string;
@@ -148,6 +160,7 @@ export interface GetUserOrdersParams {
   limit?: number;
   signal?: AbortSignal;
   paymentStatus?: 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel';
+  paymentStatuses?: ('pending' | 'settlement' | 'deny' | 'expire' | 'cancel')[];
 }
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
@@ -308,6 +321,18 @@ export async function getOrdersOptimized(
   const fetchLimit = pageSize + 1;
   const startedAt = Date.now();
 
+  if (__DEV__) {
+    console.log('[order.service] getOrdersOptimized start', {
+      userId,
+      offset,
+      pageSize,
+      fetchLimit,
+      paymentStatus: params.paymentStatus ?? null,
+      hasSignal: Boolean(params.signal),
+      select: ORDER_LIST_SELECT,
+    });
+  }
+
   try {
     const data = await withRetry(
       async () => {
@@ -318,13 +343,37 @@ export async function getOrdersOptimized(
           .order('created_at', { ascending: false })
           .range(offset, offset + fetchLimit - 1);
 
-        if (params.paymentStatus) {
+        if (params.paymentStatuses && params.paymentStatuses.length > 0) {
+          query = query.in('payment_status', params.paymentStatuses);
+        } else if (params.paymentStatus) {
           query = query.eq('payment_status', params.paymentStatus);
+        }
+
+        if (__DEV__) {
+          console.log('[order.service] executing orders query', {
+            userId,
+            offset,
+            fetchLimit,
+            paymentStatus: params.paymentStatus ?? null,
+          });
         }
 
         const queryWithSignal = withAbortSignal(query, params.signal);
 
         const { data: rows, error } = await queryWithSignal;
+
+        if (__DEV__) {
+          console.log('[order.service] orders query completed', {
+            userId,
+            offset,
+            rowCount: rows?.length ?? 0,
+            hasError: Boolean(error),
+            errorMessage: error?.message ?? null,
+            errorCode: error?.code ?? null,
+            errorDetails: error?.details ?? null,
+            errorHint: error?.hint ?? null,
+          });
+        }
 
         if (error) {
           throw error;
@@ -345,6 +394,16 @@ export async function getOrdersOptimized(
     const normalizedData = hasMore ? rows.slice(0, pageSize) : rows;
     const fetchedAt = Date.now();
 
+    if (__DEV__) {
+      console.log('[order.service] getOrdersOptimized success', {
+        userId,
+        offset,
+        returnedCount: normalizedData.length,
+        hasMore,
+        durationMs: fetchedAt - startedAt,
+      });
+    }
+
     return {
       data: normalizedData,
       error: null,
@@ -358,6 +417,15 @@ export async function getOrdersOptimized(
       },
     };
   } catch (error) {
+    if (__DEV__) {
+      console.log('[order.service] getOrdersOptimized caught error', {
+        userId,
+        offset,
+        paymentStatus: params.paymentStatus ?? null,
+        error,
+      });
+    }
+
     logSupabaseError('getOrdersOptimized unexpected error', error);
     return {
       data: null,
@@ -426,7 +494,7 @@ export function getPaymentStatusLabel(status: string): string {
 export function getOrderStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     draft: 'Draft',
-    pending: 'Menunggu Konfirmasi',
+    pending: 'Menunggu Pembayaran',
     processing: 'Diproses',
     awaiting_shipment: 'Menunggu Pengiriman',
     shipped: 'Dikirim',

@@ -12,9 +12,11 @@ import {
 } from '@/utils/error';
 import { withRetry } from '@/utils/retry';
 
-interface PayNowButtonProps {
+export interface PayNowButtonProps {
   orderId: string;
   orderNumber?: string;
+  variant?: 'default' | 'fullWidth';
+  disabled?: boolean;
   onPaymentStart?: () => void;
   onPaymentComplete?: (success: boolean) => void;
   onError?: (error: AppError) => void;
@@ -23,6 +25,8 @@ interface PayNowButtonProps {
 export function PayNowButton({
   orderId,
   orderNumber,
+  variant = 'default',
+  disabled = false,
   onPaymentStart,
   onPaymentComplete,
   onError,
@@ -31,13 +35,12 @@ export function PayNowButton({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handlePayNow = useCallback(async () => {
-    if (isProcessing) return;
+    if (isProcessing || disabled) return;
 
     setIsProcessing(true);
     onPaymentStart?.();
 
     try {
-      // Step 1: Create Snap token with retry logic
       const snapData = await withRetry(
         async () => {
           const { data, error } = await createSnapToken(orderId);
@@ -63,8 +66,6 @@ export function PayNowButton({
         },
       );
 
-      // Step 2: Navigate to payment scene with Snap URL
-      // The Payment scene will handle WebView and payment completion
       router.push({
         pathname: '/cart/payment',
         params: {
@@ -88,29 +89,37 @@ export function PayNowButton({
     } finally {
       setIsProcessing(false);
     }
-  }, [orderId, isProcessing, onPaymentStart, onPaymentComplete, onError, router]);
+  }, [orderId, isProcessing, disabled, onPaymentStart, onPaymentComplete, onError, router]);
+
+  const isFullWidth = variant === 'fullWidth';
 
   return (
     <TamaguiButton
-      backgroundColor="$primary"
+      backgroundColor={isFullWidth ? '$warning' : '$primary'}
       color="$onPrimary"
-      borderRadius="$3"
-      minHeight={36}
-      paddingHorizontal="$3"
-      disabled={isProcessing}
-      opacity={isProcessing ? 0.7 : 1}
+      borderRadius="$4"
+      minHeight={isFullWidth ? 48 : 36}
+      paddingHorizontal={isFullWidth ? '$4' : '$3'}
+      disabled={isProcessing || disabled}
+      opacity={isProcessing || disabled ? 0.5 : 1}
+      flex={isFullWidth ? 1 : undefined}
       icon={
         isProcessing ? (
           <Spinner size="small" color="$onPrimary" />
         ) : (
-          <CreditCardIcon size={16} color="$onPrimary" />
+          <CreditCardIcon size={isFullWidth ? 20 : 16} color="$onPrimary" />
         )
       }
-      onPress={handlePayNow}
+      onPress={e => {
+        e.stopPropagation();
+        void handlePayNow();
+      }}
       aria-label={`Bayar pesanan ${orderNumber ?? orderId}`}>
-      <Text color="$onPrimary" fontSize="$3" fontWeight="600">
-        {isProcessing ? 'Memproses...' : 'Bayar Sekarang'}
+      <Text color="$onPrimary" fontSize={isFullWidth ? '$4' : '$3'} fontWeight="700">
+        {disabled ? 'Kadaluarsa' : isProcessing ? 'Memproses...' : 'Bayar Sekarang'}
       </Text>
     </TamaguiButton>
   );
 }
+
+export default PayNowButton;

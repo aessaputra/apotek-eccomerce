@@ -11,9 +11,11 @@ const mockOrders: OrderListItem[] = [
   {
     id: 'order-1',
     created_at: '2026-01-01T00:00:00Z',
+    expired_at: null,
     midtrans_order_id: 'MID-001',
     gross_amount: 50000,
     total_amount: 55000,
+    courier_code: 'jne',
     courier_service: 'same-day',
     payment_status: 'pending',
     status: 'pending',
@@ -35,9 +37,11 @@ const mockOrders: OrderListItem[] = [
   {
     id: 'order-2',
     created_at: '2026-01-02T00:00:00Z',
+    expired_at: null,
     midtrans_order_id: 'MID-002',
     gross_amount: 100000,
     total_amount: 110000,
+    courier_code: null,
     courier_service: null,
     payment_status: 'pending',
     status: 'pending',

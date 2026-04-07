@@ -58,9 +58,11 @@ function createOrder(index: number): OrderListItem {
   return {
     id: `order-${index}`,
     created_at: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
+    expired_at: null,
     midtrans_order_id: `MID-${index}`,
     gross_amount: 10000 + index,
     total_amount: 10000 + index,
+    courier_code: index % 2 === 0 ? 'jne' : null,
     courier_service: index % 2 === 0 ? 'same-day' : null,
     payment_status: 'settlement',
     status: 'processing',

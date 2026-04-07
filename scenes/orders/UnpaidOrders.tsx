@@ -1,40 +1,71 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
-import { Spinner, Text, YStack, XStack, Button } from 'tamagui';
+import { Spinner, Text, YStack, Button } from 'tamagui';
 import { useRouter } from 'expo-router';
-import { WalletIcon, AlertCircleIcon, CloseIcon } from '@/components/icons';
-import { OrderCard } from '@/components/elements/OrderCard';
-import { PayNowButton } from '@/components/elements/PayNowButton';
+import { WalletIcon, AlertCircleIcon, ShoppingBagIcon } from '@/components/icons';
+import { UnpaidOrderCard } from '@/components/elements/UnpaidOrderCard';
 import { useUnpaidOrdersPaginated } from '@/hooks/useUnpaidOrdersPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 import type { OrderListItem } from '@/services';
-import type { AppError } from '@/utils/error';
 
 const EmptyState = React.memo(function EmptyState() {
+  const router = useRouter();
+
+  const handleShopNow = useCallback(() => {
+    router.push('/(tabs)/home');
+  }, [router]);
+
   return (
     <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$4">
-      <WalletIcon size={64} color="$colorSubtle" />
-      <Text fontSize="$6" fontWeight="700" color="$color">
+      <WalletIcon size={80} color="$colorSubtle" />
+      <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
         Belum Ada Pesanan
       </Text>
       <Text fontSize="$4" color="$colorSubtle" textAlign="center">
-        Pesanan yang belum dibayar akan muncul di sini
+        Pesanan yang belum dibayar akan muncul di sini. Yuk, mulai belanja!
       </Text>
+      <Button
+        size="$4"
+        backgroundColor="$primary"
+        color="$onPrimary"
+        borderRadius="$4"
+        marginTop="$2"
+        icon={<ShoppingBagIcon size={20} color="$onPrimary" />}
+        onPress={handleShopNow}
+        aria-label="Mulai belanja">
+        Belanja Sekarang
+      </Button>
     </YStack>
   );
 });
 
-const ErrorState = React.memo(function ErrorState({ message }: { message: string }) {
+const ErrorState = React.memo(function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$4">
-      <AlertCircleIcon size={48} color="$danger" />
+      <AlertCircleIcon size={64} color="$danger" />
       <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
         Gagal Memuat Pesanan
       </Text>
       <Text fontSize="$3" color="$colorSubtle" textAlign="center">
         {message}
       </Text>
+      <Button
+        size="$4"
+        backgroundColor="$primary"
+        color="$onPrimary"
+        borderRadius="$4"
+        marginTop="$2"
+        onPress={onRetry}
+        aria-label="Coba lagi">
+        Coba Lagi
+      </Button>
     </YStack>
   );
 });
@@ -42,28 +73,19 @@ const ErrorState = React.memo(function ErrorState({ message }: { message: string
 interface OrderListItemComponentProps {
   order: OrderListItem;
   onPress: (order: OrderListItem) => void;
-  onPaymentError: (error: AppError) => void;
 }
 
 const OrderListItemComponent = React.memo(function OrderListItemComponent({
   order,
   onPress,
-  onPaymentError,
 }: OrderListItemComponentProps) {
   const handlePress = useCallback(() => {
     onPress(order);
   }, [order, onPress]);
 
   return (
-    <YStack paddingHorizontal="$3" paddingVertical="$2">
-      <OrderCard order={order} onPress={handlePress} />
-      <XStack justifyContent="flex-end" marginTop="$2">
-        <PayNowButton
-          orderId={order.id}
-          orderNumber={order.midtrans_order_id ?? order.id.slice(0, 8)}
-          onError={onPaymentError}
-        />
-      </XStack>
+    <YStack paddingHorizontal="$4" paddingVertical="$2">
+      <UnpaidOrderCard order={order} onPress={handlePress} />
     </YStack>
   );
 });
@@ -81,7 +103,6 @@ export default function UnpaidOrders() {
     refresh,
     loadMore,
   } = useUnpaidOrdersPaginated(user?.id);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -91,6 +112,9 @@ export default function UnpaidOrders() {
 
   const handleOrderPress = useCallback(
     (order: OrderListItem) => {
+      if (__DEV__) {
+        console.log('[UnpaidOrders] Navigating to order detail:', order.id);
+      }
       router.push({
         pathname: '/orders/[orderId]',
         params: { orderId: order.id },
@@ -99,27 +123,15 @@ export default function UnpaidOrders() {
     [router],
   );
 
-  const handlePaymentError = useCallback((err: AppError) => {
-    const message = err.message || 'Gagal memulai pembayaran. Silakan coba lagi.';
-    setPaymentError(message);
-    if (__DEV__) {
-      console.warn('[UnpaidOrders] Payment error:', err);
-    }
-  }, []);
-
-  const clearPaymentError = useCallback(() => {
-    setPaymentError(null);
-  }, []);
+  const handleRetry = useCallback(() => {
+    refresh();
+  }, [refresh]);
 
   const renderItem = useCallback(
     ({ item }: { item: OrderListItem }) => (
-      <OrderListItemComponent
-        order={item}
-        onPress={handleOrderPress}
-        onPaymentError={handlePaymentError}
-      />
+      <OrderListItemComponent order={item} onPress={handleOrderPress} />
     ),
-    [handleOrderPress, handlePaymentError],
+    [handleOrderPress],
   );
 
   const keyExtractor = useCallback((item: OrderListItem) => item.id, []);
@@ -142,7 +154,7 @@ export default function UnpaidOrders() {
   if (error && unpaidOrders.length === 0) {
     const classifiedError = classifyError(new Error(error));
     const errorMessage = translateErrorMessage(classifiedError);
-    return <ErrorState message={errorMessage} />;
+    return <ErrorState message={errorMessage} onRetry={handleRetry} />;
   }
 
   if (unpaidOrders.length === 0) {
@@ -151,29 +163,6 @@ export default function UnpaidOrders() {
 
   return (
     <YStack flex={1} backgroundColor="$background">
-      {paymentError && (
-        <XStack
-          backgroundColor="$dangerSoft"
-          padding="$3"
-          alignItems="center"
-          justifyContent="space-between"
-          gap="$2">
-          <XStack flex={1} alignItems="center" gap="$2">
-            <AlertCircleIcon size={16} color="$danger" />
-            <Text fontSize="$3" color="$danger" flex={1} numberOfLines={2}>
-              {paymentError}
-            </Text>
-          </XStack>
-          <Button
-            size="$2"
-            backgroundColor="transparent"
-            color="$danger"
-            onPress={clearPaymentError}
-            aria-label="Tutup error">
-            <CloseIcon size={16} color="$danger" />
-          </Button>
-        </XStack>
-      )}
       <FlatList
         data={unpaidOrders}
         renderItem={renderItem}

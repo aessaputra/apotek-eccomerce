@@ -1,118 +1,163 @@
-import React from 'react';
-import { Card, Separator, Text, XStack, YStack } from 'tamagui';
-import { TruckIcon, CreditCardIcon } from '@/components/icons';
-import { getPaymentStatusLabel, getOrderStatusLabel, type OrderListItem } from '@/services';
+import React, { useMemo, useState, useCallback } from 'react';
+import { Card, Text, XStack, YStack, styled } from 'tamagui';
+import Image from '@/components/elements/Image';
+import { PaymentCountdownTimer } from '@/components/elements/PaymentCountdownTimer';
+import { PayNowButton } from '@/components/elements/PayNowButton';
+import { PackageIcon } from '@/components/icons';
+import type { OrderListItem } from '@/services';
 
-const ORDER_CARD_HEIGHT = 148;
+export interface UnpaidOrderCardProps {
+  order: OrderListItem;
+  onPress?: () => void;
+}
+
+/**
+ * Status badge styled component for expired order display.
+ * Uses semantic color variants matching OrderDetail.tsx pattern.
+ */
+const StatusBadge = styled(XStack, {
+  paddingHorizontal: '$3',
+  paddingVertical: '$1.5',
+  borderRadius: '$3',
+  alignItems: 'center',
+  gap: '$2',
+
+  variants: {
+    variant: {
+      danger: {
+        backgroundColor: '$dangerSoft',
+      },
+    },
+  } as const,
+});
+
+const StatusBadgeText = styled(Text, {
+  fontSize: '$3',
+  fontWeight: '600',
+
+  variants: {
+    variant: {
+      danger: {
+        color: '$danger',
+      },
+    },
+  } as const,
+});
 
 function formatRupiah(amount: number): string {
   return `Rp ${amount.toLocaleString('id-ID')}`;
 }
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function getStatusColor(status: string): { bg: string; text: string } {
-  const successStates = ['settlement', 'capture'];
-  const pendingStates = ['pending', 'authorize'];
-  const failedStates = ['deny', 'cancel', 'expire'];
-  const refundStates = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
-
-  if (successStates.includes(status)) {
-    return { bg: '$successSoft', text: '$success' };
-  }
-  if (pendingStates.includes(status)) {
-    return { bg: '$warningSoft', text: '$warning' };
-  }
-  if (failedStates.includes(status)) {
-    return { bg: '$dangerSoft', text: '$danger' };
-  }
-  if (refundStates.includes(status)) {
-    return { bg: '$surface', text: '$colorSubtle' };
-  }
-  return { bg: '$surface', text: '$colorSubtle' };
-}
-
-interface UnpaidOrderCardProps {
-  order: OrderListItem;
-}
-
-export function UnpaidOrderCard({ order }: UnpaidOrderCardProps) {
-  const statusColors = getStatusColor(order.payment_status);
+function getProductImageUrl(order: OrderListItem): string | null {
   const firstItem = order.order_items[0];
-  const itemCount = order.order_items.length;
-  const itemNames =
-    itemCount === 1
-      ? (firstItem?.products?.name ?? 'Produk')
-      : `${firstItem?.products?.name ?? 'Produk'} +${itemCount - 1} lainnya`;
+  if (!firstItem?.products?.product_images?.length) {
+    return null;
+  }
+  return firstItem.products.product_images[0]?.url ?? null;
+}
+
+function getProductDisplayInfo(order: OrderListItem): { name: string; itemCount: number } {
+  const firstItem = order.order_items[0];
+  return {
+    name: firstItem?.products?.name ?? 'Produk',
+    itemCount: order.order_items.length,
+  };
+}
+
+/**
+ * Check if order is expired based on backend expired_at timestamp.
+ * Returns true if expired_at exists and is in the past.
+ */
+function isBackendExpired(expiredAt: string | null): boolean {
+  if (!expiredAt) return false;
+  return new Date(expiredAt) < new Date();
+}
+
+export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
+  order,
+  onPress,
+}: UnpaidOrderCardProps) {
+  const imageUrl = useMemo(() => getProductImageUrl(order), [order]);
+  const productInfo = useMemo(() => getProductDisplayInfo(order), [order]);
+  const orderNumber = `APT-${order.id.slice(0, 8).toUpperCase()}`;
+  const [isTimerExpired, setIsTimerExpired] = useState(false);
+
+  // Check if backend already marked order as expired
+  const backendExpired = useMemo(() => isBackendExpired(order.expired_at), [order.expired_at]);
+
+  const isExpired = backendExpired || isTimerExpired;
+
+  const handleTimerExpired = useCallback(() => {
+    setIsTimerExpired(true);
+    if (__DEV__) {
+      console.log('[UnpaidOrderCard] Order expired:', order.id);
+    }
+  }, [order.id]);
 
   return (
     <Card
-      bordered
-      elevate
-      size="$4"
+      onPress={onPress}
       backgroundColor="$surface"
+      borderWidth={1}
       borderColor="$surfaceBorder"
-      minHeight={ORDER_CARD_HEIGHT}>
-      <YStack gap="$2" padding="$3">
-        <XStack justifyContent="space-between" alignItems="center" gap="$2">
-          <Text fontSize="$3" color="$colorSubtle" numberOfLines={1} flex={1}>
-            {formatDate(order.created_at)}
-          </Text>
-          <XStack
-            backgroundColor={statusColors.bg}
-            paddingHorizontal="$2"
-            paddingVertical="$1"
-            borderRadius="$2">
-            <Text fontSize="$2" fontWeight="600" color={statusColors.text}>
-              {getPaymentStatusLabel(order.payment_status)}
-            </Text>
-          </XStack>
-        </XStack>
+      borderRadius="$4"
+      overflow="hidden"
+      pressStyle={{ opacity: 0.9, backgroundColor: '$surfaceHover' }}>
+      <YStack gap="$3" padding="$3">
+        {backendExpired ? (
+          <StatusBadge variant="danger">
+            <StatusBadgeText variant="danger">Pembayaran Kadaluarsa</StatusBadgeText>
+          </StatusBadge>
+        ) : (
+          <PaymentCountdownTimer createdAt={order.created_at} onExpired={handleTimerExpired} />
+        )}
 
-        <Separator marginVertical="$1" />
-
-        <XStack justifyContent="space-between" alignItems="center" gap="$2">
-          <YStack flex={1} gap="$1" minWidth={0}>
-            <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={1}>
-              {order.midtrans_order_id ?? order.id.slice(0, 8)}
-            </Text>
-            <Text fontSize="$3" color="$colorSubtle" numberOfLines={1}>
-              {itemNames}
-            </Text>
+        <XStack gap="$3" alignItems="center">
+          <YStack
+            width={64}
+            height={64}
+            borderRadius="$2"
+            overflow="hidden"
+            backgroundColor="$surfaceSubtle"
+            alignItems="center"
+            justifyContent="center">
+            {imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+              />
+            ) : (
+              <PackageIcon size={28} color="$colorSubtle" />
+            )}
           </YStack>
-          <YStack alignItems="flex-end" gap="$1">
-            <Text fontSize="$5" fontWeight="700" color="$primary">
+
+          <YStack flex={1} gap="$1">
+            <Text fontSize="$3" fontWeight="600" color="$color" numberOfLines={2}>
+              {productInfo.name}
+            </Text>
+
+            {productInfo.itemCount > 1 && (
+              <Text fontSize="$2" color="$colorSubtle">
+                +{productInfo.itemCount - 1} produk lainnya
+              </Text>
+            )}
+
+            <Text fontSize="$4" fontWeight="700" color="$primary">
               {formatRupiah(order.gross_amount ?? order.total_amount)}
             </Text>
-            {order.courier_service ? (
-              <XStack alignItems="center" gap="$1">
-                <TruckIcon size={14} color="$colorSubtle" />
-                <Text fontSize="$2" color="$colorSubtle">
-                  {order.courier_service}
-                </Text>
-              </XStack>
-            ) : null}
           </YStack>
         </XStack>
 
-        <XStack justifyContent="space-between" alignItems="center" marginTop="$1">
-          <XStack alignItems="center" gap="$1">
-            <CreditCardIcon size={14} color="$colorSubtle" />
-            <Text fontSize="$2" color="$colorSubtle">
-              {getOrderStatusLabel(order.status)}
-            </Text>
-          </XStack>
+        <XStack gap="$2" alignItems="center">
+          <Text fontSize="$2" color="$colorMuted" flex={1} numberOfLines={1}>
+            {orderNumber}
+          </Text>
+          <PayNowButton orderId={order.id} orderNumber={orderNumber} disabled={isExpired} />
         </XStack>
       </YStack>
     </Card>
   );
-}
+});
+
+export default UnpaidOrderCard;

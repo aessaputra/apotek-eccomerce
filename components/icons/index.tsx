@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   Chrome,
+  Clock,
   CreditCard,
   Eye,
   EyeOff,
@@ -22,6 +23,7 @@ import {
   Pill,
   Search,
   Settings2,
+  ShoppingBag,
   ShoppingCart,
   Star,
   Trash2,
@@ -157,4 +159,12 @@ export function WalletIcon(props: IconProps) {
 
 export function CheckCircleIcon(props: IconProps) {
   return <CheckCircle2 {...props} />;
+}
+
+export function ClockIcon(props: IconProps) {
+  return <Clock {...props} />;
+}
+
+export function ShoppingBagIcon(props: IconProps) {
+  return <ShoppingBag {...props} />;
 }

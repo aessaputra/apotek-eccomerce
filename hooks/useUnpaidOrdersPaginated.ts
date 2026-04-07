@@ -65,12 +65,34 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
   const [localError, setLocalError] = useState<string | null>(null);
   const latestMetricsRef = useRef({ lastFetchDurationMs: 0, lastPayloadBytes: 0 });
   const activeRequestIdRef = useRef(0);
+  const ordersLengthRef = useRef(0);
 
   const orders = cacheEntry?.items ?? [];
+  ordersLengthRef.current = orders.length;
   const hasMore = cacheEntry?.hasMore ?? true;
   const cacheIsFresh = isFresh(cacheEntry?.lastFetchedAt ?? null);
 
+  if (__DEV__) {
+    console.log('[useUnpaidOrdersPaginated] render', {
+      userId: userId ?? null,
+      ordersCount: orders.length,
+      cacheStatus: cacheEntry?.status ?? null,
+      cacheError: cacheEntry?.error ?? null,
+      hasMore,
+      isInitialLoading,
+      isRefreshing,
+      isFetchingMore,
+      isRevalidating,
+    });
+  }
+
   useEffect(() => {
+    if (__DEV__) {
+      console.log('[useUnpaidOrdersPaginated] reset state for user', {
+        userId: userId ?? null,
+      });
+    }
+
     setIsInitialLoading(Boolean(userId));
     setIsRefreshing(false);
     setIsFetchingMore(false);
@@ -81,6 +103,14 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
   const fetchUnpaidOrdersPage = useCallback(
     async ({ offset, replace, reason }: FetchUnpaidOrdersPageOptions): Promise<void> => {
       if (!userId) {
+        if (__DEV__) {
+          console.log('[useUnpaidOrdersPaginated] skip fetch without userId', {
+            offset,
+            replace,
+            reason,
+          });
+        }
+
         setIsInitialLoading(false);
         return;
       }
@@ -89,11 +119,29 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
       const requestId = activeRequestIdRef.current + 1;
       activeRequestIdRef.current = requestId;
 
+      if (__DEV__) {
+        console.log('[useUnpaidOrdersPaginated] fetch start', {
+          userId,
+          requestId,
+          requestKey,
+          offset,
+          replace,
+          reason,
+          ordersCount: orders.length,
+        });
+      }
+
       if (replace) {
+        if (__DEV__) {
+          console.log('[useUnpaidOrdersPaginated] cancelling deduped requests', {
+            prefix: getUnpaidOrdersRequestPrefix(userId),
+          });
+        }
+
         cancelDedupedRequests(getUnpaidOrdersRequestPrefix(userId));
       }
 
-      if (reason === 'initial' && orders.length === 0) {
+      if (reason === 'initial' && ordersLengthRef.current === 0) {
         setIsInitialLoading(true);
       }
 
@@ -120,6 +168,14 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
       setLocalError(null);
 
       try {
+        if (__DEV__) {
+          console.log('[useUnpaidOrdersPaginated] awaiting runDedupedRequest', {
+            requestId,
+            requestKey,
+            policy: replace ? 'replace' : 'dedupe',
+          });
+        }
+
         const result = await runDedupedRequest(
           requestKey,
           signal =>
@@ -127,21 +183,52 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
               offset,
               limit: ORDERS_PAGE_SIZE,
               signal,
-              paymentStatus: 'pending',
+              paymentStatuses: ['pending', 'expire'],
             }),
           { policy: replace ? 'replace' : 'dedupe' },
         );
 
         if (result.error) {
+          if (__DEV__) {
+            console.log('[useUnpaidOrdersPaginated] fetch returned result.error', {
+              requestId,
+              message: result.error.message,
+            });
+          }
+
           throw result.error;
         }
 
         if (!result.data || !result.metrics) {
+          if (__DEV__) {
+            console.log('[useUnpaidOrdersPaginated] fetch returned empty result payload', {
+              requestId,
+              hasData: Boolean(result.data),
+              hasMetrics: Boolean(result.metrics),
+            });
+          }
+
           return;
         }
 
         if (activeRequestIdRef.current !== requestId) {
+          if (__DEV__) {
+            console.log('[useUnpaidOrdersPaginated] ignoring stale success result', {
+              requestId,
+              activeRequestId: activeRequestIdRef.current,
+            });
+          }
+
           return;
+        }
+
+        if (__DEV__) {
+          console.log('[useUnpaidOrdersPaginated] fetch success', {
+            requestId,
+            receivedCount: result.data.length,
+            hasMore: result.metrics.hasMore,
+            durationMs: result.metrics.durationMs,
+          });
         }
 
         latestMetricsRef.current = {
@@ -163,14 +250,35 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
         );
       } catch (error) {
         if (isAbortError(error)) {
+          if (__DEV__) {
+            console.log('[useUnpaidOrdersPaginated] fetch aborted', {
+              requestId,
+            });
+          }
+
           return;
         }
 
         if (activeRequestIdRef.current !== requestId) {
+          if (__DEV__) {
+            console.log('[useUnpaidOrdersPaginated] ignoring stale error result', {
+              requestId,
+              activeRequestId: activeRequestIdRef.current,
+            });
+          }
+
           return;
         }
 
         const message = error instanceof Error ? error.message : 'Gagal memuat pesanan.';
+
+        if (__DEV__) {
+          console.log('[useUnpaidOrdersPaginated] fetch error', {
+            requestId,
+            message,
+            error,
+          });
+        }
 
         dispatch(
           appActions.setUnpaidOrdersCacheStatus({
@@ -198,13 +306,28 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
             setIsRevalidating(false);
           }
 
-          if (reason !== 'initial' && orders.length === 0) {
+          if (reason !== 'initial' && ordersLengthRef.current === 0) {
             setIsInitialLoading(false);
           }
+
+          if (__DEV__) {
+            console.log('[useUnpaidOrdersPaginated] fetch finalize', {
+              requestId,
+              reason,
+              ordersCountAtFinalize: orders.length,
+              isLatestRequest: true,
+            });
+          }
+        } else if (__DEV__) {
+          console.log('[useUnpaidOrdersPaginated] fetch finalize skipped for stale request', {
+            requestId,
+            activeRequestId: activeRequestIdRef.current,
+          });
         }
       }
     },
-    [dispatch, orders.length, userId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dispatch, userId],
   );
 
   const refreshIfNeeded = useCallback(async (): Promise<void> => {
@@ -213,7 +336,7 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
       return;
     }
 
-    if (orders.length === 0) {
+    if (ordersLengthRef.current === 0) {
       await fetchUnpaidOrdersPage({ offset: 0, replace: true, reason: 'initial' });
       return;
     }
@@ -223,22 +346,34 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
     if (!cacheIsFresh) {
       await fetchUnpaidOrdersPage({ offset: 0, replace: true, reason: 'revalidate' });
     }
-  }, [cacheIsFresh, fetchUnpaidOrdersPage, orders.length, userId]);
+  }, [cacheIsFresh, fetchUnpaidOrdersPage, userId]);
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!userId) {
+      if (__DEV__) {
+        console.log('[useUnpaidOrdersPaginated] refresh skipped without userId');
+      }
+
       setIsInitialLoading(false);
       return;
     }
 
+    if (__DEV__) {
+      console.log('[useUnpaidOrdersPaginated] refresh called', {
+        userId,
+        ordersCount: ordersLengthRef.current,
+      });
+    }
+
     dispatch(appActions.invalidateUnpaidOrdersCache(userId));
     await fetchUnpaidOrdersPage({ offset: 0, replace: true, reason: 'refresh' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, fetchUnpaidOrdersPage, userId]);
 
   const loadMore = useCallback(async (): Promise<void> => {
     if (
       !userId ||
-      orders.length === 0 ||
+      ordersLengthRef.current === 0 ||
       !hasMore ||
       isInitialLoading ||
       isRefreshing ||
@@ -248,7 +383,12 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
       return;
     }
 
-    await fetchUnpaidOrdersPage({ offset: orders.length, replace: false, reason: 'load-more' });
+    await fetchUnpaidOrdersPage({
+      offset: ordersLengthRef.current,
+      replace: false,
+      reason: 'load-more',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     fetchUnpaidOrdersPage,
     hasMore,
@@ -256,7 +396,6 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
     isInitialLoading,
     isRefreshing,
     isRevalidating,
-    orders.length,
     userId,
   ]);
 

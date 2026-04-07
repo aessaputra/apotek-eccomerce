@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Separator, Text, XStack, YStack, styled } from 'tamagui';
 import { CreditCardIcon, TruckIcon } from '@/components/icons';
 import { getOrderStatusLabel, getPaymentStatusLabel, type OrderListItem } from '@/services';
+import { formatCourierServiceName } from '@/constants/courier.constants';
 
 const ORDER_CARD_HEIGHT = 148;
 
@@ -124,7 +125,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onPress }: Order
         <XStack justifyContent="space-between" alignItems="center" gap="$2">
           <YStack flex={1} gap="$1" minWidth={0}>
             <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={1}>
-              {order.midtrans_order_id ?? order.id.slice(0, 8)}
+              APT-{order.id.slice(0, 8).toUpperCase()}
             </Text>
             <Text fontSize="$3" color="$colorSubtle" numberOfLines={1}>
               {itemNames}
@@ -138,7 +139,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onPress }: Order
               <XStack alignItems="center" gap="$1">
                 <TruckIcon size={14} color="$colorSubtle" />
                 <Text fontSize="$2" color="$colorSubtle">
-                  {order.courier_service}
+                  {formatCourierServiceName(order.courier_code, order.courier_service)}
                 </Text>
               </XStack>
             ) : null}

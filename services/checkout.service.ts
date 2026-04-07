@@ -283,6 +283,7 @@ export async function createCheckoutOrder(
     total_amount: totalAmount,
     status: 'pending',
     payment_status: 'pending',
+    expired_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     shipping_cost: shippingOption.price,
     shipping_etd: shippingOption.estimated_delivery,
     courier_code: shippingOption.courier_code,
