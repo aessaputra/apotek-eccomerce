@@ -21,7 +21,6 @@ export interface UseOrderDetailReturn extends UseOrderDetailState {
   isLoading: boolean;
   isRefreshing: boolean;
   refresh: () => Promise<void>;
-  clearError: () => void;
 }
 
 export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
@@ -156,10 +155,6 @@ export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
     }, [orderId, fetchOrder]),
   );
 
-  const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null, status: prev.order ? 'success' : 'idle' }));
-  }, []);
-
   const isLoading = state.status === 'loading';
   const isRefreshing = state.status === 'refreshing';
 
@@ -168,7 +163,6 @@ export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
     isLoading,
     isRefreshing,
     refresh: () => fetchOrder('refresh'),
-    clearError,
   };
 }
 

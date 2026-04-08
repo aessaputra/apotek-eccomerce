@@ -183,7 +183,7 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
               offset,
               limit: ORDERS_PAGE_SIZE,
               signal,
-              paymentStatuses: ['pending', 'expire'],
+              paymentStatuses: ['pending'],
             }),
           { policy: replace ? 'replace' : 'dedupe' },
         );

@@ -8,6 +8,7 @@ export { useAllProductsPaginated } from './useAllProductsPaginated';
 export { useOrdersPaginated } from './useOrdersPaginated';
 export { useUnpaidOrdersPaginated } from './useUnpaidOrdersPaginated';
 export { useOrderDetail } from './useOrderDetail';
+export { useOrderHistoryPaginated } from './useOrderHistoryPaginated';
 export { useProductsPaginated } from './useProductsPaginated';
 export { useDebounce } from './useDebounce';
 export { useCartAddress } from './useCartAddress';
@@ -25,6 +26,7 @@ export type {
   UnpaidOrdersPerformanceSnapshot,
 } from './useUnpaidOrdersPaginated';
 export type { UseOrderDetailReturn, UseOrderDetailState } from './useOrderDetail';
+export type { UseOrderHistoryPaginatedReturn } from './useOrderHistoryPaginated';
 export type {
   UseProductsPaginatedReturn,
   ProductsPerformanceSnapshot,

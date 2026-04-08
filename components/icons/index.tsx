@@ -14,6 +14,7 @@ import {
   EyeOff,
   Grid2x2,
   Heart,
+  History,
   Home,
   Lock,
   MapPin,
@@ -59,6 +60,10 @@ export function PackageIcon(props: IconProps) {
 
 export function HeartIcon(props: IconProps) {
   return <Heart {...props} />;
+}
+
+export function HistoryIcon(props: IconProps) {
+  return <History {...props} />;
 }
 
 export function BellIcon(props: IconProps) {

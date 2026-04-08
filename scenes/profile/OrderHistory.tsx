@@ -2,9 +2,9 @@ import React, { useCallback, useEffect } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import { Spinner, Text, YStack, Button } from 'tamagui';
 import { useRouter } from 'expo-router';
-import { WalletIcon, AlertCircleIcon, ShoppingBagIcon } from '@/components/icons';
-import { UnpaidOrderCard } from '@/components/elements/UnpaidOrderCard';
-import { useUnpaidOrdersPaginated } from '@/hooks/useUnpaidOrdersPaginated';
+import { HistoryIcon, AlertCircleIcon, ShoppingBagIcon } from '@/components/icons';
+import { OrderCard } from '@/components/elements/OrderCard';
+import { useOrderHistoryPaginated } from '@/hooks/useOrderHistoryPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 import type { OrderListItem } from '@/services';
@@ -18,12 +18,12 @@ const EmptyState = React.memo(function EmptyState() {
 
   return (
     <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$4">
-      <WalletIcon size={80} color="$colorSubtle" />
+      <HistoryIcon size={80} color="$colorSubtle" />
       <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
-        Belum Ada Pesanan
+        Belum Ada Riwayat
       </Text>
       <Text fontSize="$4" color="$colorSubtle" textAlign="center">
-        Pesanan yang belum dibayar akan muncul di sini. Yuk, mulai belanja!
+        Riwayat pesanan yang kadaluarsa atau dibatalkan akan muncul di sini.
       </Text>
       <Button
         size="$4"
@@ -51,7 +51,7 @@ const ErrorState = React.memo(function ErrorState({
     <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$4">
       <AlertCircleIcon size={64} color="$danger" />
       <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
-        Gagal Memuat Pesanan
+        Gagal Memuat Riwayat
       </Text>
       <Text fontSize="$3" color="$colorSubtle" textAlign="center">
         {message}
@@ -85,36 +85,35 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 
   return (
     <YStack paddingHorizontal="$4" paddingVertical="$2">
-      <UnpaidOrderCard order={order} onPress={handlePress} />
+      <OrderCard order={order} onPress={handlePress} />
     </YStack>
   );
 });
 
-export default function UnpaidOrders() {
+export default function OrderHistory() {
   const router = useRouter();
   const { user } = useAppSlice();
   const {
-    orders: unpaidOrders,
+    orders: historyOrders,
     error,
     hasMore,
     isInitialLoading,
     isRefreshing,
     isFetchingMore,
     refresh,
-    refreshIfNeeded,
     loadMore,
-  } = useUnpaidOrdersPaginated(user?.id);
+  } = useOrderHistoryPaginated(user?.id);
 
   useEffect(() => {
     if (user?.id) {
-      void refreshIfNeeded();
+      refresh();
     }
-  }, [user?.id, refreshIfNeeded]);
+  }, [user?.id, refresh]);
 
   const handleOrderPress = useCallback(
     (order: OrderListItem) => {
       if (__DEV__) {
-        console.log('[UnpaidOrders] Navigating to order detail:', order.id);
+        console.log('[OrderHistory] Navigating to order detail:', order.id);
       }
       router.push({
         pathname: '/orders/[orderId]',
@@ -147,25 +146,25 @@ export default function UnpaidOrders() {
     return (
       <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
         <Spinner size="large" color="$primary" />
-        <Text color="$colorSubtle">Memuat pesanan...</Text>
+        <Text color="$colorSubtle">Memuat riwayat...</Text>
       </YStack>
     );
   }
 
-  if (error && unpaidOrders.length === 0) {
+  if (error && historyOrders.length === 0) {
     const classifiedError = classifyError(new Error(error));
     const errorMessage = translateErrorMessage(classifiedError);
     return <ErrorState message={errorMessage} onRetry={handleRetry} />;
   }
 
-  if (unpaidOrders.length === 0) {
+  if (historyOrders.length === 0) {
     return <EmptyState />;
   }
 
   return (
     <YStack flex={1} backgroundColor="$background">
       <FlatList
-        data={unpaidOrders}
+        data={historyOrders}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         onEndReached={onEndReached}

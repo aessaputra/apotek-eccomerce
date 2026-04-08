@@ -52,6 +52,13 @@ function ProfileStackLayout() {
         }}
       />
       <Stack.Screen
+        name="order-history"
+        options={{
+          title: 'Riwayat Pesanan',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
         name="support"
         options={{
           title: 'Dukungan',
