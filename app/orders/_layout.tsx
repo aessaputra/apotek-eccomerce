@@ -56,6 +56,7 @@ function OrdersStackLayout() {
         options={{
           title: 'Detail Pesanan',
           headerTitleAlign: 'center',
+          headerBackTitle: 'Kembali',
         }}
       />
     </Stack>
