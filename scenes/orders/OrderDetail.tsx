@@ -1,13 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { ScrollView, RefreshControl } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button, Card, Separator, Spinner, Text, XStack, YStack, styled, useTheme } from 'tamagui';
 import { TruckIcon, CreditCardIcon, PackageIcon, AlertCircleIcon } from '@/components/icons';
 import { getOrderStatusLabel, getPaymentStatusLabel } from '@/services';
 import { getThemeColor } from '@/utils/theme';
 import { useOrderDetail } from '@/hooks/useOrderDetail';
-import { PayNowButton } from '@/components/elements/PayNowButton';
 import { PaymentCountdownTimer } from '@/components/elements/PaymentCountdownTimer';
+import BottomActionBar from '@/components/layouts/BottomActionBar';
 import Image from '@/components/elements/Image';
 import { formatCourierServiceName } from '@/constants/courier.constants';
 
@@ -175,6 +175,7 @@ export default function OrderDetail() {
     typeof orderIdParam === 'string' && orderIdParam.trim() ? orderIdParam : undefined;
 
   const theme = useTheme();
+  const router = useRouter();
   const { order, status, isLoading, isRefreshing, error, refresh } = useOrderDetail(orderId);
   const [isPaymentExpired, setIsPaymentExpired] = useState(false);
   const refreshTintColor = getThemeColor(theme, 'primary');
@@ -310,18 +311,30 @@ export default function OrderDetail() {
             onRefresh={refresh}
             tintColor={refreshTintColor}
           />
-        }>
+        }
+        contentContainerStyle={{
+          paddingBottom: order.payment_status === 'pending' ? 80 : 20,
+        }}>
         <YStack paddingVertical="$4" gap="$3">
           <SectionCard>
             <YStack padding="$4" gap="$3">
-              <YStack gap="$1">
-                <Text fontSize="$2" color="$colorMuted">
-                  Nomor Pesanan
-                </Text>
-                <Text fontSize="$5" fontWeight="700" color="$color">
-                  {orderNumber}
-                </Text>
-              </YStack>
+              <XStack justifyContent="space-between" alignItems="flex-start" gap="$2">
+                <YStack gap="$1" flex={1}>
+                  <Text fontSize="$2" color="$colorMuted">
+                    Nomor Pesanan
+                  </Text>
+                  <Text fontSize="$5" fontWeight="700" color="$color">
+                    {orderNumber}
+                  </Text>
+                </YStack>
+                {order.payment_status === 'pending' && (
+                  <PaymentCountdownTimer
+                    createdAt={order.created_at}
+                    onExpired={handlePaymentExpired}
+                    variant="compact"
+                  />
+                )}
+              </XStack>
 
               <YStack gap="$1">
                 <Text fontSize="$2" color="$colorMuted">
@@ -523,23 +536,26 @@ export default function OrderDetail() {
               </XStack>
             </YStack>
           </SectionCard>
-
-          {order.payment_status === 'pending' && (
-            <YStack paddingHorizontal="$4" marginTop="$2" marginBottom="$4" gap="$3">
-              <PaymentCountdownTimer
-                createdAt={order.created_at}
-                onExpired={handlePaymentExpired}
-              />
-              <PayNowButton
-                orderId={order.id}
-                orderNumber={orderNumber}
-                variant="fullWidth"
-                disabled={isPaymentExpired}
-              />
-            </YStack>
-          )}
         </YStack>
       </ScrollView>
+
+      {order.payment_status === 'pending' && (
+        <BottomActionBar
+          buttonTitle={isPaymentExpired ? 'Pembayaran Kadaluarsa' : 'Bayar Sekarang'}
+          onPress={() => {
+            if (!isPaymentExpired) {
+              router.push({
+                pathname: '/payment/webview',
+                params: { orderId: order.id, orderNumber },
+              });
+            }
+          }}
+          isLoading={isLoading}
+          disabled={isPaymentExpired}
+          aria-label="Bayar pesanan"
+          aria-describedby="Tombol untuk melanjutkan pembayaran"
+        />
+      )}
     </YStack>
   );
 }

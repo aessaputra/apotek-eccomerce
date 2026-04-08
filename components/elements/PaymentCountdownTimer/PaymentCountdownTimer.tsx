@@ -6,6 +6,7 @@ export interface PaymentCountdownTimerProps {
   createdAt: string;
   expiryHours?: number;
   onExpired?: () => void;
+  variant?: 'default' | 'compact';
 }
 
 type UrgencyLevel = 'normal' | 'warning' | 'critical' | 'expired';
@@ -63,6 +64,7 @@ export const PaymentCountdownTimer = React.memo(function PaymentCountdownTimer({
   createdAt,
   expiryHours = 24,
   onExpired,
+  variant = 'default',
 }: PaymentCountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(() =>
     calculateTimeLeft(createdAt, expiryHours),
@@ -101,6 +103,25 @@ export const PaymentCountdownTimer = React.memo(function PaymentCountdownTimer({
 
     return `${timeLeft.seconds}d`;
   }, [timeLeft]);
+
+  if (variant === 'compact') {
+    return (
+      <XStack
+        alignItems="center"
+        gap="$1.5"
+        paddingVertical="$1"
+        paddingHorizontal="$2"
+        borderRadius="$2"
+        backgroundColor={colors.bg}
+        borderWidth={1}
+        borderColor={colors.text}>
+        <ClockIcon size={14} color={colors.icon} />
+        <Text fontSize="$2" fontWeight="600" color={colors.text}>
+          {timeLeft.isExpired ? 'Kadaluarsa' : formattedTime}
+        </Text>
+      </XStack>
+    );
+  }
 
   if (timeLeft.isExpired) {
     return (
