@@ -21,7 +21,6 @@ function OrdersStackLayout() {
         options={{
           title: 'Belum Bayar',
           headerTitleAlign: 'center',
-          headerBackTitle: 'Pesanan',
         }}
       />
       <Stack.Screen
