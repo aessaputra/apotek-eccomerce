@@ -14,7 +14,6 @@ export default function Orders() {
   return (
     <YStack flex={1} backgroundColor="$background">
       <OrderStatusTabs
-        activeTab="unpaid"
         counts={{ unpaid: 0, packing: 0, shipped: 0, completed: 0 }}
         onTabChange={handleTabChange}
       />
