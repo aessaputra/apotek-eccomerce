@@ -75,7 +75,7 @@ describe('PayNowButton', () => {
     (mockCreateSnapToken as jest.Mock).mockReturnValue(
       Promise.resolve({
         data: null,
-        error: new Error('Network error'),
+        error: Object.assign(new Error('Bad request'), { status: 400 }),
       }),
     );
 

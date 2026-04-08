@@ -169,11 +169,12 @@ function getProductImageUrl(
 }
 
 export default function OrderDetail() {
-  const params = useLocalSearchParams<{ orderId?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    orderId?: string | string[];
+  }>();
   const orderIdParam = Array.isArray(params.orderId) ? params.orderId[0] : params.orderId;
   const orderId =
     typeof orderIdParam === 'string' && orderIdParam.trim() ? orderIdParam : undefined;
-
   const theme = useTheme();
   const router = useRouter();
   const { order, status, isLoading, isRefreshing, error, refresh } = useOrderDetail(orderId);

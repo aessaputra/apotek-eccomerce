@@ -90,7 +90,7 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
   );
 });
 
-export default function UnpaidOrders() {
+export function UnpaidOrders() {
   const router = useRouter();
   const { user } = useAppSlice();
   const {
@@ -117,7 +117,7 @@ export default function UnpaidOrders() {
         console.log('[UnpaidOrders] Navigating to order detail:', order.id);
       }
       router.push({
-        pathname: '/orders/[orderId]',
+        pathname: '/orders/order-detail/[orderId]',
         params: { orderId: order.id },
       });
     },
@@ -185,3 +185,5 @@ export default function UnpaidOrders() {
     </YStack>
   );
 }
+
+export default UnpaidOrders;

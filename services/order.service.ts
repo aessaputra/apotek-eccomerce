@@ -159,8 +159,10 @@ export interface GetUserOrdersParams {
   offset?: number;
   limit?: number;
   signal?: AbortSignal;
-  paymentStatus?: 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel';
-  paymentStatuses?: ('pending' | 'settlement' | 'deny' | 'expire' | 'cancel')[];
+  paymentStatus?: 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'capture';
+  paymentStatuses?: ('pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'capture')[];
+  orderStatus?: string;
+  orderStatuses?: string[];
 }
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
@@ -344,9 +346,21 @@ export async function getOrdersOptimized(
           .range(offset, offset + fetchLimit - 1);
 
         if (params.paymentStatuses && params.paymentStatuses.length > 0) {
-          query = query.in('payment_status', params.paymentStatuses);
+          query = query.in(
+            'payment_status',
+            params.paymentStatuses as Database['public']['Enums']['payment_status'][],
+          );
         } else if (params.paymentStatus) {
-          query = query.eq('payment_status', params.paymentStatus);
+          query = query.eq(
+            'payment_status',
+            params.paymentStatus as Database['public']['Enums']['payment_status'],
+          );
+        }
+
+        if (params.orderStatuses && params.orderStatuses.length > 0) {
+          query = query.in('status', params.orderStatuses);
+        } else if (params.orderStatus) {
+          query = query.eq('status', params.orderStatus);
         }
 
         if (__DEV__) {
@@ -355,6 +369,7 @@ export async function getOrdersOptimized(
             offset,
             fetchLimit,
             paymentStatus: params.paymentStatus ?? null,
+            orderStatus: params.orderStatus ?? null,
           });
         }
 

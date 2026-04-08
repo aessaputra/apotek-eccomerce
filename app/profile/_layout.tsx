@@ -59,6 +59,13 @@ function ProfileStackLayout() {
         }}
       />
       <Stack.Screen
+        name="order-detail/[orderId]"
+        options={{
+          title: 'Detail Pesanan',
+          headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
         name="support"
         options={{
           title: 'Dukungan',

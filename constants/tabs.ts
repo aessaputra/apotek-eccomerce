@@ -66,7 +66,9 @@ export const HIDDEN_ROUTE_SCREENS = new Set<string>([
   'search',
   'details',
   'unpaid',
+  'order-detail',
   '[orderId]',
+  'success',
 ]);
 
 function isTabRouteName(routeName: string): routeName is TabRouteName {

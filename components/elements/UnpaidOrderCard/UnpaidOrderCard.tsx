@@ -149,10 +149,7 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
           </YStack>
         </XStack>
 
-        <XStack gap="$2" alignItems="center">
-          <Text fontSize="$2" color="$colorMuted" flex={1} numberOfLines={1}>
-            {orderNumber}
-          </Text>
+        <XStack justifyContent="flex-end">
           <PayNowButton orderId={order.id} orderNumber={orderNumber} disabled={isExpired} />
         </XStack>
       </YStack>

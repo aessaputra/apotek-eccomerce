@@ -31,6 +31,9 @@ const StatusBadge = styled(XStack, {
       danger: {
         backgroundColor: '$dangerSoft',
       },
+      primary: {
+        backgroundColor: '$brandPrimarySoft',
+      },
       neutral: {
         backgroundColor: '$surface',
       },
@@ -52,6 +55,9 @@ const StatusText = styled(Text, {
       },
       danger: {
         color: '$danger',
+      },
+      primary: {
+        color: '$primary',
       },
       neutral: {
         color: '$colorSubtle',
@@ -75,21 +81,58 @@ function formatDate(dateString: string): string {
   });
 }
 
-function getStatusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
-  const successStates = ['settlement', 'capture'];
-  const pendingStates = ['pending', 'authorize'];
-  const failedStates = ['deny', 'cancel', 'expire'];
+type StatusVariant = 'success' | 'warning' | 'danger' | 'primary' | 'neutral';
 
-  if (successStates.includes(status)) {
-    return 'success';
+const SUCCESS_PAYMENT_STATES = ['settlement', 'capture'];
+const FAILED_PAYMENT_STATES = ['deny', 'cancel', 'expire'];
+const REFUND_STATES = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
+
+const ORDER_STATUS_CONFIG: Record<string, { label: string; variant: StatusVariant }> = {
+  processing: { label: 'Diproses', variant: 'primary' },
+  awaiting_shipment: { label: 'Menunggu Pengiriman', variant: 'primary' },
+  shipped: { label: 'Dikirim', variant: 'primary' },
+  delivered: { label: 'Terkirim', variant: 'success' },
+  cancelled: { label: 'Dibatalkan', variant: 'danger' },
+  draft: { label: 'Draft', variant: 'neutral' },
+  pending: { label: 'Menunggu Pembayaran', variant: 'warning' },
+};
+
+interface StatusDisplay {
+  label: string;
+  variant: StatusVariant;
+}
+
+function getPrimaryStatusDisplay(
+  orderStatus: string,
+  paymentStatus: string,
+  expiredAt?: string | null,
+): StatusDisplay {
+  if (paymentStatus === 'pending') {
+    const isExpired = expiredAt && new Date(expiredAt) < new Date();
+    if (isExpired) {
+      return { label: 'Pembayaran Kadaluarsa', variant: 'danger' };
+    }
+    return { label: 'Menunggu Pembayaran', variant: 'warning' };
   }
-  if (pendingStates.includes(status)) {
-    return 'warning';
+
+  if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {
+    return { label: getPaymentStatusLabel(paymentStatus), variant: 'danger' };
   }
-  if (failedStates.includes(status)) {
-    return 'danger';
+
+  if (REFUND_STATES.includes(paymentStatus)) {
+    return { label: getPaymentStatusLabel(paymentStatus), variant: 'warning' };
   }
-  return 'neutral';
+
+  if (SUCCESS_PAYMENT_STATES.includes(paymentStatus)) {
+    return (
+      ORDER_STATUS_CONFIG[orderStatus] || {
+        label: getOrderStatusLabel(orderStatus),
+        variant: 'neutral',
+      }
+    );
+  }
+
+  return { label: getOrderStatusLabel(orderStatus), variant: 'neutral' };
 }
 
 interface OrderCardProps {
@@ -98,7 +141,11 @@ interface OrderCardProps {
 }
 
 export const OrderCard = React.memo(function OrderCard({ order, onPress }: OrderCardProps) {
-  const statusVariant = getStatusVariant(order.payment_status);
+  const statusDisplay = getPrimaryStatusDisplay(
+    order.status,
+    order.payment_status,
+    order.expired_at,
+  );
   const firstItem = order.order_items[0];
   const itemCount = order.order_items.length;
   const itemNames =
@@ -113,10 +160,8 @@ export const OrderCard = React.memo(function OrderCard({ order, onPress }: Order
           <Text fontSize="$3" color="$colorSubtle" numberOfLines={1} flex={1}>
             {formatDate(order.created_at)}
           </Text>
-          <StatusBadge status={statusVariant}>
-            <StatusText status={statusVariant}>
-              {getPaymentStatusLabel(order.payment_status)}
-            </StatusText>
+          <StatusBadge status={statusDisplay.variant}>
+            <StatusText status={statusDisplay.variant}>{statusDisplay.label}</StatusText>
           </StatusBadge>
         </XStack>
 

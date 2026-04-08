@@ -62,16 +62,20 @@ const mockOrders: OrderListItem[] = [
   },
 ];
 
+const hookState = {
+  orders: mockOrders as OrderListItem[],
+  error: null as string | null,
+  hasMore: false,
+  isInitialLoading: false,
+  isRefreshing: false,
+  isFetchingMore: false,
+  isRevalidating: false,
+  isUsingCachedData: true,
+};
+
 jest.mock('@/hooks/useUnpaidOrdersPaginated', () => ({
   useUnpaidOrdersPaginated: () => ({
-    orders: mockOrders,
-    error: null,
-    hasMore: false,
-    isInitialLoading: false,
-    isRefreshing: false,
-    isFetchingMore: false,
-    isRevalidating: false,
-    isUsingCachedData: true,
+    ...hookState,
     refresh: mockRefresh,
     refreshIfNeeded: mockRefreshIfNeeded,
     loadMore: mockLoadMore,
@@ -98,6 +102,14 @@ jest.mock('expo-router', () => ({
 describe('UnpaidOrders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    hookState.orders = mockOrders;
+    hookState.error = null;
+    hookState.hasMore = false;
+    hookState.isInitialLoading = false;
+    hookState.isRefreshing = false;
+    hookState.isFetchingMore = false;
+    hookState.isRevalidating = false;
+    hookState.isUsingCachedData = true;
   });
 
   test('renders order list', () => {
@@ -108,88 +120,31 @@ describe('UnpaidOrders', () => {
   });
 
   test('shows empty state when no orders', () => {
-    jest.resetModules();
-    jest.doMock('@/hooks/useUnpaidOrdersPaginated', () => ({
-      useUnpaidOrdersPaginated: () => ({
-        orders: [],
-        error: null,
-        hasMore: false,
-        isInitialLoading: false,
-        isRefreshing: false,
-        isFetchingMore: false,
-        isRevalidating: false,
-        isUsingCachedData: false,
-        refresh: mockRefresh,
-        refreshIfNeeded: mockRefreshIfNeeded,
-        loadMore: mockLoadMore,
-        metrics: {
-          lastFetchDurationMs: 0,
-          lastPayloadBytes: 0,
-          cacheAgeMs: null,
-        },
-      }),
-    }));
+    hookState.orders = [];
+    hookState.isUsingCachedData = false;
 
-    const { UnpaidOrders: UnpaidOrdersEmpty } = require('@/scenes/orders/UnpaidOrders');
-    render(<UnpaidOrdersEmpty />);
+    render(<UnpaidOrders />);
 
     expect(screen.getByText('Belum Ada Pesanan')).toBeTruthy();
   });
 
   test('shows loading state', () => {
-    jest.resetModules();
-    jest.doMock('@/hooks/useUnpaidOrdersPaginated', () => ({
-      useUnpaidOrdersPaginated: () => ({
-        orders: [],
-        error: null,
-        hasMore: true,
-        isInitialLoading: true,
-        isRefreshing: false,
-        isFetchingMore: false,
-        isRevalidating: false,
-        isUsingCachedData: false,
-        refresh: mockRefresh,
-        refreshIfNeeded: mockRefreshIfNeeded,
-        loadMore: mockLoadMore,
-        metrics: {
-          lastFetchDurationMs: 0,
-          lastPayloadBytes: 0,
-          cacheAgeMs: null,
-        },
-      }),
-    }));
+    hookState.orders = [];
+    hookState.hasMore = true;
+    hookState.isInitialLoading = true;
+    hookState.isUsingCachedData = false;
 
-    const { UnpaidOrders: UnpaidOrdersLoading } = require('@/scenes/orders/UnpaidOrders');
-    render(<UnpaidOrdersLoading />);
+    render(<UnpaidOrders />);
 
     expect(screen.getByText('Memuat pesanan...')).toBeTruthy();
   });
 
   test('shows error state', () => {
-    jest.resetModules();
-    jest.doMock('@/hooks/useUnpaidOrdersPaginated', () => ({
-      useUnpaidOrdersPaginated: () => ({
-        orders: [],
-        error: 'Gagal memuat data',
-        hasMore: false,
-        isInitialLoading: false,
-        isRefreshing: false,
-        isFetchingMore: false,
-        isRevalidating: false,
-        isUsingCachedData: false,
-        refresh: mockRefresh,
-        refreshIfNeeded: mockRefreshIfNeeded,
-        loadMore: mockLoadMore,
-        metrics: {
-          lastFetchDurationMs: 0,
-          lastPayloadBytes: 0,
-          cacheAgeMs: null,
-        },
-      }),
-    }));
+    hookState.orders = [];
+    hookState.error = 'Gagal memuat data';
+    hookState.isUsingCachedData = false;
 
-    const { UnpaidOrders: UnpaidOrdersError } = require('@/scenes/orders/UnpaidOrders');
-    render(<UnpaidOrdersError />);
+    render(<UnpaidOrders />);
 
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
   });

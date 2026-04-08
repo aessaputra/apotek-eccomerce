@@ -33,6 +33,7 @@ export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
   const activeRequestIdRef = useRef(0);
   const isMountedRef = useRef(true);
   const hasInitialLoadCompletedRef = useRef(false);
+  const lastLoadTimeRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -115,6 +116,8 @@ export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
           error: null,
         });
 
+        lastLoadTimeRef.current = Date.now();
+
         if (reason === 'initial') {
           hasInitialLoadCompletedRef.current = true;
         }
@@ -150,7 +153,10 @@ export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
   useFocusEffect(
     useCallback(() => {
       if (orderId && hasInitialLoadCompletedRef.current) {
-        void fetchOrder('refresh');
+        const timeSinceLoad = Date.now() - lastLoadTimeRef.current;
+        if (timeSinceLoad > 2000) {
+          void fetchOrder('refresh');
+        }
       }
     }, [orderId, fetchOrder]),
   );

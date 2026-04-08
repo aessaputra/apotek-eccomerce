@@ -28,6 +28,7 @@ export type OrdersRoutes = {
   orders: undefined;
   'orders/index': undefined;
   'orders/success': { orderId?: string };
+  'orders/order-detail/[orderId]': { orderId: string };
 };
 
 // Profile routes
@@ -41,6 +42,7 @@ export type ProfileRoutes = {
   'profile/edit-profile': undefined;
   'profile/details': undefined;
   'profile/support': undefined;
+  'profile/order-detail/[orderId]': { orderId: string };
 };
 
 // Google auth callback
@@ -64,6 +66,7 @@ export type ProfileStackParams = {
   'edit-profile': undefined;
   details: undefined;
   support: undefined;
+  'order-detail/[orderId]': { orderId: string };
 };
 
 export type HomeStackParams = {
@@ -82,6 +85,7 @@ export type CartStackParams = {
 export type OrdersStackParams = {
   index: undefined;
   success: { orderId?: string };
+  'order-detail/[orderId]': { orderId: string };
 };
 
 export type AuthStackParams = {

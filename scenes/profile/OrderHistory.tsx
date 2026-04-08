@@ -110,7 +110,7 @@ export default function OrderHistory() {
         console.log('[OrderHistory] Navigating to order detail:', order.id);
       }
       router.push({
-        pathname: '/orders/[orderId]',
+        pathname: '/profile/order-detail/[orderId]',
         params: { orderId: order.id },
       });
     },

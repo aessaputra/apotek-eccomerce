@@ -56,11 +56,11 @@ function OrdersStackLayout() {
         }}
       />
       <Stack.Screen
-        name="[orderId]"
+        name="order-detail/[orderId]"
         options={{
           title: 'Detail Pesanan',
           headerTitleAlign: 'center',
-          headerBackTitle: 'Kembali',
+          headerBackTitle: 'Belum Bayar',
         }}
       />
     </Stack>

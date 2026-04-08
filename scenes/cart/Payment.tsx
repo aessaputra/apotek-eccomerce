@@ -6,7 +6,7 @@ import { WebView } from 'react-native-webview';
 import { Spinner, Text, XStack, YStack, Button as TamaguiButton } from 'tamagui';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { CloseIcon, LockIcon } from '@/components/icons';
-import { useAppSlice } from '@/slices';
+import { useAppSlice, appActions } from '@/slices';
 import type { RouteParams } from '@/types/routes.types';
 import { clearCart } from '@/services/cart.service';
 import { pollOrderPaymentStatus } from '@/services/checkout.service';
@@ -194,11 +194,22 @@ export default function Payment() {
           if (clearResult.error && __DEV__) {
             console.warn('[Payment] clearCart failed after settlement:', clearResult.error.message);
           }
+
+          dispatch(appActions.invalidateUnpaidOrdersCache(user.id));
+          dispatch(
+            appActions.invalidateOrdersByStatusCache({ cacheKey: 'packing', userId: user.id }),
+          );
+          dispatch(
+            appActions.invalidateOrdersByStatusCache({ cacheKey: 'shipped', userId: user.id }),
+          );
+          dispatch(
+            appActions.invalidateOrdersByStatusCache({ cacheKey: 'completed', userId: user.id }),
+          );
         }
 
         dispatch(markCartCleared(Date.now()));
 
-        router.replace(ORDERS_ROUTE);
+        router.replace(`/orders/success?orderId=${resolvedOrderId}`);
         return;
       }
 
@@ -221,6 +232,20 @@ export default function Payment() {
 
       if (terminalFailedStates.includes(paymentStatus)) {
         setPaymentError('Pembayaran terdeteksi gagal atau dibatalkan. Silakan ulangi pembayaran.');
+
+        if (user?.id) {
+          dispatch(appActions.invalidateUnpaidOrdersCache(user.id));
+          dispatch(
+            appActions.invalidateOrdersByStatusCache({ cacheKey: 'packing', userId: user.id }),
+          );
+          dispatch(
+            appActions.invalidateOrdersByStatusCache({ cacheKey: 'shipped', userId: user.id }),
+          );
+          dispatch(
+            appActions.invalidateOrdersByStatusCache({ cacheKey: 'completed', userId: user.id }),
+          );
+        }
+
         router.replace(ORDERS_ROUTE);
         return;
       }

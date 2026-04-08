@@ -111,7 +111,7 @@ export function PayNowButton({
         )
       }
       onPress={e => {
-        e.stopPropagation();
+        e?.stopPropagation?.();
         void handlePayNow();
       }}
       aria-label={`Bayar pesanan ${orderNumber ?? orderId}`}>
