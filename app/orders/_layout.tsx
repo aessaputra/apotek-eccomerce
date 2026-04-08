@@ -21,6 +21,7 @@ function OrdersStackLayout() {
         options={{
           title: 'Belum Bayar',
           headerTitleAlign: 'center',
+          headerBackTitle: 'Pesanan',
         }}
       />
       <Stack.Screen
@@ -28,6 +29,7 @@ function OrdersStackLayout() {
         options={{
           title: 'Dikemas',
           headerTitleAlign: 'center',
+          headerBackTitle: 'Pesanan',
         }}
       />
       <Stack.Screen
@@ -35,6 +37,7 @@ function OrdersStackLayout() {
         options={{
           title: 'Dikirim',
           headerTitleAlign: 'center',
+          headerBackTitle: 'Pesanan',
         }}
       />
       <Stack.Screen
@@ -42,6 +45,7 @@ function OrdersStackLayout() {
         options={{
           title: 'Selesai',
           headerTitleAlign: 'center',
+          headerBackTitle: 'Pesanan',
         }}
       />
       <Stack.Screen

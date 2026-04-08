@@ -15,7 +15,7 @@ export default function Orders() {
   useEffect(() => {
     const currentSegment = segments[segments.length - 1];
     if (currentSegment === 'orders' || currentSegment === 'index') {
-      router.replace('/orders/unpaid');
+      router.push('/orders/unpaid');
     }
   }, [segments, router]);
 
