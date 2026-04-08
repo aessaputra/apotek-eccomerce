@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import { Spinner, Text, YStack, Button } from 'tamagui';
 import { useRouter } from 'expo-router';
@@ -103,12 +103,6 @@ export default function OrderHistory() {
     refresh,
     loadMore,
   } = useOrderHistoryPaginated(user?.id);
-
-  useEffect(() => {
-    if (user?.id) {
-      refresh();
-    }
-  }, [user?.id, refresh]);
 
   const handleOrderPress = useCallback(
     (order: OrderListItem) => {
