@@ -63,7 +63,7 @@ interface FetchOrdersPageOptions {
 export interface OrdersByStatusParams {
   userId?: string;
   orderStatuses?: string[];
-  paymentStatuses?: ('pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'capture')[];
+  paymentStatuses?: ('pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'authorize')[];
   cacheKey: 'packing' | 'shipped' | 'completed';
 }
 

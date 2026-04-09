@@ -8,12 +8,11 @@ import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { CloseIcon, LockIcon } from '@/components/icons';
 import { useAppSlice, appActions } from '@/slices';
 import type { RouteParams } from '@/types/routes.types';
-import { clearCart } from '@/services/cart.service';
 import { pollOrderPaymentStatus } from '@/services/checkout.service';
 import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
 import type { PaymentResult } from '@/types/payment';
 
-const PAYMENT_SUCCESS_STATUSES = ['settlement', 'capture'];
+const PAYMENT_SUCCESS_STATUSES = ['settlement'];
 const PAYMENT_PENDING_STATUSES = ['pending', 'authorize'];
 const PAYMENT_FAILED_STATUSES = ['deny', 'cancel', 'expire', 'failure'];
 const ORDERS_ROUTE = '/(tabs)/orders';
@@ -190,11 +189,6 @@ export default function Payment() {
 
       if (!error && PAYMENT_SUCCESS_STATUSES.includes(paymentStatus)) {
         if (user?.id) {
-          const clearResult = await clearCart(user.id);
-          if (clearResult.error && __DEV__) {
-            console.warn('[Payment] clearCart failed after settlement:', clearResult.error.message);
-          }
-
           dispatch(appActions.invalidateUnpaidOrdersCache(user.id));
           dispatch(
             appActions.invalidateOrdersByStatusCache({ cacheKey: 'packing', userId: user.id }),

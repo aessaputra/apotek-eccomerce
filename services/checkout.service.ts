@@ -25,6 +25,14 @@ interface PaymentStatusSnapshot {
   status: string;
 }
 
+interface ConfirmMidtransPaymentResponse {
+  confirmed?: boolean;
+  payment_status?: Database['public']['Enums']['payment_status'];
+  order_status?: string;
+  applied?: boolean;
+  message?: string;
+}
+
 interface CartLine {
   product_id: string;
   quantity: number;
@@ -456,14 +464,55 @@ export async function getOrderPaymentStatus(
   }
 }
 
+export async function confirmMidtransPayment(
+  orderId: string,
+): Promise<{ data: ConfirmMidtransPaymentResponse | null; error: Error | null }> {
+  try {
+    const accessToken = await getValidAccessToken();
+    if (!accessToken) {
+      return {
+        data: null,
+        error: new Error(AUTH_SESSION_ERROR_MESSAGE),
+      };
+    }
+
+    const { data, error } = await supabase.functions.invoke('confirm-midtrans-payment', {
+      body: { order_id: orderId },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (error) {
+      return { data: null, error: toUserError(error, MIDTRANS_ERROR_MESSAGE) };
+    }
+
+    return {
+      data: (data ?? null) as ConfirmMidtransPaymentResponse | null,
+      error: null,
+    };
+  } catch (error) {
+    return { data: null, error: toUserError(error, MIDTRANS_ERROR_MESSAGE) };
+  }
+}
+
 export async function pollOrderPaymentStatus(
   orderId: string,
   maxAttempts = 12,
   delayMs = 2000,
 ): Promise<{ data: PaymentStatusSnapshot | null; error: Error | null }> {
   const safeMaxAttempts = Math.min(Math.max(1, maxAttempts), 12);
+  const confirmAttempts = new Set([0, 2, 4, 6, 8, 10]);
 
   for (let index = 0; index < safeMaxAttempts; index += 1) {
+    if (confirmAttempts.has(index)) {
+      const { error: confirmError } = await confirmMidtransPayment(orderId);
+
+      if (confirmError) {
+        return { data: null, error: confirmError };
+      }
+    }
+
     const { data, error } = await getOrderPaymentStatus(orderId);
 
     if (error) {
@@ -471,7 +520,7 @@ export async function pollOrderPaymentStatus(
     }
 
     const paymentStatus = data?.payment_status ?? '';
-    const terminalStates = ['settlement', 'capture', 'cancel', 'deny', 'expire', 'failure'];
+    const terminalStates = ['settlement', 'authorize', 'cancel', 'deny', 'expire', 'failure'];
     if (terminalStates.includes(paymentStatus)) {
       return { data, error: null };
     }

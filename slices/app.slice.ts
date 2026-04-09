@@ -269,6 +269,10 @@ const slice = createSlice({
 
       state.unpaidOrdersCache[payload] = {
         ...currentEntry,
+        items: [],
+        hasMore: true,
+        payloadBytes: 0,
+        queryDurationMs: 0,
         lastFetchedAt: null,
         status: 'idle',
         error: null,

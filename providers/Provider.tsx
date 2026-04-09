@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider } from 'react-redux';
-import { PortalProvider, TamaguiProvider } from 'tamagui';
+import { TamaguiProvider } from 'tamagui';
 import { themes } from '@/themes';
 import store from '@/utils/store';
 import tamaguiConfig from '@/tamagui.config';
@@ -43,13 +43,11 @@ export default function Provider({ children }: Readonly<{ children: React.ReactN
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ReduxProvider store={store}>
-          <PortalProvider shouldAddRootHost>
-            <TamaguiProvider config={tamaguiConfig} defaultTheme={isDark ? 'brand_dark' : 'brand'}>
-              <ThemeProvider value={isDark ? BrandNavigationDarkTheme : BrandNavigationTheme}>
-                {children}
-              </ThemeProvider>
-            </TamaguiProvider>
-          </PortalProvider>
+          <TamaguiProvider config={tamaguiConfig} defaultTheme={isDark ? 'brand_dark' : 'brand'}>
+            <ThemeProvider value={isDark ? BrandNavigationDarkTheme : BrandNavigationTheme}>
+              {children}
+            </ThemeProvider>
+          </TamaguiProvider>
         </ReduxProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

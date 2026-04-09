@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import { Spinner, Text, YStack, Button } from 'tamagui';
 import { useRouter } from 'expo-router';
@@ -93,6 +93,8 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 export default function PackingOrders() {
   const router = useRouter();
   const { user } = useAppSlice();
+  const packingOrderStatuses = useMemo(() => ['processing'], []);
+  const packingPaymentStatuses = useMemo(() => ['settlement'] as const, []);
   const {
     orders: packingOrders,
     error,
@@ -105,8 +107,8 @@ export default function PackingOrders() {
     loadMore,
   } = useOrdersByStatusPaginated({
     userId: user?.id,
-    orderStatuses: ['processing', 'awaiting_shipment'],
-    paymentStatuses: ['settlement', 'capture'],
+    orderStatuses: packingOrderStatuses,
+    paymentStatuses: packingPaymentStatuses,
     cacheKey: 'packing',
   });
 

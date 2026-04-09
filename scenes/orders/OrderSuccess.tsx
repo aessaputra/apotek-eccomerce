@@ -38,7 +38,7 @@ export default function OrderSuccess() {
   const { order, isLoading, error } = useOrderDetail(resolvedOrderId);
 
   const handleGoHome = () => {
-    router.navigate('/home');
+    router.navigate('/(tabs)/home');
   };
 
   const handleViewOrderDetail = () => {
@@ -51,7 +51,7 @@ export default function OrderSuccess() {
   };
 
   const handleViewOrders = () => {
-    router.replace('/orders');
+    router.replace('/(tabs)/orders');
   };
 
   const totalItems = order?.order_items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;

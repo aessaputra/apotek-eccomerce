@@ -633,6 +633,7 @@ export function subscribeToCartChanges(
   onConnectionStateChange?: (state: CartRealtimeConnectionState) => void,
 ): () => void {
   const normalizedCartId = cartId.trim();
+  const channelName = `cart:${normalizedCartId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
 
   if (!normalizedCartId) {
     onConnectionStateChange?.('disconnected');
@@ -642,7 +643,7 @@ export function subscribeToCartChanges(
   onConnectionStateChange?.('connecting');
 
   const channel = supabase
-    .channel(`cart:${normalizedCartId}`)
+    .channel(channelName)
     .on(
       'postgres_changes',
       {

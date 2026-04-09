@@ -155,12 +155,19 @@ export interface OrderListMetrics {
   hasMore: boolean;
 }
 
+export interface OrderTabCounts {
+  unpaid: number;
+  packing: number;
+  shipped: number;
+  completed: number;
+}
+
 export interface GetUserOrdersParams {
   offset?: number;
   limit?: number;
   signal?: AbortSignal;
-  paymentStatus?: 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'capture';
-  paymentStatuses?: ('pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'capture')[];
+  paymentStatus?: 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'authorize';
+  paymentStatuses?: ('pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'authorize')[];
   orderStatus?: string;
   orderStatuses?: string[];
 }
@@ -311,6 +318,45 @@ function normalizeSupabaseError(error: unknown, fallback: string): Error {
   return new Error(nestedMessage || fallback);
 }
 
+async function countOrdersByFilters(
+  userId: string,
+  params: Pick<
+    GetUserOrdersParams,
+    'paymentStatus' | 'paymentStatuses' | 'orderStatus' | 'orderStatuses'
+  >,
+): Promise<number> {
+  let query = supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (params.paymentStatuses && params.paymentStatuses.length > 0) {
+    query = query.in(
+      'payment_status',
+      params.paymentStatuses as Database['public']['Enums']['payment_status'][],
+    );
+  } else if (params.paymentStatus) {
+    query = query.eq(
+      'payment_status',
+      params.paymentStatus as Database['public']['Enums']['payment_status'],
+    );
+  }
+
+  if (params.orderStatuses && params.orderStatuses.length > 0) {
+    query = query.in('status', params.orderStatuses);
+  } else if (params.orderStatus) {
+    query = query.eq('status', params.orderStatus);
+  }
+
+  const { count, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
 /**
  * Get paginated, list-optimized orders for a user, sorted by creation date (newest first)
  */
@@ -330,6 +376,9 @@ export async function getOrdersOptimized(
       pageSize,
       fetchLimit,
       paymentStatus: params.paymentStatus ?? null,
+      paymentStatuses: params.paymentStatuses ?? null,
+      orderStatus: params.orderStatus ?? null,
+      orderStatuses: params.orderStatuses ?? null,
       hasSignal: Boolean(params.signal),
       select: ORDER_LIST_SELECT,
     });
@@ -369,7 +418,9 @@ export async function getOrdersOptimized(
             offset,
             fetchLimit,
             paymentStatus: params.paymentStatus ?? null,
+            paymentStatuses: params.paymentStatuses ?? null,
             orderStatus: params.orderStatus ?? null,
+            orderStatuses: params.orderStatuses ?? null,
           });
         }
 
@@ -448,6 +499,37 @@ export async function getOrdersOptimized(
         ? toAbortError(error)
         : normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE),
       metrics: null,
+    };
+  }
+}
+
+export async function getOrderTabCounts(
+  userId: string,
+): Promise<{ data: OrderTabCounts | null; error: Error | null }> {
+  try {
+    const [unpaid, packing, shipped, completed] = await Promise.all([
+      countOrdersByFilters(userId, { paymentStatuses: ['pending'] }),
+      countOrdersByFilters(userId, {
+        orderStatuses: ['processing'],
+        paymentStatuses: ['settlement'],
+      }),
+      countOrdersByFilters(userId, { orderStatuses: ['awaiting_shipment', 'shipped'] }),
+      countOrdersByFilters(userId, { orderStatuses: ['delivered'] }),
+    ]);
+
+    return {
+      data: {
+        unpaid,
+        packing,
+        shipped,
+        completed,
+      },
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: normalizeSupabaseError(error, 'Gagal memuat jumlah pesanan.'),
     };
   }
 }

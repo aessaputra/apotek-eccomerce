@@ -4,6 +4,13 @@ import { getCartWithItems, subscribeToCartChanges } from '@/services/cart.servic
 import type { CartItemWithProduct, CartRealtimeChange, CartWithItems } from '@/types/cart';
 import { useCartPaginated } from '@/hooks/useCartPaginated';
 
+let mockCartClearedAt: number | null = null;
+
+jest.mock('react-redux', () => ({
+  useSelector: (selector: (state: { app: { cartClearedAt: number | null } }) => unknown) =>
+    selector({ app: { cartClearedAt: mockCartClearedAt } }),
+}));
+
 const mockSubscribeToCartChanges = subscribeToCartChanges as jest.MockedFunction<
   typeof subscribeToCartChanges
 >;
@@ -87,6 +94,7 @@ function createDeferred<T>() {
 
 describe('useCartPaginated', () => {
   afterEach(() => {
+    mockCartClearedAt = null;
     mockLatestRealtimeHandler = null;
     mockLatestConnectionHandler = null;
     mockUnsubscribe.mockReset();
@@ -254,5 +262,34 @@ describe('useCartPaginated', () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.items[0]?.quantity).toBe(1);
+  });
+
+  it('clears visible items and refreshes when cart is marked cleared after payment', async () => {
+    mockGetCartWithItems
+      .mockResolvedValueOnce({
+        data: createCart([createItem(0, 2)]),
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: createCart([]),
+        error: null,
+      });
+
+    const { result, rerender } = renderHook(({ userId }) => useCartPaginated({ userId }), {
+      initialProps: { userId: 'user-1' },
+    });
+
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(1);
+    });
+
+    mockCartClearedAt = Date.now();
+    rerender({ userId: 'user-1' });
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual([]);
+    });
+
+    expect(mockGetCartWithItems).toHaveBeenCalledTimes(2);
   });
 });

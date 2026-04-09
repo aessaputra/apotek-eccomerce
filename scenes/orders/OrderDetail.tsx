@@ -94,7 +94,7 @@ const ORDER_STATUS_CONFIG: Record<string, { label: string; variant: StatusVarian
 };
 
 const FAILED_PAYMENT_STATES = ['deny', 'expire', 'cancel'];
-const SUCCESS_PAYMENT_STATES = ['settlement', 'capture'];
+const SUCCESS_PAYMENT_STATES = ['settlement'];
 const REFUND_STATES = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
 
 function getPrimaryStatusDisplay(

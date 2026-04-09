@@ -83,7 +83,7 @@ function formatDate(dateString: string): string {
 
 type StatusVariant = 'success' | 'warning' | 'danger' | 'primary' | 'neutral';
 
-const SUCCESS_PAYMENT_STATES = ['settlement', 'capture'];
+const SUCCESS_PAYMENT_STATES = ['settlement'];
 const FAILED_PAYMENT_STATES = ['deny', 'cancel', 'expire'];
 const REFUND_STATES = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
 
@@ -146,10 +146,11 @@ export const OrderCard = React.memo(function OrderCard({ order, onPress }: Order
     order.payment_status,
     order.expired_at,
   );
-  const firstItem = order.order_items[0];
-  const itemCount = order.order_items.length;
+  const orderItems = order.order_items ?? [];
+  const firstItem = orderItems[0];
+  const itemCount = orderItems.length;
   const itemNames =
-    itemCount === 1
+    itemCount <= 1
       ? (firstItem?.products?.name ?? 'Produk')
       : `${firstItem?.products?.name ?? 'Produk'} +${itemCount - 1} lainnya`;
 

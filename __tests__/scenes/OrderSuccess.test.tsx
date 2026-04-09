@@ -40,12 +40,12 @@ describe('<OrderSuccess />', () => {
     mockPush.mockClear();
   });
 
-  test('navigates to /home when the user presses back to home', async () => {
+  test('navigates to /(tabs)/home when the user presses back to home', async () => {
     render(<OrderSuccess />);
 
     fireEvent.press(screen.getByText('Kembali ke Beranda'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/home');
+    expect(mockNavigate).toHaveBeenCalledWith('/(tabs)/home');
   });
 
   test('renders the order id summary', async () => {
