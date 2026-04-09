@@ -16,6 +16,11 @@
       "sourceType": "github",
       "computedHash": "6a70d32b4e4553c8559c2493cc6e4a685dae0534855bec37f1b6b3f4d0125e55"
     },
+    "clean-code": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "14ba8e7d8477723eca6d48a79a1924337f4a1f5f1c7ab9b0a7acc073268ecd5a"
+    },
     "code-smell-detector": {
       "source": "rysweet/amplihack",
       "sourceType": "github",

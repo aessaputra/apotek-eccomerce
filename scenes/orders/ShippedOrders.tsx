@@ -7,7 +7,7 @@ import { OrderCard } from '@/components/elements/OrderCard';
 import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
-import type { OrderListItem } from '@/services';
+import { SHIPPED_ORDER_STATUSES, type OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
   const router = useRouter();
@@ -93,7 +93,7 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 export default function ShippedOrders() {
   const router = useRouter();
   const { user } = useAppSlice();
-  const shippedOrderStatuses = useMemo(() => ['awaiting_shipment', 'shipped'], []);
+  const shippedOrderStatuses = useMemo(() => [...SHIPPED_ORDER_STATUSES], []);
   const {
     orders: shippedOrders,
     error,

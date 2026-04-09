@@ -3,7 +3,11 @@ import { ScrollView, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button, Card, Separator, Spinner, Text, XStack, YStack, styled, useTheme } from 'tamagui';
 import { TruckIcon, CreditCardIcon, PackageIcon, AlertCircleIcon } from '@/components/icons';
-import { getOrderStatusLabel, getPaymentStatusLabel } from '@/services';
+import {
+  getOrderPrimaryStatusDisplay,
+  getOrderSecondaryStatusDisplay,
+  type OrderStatusVariant,
+} from '@/services';
 import { getThemeColor } from '@/utils/theme';
 import { useOrderDetail } from '@/hooks/useOrderDetail';
 import { PaymentCountdownTimer } from '@/components/elements/PaymentCountdownTimer';
@@ -81,70 +85,6 @@ const SecondaryStatusText = styled(Text, {
   fontSize: '$2',
   color: '$colorMuted',
 });
-
-type StatusVariant = 'success' | 'warning' | 'danger' | 'primary' | 'neutral';
-
-const ORDER_STATUS_CONFIG: Record<string, { label: string; variant: StatusVariant }> = {
-  processing: { label: 'Diproses', variant: 'primary' },
-  awaiting_shipment: { label: 'Menunggu Pengiriman', variant: 'primary' },
-  shipped: { label: 'Dikirim', variant: 'primary' },
-  delivered: { label: 'Terkirim', variant: 'success' },
-  cancelled: { label: 'Dibatalkan', variant: 'danger' },
-  draft: { label: 'Draft', variant: 'neutral' },
-};
-
-const FAILED_PAYMENT_STATES = ['deny', 'expire', 'cancel'];
-const SUCCESS_PAYMENT_STATES = ['settlement'];
-const REFUND_STATES = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
-
-function getPrimaryStatusDisplay(
-  orderStatus: string,
-  paymentStatus: string,
-  expiredAt?: string | null,
-): { label: string; variant: StatusVariant } {
-  if (paymentStatus === 'pending') {
-    const isExpired = expiredAt && new Date(expiredAt) < new Date();
-    if (isExpired) {
-      return { label: 'Pembayaran Kadaluarsa', variant: 'danger' };
-    }
-    return { label: 'Menunggu Pembayaran', variant: 'warning' };
-  }
-
-  if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {
-    return { label: getPaymentStatusLabel(paymentStatus), variant: 'danger' };
-  }
-
-  if (SUCCESS_PAYMENT_STATES.includes(paymentStatus)) {
-    return (
-      ORDER_STATUS_CONFIG[orderStatus] || {
-        label: getOrderStatusLabel(orderStatus),
-        variant: 'neutral',
-      }
-    );
-  }
-
-  if (REFUND_STATES.includes(paymentStatus)) {
-    return { label: getPaymentStatusLabel(paymentStatus), variant: 'warning' };
-  }
-
-  return { label: getOrderStatusLabel(orderStatus), variant: 'neutral' };
-}
-
-function getSecondaryStatusDisplay(orderStatus: string, paymentStatus: string): string | null {
-  if (paymentStatus === 'pending' && orderStatus === 'pending') {
-    return null;
-  }
-
-  if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {
-    return null;
-  }
-
-  if (SUCCESS_PAYMENT_STATES.includes(paymentStatus)) {
-    return `Pembayaran: ${getPaymentStatusLabel(paymentStatus)}`;
-  }
-
-  return null;
-}
 
 function formatRupiah(amount: number): string {
   return `Rp ${amount.toLocaleString('id-ID')}`;
@@ -289,6 +229,14 @@ export default function OrderDetail() {
   const totalAmount = order.gross_amount ?? order.total_amount ?? 0;
   const shippingCost = order.shipping_cost ?? 0;
   const subtotal = totalAmount - shippingCost;
+  const paymentUrl = order.snap_redirect_url?.trim() || '';
+  const canResumePayment = !isPaymentExpired && !!paymentUrl;
+  const primaryStatusDisplay = getOrderPrimaryStatusDisplay(
+    order.status,
+    order.payment_status,
+    order.expired_at,
+  );
+  const secondaryStatusDisplay = getOrderSecondaryStatusDisplay(order.status, order.payment_status);
 
   return (
     <YStack flex={1} backgroundColor="$background">
@@ -352,32 +300,19 @@ export default function OrderDetail() {
                 <Text fontSize="$3" color="$colorSubtle">
                   Status
                 </Text>
-                <StatusBadge
-                  variant={
-                    getPrimaryStatusDisplay(order.status, order.payment_status, order.expired_at)
-                      .variant
-                  }>
-                  <StatusBadgeText
-                    variant={
-                      getPrimaryStatusDisplay(order.status, order.payment_status, order.expired_at)
-                        .variant
-                    }>
-                    {
-                      getPrimaryStatusDisplay(order.status, order.payment_status, order.expired_at)
-                        .label
-                    }
+                <StatusBadge variant={primaryStatusDisplay.variant as OrderStatusVariant}>
+                  <StatusBadgeText variant={primaryStatusDisplay.variant as OrderStatusVariant}>
+                    {primaryStatusDisplay.label}
                   </StatusBadgeText>
                 </StatusBadge>
               </XStack>
 
-              {getSecondaryStatusDisplay(order.status, order.payment_status) && (
+              {secondaryStatusDisplay && (
                 <XStack justifyContent="space-between" alignItems="center">
                   <Text fontSize="$3" color="$colorSubtle">
                     Detail
                   </Text>
-                  <SecondaryStatusText>
-                    {getSecondaryStatusDisplay(order.status, order.payment_status)}
-                  </SecondaryStatusText>
+                  <SecondaryStatusText>{secondaryStatusDisplay}</SecondaryStatusText>
                 </XStack>
               )}
             </YStack>
@@ -544,15 +479,15 @@ export default function OrderDetail() {
         <BottomActionBar
           buttonTitle={isPaymentExpired ? 'Pembayaran Kadaluarsa' : 'Bayar Sekarang'}
           onPress={() => {
-            if (!isPaymentExpired) {
+            if (canResumePayment) {
               router.push({
-                pathname: '/payment/webview',
-                params: { orderId: order.id, orderNumber },
+                pathname: '/cart/payment',
+                params: { orderId: order.id, paymentUrl },
               });
             }
           }}
           isLoading={isLoading}
-          disabled={isPaymentExpired}
+          disabled={!canResumePayment}
           aria-label="Bayar pesanan"
           aria-describedby="Tombol untuk melanjutkan pembayaran"
         />

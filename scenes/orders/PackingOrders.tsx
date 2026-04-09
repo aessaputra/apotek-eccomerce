@@ -7,7 +7,7 @@ import { OrderCard } from '@/components/elements/OrderCard';
 import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
-import type { OrderListItem } from '@/services';
+import { PACKING_ORDER_STATUSES, type OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
   const router = useRouter();
@@ -93,8 +93,7 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 export default function PackingOrders() {
   const router = useRouter();
   const { user } = useAppSlice();
-  const packingOrderStatuses = useMemo(() => ['processing'], []);
-  const packingPaymentStatuses = useMemo(() => ['settlement'] as const, []);
+  const packingOrderStatuses = useMemo(() => [...PACKING_ORDER_STATUSES], []);
   const {
     orders: packingOrders,
     error,
@@ -108,7 +107,6 @@ export default function PackingOrders() {
   } = useOrdersByStatusPaginated({
     userId: user?.id,
     orderStatuses: packingOrderStatuses,
-    paymentStatuses: packingPaymentStatuses,
     cacheKey: 'packing',
   });
 

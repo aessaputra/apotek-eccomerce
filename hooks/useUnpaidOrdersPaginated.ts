@@ -7,6 +7,8 @@ import {
   getOrdersOptimized,
   ORDERS_CACHE_TTL_MS,
   ORDERS_PAGE_SIZE,
+  UNPAID_ORDER_STATUSES,
+  UNPAID_PAYMENT_STATUSES,
   type OrderListItem,
 } from '@/services';
 import { cancelDedupedRequests, runDedupedRequest } from '@/utils/requestDeduplication';
@@ -130,7 +132,7 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
           offset,
           replace,
           reason,
-          ordersCount: orders.length,
+          ordersCount: ordersLengthRef.current,
         });
       }
 
@@ -186,7 +188,8 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
               offset,
               limit: ORDERS_PAGE_SIZE,
               signal,
-              paymentStatuses: ['pending'],
+              orderStatuses: [...UNPAID_ORDER_STATUSES],
+              paymentStatuses: [...UNPAID_PAYMENT_STATUSES],
             }),
           { policy: replace ? 'replace' : 'dedupe' },
         );
@@ -322,7 +325,7 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
             console.log('[useUnpaidOrdersPaginated] fetch finalize', {
               requestId,
               reason,
-              ordersCountAtFinalize: orders.length,
+              ordersCountAtFinalize: ordersLengthRef.current,
               isLatestRequest: true,
             });
           }
@@ -334,7 +337,6 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
         }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [dispatch, userId],
   );
 
@@ -375,7 +377,6 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
 
     dispatch(appActions.invalidateUnpaidOrdersCache(userId));
     await fetchUnpaidOrdersPage({ offset: 0, replace: true, reason: 'refresh' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, fetchUnpaidOrdersPage, userId]);
 
   const loadMore = useCallback(async (): Promise<void> => {
@@ -396,7 +397,6 @@ export function useUnpaidOrdersPaginated(userId?: string): UseUnpaidOrdersPagina
       replace: false,
       reason: 'load-more',
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     fetchUnpaidOrdersPage,
     hasMore,

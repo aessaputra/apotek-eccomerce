@@ -162,6 +162,19 @@ export interface OrderTabCounts {
   completed: number;
 }
 
+export type OrderStatusVariant = 'success' | 'warning' | 'danger' | 'primary' | 'neutral';
+
+export interface OrderStatusDisplay {
+  label: string;
+  variant: OrderStatusVariant;
+}
+
+export const UNPAID_ORDER_STATUSES = ['pending'] as const;
+export const UNPAID_PAYMENT_STATUSES = ['pending', 'authorize'] as const;
+export const PACKING_ORDER_STATUSES = ['paid', 'processing', 'awaiting_shipment'] as const;
+export const SHIPPED_ORDER_STATUSES = ['shipped', 'in_transit'] as const;
+export const COMPLETED_ORDER_STATUSES = ['delivered'] as const;
+
 export interface GetUserOrdersParams {
   offset?: number;
   limit?: number;
@@ -173,6 +186,9 @@ export interface GetUserOrdersParams {
 }
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
+const FAILED_PAYMENT_STATES = ['deny', 'expire', 'cancel'];
+const SUCCESS_PAYMENT_STATES = ['settlement'];
+const REFUND_STATES = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
 
 interface ErrorLike {
   message?: unknown;
@@ -508,13 +524,13 @@ export async function getOrderTabCounts(
 ): Promise<{ data: OrderTabCounts | null; error: Error | null }> {
   try {
     const [unpaid, packing, shipped, completed] = await Promise.all([
-      countOrdersByFilters(userId, { paymentStatuses: ['pending'] }),
       countOrdersByFilters(userId, {
-        orderStatuses: ['processing'],
-        paymentStatuses: ['settlement'],
+        orderStatuses: [...UNPAID_ORDER_STATUSES],
+        paymentStatuses: [...UNPAID_PAYMENT_STATUSES],
       }),
-      countOrdersByFilters(userId, { orderStatuses: ['awaiting_shipment', 'shipped'] }),
-      countOrdersByFilters(userId, { orderStatuses: ['delivered'] }),
+      countOrdersByFilters(userId, { orderStatuses: [...PACKING_ORDER_STATUSES] }),
+      countOrdersByFilters(userId, { orderStatuses: [...SHIPPED_ORDER_STATUSES] }),
+      countOrdersByFilters(userId, { orderStatuses: [...COMPLETED_ORDER_STATUSES] }),
     ]);
 
     return {
@@ -592,12 +608,84 @@ export function getOrderStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     draft: 'Draft',
     pending: 'Menunggu Pembayaran',
+    paid: 'Diproses',
     processing: 'Diproses',
-    awaiting_shipment: 'Menunggu Pengiriman',
+    awaiting_shipment: 'Dikemas',
     shipped: 'Dikirim',
+    in_transit: 'Dalam Pengiriman',
     delivered: 'Terkirim',
     cancelled: 'Dibatalkan',
   };
 
   return labels[status] || status;
+}
+
+export function getOrderStatusDisplay(status: string): OrderStatusDisplay {
+  const displays: Record<string, OrderStatusDisplay> = {
+    draft: { label: 'Draft', variant: 'neutral' },
+    pending: { label: 'Menunggu Pembayaran', variant: 'warning' },
+    paid: { label: 'Diproses', variant: 'primary' },
+    processing: { label: 'Diproses', variant: 'primary' },
+    awaiting_shipment: { label: 'Dikemas', variant: 'primary' },
+    shipped: { label: 'Dikirim', variant: 'primary' },
+    in_transit: { label: 'Dalam Pengiriman', variant: 'primary' },
+    delivered: { label: 'Terkirim', variant: 'success' },
+    cancelled: { label: 'Dibatalkan', variant: 'danger' },
+  };
+
+  return (
+    displays[status] || {
+      label: getOrderStatusLabel(status),
+      variant: 'neutral',
+    }
+  );
+}
+
+export function getOrderPrimaryStatusDisplay(
+  orderStatus: string,
+  paymentStatus: string,
+  expiredAt?: string | null,
+): OrderStatusDisplay {
+  if (paymentStatus === 'pending') {
+    const isExpired = expiredAt && new Date(expiredAt) < new Date();
+
+    if (isExpired) {
+      return { label: 'Pembayaran Kadaluarsa', variant: 'danger' };
+    }
+
+    return { label: 'Menunggu Pembayaran', variant: 'warning' };
+  }
+
+  if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {
+    return { label: getPaymentStatusLabel(paymentStatus), variant: 'danger' };
+  }
+
+  if (REFUND_STATES.includes(paymentStatus)) {
+    return { label: getPaymentStatusLabel(paymentStatus), variant: 'warning' };
+  }
+
+  if (SUCCESS_PAYMENT_STATES.includes(paymentStatus)) {
+    return getOrderStatusDisplay(orderStatus);
+  }
+
+  return getOrderStatusDisplay(orderStatus);
+}
+
+export function getOrderSecondaryStatusDisplay(
+  orderStatus: string,
+  paymentStatus: string,
+): string | null {
+  if (paymentStatus === 'pending' && orderStatus === 'pending') {
+    return null;
+  }
+
+  if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {
+    return null;
+  }
+
+  if (SUCCESS_PAYMENT_STATES.includes(paymentStatus)) {
+    return `Pembayaran: ${getPaymentStatusLabel(paymentStatus)}`;
+  }
+
+  return null;
 }
