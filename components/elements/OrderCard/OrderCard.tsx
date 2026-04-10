@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, Separator, Text, XStack, YStack, styled } from 'tamagui';
-import { CreditCardIcon, TruckIcon } from '@/components/icons';
+import { PackageIcon, TruckIcon } from '@/components/icons';
+import { StatusBadge } from '@/components/elements/StatusBadge';
 import {
   getOrderPrimaryStatusDisplay,
   getOrderStatusLabel,
@@ -13,62 +14,23 @@ const ORDER_CARD_HEIGHT = 148;
 
 const OrderCardContainer = styled(Card, {
   bordered: true,
-  elevate: true,
   size: '$4',
   backgroundColor: '$surface',
   borderColor: '$surfaceBorder',
   minHeight: ORDER_CARD_HEIGHT,
-});
-
-const StatusBadge = styled(XStack, {
-  paddingHorizontal: '$2',
-  paddingVertical: '$1',
-  borderRadius: '$2',
-
   variants: {
-    status: {
-      success: {
-        backgroundColor: '$successSoft',
+    elevated: {
+      true: {
+        elevate: true,
       },
-      warning: {
-        backgroundColor: '$warningSoft',
-      },
-      danger: {
-        backgroundColor: '$dangerSoft',
-      },
-      primary: {
-        backgroundColor: '$brandPrimarySoft',
-      },
-      neutral: {
-        backgroundColor: '$surface',
+      false: {
+        elevate: false,
       },
     },
   } as const,
-});
-
-const StatusText = styled(Text, {
-  fontSize: '$2',
-  fontWeight: '600',
-
-  variants: {
-    status: {
-      success: {
-        color: '$success',
-      },
-      warning: {
-        color: '$warning',
-      },
-      danger: {
-        color: '$danger',
-      },
-      primary: {
-        color: '$primary',
-      },
-      neutral: {
-        color: '$colorSubtle',
-      },
-    },
-  } as const,
+  defaultVariants: {
+    elevated: true,
+  },
 });
 
 function formatRupiah(amount: number): string {
@@ -94,9 +56,14 @@ interface StatusDisplay {
 interface OrderCardProps {
   order: OrderListItem;
   onPress?: () => void;
+  elevated?: boolean;
 }
 
-export const OrderCard = React.memo(function OrderCard({ order, onPress }: OrderCardProps) {
+export const OrderCard = React.memo(function OrderCard({
+  order,
+  onPress,
+  elevated = true,
+}: OrderCardProps) {
   const statusDisplay: StatusDisplay = getOrderPrimaryStatusDisplay(
     order.status,
     order.payment_status,
@@ -111,14 +78,18 @@ export const OrderCard = React.memo(function OrderCard({ order, onPress }: Order
       : `${firstItem?.products?.name ?? 'Produk'} +${itemCount - 1} lainnya`;
 
   return (
-    <OrderCardContainer onPress={onPress} pressStyle={{ scale: 0.98 }} animation="quick">
+    <OrderCardContainer
+      onPress={onPress}
+      pressStyle={{ scale: 0.98 }}
+      animation="quick"
+      elevated={elevated}>
       <YStack gap="$2" padding="$3">
         <XStack justifyContent="space-between" alignItems="center" gap="$2">
           <Text fontSize="$3" color="$colorSubtle" numberOfLines={1} flex={1}>
             {formatDate(order.created_at)}
           </Text>
-          <StatusBadge status={statusDisplay.variant}>
-            <StatusText status={statusDisplay.variant}>{statusDisplay.label}</StatusText>
+          <StatusBadge variant={statusDisplay.variant} size="compact">
+            {statusDisplay.label}
           </StatusBadge>
         </XStack>
 
@@ -150,7 +121,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onPress }: Order
 
         <XStack justifyContent="space-between" alignItems="center" marginTop="$1">
           <XStack alignItems="center" gap="$1">
-            <CreditCardIcon size={14} color="$colorSubtle" />
+            <PackageIcon size={14} color="$colorSubtle" />
             <Text fontSize="$2" color="$colorSubtle">
               {getOrderStatusLabel(order.status)}
             </Text>
