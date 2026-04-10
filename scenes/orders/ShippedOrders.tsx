@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
-import { Spinner, Text, YStack, Button } from 'tamagui';
+import { Spinner, Text, YStack, Button, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { TruckIcon, AlertCircleIcon, ShoppingBagIcon } from '@/components/icons';
 import { OrderCard } from '@/components/elements/OrderCard';
 import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
+import { getThemeColor } from '@/utils/theme';
 import { SHIPPED_ORDER_STATUSES, type OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
@@ -85,13 +86,14 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 
   return (
     <YStack paddingHorizontal="$4" paddingVertical="$2">
-      <OrderCard order={order} onPress={handlePress} />
+      <OrderCard order={order} onPress={handlePress} elevated={false} />
     </YStack>
   );
 });
 
 export default function ShippedOrders() {
   const router = useRouter();
+  const theme = useTheme();
   const { user } = useAppSlice();
   const shippedOrderStatuses = useMemo(() => [...SHIPPED_ORDER_STATUSES], []);
   const {
@@ -109,6 +111,8 @@ export default function ShippedOrders() {
     orderStatuses: shippedOrderStatuses,
     cacheKey: 'shipped',
   });
+
+  const refreshTintColor = getThemeColor(theme, 'primary');
 
   useEffect(() => {
     if (user?.id) {
@@ -176,7 +180,11 @@ export default function ShippedOrders() {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#06B6D4" />
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            tintColor={refreshTintColor}
+          />
         }
         ListFooterComponent={
           isFetchingMore ? (

@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
-import { Spinner, Text, YStack, Button } from 'tamagui';
+import { Spinner, Text, YStack, Button, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { PackageIcon, AlertCircleIcon, ShoppingBagIcon } from '@/components/icons';
 import { OrderCard } from '@/components/elements/OrderCard';
 import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
+import { getThemeColor } from '@/utils/theme';
 import { PACKING_ORDER_STATUSES, type OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
@@ -17,14 +18,24 @@ const EmptyState = React.memo(function EmptyState() {
   }, [router]);
 
   return (
-    <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$4">
-      <PackageIcon size={80} color="$colorSubtle" />
-      <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
-        Belum Ada Pesanan
-      </Text>
-      <Text fontSize="$4" color="$colorSubtle" textAlign="center">
-        Pesanan yang sedang dikemas akan muncul di sini.
-      </Text>
+    <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$6">
+      <YStack
+        width={120}
+        height={120}
+        borderRadius="$10"
+        backgroundColor="$surfaceSubtle"
+        alignItems="center"
+        justifyContent="center">
+        <PackageIcon size={48} color="$colorMuted" />
+      </YStack>
+      <YStack gap="$2" alignItems="center">
+        <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
+          Belum Ada Pesanan
+        </Text>
+        <Text fontSize="$4" color="$colorSubtle" textAlign="center" maxWidth={280}>
+          Pesanan yang sedang dikemas akan muncul di sini.
+        </Text>
+      </YStack>
       <Button
         size="$4"
         backgroundColor="$primary"
@@ -48,14 +59,24 @@ const ErrorState = React.memo(function ErrorState({
   onRetry: () => void;
 }) {
   return (
-    <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$4">
-      <AlertCircleIcon size={64} color="$danger" />
-      <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
-        Gagal Memuat Pesanan
-      </Text>
-      <Text fontSize="$3" color="$colorSubtle" textAlign="center">
-        {message}
-      </Text>
+    <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$6">
+      <YStack
+        width={100}
+        height={100}
+        borderRadius="$10"
+        backgroundColor="$dangerSoft"
+        alignItems="center"
+        justifyContent="center">
+        <AlertCircleIcon size={40} color="$danger" />
+      </YStack>
+      <YStack gap="$2" alignItems="center">
+        <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
+          Gagal Memuat Pesanan
+        </Text>
+        <Text fontSize="$3" color="$colorSubtle" textAlign="center" maxWidth={280}>
+          {message}
+        </Text>
+      </YStack>
       <Button
         size="$4"
         backgroundColor="$primary"
@@ -85,13 +106,14 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 
   return (
     <YStack paddingHorizontal="$4" paddingVertical="$2">
-      <OrderCard order={order} onPress={handlePress} />
+      <OrderCard order={order} onPress={handlePress} elevated={false} />
     </YStack>
   );
 });
 
 export default function PackingOrders() {
   const router = useRouter();
+  const theme = useTheme();
   const { user } = useAppSlice();
   const packingOrderStatuses = useMemo(() => [...PACKING_ORDER_STATUSES], []);
   const {
@@ -109,6 +131,8 @@ export default function PackingOrders() {
     orderStatuses: packingOrderStatuses,
     cacheKey: 'packing',
   });
+
+  const refreshTintColor = getThemeColor(theme, 'primary');
 
   useEffect(() => {
     if (user?.id) {
@@ -150,9 +174,16 @@ export default function PackingOrders() {
 
   if (isInitialLoading) {
     return (
-      <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
+      <YStack
+        flex={1}
+        alignItems="center"
+        justifyContent="center"
+        gap="$3"
+        backgroundColor="$background">
         <Spinner size="large" color="$primary" />
-        <Text color="$colorSubtle">Memuat pesanan...</Text>
+        <Text color="$colorSubtle" fontSize="$3">
+          Memuat pesanan...
+        </Text>
       </YStack>
     );
   }
@@ -176,12 +207,19 @@ export default function PackingOrders() {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#06B6D4" />
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            tintColor={refreshTintColor}
+          />
         }
         ListFooterComponent={
           isFetchingMore ? (
-            <YStack padding="$3" alignItems="center">
+            <YStack padding="$4" alignItems="center">
               <Spinner size="small" color="$primary" />
+              <Text fontSize="$2" color="$colorSubtle" marginTop="$2">
+                Memuat lebih banyak...
+              </Text>
             </YStack>
           ) : null
         }

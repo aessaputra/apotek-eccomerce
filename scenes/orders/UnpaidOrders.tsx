@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
-import { Spinner, Text, YStack, Button } from 'tamagui';
+import { Spinner, Text, YStack, Button, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { WalletIcon, AlertCircleIcon, ShoppingBagIcon } from '@/components/icons';
 import { UnpaidOrderCard } from '@/components/elements/UnpaidOrderCard';
 import { useUnpaidOrdersPaginated } from '@/hooks/useUnpaidOrdersPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
+import { getThemeColor } from '@/utils/theme';
 import type { OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
@@ -92,6 +93,7 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 
 export function UnpaidOrders() {
   const router = useRouter();
+  const theme = useTheme();
   const { user } = useAppSlice();
   const {
     orders: unpaidOrders,
@@ -104,6 +106,8 @@ export function UnpaidOrders() {
     refreshIfNeeded,
     loadMore,
   } = useUnpaidOrdersPaginated(user?.id);
+
+  const refreshTintColor = getThemeColor(theme, 'primary');
 
   useEffect(() => {
     if (user?.id) {
@@ -171,7 +175,11 @@ export function UnpaidOrders() {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#06B6D4" />
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            tintColor={refreshTintColor}
+          />
         }
         ListFooterComponent={
           isFetchingMore ? (
