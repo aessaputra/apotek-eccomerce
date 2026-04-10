@@ -1,12 +1,13 @@
 import React, { useCallback } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
-import { Spinner, Text, YStack, Button } from 'tamagui';
+import { Spinner, Text, YStack, Button, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { HistoryIcon, AlertCircleIcon, ShoppingBagIcon } from '@/components/icons';
 import { OrderCard } from '@/components/elements/OrderCard';
 import { useOrderHistoryPaginated } from '@/hooks/useOrderHistoryPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
+import { getThemeColor } from '@/utils/theme';
 import type { OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
@@ -92,6 +93,7 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 
 export default function OrderHistory() {
   const router = useRouter();
+  const theme = useTheme();
   const { user } = useAppSlice();
   const {
     orders: historyOrders,
@@ -103,6 +105,8 @@ export default function OrderHistory() {
     refresh,
     loadMore,
   } = useOrderHistoryPaginated(user?.id);
+
+  const refreshTintColor = getThemeColor(theme, 'primary');
 
   const handleOrderPress = useCallback(
     (order: OrderListItem) => {
@@ -164,7 +168,11 @@ export default function OrderHistory() {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#06B6D4" />
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            tintColor={refreshTintColor}
+          />
         }
         ListFooterComponent={
           isFetchingMore ? (
