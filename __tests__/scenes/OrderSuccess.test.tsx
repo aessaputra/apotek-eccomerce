@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { render, screen, fireEvent } from '@/test-utils/renderWithTheme';
 import OrderSuccess from '@/scenes/orders/OrderSuccess';
 
-const mockNavigate = jest.fn();
-const mockPush = jest.fn();
+const mockReplace = jest.fn();
 const mockUseOrderDetail = jest.fn();
 
 jest.mock('@/hooks/useOrderDetail', () => ({
@@ -13,8 +12,7 @@ jest.mock('@/hooks/useOrderDetail', () => ({
 jest.mock('expo-router', () => ({
   __esModule: true,
   useRouter: () => ({
-    navigate: mockNavigate,
-    push: mockPush,
+    replace: mockReplace,
   }),
   useLocalSearchParams: () => ({
     orderId: 'ORDER-123',
@@ -24,8 +22,7 @@ jest.mock('expo-router', () => ({
 
 describe('<OrderSuccess />', () => {
   beforeEach(() => {
-    mockNavigate.mockClear();
-    mockPush.mockClear();
+    mockReplace.mockClear();
     mockUseOrderDetail.mockReset();
     mockUseOrderDetail.mockReturnValue({
       order: {
@@ -47,37 +44,26 @@ describe('<OrderSuccess />', () => {
     });
   });
 
-  test('navigates to /home when the user presses back to home', () => {
+  test('replaces to /home when the user presses back to home', () => {
     render(<OrderSuccess />);
 
     fireEvent.press(screen.getByText('Kembali ke Beranda'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/home');
+    expect(mockReplace).toHaveBeenCalledWith('/home');
   });
 
-  test('navigates to /orders when the user presses view all orders', () => {
+  test('does not render extra order navigation buttons', () => {
     render(<OrderSuccess />);
 
-    fireEvent.press(screen.getByText('Lihat Semua Pesanan'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/orders');
-  });
-
-  test('pushes order detail route when the user presses view order detail', () => {
-    render(<OrderSuccess />);
-
-    fireEvent.press(screen.getByText('Lihat Detail Pesanan'));
-
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/orders/order-detail/[orderId]',
-      params: { orderId: 'ORDER-123' },
-    });
+    expect(screen.queryByText('Lihat Detail Pesanan')).toBeNull();
+    expect(screen.queryByText('Lihat Semua Pesanan')).toBeNull();
   });
 
   test('renders the success summary with payment and total information', () => {
     render(<OrderSuccess />);
 
     expect(screen.getAllByText('Pembayaran Berhasil').length).toBeGreaterThan(0);
+    expect(screen.getByText('NOMOR PESANAN')).not.toBeNull();
     expect(screen.getAllByText('APT-ORDER-12')).toHaveLength(1);
     expect(screen.getByText('Ringkasan Pesanan')).not.toBeNull();
     expect(screen.getByText('Pembayaran telah berhasil dikonfirmasi')).not.toBeNull();
@@ -104,6 +90,33 @@ describe('<OrderSuccess />', () => {
     expect(
       screen.getByText('Status pembayaran akan diperbarui setelah proses verifikasi selesai.'),
     ).not.toBeNull();
-    expect(screen.getByText('Menunggu Pembayaran')).not.toBeNull();
+    expect(screen.queryByText('Menunggu Pembayaran')).toBeNull();
+  });
+
+  test('renders a failed-payment hero state without referring to removed order actions', () => {
+    mockUseOrderDetail.mockReturnValue({
+      order: {
+        id: 'ORDER-123',
+        created_at: '2026-01-01T00:00:00Z',
+        payment_status: 'failed',
+        total_amount: 10000,
+        expired_at: null,
+        order_items: [],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<OrderSuccess />);
+
+    expect(screen.getByText('Pembayaran Belum Berhasil')).not.toBeNull();
+    expect(
+      screen.getByText('Status pembayaran untuk pesanan ini memerlukan perhatian lebih lanjut.'),
+    ).not.toBeNull();
+    expect(
+      screen.getByText('Silakan kembali ke beranda untuk melanjutkan penggunaan aplikasi.'),
+    ).not.toBeNull();
+    expect(screen.queryByText(/detail pesanan/i)).toBeNull();
+    expect(screen.queryByText(/daftar pesanan/i)).toBeNull();
   });
 });

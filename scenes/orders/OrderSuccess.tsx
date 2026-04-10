@@ -14,11 +14,10 @@ import {
 import { CheckCircle, Package, Clock3, ReceiptText } from '@tamagui/lucide-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
-import { StatusBadge } from '@/components/elements/StatusBadge';
 import { getThemeColor } from '@/utils/theme';
 import type { RouteParams } from '@/types/routes.types';
 import { useOrderDetail } from '@/hooks/useOrderDetail';
-import { getPaymentStatusLabel, type OrderStatusVariant } from '@/services/order.service';
+import type { OrderStatusVariant } from '@/services/order.service';
 
 const SectionCard = styled(Card, {
   bordered: true,
@@ -108,9 +107,8 @@ function getHeroContent(
   if (variant === 'danger') {
     return {
       title: 'Pembayaran Belum Berhasil',
-      description:
-        'Status pembayaran untuk pesanan ini memerlukan perhatian. Silakan cek detail pesanan Anda.',
-      summaryNote: 'Silakan tinjau status pembayaran untuk langkah selanjutnya.',
+      description: 'Status pembayaran untuk pesanan ini memerlukan perhatian lebih lanjut.',
+      summaryNote: 'Silakan kembali ke beranda untuk melanjutkan penggunaan aplikasi.',
       icon: ReceiptText,
       colorToken: 'danger',
       softToken: '$dangerSoft',
@@ -121,7 +119,7 @@ function getHeroContent(
     return {
       title: 'Status Pembayaran Diperbarui',
       description: 'Pesanan Anda sudah tercatat dan status pembayarannya baru saja diperbarui.',
-      summaryNote: 'Lihat detail pesanan untuk informasi pembayaran terbaru.',
+      summaryNote: 'Silakan kembali ke beranda untuk melanjutkan aktivitas Anda.',
       icon: ReceiptText,
       colorToken: 'primary',
       softToken: '$primarySoft',
@@ -152,23 +150,9 @@ export default function OrderSuccess() {
 
   const resolvedOrderId = Array.isArray(orderId) ? orderId[0] : orderId;
   const { order, isLoading, error } = useOrderDetail(resolvedOrderId);
-  const hasOrderRoute = Boolean(resolvedOrderId);
 
   const handleGoHome = () => {
-    router.navigate('/home');
-  };
-
-  const handleViewOrderDetail = () => {
-    if (!hasOrderRoute) return;
-
-    router.push({
-      pathname: '/orders/order-detail/[orderId]',
-      params: { orderId: resolvedOrderId },
-    });
-  };
-
-  const handleViewOrders = () => {
-    router.navigate('/orders');
+    router.replace('/home');
   };
 
   const totalItems = order?.order_items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
@@ -177,7 +161,6 @@ export default function OrderSuccess() {
     : resolvedOrderId
       ? formatOrderNumber(resolvedOrderId)
       : '';
-  const paymentBadgeVariant = getPaymentBadgeVariant(order?.payment_status, order?.expired_at);
   const heroContent = getHeroContent(order?.payment_status, order?.expired_at);
   const heroIconColor =
     heroContent.colorToken === 'danger'
@@ -265,25 +248,22 @@ export default function OrderSuccess() {
           ) : order ? (
             <SectionCard maxWidth={420}>
               <YStack padding="$5" gap="$4">
-                <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
-                  <YStack flex={1} gap="$1.5">
+                <YStack gap="$2.5">
+                  <XStack alignItems="baseline" gap="$2.5" flexWrap="wrap">
                     <Text fontSize="$2" color="$colorMuted" fontWeight="500">
                       NOMOR PESANAN
                     </Text>
                     <Text fontSize="$5" fontWeight="700" color="$color">
                       {orderNumber}
                     </Text>
-                    <XStack alignItems="center" gap="$2">
-                      <Clock3 size={15} color={subtleColor} />
-                      <Text fontSize="$3" color="$colorSubtle">
-                        {formatDate(order.created_at)}
-                      </Text>
-                    </XStack>
-                  </YStack>
-                  <StatusBadge variant={paymentBadgeVariant}>
-                    {getPaymentStatusLabel(order.payment_status)}
-                  </StatusBadge>
-                </XStack>
+                  </XStack>
+                  <XStack alignItems="center" gap="$2">
+                    <Clock3 size={15} color={subtleColor} />
+                    <Text fontSize="$3" color="$colorSubtle">
+                      {formatDate(order.created_at)}
+                    </Text>
+                  </XStack>
+                </YStack>
 
                 <Separator />
 
@@ -346,42 +326,19 @@ export default function OrderSuccess() {
                   Pesanan Berhasil Dibuat
                 </Text>
                 <Text fontSize="$3" color="$colorSubtle" textAlign="center" maxWidth={300}>
-                  Ringkasan pesanan belum tersedia, tetapi Anda tetap dapat melihat daftar pesanan
-                  Anda.
+                  Ringkasan pesanan belum tersedia, tetapi pembayaran Anda sudah kami catat.
                 </Text>
               </YStack>
             </SectionCard>
           )}
 
           <YStack gap="$3" width="100%" maxWidth={420} paddingTop="$1">
-            {hasOrderRoute ? (
-              <Button
-                title="Lihat Detail Pesanan"
-                backgroundColor="$primary"
-                borderRadius="$5"
-                minHeight={56}
-                titleStyle={{ color: '$onPrimary', fontWeight: '700', fontSize: '$4' }}
-                onPress={handleViewOrderDetail}
-              />
-            ) : null}
-
-            <Button
-              title="Lihat Semua Pesanan"
-              backgroundColor="$surface"
-              borderRadius="$5"
-              borderWidth={1}
-              borderColor="$surfaceBorder"
-              minHeight={56}
-              titleStyle={{ color: '$primary', fontWeight: '700', fontSize: '$4' }}
-              onPress={handleViewOrders}
-            />
-
             <Button
               title="Kembali ke Beranda"
-              backgroundColor="transparent"
+              backgroundColor="$primary"
               borderRadius="$5"
-              minHeight={52}
-              titleStyle={{ color: '$colorSubtle', fontWeight: '600', fontSize: '$4' }}
+              minHeight={56}
+              titleStyle={{ color: '$onPrimary', fontWeight: '700', fontSize: '$4' }}
               onPress={handleGoHome}
             />
           </YStack>

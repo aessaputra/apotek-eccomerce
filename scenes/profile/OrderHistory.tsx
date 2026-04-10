@@ -86,7 +86,7 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 
   return (
     <YStack paddingHorizontal="$4" paddingVertical="$2">
-      <OrderCard order={order} onPress={handlePress} />
+      <OrderCard order={order} onPress={handlePress} elevated={false} />
     </YStack>
   );
 });
