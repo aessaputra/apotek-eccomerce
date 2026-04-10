@@ -641,13 +641,18 @@ export function getOrderStatusDisplay(status: string): OrderStatusDisplay {
   );
 }
 
+export function isBackendExpired(expiredAt: string | null | undefined): boolean {
+  if (!expiredAt) return false;
+  return new Date(expiredAt) < new Date();
+}
+
 export function getOrderPrimaryStatusDisplay(
   orderStatus: string,
   paymentStatus: string,
   expiredAt?: string | null,
 ): OrderStatusDisplay {
   if (paymentStatus === 'pending') {
-    const isExpired = expiredAt && new Date(expiredAt) < new Date();
+    const isExpired = isBackendExpired(expiredAt);
 
     if (isExpired) {
       return { label: 'Pembayaran Kadaluarsa', variant: 'danger' };
@@ -662,10 +667,6 @@ export function getOrderPrimaryStatusDisplay(
 
   if (REFUND_STATES.includes(paymentStatus)) {
     return { label: getPaymentStatusLabel(paymentStatus), variant: 'warning' };
-  }
-
-  if (SUCCESS_PAYMENT_STATES.includes(paymentStatus)) {
-    return getOrderStatusDisplay(orderStatus);
   }
 
   return getOrderStatusDisplay(orderStatus);
@@ -684,7 +685,7 @@ export function getOrderSecondaryStatusDisplay(
   }
 
   if (SUCCESS_PAYMENT_STATES.includes(paymentStatus)) {
-    return `Pembayaran: ${getPaymentStatusLabel(paymentStatus)}`;
+    return getPaymentStatusLabel(paymentStatus);
   }
 
   return null;

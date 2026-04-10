@@ -5,6 +5,7 @@ import {
   SHIPPED_ORDER_STATUSES,
   UNPAID_ORDER_STATUSES,
   UNPAID_PAYMENT_STATUSES,
+  isBackendExpired,
   getOrderPrimaryStatusDisplay,
   getOrderSecondaryStatusDisplay,
   getOrderStatusLabel,
@@ -52,10 +53,21 @@ describe('order.service lifecycle helpers', () => {
     });
   });
 
+  test('marks backend-expired pending payments as danger', () => {
+    expect(getOrderPrimaryStatusDisplay('pending', 'pending', '2020-01-01T00:00:00Z')).toEqual({
+      label: 'Pembayaran Kadaluarsa',
+      variant: 'danger',
+    });
+  });
+
+  test('reports whether backend expiration timestamp has passed', () => {
+    expect(isBackendExpired(null)).toBe(false);
+    expect(isBackendExpired('2999-01-01T00:00:00Z')).toBe(false);
+    expect(isBackendExpired('2020-01-01T00:00:00Z')).toBe(true);
+  });
+
   test('exposes payment detail separately from operational status', () => {
-    expect(getOrderSecondaryStatusDisplay('processing', 'settlement')).toBe(
-      'Pembayaran: Pembayaran Berhasil',
-    );
+    expect(getOrderSecondaryStatusDisplay('processing', 'settlement')).toBe('Pembayaran Berhasil');
   });
 
   test('exports lifecycle buckets aligned with backend changelog', () => {

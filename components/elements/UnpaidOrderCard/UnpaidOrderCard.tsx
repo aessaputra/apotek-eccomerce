@@ -1,48 +1,16 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Card, Text, XStack, YStack, styled } from 'tamagui';
+import { Card, Text, XStack, YStack } from 'tamagui';
 import Image from '@/components/elements/Image';
 import { PaymentCountdownTimer } from '@/components/elements/PaymentCountdownTimer';
 import { PayNowButton } from '@/components/elements/PayNowButton';
+import { StatusBadge } from '@/components/elements/StatusBadge';
 import { PackageIcon } from '@/components/icons';
-import type { OrderListItem } from '@/services';
+import { isBackendExpired, type OrderListItem } from '@/services';
 
 export interface UnpaidOrderCardProps {
   order: OrderListItem;
   onPress?: () => void;
 }
-
-/**
- * Status badge styled component for expired order display.
- * Uses semantic color variants matching OrderDetail.tsx pattern.
- */
-const StatusBadge = styled(XStack, {
-  paddingHorizontal: '$3',
-  paddingVertical: '$1.5',
-  borderRadius: '$3',
-  alignItems: 'center',
-  gap: '$2',
-
-  variants: {
-    variant: {
-      danger: {
-        backgroundColor: '$dangerSoft',
-      },
-    },
-  } as const,
-});
-
-const StatusBadgeText = styled(Text, {
-  fontSize: '$3',
-  fontWeight: '600',
-
-  variants: {
-    variant: {
-      danger: {
-        color: '$danger',
-      },
-    },
-  } as const,
-});
 
 function formatRupiah(amount: number): string {
   return `Rp ${amount.toLocaleString('id-ID')}`;
@@ -62,15 +30,6 @@ function getProductDisplayInfo(order: OrderListItem): { name: string; itemCount:
     name: firstItem?.products?.name ?? 'Produk',
     itemCount: order.order_items.length,
   };
-}
-
-/**
- * Check if order is expired based on backend expired_at timestamp.
- * Returns true if expired_at exists and is in the past.
- */
-function isBackendExpired(expiredAt: string | null): boolean {
-  if (!expiredAt) return false;
-  return new Date(expiredAt) < new Date();
 }
 
 export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
@@ -105,9 +64,7 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
       pressStyle={{ opacity: 0.9, backgroundColor: '$surfaceHover' }}>
       <YStack gap="$3" padding="$3">
         {backendExpired ? (
-          <StatusBadge variant="danger">
-            <StatusBadgeText variant="danger">Pembayaran Kadaluarsa</StatusBadgeText>
-          </StatusBadge>
+          <StatusBadge variant="danger">Pembayaran Kadaluarsa</StatusBadge>
         ) : (
           <PaymentCountdownTimer createdAt={order.created_at} onExpired={handleTimerExpired} />
         )}

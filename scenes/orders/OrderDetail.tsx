@@ -2,10 +2,12 @@ import React, { useState, useCallback } from 'react';
 import { ScrollView, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button, Card, Separator, Spinner, Text, XStack, YStack, styled, useTheme } from 'tamagui';
-import { TruckIcon, CreditCardIcon, PackageIcon, AlertCircleIcon } from '@/components/icons';
+import { TruckIcon, PackageIcon, AlertCircleIcon } from '@/components/icons';
+import { StatusBadge } from '@/components/elements/StatusBadge';
 import {
   getOrderPrimaryStatusDisplay,
   getOrderSecondaryStatusDisplay,
+  isBackendExpired,
   type OrderStatusVariant,
 } from '@/services';
 import { getThemeColor } from '@/utils/theme';
@@ -24,63 +26,6 @@ const SectionCard = styled(Card, {
   marginBottom: '$3',
 });
 
-/**
- * Status badge styled component for order/payment status display.
- * Uses semantic color variants matching OrderCard.tsx pattern.
- */
-const StatusBadge = styled(XStack, {
-  paddingHorizontal: '$3',
-  paddingVertical: '$1.5',
-  borderRadius: '$3',
-  alignItems: 'center',
-  gap: '$2',
-
-  variants: {
-    variant: {
-      success: {
-        backgroundColor: '$successSoft',
-      },
-      warning: {
-        backgroundColor: '$warningSoft',
-      },
-      danger: {
-        backgroundColor: '$dangerSoft',
-      },
-      primary: {
-        backgroundColor: '$brandPrimarySoft',
-      },
-      neutral: {
-        backgroundColor: '$surfaceSubtle',
-      },
-    },
-  } as const,
-});
-
-const StatusBadgeText = styled(Text, {
-  fontSize: '$3',
-  fontWeight: '600',
-
-  variants: {
-    variant: {
-      success: {
-        color: '$success',
-      },
-      warning: {
-        color: '$warning',
-      },
-      danger: {
-        color: '$danger',
-      },
-      primary: {
-        color: '$primary',
-      },
-      neutral: {
-        color: '$colorSubtle',
-      },
-    },
-  } as const,
-});
-
 const SecondaryStatusText = styled(Text, {
   fontSize: '$2',
   color: '$colorMuted',
@@ -92,12 +37,13 @@ function formatRupiah(amount: number): string {
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${day}-${month}-${year} ${hours}:${minutes}`;
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function getProductImageUrl(
@@ -170,18 +116,28 @@ export default function OrderDetail() {
         alignItems="center"
         justifyContent="center"
         gap="$4"
-        padding="$4">
-        <AlertCircleIcon size={64} color="$danger" />
-        <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
-          Gagal Memuat Pesanan
-        </Text>
-        <Text fontSize="$3" color="$colorSubtle" textAlign="center">
-          {error}
-        </Text>
+        padding="$6">
+        <YStack
+          width={100}
+          height={100}
+          borderRadius="$10"
+          backgroundColor="$dangerSoft"
+          alignItems="center"
+          justifyContent="center">
+          <AlertCircleIcon size={40} color="$danger" />
+        </YStack>
+        <YStack gap="$2" alignItems="center">
+          <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
+            Gagal Memuat Pesanan
+          </Text>
+          <Text fontSize="$3" color="$colorSubtle" textAlign="center" maxWidth={280}>
+            {error}
+          </Text>
+        </YStack>
         <Button
           size="$4"
           backgroundColor="$primary"
-          color="white"
+          color="$onPrimary"
           fontWeight="600"
           onPress={refresh}
           marginTop="$2">
@@ -199,14 +155,24 @@ export default function OrderDetail() {
         alignItems="center"
         justifyContent="center"
         gap="$4"
-        padding="$4">
-        <PackageIcon size={64} color="$colorSubtle" />
-        <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
-          Pesanan Tidak Ditemukan
-        </Text>
-        <Text fontSize="$3" color="$colorSubtle" textAlign="center">
-          Pesanan yang Anda cari tidak tersedia atau telah dihapus.
-        </Text>
+        padding="$6">
+        <YStack
+          width={100}
+          height={100}
+          borderRadius="$10"
+          backgroundColor="$surfaceSubtle"
+          alignItems="center"
+          justifyContent="center">
+          <PackageIcon size={40} color="$colorMuted" />
+        </YStack>
+        <YStack gap="$2" alignItems="center">
+          <Text fontSize="$5" fontWeight="600" color="$color" textAlign="center">
+            Pesanan Tidak Ditemukan
+          </Text>
+          <Text fontSize="$3" color="$colorSubtle" textAlign="center" maxWidth={280}>
+            Pesanan yang Anda cari tidak tersedia atau telah dihapus.
+          </Text>
+        </YStack>
       </YStack>
     );
   }
@@ -230,7 +196,9 @@ export default function OrderDetail() {
   const shippingCost = order.shipping_cost ?? 0;
   const subtotal = totalAmount - shippingCost;
   const paymentUrl = order.snap_redirect_url?.trim() || '';
-  const canResumePayment = !isPaymentExpired && !!paymentUrl;
+  const isBackendPaymentExpired = isBackendExpired(order.expired_at);
+  const isOrderExpired = isBackendPaymentExpired || isPaymentExpired;
+  const canResumePayment = !isOrderExpired && !!paymentUrl;
   const primaryStatusDisplay = getOrderPrimaryStatusDisplay(
     order.status,
     order.payment_status,
@@ -262,34 +230,30 @@ export default function OrderDetail() {
           />
         }
         contentContainerStyle={{
-          paddingBottom: order.payment_status === 'pending' ? 80 : 20,
+          paddingBottom: order.payment_status === 'pending' ? 100 : 24,
         }}>
         <YStack paddingVertical="$4" gap="$3">
           <SectionCard>
-            <YStack padding="$4" gap="$3">
-              <XStack justifyContent="space-between" alignItems="flex-start" gap="$2">
-                <YStack gap="$1" flex={1}>
-                  <Text fontSize="$2" color="$colorMuted">
-                    Nomor Pesanan
-                  </Text>
-                  <Text fontSize="$5" fontWeight="700" color="$color">
-                    {orderNumber}
-                  </Text>
-                </YStack>
-                {order.payment_status === 'pending' && (
-                  <PaymentCountdownTimer
-                    createdAt={order.created_at}
-                    onExpired={handlePaymentExpired}
-                    variant="compact"
-                  />
-                )}
-              </XStack>
-
-              <YStack gap="$1">
-                <Text fontSize="$2" color="$colorMuted">
-                  Waktu Pesanan
-                </Text>
-                <Text fontSize="$2" color="$colorSubtle">
+            <YStack padding="$4" gap="$4">
+              <YStack gap="$2">
+                <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
+                  <YStack flex={1} gap="$1">
+                    <Text fontSize="$2" color="$colorMuted" fontWeight="500">
+                      NOMOR PESANAN
+                    </Text>
+                    <Text fontSize="$6" fontWeight="700" color="$color">
+                      {orderNumber}
+                    </Text>
+                  </YStack>
+                  {order.payment_status === 'pending' && !isBackendPaymentExpired && (
+                    <PaymentCountdownTimer
+                      createdAt={order.created_at}
+                      onExpired={handlePaymentExpired}
+                      variant="compact"
+                    />
+                  )}
+                </XStack>
+                <Text fontSize="$3" color="$colorSubtle">
                   {formatDate(order.created_at)}
                 </Text>
               </YStack>
@@ -301,16 +265,14 @@ export default function OrderDetail() {
                   Status
                 </Text>
                 <StatusBadge variant={primaryStatusDisplay.variant as OrderStatusVariant}>
-                  <StatusBadgeText variant={primaryStatusDisplay.variant as OrderStatusVariant}>
-                    {primaryStatusDisplay.label}
-                  </StatusBadgeText>
+                  {primaryStatusDisplay.label}
                 </StatusBadge>
               </XStack>
 
               {secondaryStatusDisplay && (
                 <XStack justifyContent="space-between" alignItems="center">
                   <Text fontSize="$3" color="$colorSubtle">
-                    Detail
+                    Status Pembayaran
                   </Text>
                   <SecondaryStatusText>{secondaryStatusDisplay}</SecondaryStatusText>
                 </XStack>
@@ -321,7 +283,7 @@ export default function OrderDetail() {
           <SectionCard>
             <YStack padding="$4" gap="$3">
               <XStack alignItems="center" gap="$2">
-                <CreditCardIcon size={20} color="$primary" />
+                <PackageIcon size={20} color="$primary" />
                 <Text fontSize="$4" fontWeight="600" color="$color">
                   Produk
                 </Text>
@@ -329,7 +291,7 @@ export default function OrderDetail() {
 
               <Separator />
 
-              <YStack gap="$3">
+              <YStack gap="$4">
                 {order.order_items?.map(item => {
                   const product = item.products;
                   const imageUrl = getProductImageUrl(product?.product_images);
@@ -339,9 +301,9 @@ export default function OrderDetail() {
                     <XStack key={item.id} gap="$3" alignItems="flex-start">
                       {imageUrl ? (
                         <YStack
-                          width={60}
-                          height={60}
-                          borderRadius="$2"
+                          width={64}
+                          height={64}
+                          borderRadius="$3"
                           overflow="hidden"
                           backgroundColor="$surfaceSubtle">
                           <Image
@@ -352,24 +314,24 @@ export default function OrderDetail() {
                         </YStack>
                       ) : (
                         <YStack
-                          width={60}
-                          height={60}
-                          borderRadius="$2"
+                          width={64}
+                          height={64}
+                          borderRadius="$3"
                           backgroundColor="$surfaceSubtle"
                           alignItems="center"
                           justifyContent="center">
-                          <PackageIcon size={24} color="$colorSubtle" />
+                          <PackageIcon size={24} color="$colorMuted" />
                         </YStack>
                       )}
 
                       <YStack flex={1} gap="$1">
-                        <Text fontSize="$3" color="$color" fontWeight="500">
+                        <Text fontSize="$3" color="$color" fontWeight="500" numberOfLines={2}>
                           {product?.name ?? 'Produk'}
                         </Text>
                         <Text fontSize="$2" color="$colorSubtle">
                           {formatRupiah(item.price_at_purchase)} × {item.quantity}
                         </Text>
-                        <Text fontSize="$3" color="$color" fontWeight="600">
+                        <Text fontSize="$4" color="$color" fontWeight="600">
                           {formatRupiah(lineTotal)}
                         </Text>
                       </YStack>
@@ -392,7 +354,7 @@ export default function OrderDetail() {
 
                 <Separator />
 
-                <YStack gap="$1">
+                <YStack gap="$2">
                   <Text fontSize="$3" color="$color" fontWeight="600">
                     {order.addresses.receiver_name}
                   </Text>
@@ -423,7 +385,7 @@ export default function OrderDetail() {
                 <Separator />
 
                 <YStack gap="$2">
-                  <Text fontSize="$3" color="$color">
+                  <Text fontSize="$3" color="$color" fontWeight="500">
                     {formatCourierServiceName(order.courier_code, order.courier_service)}
                   </Text>
                   {order.shipping_etd && (
@@ -432,7 +394,7 @@ export default function OrderDetail() {
                     </Text>
                   )}
                   {shippingCost > 0 && (
-                    <Text fontSize="$3" color="$primary" fontWeight="600">
+                    <Text fontSize="$4" color="$primary" fontWeight="600">
                       {formatRupiah(shippingCost)}
                     </Text>
                   )}
@@ -466,7 +428,7 @@ export default function OrderDetail() {
                 <Text fontSize="$4" fontWeight="700" color="$color">
                   Total
                 </Text>
-                <Text fontSize="$5" fontWeight="700" color="$primary">
+                <Text fontSize="$6" fontWeight="700" color="$primary">
                   {formatRupiah(totalAmount)}
                 </Text>
               </XStack>
@@ -477,7 +439,7 @@ export default function OrderDetail() {
 
       {order.payment_status === 'pending' && (
         <BottomActionBar
-          buttonTitle={isPaymentExpired ? 'Pembayaran Kadaluarsa' : 'Bayar Sekarang'}
+          buttonTitle={isOrderExpired ? 'Pembayaran Kadaluarsa' : 'Bayar Sekarang'}
           onPress={() => {
             if (canResumePayment) {
               router.push({
