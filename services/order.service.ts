@@ -690,3 +690,127 @@ export function getOrderSecondaryStatusDisplay(
 
   return null;
 }
+
+export interface PastPurchaseProduct {
+  id: string;
+  name: string;
+  price: number;
+  slug: string;
+  imageUrl: string | null;
+}
+
+const PAST_PURCHASE_LIMIT = 10;
+
+const PAST_PURCHASE_SELECT = `
+  product_id,
+  created_at,
+  products (
+    id,
+    name,
+    price,
+    slug,
+    is_active,
+    stock,
+    product_images (
+      url,
+      sort_order
+    )
+  ),
+  orders!inner (
+    status,
+    payment_status,
+    user_id
+  )
+`;
+
+interface PastPurchaseRow {
+  product_id: string | null;
+  created_at: string;
+  products: {
+    id: string;
+    name: string;
+    price: number;
+    slug: string;
+    is_active: boolean | null;
+    stock: number;
+    product_images: { url: string; sort_order: number }[] | null;
+  } | null;
+  orders: {
+    status: string;
+    payment_status: string;
+    user_id: string | null;
+  };
+}
+
+export async function getPastPurchasedProducts(
+  userId: string,
+): Promise<{ data: PastPurchaseProduct[]; error: Error | null }> {
+  const normalizedUserId = userId.trim();
+
+  if (!normalizedUserId) {
+    return { data: [], error: new Error('User ID is required.') };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select(PAST_PURCHASE_SELECT)
+      .eq('orders.user_id', normalizedUserId)
+      .eq('orders.status', 'delivered')
+      .eq('orders.payment_status', 'settlement')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      logSupabaseError('getPastPurchasedProducts query failed', error);
+      return {
+        data: [],
+        error: normalizeSupabaseError(error, 'Gagal memuat produk yang pernah dibeli.'),
+      };
+    }
+
+    const rows = (data ?? []) as unknown as PastPurchaseRow[];
+    const seen = new Set<string>();
+    const products: PastPurchaseProduct[] = [];
+
+    for (const row of rows) {
+      if (!row.product_id || !row.products) {
+        continue;
+      }
+
+      if (seen.has(row.product_id)) {
+        continue;
+      }
+
+      if (!row.products.is_active || row.products.stock <= 0) {
+        continue;
+      }
+
+      seen.add(row.product_id);
+
+      const sortedImages = [...(row.products.product_images ?? [])].sort(
+        (a, b) => a.sort_order - b.sort_order,
+      );
+
+      products.push({
+        id: row.products.id,
+        name: row.products.name,
+        price: row.products.price,
+        slug: row.products.slug,
+        imageUrl: sortedImages[0]?.url ?? null,
+      });
+
+      if (products.length >= PAST_PURCHASE_LIMIT) {
+        break;
+      }
+    }
+
+    return { data: products, error: null };
+  } catch (error) {
+    logSupabaseError('getPastPurchasedProducts unexpected error', error);
+    return {
+      data: [],
+      error: normalizeSupabaseError(error, 'Gagal memuat produk yang pernah dibeli.'),
+    };
+  }
+}
