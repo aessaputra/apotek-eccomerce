@@ -34,7 +34,7 @@ const SkeletonCard = memo(function SkeletonCard({ width }: { width: number }) {
       borderWidth={1}
       borderColor="$surfaceBorder"
       borderRadius="$4">
-      <YStack width="100%" height={96} borderRadius="$3" backgroundColor="$surfaceBorder" />
+      <YStack width="100%" height={120} borderRadius="$3" backgroundColor="$surfaceBorder" />
       <YStack width="80%" height={16} borderRadius="$2" backgroundColor="$surfaceBorder" />
       <YStack width="50%" height={12} borderRadius="$2" backgroundColor="$surfaceBorder" />
     </Card>
@@ -79,7 +79,7 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
       aria-describedby={`View details for ${item.name}`}>
       <YStack
         width="100%"
-        height={96}
+        height={120}
         borderRadius="$3"
         alignItems="center"
         justifyContent="center"
@@ -89,7 +89,7 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
           <Image
             source={{ uri: imageUrl }}
             style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
+            contentFit="contain"
             recyclingKey={imageUrl}
           />
         ) : (

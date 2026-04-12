@@ -6,16 +6,16 @@ import { getThemeColor } from '@/utils/theme';
 
 const CATEGORY_SIZE_CONFIG = {
   small: {
-    minWidth: 148,
-    maxWidth: 196,
-    minHeight: 64,
+    minWidth: 86,
+    maxWidth: 110,
+    minHeight: 44,
     iconContainer: 32,
     iconImage: 22,
     iconGlyph: 16,
     textSize: 12,
     lineHeight: 16,
-    horizontalPadding: '$3.5',
-    verticalPadding: '$2.5',
+    horizontalPadding: '$1.5',
+    verticalPadding: '$1',
   },
   medium: {
     minWidth: 178,
@@ -64,9 +64,9 @@ const CategoryCard = styled(Card, {
   variants: {
     size: {
       small: {
-        minWidth: 148,
-        maxWidth: 196,
-        minHeight: 64,
+        minWidth: 86,
+        maxWidth: 110,
+        minHeight: 44,
       },
       medium: {
         minWidth: 178,
@@ -136,8 +136,8 @@ export const CategorySkeleton = memo(function CategorySkeleton({
   const skeletonItems = [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
     <SkeletonCard
       key={i}
-      minWidth={148}
-      maxWidth={196}
+      minWidth={86}
+      maxWidth={110}
       $gtSm={{ minWidth: 178, maxWidth: 232 }}
       $gtLg={{ minWidth: 214, maxWidth: 276 }}
       paddingHorizontal="$3.5"
