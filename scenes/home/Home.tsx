@@ -10,7 +10,8 @@ import HomeBanner, { HomeBannerSkeleton } from '@/components/elements/HomeBanner
 import { HOME_BANNER_CTA_ROUTE_MAP } from '@/constants/homeBanner.constants';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useAppSlice } from '@/slices';
-import { useHomeData } from '@/hooks';
+import { useHomeData, useCartPaginated } from '@/hooks';
+import { addProductToCart } from '@/services';
 import type { HomeBannerCTA } from '@/types/homeBanner';
 import { getThemeColor } from '@/utils/theme';
 
@@ -102,6 +103,8 @@ export default function Home() {
     refresh,
   } = useHomeData();
 
+  const { snapshot: cartSnapshot } = useCartPaginated({ userId: user?.id });
+
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
   const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
@@ -161,6 +164,14 @@ export default function Home() {
     [router],
   );
 
+  const handleAddToCart = useCallback(
+    async (productId: string) => {
+      if (!user?.id) return;
+      await addProductToCart(user.id, productId, 1);
+    },
+    [user?.id],
+  );
+
   const userName = user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer';
   const userAvatarUrl = user?.avatar_url;
   const userInitial = userName.charAt(0).toUpperCase();
@@ -217,7 +228,28 @@ export default function Home() {
                 role="button"
                 aria-label="Cart"
                 aria-describedby="Open cart page">
-                <CartIcon size={16} color={iconColor} />
+                <CartIcon size={20} color={iconColor} />
+                {cartSnapshot.itemCount > 0 && (
+                  <YStack
+                    position="absolute"
+                    top={4}
+                    right={4}
+                    backgroundColor="$primary"
+                    borderRadius={100}
+                    borderWidth={1.5}
+                    borderColor="$surface"
+                    minWidth={18}
+                    height={18}
+                    justifyContent="center"
+                    alignItems="center"
+                    px={cartSnapshot.itemCount > 9 ? '$1.5' : 0}
+                    zIndex={10}
+                    pointerEvents="none">
+                    <Text color="$onPrimary" fontSize={9} fontWeight="900" lineHeight={11}>
+                      {cartSnapshot.itemCount > 99 ? '99+' : cartSnapshot.itemCount}
+                    </Text>
+                  </YStack>
+                )}
               </SurfaceIconButton>
             </XStack>
           </XStack>
@@ -315,6 +347,7 @@ export default function Home() {
                       width={productWidth}
                       iconColor={iconColor}
                       onPress={() => handleProductPress(item.id, item.name)}
+                      onAddToCart={() => handleAddToCart(item.id)}
                     />
                   ))}
                 </XStack>

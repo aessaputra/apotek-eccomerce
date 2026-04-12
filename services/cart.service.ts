@@ -141,20 +141,15 @@ function toCartRealtimeItem(
 
   const { id, cart_id, product_id, quantity } = record;
 
-  if (
-    typeof id !== 'string' ||
-    typeof cart_id !== 'string' ||
-    typeof product_id !== 'string' ||
-    typeof quantity !== 'number'
-  ) {
+  if (typeof id !== 'string') {
     return null;
   }
 
   return {
     id,
-    cart_id,
-    product_id,
-    quantity,
+    cart_id: typeof cart_id === 'string' ? cart_id : '',
+    product_id: typeof product_id === 'string' ? product_id : '',
+    quantity: typeof quantity === 'number' ? quantity : 0,
   };
 }
 
@@ -442,7 +437,8 @@ export async function getCartWithItems(
   let productsQuery = supabase
     .from('products')
     .select('id, name, price, stock, weight, slug, is_active')
-    .in('id', productIds);
+    .in('id', productIds)
+    .eq('is_active', true);
   productsQuery = withAbortSignal(productsQuery, signal);
 
   const { data: products, error: productsError } = await productsQuery;

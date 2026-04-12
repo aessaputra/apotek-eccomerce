@@ -14,6 +14,7 @@ export { useDebounce } from './useDebounce';
 export { useCartAddress } from './useCartAddress';
 export { useCartShipping } from './useCartShipping';
 export { useCartCheckout } from './useCartCheckout';
+export { useCartPaginated } from './useCartPaginated';
 export { withAuthGuard } from './withAuthGuard';
 export type { UseAddressFormReturn } from './useAddressForm';
 export type { UseAddressDataReturn, SaveAddressParams } from './useAddressData';
