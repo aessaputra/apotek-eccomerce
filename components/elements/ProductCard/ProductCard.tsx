@@ -34,7 +34,15 @@ const SkeletonCard = memo(function SkeletonCard({ width }: { width: number }) {
       borderWidth={1}
       borderColor="$surfaceBorder"
       borderRadius="$4">
-      <YStack width="100%" height={120} borderRadius="$3" backgroundColor="$surfaceBorder" />
+      <YStack width="100%" height={120} alignItems="center" justifyContent="center">
+        <YStack
+          height="100%"
+          maxWidth="100%"
+          aspectRatio={1}
+          borderRadius="$3"
+          backgroundColor="$surfaceBorder"
+        />
+      </YStack>
       <YStack width="80%" height={16} borderRadius="$2" backgroundColor="$surfaceBorder" />
       <YStack width="50%" height={12} borderRadius="$2" backgroundColor="$surfaceBorder" />
     </Card>
@@ -77,27 +85,30 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
       role="button"
       aria-label={`${item.name} product`}
       aria-describedby={`View details for ${item.name}`}>
-      <YStack
-        width="100%"
-        height={120}
-        borderRadius="$3"
-        alignItems="center"
-        justifyContent="center"
-        backgroundColor={accentColor}
-        overflow="hidden">
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="contain"
-            recyclingKey={imageUrl}
-          />
-        ) : (
-          <>
-            <PillIcon size={34} color={iconColor} />
-            <XStack width={28} height={4} borderRadius="$10" backgroundColor="$surface" />
-          </>
-        )}
+      <YStack width="100%" height={120} alignItems="center" justifyContent="center">
+        <YStack
+          height="100%"
+          maxWidth="100%"
+          aspectRatio={1}
+          borderRadius="$3"
+          alignItems="center"
+          justifyContent="center"
+          backgroundColor={accentColor}
+          overflow="hidden">
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="contain"
+              recyclingKey={imageUrl}
+            />
+          ) : (
+            <>
+              <PillIcon size={34} color={iconColor} />
+              <XStack width={28} height={4} borderRadius="$10" backgroundColor="$surface" />
+            </>
+          )}
+        </YStack>
       </YStack>
       <YStack height={36} flexShrink={0} justifyContent="flex-start">
         <Text fontSize={14} lineHeight={18} color="$color" fontWeight="600" numberOfLines={2}>
@@ -109,8 +120,8 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
           {formatPrice(item.price)}
         </Text>
         <XStack
-          width={32}
-          height={32}
+          width={36}
+          height={36}
           borderRadius="$8"
           backgroundColor="$primary"
           alignItems="center"
@@ -120,7 +131,7 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
           role="button"
           aria-label={`Add ${item.name} to cart`}
           aria-describedby="Adds product to shopping cart">
-          <CartIcon size={16} color="$onPrimary" />
+          <CartIcon size={18} color="$onPrimary" />
         </XStack>
       </XStack>
     </Card>
