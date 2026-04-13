@@ -27,7 +27,7 @@ import {
 } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 import { CartIcon, ChevronRightIcon, MapPinIcon } from '@/components/icons';
-import { CartItemCard } from '@/components/elements/CartItemCard';
+import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
 import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
 import { StickyBottomBar } from '@/components/elements/StickyBottomBar/StickyBottomBar';
 import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartState';
@@ -60,14 +60,7 @@ const CartItemRenderer = memo(function CartItemRenderer({
   onRemove,
   disabled: _disabled,
 }: CartItemRendererProps) {
-  return (
-    <CartItemCard
-      item={item}
-      onQuantityChange={onQuantityChange}
-      onRemove={onRemove}
-      disabled={false}
-    />
-  );
+  return <CartItemRow item={item} onQuantityChange={onQuantityChange} onRemove={onRemove} />;
 });
 
 const COURIER_CARD_PRESS_STYLE = {

@@ -192,8 +192,8 @@ jest.mock('@/services/checkout.service', () => ({
   createSnapToken: jest.fn(async () => ({ data: null, error: null })),
 }));
 
-jest.mock('@/components/elements/CartItemCard', () => ({
-  CartItemCard: ({
+jest.mock('@/components/elements/CartItemRow/CartItemRow', () => ({
+  CartItemRow: ({
     item,
     onRemove,
   }: {
