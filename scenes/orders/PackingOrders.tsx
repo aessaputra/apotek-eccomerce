@@ -33,7 +33,7 @@ const EmptyState = React.memo(function EmptyState() {
           Belum Ada Pesanan
         </Text>
         <Text fontSize="$4" color="$colorSubtle" textAlign="center" maxWidth={280}>
-          Pesanan yang sedang dikemas akan muncul di sini.
+          Pesanan yang sedang diproses atau siap dikirim akan muncul di sini.
         </Text>
       </YStack>
       <Button

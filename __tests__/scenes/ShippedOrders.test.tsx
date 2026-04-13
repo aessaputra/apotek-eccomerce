@@ -56,6 +56,10 @@ describe('<ShippedOrders />', () => {
   test('renders the shipped empty state copy', () => {
     render(<ShippedOrders />);
 
-    expect(screen.getByText('Pesanan yang sedang dikirim akan muncul di sini.')).not.toBeNull();
+    expect(
+      screen.getByText(
+        'Pesanan yang sudah diserahkan ke kurir atau dalam perjalanan akan muncul di sini.',
+      ),
+    ).not.toBeNull();
   });
 });

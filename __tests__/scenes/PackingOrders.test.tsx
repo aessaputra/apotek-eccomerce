@@ -43,12 +43,12 @@ describe('<PackingOrders />', () => {
     });
   });
 
-  test('queries paid, processing, and awaiting_shipment orders for the packing tab', () => {
+  test('queries processing and awaiting_shipment orders for the packing tab', () => {
     render(<PackingOrders />);
 
     expect(mockUseOrdersByStatusPaginated).toHaveBeenCalledWith({
       userId: 'user-1',
-      orderStatuses: ['paid', 'processing', 'awaiting_shipment'],
+      orderStatuses: ['processing', 'awaiting_shipment'],
       cacheKey: 'packing',
     });
   });
@@ -56,6 +56,8 @@ describe('<PackingOrders />', () => {
   test('renders the existing packing empty state copy', () => {
     render(<PackingOrders />);
 
-    expect(screen.getByText('Pesanan yang sedang dikemas akan muncul di sini.')).not.toBeNull();
+    expect(
+      screen.getByText('Pesanan yang sedang diproses atau siap dikirim akan muncul di sini.'),
+    ).not.toBeNull();
   });
 });

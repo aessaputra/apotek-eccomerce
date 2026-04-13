@@ -24,7 +24,7 @@ const EmptyState = React.memo(function EmptyState() {
         Belum Ada Pesanan
       </Text>
       <Text fontSize="$4" color="$colorSubtle" textAlign="center">
-        Pesanan yang sedang dikirim akan muncul di sini.
+        Pesanan yang sudah diserahkan ke kurir atau dalam perjalanan akan muncul di sini.
       </Text>
       <Button
         size="$4"
