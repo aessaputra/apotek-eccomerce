@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { AlertDialog, Button, YStack } from 'tamagui';
 
 export interface AppAlertDialogProps {
@@ -16,6 +17,10 @@ export interface AppAlertDialogProps {
   cancelTextColor?: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Optional icon to display centered above the content */
+  icon?: ReactNode;
+  /** When true, visually hides the title but keeps it for accessibility */
+  hideTitle?: boolean;
 }
 
 export default function AppAlertDialog({
@@ -34,6 +39,8 @@ export default function AppAlertDialog({
   cancelTextColor = '$colorSubtle',
   confirmLabel,
   cancelLabel,
+  icon,
+  hideTitle = false,
 }: AppAlertDialogProps) {
   const resolvedConfirmText = confirmLabel ?? confirmText ?? 'OK';
   const resolvedCancelText = cancelLabel ?? cancelText;
@@ -67,10 +74,30 @@ export default function AppAlertDialog({
           enterStyle={{ y: -20, opacity: 0, scale: 0.96 }}
           exitStyle={{ y: 10, opacity: 0, scale: 0.98 }}
           padding="$4">
-          <AlertDialog.Title fontSize="$6" fontWeight="700">
+          {icon ? (
+            <YStack alignItems="center" marginBottom="$3">
+              {icon}
+            </YStack>
+          ) : null}
+          <AlertDialog.Title
+            fontSize="$6"
+            fontWeight="700"
+            {...(hideTitle
+              ? {
+                  position: 'absolute',
+                  width: 1,
+                  height: 1,
+                  overflow: 'hidden',
+                  opacity: 0,
+                }
+              : {})}>
             {title}
           </AlertDialog.Title>
-          <AlertDialog.Description fontSize="$3" color="$colorSubtle" marginTop="$2">
+          <AlertDialog.Description
+            fontSize="$3"
+            color="$colorSubtle"
+            marginTop={hideTitle || icon ? '$0' : '$2'}
+            textAlign={icon ? 'center' : 'left'}>
             {description}
           </AlertDialog.Description>
 

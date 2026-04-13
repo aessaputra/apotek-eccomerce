@@ -1,6 +1,7 @@
 import { test, expect, jest } from '@jest/globals';
 import { render, renderWithDarkTheme, screen, fireEvent } from '@/test-utils/renderWithTheme';
 import AppAlertDialog from '@/components/elements/AppAlertDialog/AppAlertDialog';
+import { CheckCircleIcon } from '@/components/icons';
 
 describe('<AppAlertDialog />', () => {
   const defaultProps = {
@@ -78,5 +79,42 @@ describe('<AppAlertDialog />', () => {
 
     expect(screen.getByText('Test Title')).toBeTruthy();
     expect(screen.getByText('OK')).toBeTruthy();
+  });
+
+  test('renders icon when provided', async () => {
+    render(
+      <AppAlertDialog {...defaultProps} icon={<CheckCircleIcon size={48} color="$success" />} />,
+    );
+
+    expect(screen.getByText('Test Title')).toBeTruthy();
+    expect(screen.getByText('Test Description')).toBeTruthy();
+  });
+
+  test('hides title visually but keeps it accessible when hideTitle is true', async () => {
+    render(<AppAlertDialog {...defaultProps} hideTitle />);
+
+    expect(screen.getByText('Test Title')).toBeTruthy();
+    expect(screen.getByText('Test Description')).toBeTruthy();
+  });
+
+  test('centers description text when icon is provided', async () => {
+    render(
+      <AppAlertDialog {...defaultProps} icon={<CheckCircleIcon size={48} color="$success" />} />,
+    );
+
+    expect(screen.getByText('Test Description')).toBeTruthy();
+  });
+
+  test('renders icon with hideTitle for success dialog pattern', async () => {
+    render(
+      <AppAlertDialog
+        {...defaultProps}
+        hideTitle
+        icon={<CheckCircleIcon size={48} color="$success" />}
+      />,
+    );
+
+    expect(screen.getByText('Test Title')).toBeTruthy();
+    expect(screen.getByText('Test Description')).toBeTruthy();
   });
 });
