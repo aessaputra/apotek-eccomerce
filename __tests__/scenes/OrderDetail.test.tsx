@@ -39,7 +39,7 @@ const mockOrder = {
   id: 'test-order-id',
   created_at: '2024-01-15T10:30:00Z',
   status: 'processing',
-  payment_status: 'paid',
+  payment_status: 'settlement',
   gross_amount: 150000,
   total_amount: 150000,
   shipping_cost: 10000,
@@ -121,7 +121,7 @@ describe('<OrderDetail />', () => {
     expect(screen.getByText('Network error')).not.toBeNull();
   });
 
-  test('renders order details with paid status', () => {
+  test('renders order details with successful payment status', () => {
     mockUseOrderDetail.mockReturnValue({
       order: mockOrder,
       status: 'success',

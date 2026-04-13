@@ -70,7 +70,7 @@ describe('<OrderSuccess />', () => {
     expect(screen.getAllByText('Rp 10.000').length).toBeGreaterThan(0);
   });
 
-  test('renders a pending-payment hero state when payment is still being verified', () => {
+  test('renders an unpaid hero state when payment is still pending', () => {
     mockUseOrderDetail.mockReturnValue({
       order: {
         id: 'ORDER-123',
@@ -86,11 +86,11 @@ describe('<OrderSuccess />', () => {
 
     render(<OrderSuccess />);
 
-    expect(screen.getByText('Pembayaran Sedang Diverifikasi')).not.toBeNull();
+    expect(screen.getByText('Menunggu Pembayaran')).not.toBeNull();
     expect(
-      screen.getByText('Status pembayaran akan diperbarui setelah proses verifikasi selesai.'),
+      screen.getByText('Segera selesaikan pembayaran agar pesanan bisa diproses.'),
     ).not.toBeNull();
-    expect(screen.queryByText('Menunggu Pembayaran')).toBeNull();
+    expect(screen.queryByText('Pembayaran Sedang Diverifikasi')).toBeNull();
   });
 
   test('renders a failed-payment hero state without referring to removed order actions', () => {

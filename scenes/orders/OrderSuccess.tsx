@@ -57,7 +57,7 @@ function getPaymentBadgeVariant(
     return expiredAt && new Date(expiredAt) < new Date() ? 'danger' : 'warning';
   }
 
-  if (['settlement', 'capture', 'paid'].includes(paymentStatus)) {
+  if (['settlement', 'capture'].includes(paymentStatus)) {
     return 'success';
   }
 
@@ -95,9 +95,9 @@ function getHeroContent(
 
   if (variant === 'warning') {
     return {
-      title: 'Pembayaran Sedang Diverifikasi',
-      description: 'Pembayaran Anda sudah kami terima dan sedang menunggu konfirmasi lebih lanjut.',
-      summaryNote: 'Status pembayaran akan diperbarui setelah proses verifikasi selesai.',
+      title: 'Menunggu Pembayaran',
+      description: 'Pesanan Anda masih menunggu pembayaran untuk dapat diproses lebih lanjut.',
+      summaryNote: 'Segera selesaikan pembayaran agar pesanan bisa diproses.',
       icon: Clock3,
       colorToken: 'warning',
       softToken: '$warningSoft',
