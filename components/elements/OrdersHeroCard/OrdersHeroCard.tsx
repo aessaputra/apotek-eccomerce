@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Text, YStack, XStack, styled } from 'tamagui';
+import { Card, Text, YStack, styled } from 'tamagui';
 import { PackageIcon } from '@/components/icons';
 
 const StyledCard = styled(Card, {
