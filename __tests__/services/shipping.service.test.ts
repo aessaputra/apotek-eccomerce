@@ -185,7 +185,7 @@ describe('shipping.service', () => {
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
-  test('sends coordinates to Biteship when address has lat/lng for instant couriers', async () => {
+  test('sends coordinates alongside destination_area_id when address has lat/lng for instant couriers', async () => {
     mockInvoke.mockResolvedValueOnce({
       data: {
         pricing: [
@@ -235,6 +235,7 @@ describe('shipping.service', () => {
     const invokePayload = mockInvoke.mock.calls[0]?.[1] as {
       body?: {
         payload?: {
+          destination_area_id?: string;
           destination_latitude?: number;
           destination_longitude?: number;
           origin_latitude?: number;
@@ -244,6 +245,7 @@ describe('shipping.service', () => {
       };
     };
 
+    expect(invokePayload.body?.payload?.destination_area_id).toBe('DEST-AREA-ID');
     expect(invokePayload.body?.payload?.destination_latitude).toBe(-6.2088);
     expect(invokePayload.body?.payload?.destination_longitude).toBe(106.8456);
     expect(invokePayload.body?.payload?.origin_latitude).toBeDefined();
