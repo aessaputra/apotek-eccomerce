@@ -8,7 +8,7 @@ import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 import { getThemeColor } from '@/utils/theme';
-import type { OrderListItem } from '@/services';
+import { COMPLETED_ORDER_STATUSES, type OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
   const router = useRouter();
@@ -95,7 +95,7 @@ export default function CompletedOrders() {
   const router = useRouter();
   const theme = useTheme();
   const { user } = useAppSlice();
-  const completedOrderStatuses = useMemo(() => ['delivered'], []);
+  const completedOrderStatuses = useMemo(() => [...COMPLETED_ORDER_STATUSES], []);
   const {
     orders: completedOrders,
     error,

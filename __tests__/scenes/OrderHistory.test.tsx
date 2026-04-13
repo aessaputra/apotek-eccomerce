@@ -60,8 +60,8 @@ describe('<OrderHistory />', () => {
       orders: [
         {
           id: 'order-1',
-          status: 'expired',
-          payment_status: 'pending',
+          status: 'cancelled',
+          payment_status: 'cancel',
           gross_amount: 10000,
           total_amount: 10000,
           created_at: '2024-01-01T00:00:00Z',
