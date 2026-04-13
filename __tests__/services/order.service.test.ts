@@ -5,6 +5,7 @@ import {
   SHIPPED_ORDER_STATUSES,
   UNPAID_ORDER_STATUSES,
   UNPAID_PAYMENT_STATUSES,
+  getOrderStatusDisplay,
   isBackendExpired,
   getOrderPrimaryStatusDisplay,
   getOrderSecondaryStatusDisplay,
@@ -38,6 +39,14 @@ describe('order.service lifecycle helpers', () => {
     expect(getOrderStatusLabel('in_transit')).toBe('Dalam Pengiriman');
   });
 
+  test('maps delivered orders to the completed label', () => {
+    expect(getOrderStatusLabel('delivered')).toBe('Selesai');
+    expect(getOrderStatusDisplay('delivered')).toEqual({
+      label: 'Selesai',
+      variant: 'success',
+    });
+  });
+
   test('uses operational order status for successful settled payments', () => {
     expect(getOrderPrimaryStatusDisplay('processing', 'settlement')).toEqual({
       label: 'Diproses',
@@ -50,6 +59,10 @@ describe('order.service lifecycle helpers', () => {
     expect(getOrderPrimaryStatusDisplay('in_transit', 'settlement')).toEqual({
       label: 'Dalam Pengiriman',
       variant: 'primary',
+    });
+    expect(getOrderPrimaryStatusDisplay('delivered', 'settlement')).toEqual({
+      label: 'Selesai',
+      variant: 'success',
     });
   });
 

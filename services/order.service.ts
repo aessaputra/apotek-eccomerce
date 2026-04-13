@@ -613,7 +613,7 @@ export function getOrderStatusLabel(status: string): string {
     awaiting_shipment: 'Dikemas',
     shipped: 'Dikirim',
     in_transit: 'Dalam Pengiriman',
-    delivered: 'Terkirim',
+    delivered: 'Selesai',
     cancelled: 'Dibatalkan',
   };
 
@@ -629,7 +629,7 @@ export function getOrderStatusDisplay(status: string): OrderStatusDisplay {
     awaiting_shipment: { label: 'Dikemas', variant: 'primary' },
     shipped: { label: 'Dikirim', variant: 'primary' },
     in_transit: { label: 'Dalam Pengiriman', variant: 'primary' },
-    delivered: { label: 'Terkirim', variant: 'success' },
+    delivered: { label: 'Selesai', variant: 'success' },
     cancelled: { label: 'Dibatalkan', variant: 'danger' },
   };
 
