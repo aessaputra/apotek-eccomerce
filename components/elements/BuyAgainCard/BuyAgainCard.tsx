@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { Card, Text, YStack, XStack } from 'tamagui';
 import Image from '@/components/elements/Image';
-import { CartIcon } from '@/components/icons';
+import { CartIcon, PillIcon } from '@/components/icons';
 import type { PastPurchaseProduct } from '@/services/order.service';
 import { formatPrice } from '@/services/home.service';
 
@@ -42,27 +42,29 @@ export const BuyAgainCard = React.memo<BuyAgainCardProps>(
         role="button"
         aria-label={`Beli lagi ${product.name}`}>
         <YStack width="100%" height={IMAGE_SIZE} alignItems="center" justifyContent="center">
-          {product.imageUrl ? (
-            <Image
-              source={{ uri: product.imageUrl }}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="contain"
-              recyclingKey={product.imageUrl}
-            />
-          ) : (
-            <YStack
-              height="100%"
-              maxWidth="100%"
-              aspectRatio={1}
-              borderRadius="$3"
-              backgroundColor="$surfaceSubtle"
-              alignItems="center"
-              justifyContent="center">
-              <Text color="$colorMuted" fontSize="$2">
-                No img
-              </Text>
-            </YStack>
-          )}
+          <YStack
+            height="100%"
+            maxWidth="100%"
+            aspectRatio={1}
+            borderRadius="$3"
+            alignItems="center"
+            justifyContent="center"
+            backgroundColor="$infoSoft"
+            overflow="hidden">
+            {product.imageUrl ? (
+              <Image
+                source={{ uri: product.imageUrl }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="contain"
+                recyclingKey={product.imageUrl}
+              />
+            ) : (
+              <>
+                <PillIcon size={34} color="$primary" />
+                <XStack width={28} height={4} borderRadius="$10" backgroundColor="$surface" />
+              </>
+            )}
+          </YStack>
         </YStack>
 
         <YStack height={36} flexShrink={0} justifyContent="flex-start">
