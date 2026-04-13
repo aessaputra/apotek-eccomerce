@@ -146,20 +146,36 @@ function Router() {
     return TabIcon;
   }, []);
 
-  const renderTabButton = useCallback((tabName: TabRouteName) => {
-    const tabConfig = TABS[tabName];
-    const TabButton = (props: BottomTabBarButtonProps) => {
-      const { children, ref: _ref, ...rest } = props;
+  const renderTabButton = useCallback(
+    (tabName: TabRouteName) => {
+      const tabConfig = TABS[tabName];
+      const TabButton = (props: BottomTabBarButtonProps) => {
+        const { children, onPress, ref: _ref, ...rest } = props;
 
-      return (
-        <TabBarButton {...rest} accessibilityHint={tabConfig.accessibilityHint}>
-          {children}
-        </TabBarButton>
-      );
-    };
-    TabButton.displayName = `TabButton_${tabName}`;
-    return TabButton;
-  }, []);
+        const handlePress: BottomTabBarButtonProps['onPress'] = event => {
+          if (tabName === 'profile') {
+            event.preventDefault();
+            router.navigate('/profile');
+            return;
+          }
+
+          onPress?.(event);
+        };
+
+        return (
+          <TabBarButton
+            {...rest}
+            onPress={handlePress}
+            accessibilityHint={tabConfig.accessibilityHint}>
+            {children}
+          </TabBarButton>
+        );
+      };
+      TabButton.displayName = `TabButton_${tabName}`;
+      return TabButton;
+    },
+    [router],
+  );
 
   const screenOptions: BottomTabNavigationOptions = {
     headerShown: false,
