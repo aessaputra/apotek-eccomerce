@@ -5,6 +5,7 @@ import type { UseHomeDataReturn } from '@/hooks';
 
 const mockPush = jest.fn();
 const mockUseHomeData = jest.fn<() => UseHomeDataReturn>();
+const mockAddProductToCart = jest.fn(async () => ({ error: null }));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -28,9 +29,14 @@ jest.mock('@/hooks', () => ({
   useCartPaginated: () => ({ snapshot: { itemCount: 0, items: [] } }),
 }));
 
+jest.mock('@/services', () => ({
+  addProductToCart: (...args: unknown[]) => mockAddProductToCart(...args),
+}));
+
 jest.mock('@/slices', () => ({
   useAppSlice: () => ({
     user: {
+      id: 'user-1',
       full_name: 'John Doe',
       avatar_url: null,
       email: 'john@example.com',
@@ -49,11 +55,18 @@ jest.mock('@/components/elements/CategoryItem', () => {
 });
 
 jest.mock('@/components/elements/ProductCard', () => {
-  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
+  const { Button, Text, View } = jest.requireActual(
+    'react-native',
+  ) as typeof import('react-native');
 
   return {
     __esModule: true,
-    default: ({ item }: { item: { name: string } }) => <Text>{item.name}</Text>,
+    default: ({ item, onAddToCart }: { item: { name: string }; onAddToCart?: () => void }) => (
+      <View>
+        <Text>{item.name}</Text>
+        <Button title={`Add ${item.name}`} onPress={onAddToCart} />
+      </View>
+    ),
     ProductCardSkeleton: () => <Text>Product Skeleton</Text>,
   };
 });
@@ -122,6 +135,8 @@ describe('<Home />', () => {
     mockPush.mockClear();
     mockUseHomeData.mockReset();
     mockUseHomeData.mockReturnValue(createHomeData());
+    mockAddProductToCart.mockClear();
+    mockAddProductToCart.mockResolvedValue({ error: null });
   });
 
   it('renders top and bottom banner placements from hook data', () => {
@@ -149,5 +164,27 @@ describe('<Home />', () => {
     render(<Home />);
 
     expect(screen.getAllByTestId('home-banner-skeleton')).toHaveLength(2);
+  });
+
+  it('shows a success dialog after a product is added to cart successfully', async () => {
+    render(<Home />);
+
+    fireEvent.press(screen.getByText('Add Product 1'));
+
+    expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
+    expect(await screen.findByText('Produk berhasil ditambahkan')).toBeTruthy();
+    expect(screen.getByText('Product 1 berhasil ditambahkan ke keranjang')).toBeTruthy();
+  });
+
+  it('does not show the success dialog when adding to cart fails', async () => {
+    mockAddProductToCart.mockResolvedValue({ error: new Error('cart failed') });
+
+    render(<Home />);
+
+    fireEvent.press(screen.getByText('Add Product 1'));
+
+    expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
+    expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
+    expect(screen.queryByText('Product 1 berhasil ditambahkan ke keranjang')).toBeNull();
   });
 });

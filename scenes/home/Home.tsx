@@ -1,9 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Image, ScrollView, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
-import { CartIcon, SearchIcon } from '@/components/icons';
+import { CartIcon, CheckCircleIcon, SearchIcon } from '@/components/icons';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import CategoryItem, { CategorySkeleton } from '@/components/elements/CategoryItem';
 import ProductCard, { ProductCardSkeleton } from '@/components/elements/ProductCard';
 import HomeBanner, { HomeBannerSkeleton } from '@/components/elements/HomeBanner';
@@ -104,6 +105,7 @@ export default function Home() {
   } = useHomeData();
 
   const { snapshot: cartSnapshot } = useCartPaginated({ userId: user?.id });
+  const [cartSuccessProductName, setCartSuccessProductName] = useState<string | null>(null);
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
@@ -165,12 +167,22 @@ export default function Home() {
   );
 
   const handleAddToCart = useCallback(
-    async (productId: string) => {
+    async (productId: string, productName: string) => {
       if (!user?.id) return;
-      await addProductToCart(user.id, productId, 1);
+      const { error } = await addProductToCart(user.id, productId, 1);
+
+      if (!error) {
+        setCartSuccessProductName(productName);
+      }
     },
     [user?.id],
   );
+
+  const handleCartSuccessDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setCartSuccessProductName(null);
+    }
+  }, []);
 
   const userName = user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer';
   const userAvatarUrl = user?.avatar_url;
@@ -347,7 +359,7 @@ export default function Home() {
                       width={productWidth}
                       iconColor={iconColor}
                       onPress={() => handleProductPress(item.id, item.name)}
-                      onAddToCart={() => handleAddToCart(item.id)}
+                      onAddToCart={() => handleAddToCart(item.id, item.name)}
                     />
                   ))}
                 </XStack>
@@ -362,6 +374,18 @@ export default function Home() {
           )}
         </ContentStack>
       </ScrollView>
+
+      <AppAlertDialog
+        open={cartSuccessProductName !== null}
+        onOpenChange={handleCartSuccessDialogOpenChange}
+        title="Produk berhasil ditambahkan"
+        description={`${cartSuccessProductName ?? 'Produk'} berhasil ditambahkan ke keranjang`}
+        confirmText="OK"
+        confirmColor="$success"
+        confirmTextColor="$white"
+        hideTitle
+        icon={<CheckCircleIcon size={48} color="$success" />}
+      />
     </ScreenRoot>
   );
 }
