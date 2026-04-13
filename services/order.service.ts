@@ -170,8 +170,8 @@ export interface OrderStatusDisplay {
 }
 
 export const UNPAID_ORDER_STATUSES = ['pending'] as const;
-export const UNPAID_PAYMENT_STATUSES = ['pending', 'authorize'] as const;
-export const PACKING_ORDER_STATUSES = ['paid', 'processing', 'awaiting_shipment'] as const;
+export const UNPAID_PAYMENT_STATUSES = ['pending'] as const;
+export const PACKING_ORDER_STATUSES = ['processing', 'awaiting_shipment'] as const;
 export const SHIPPED_ORDER_STATUSES = ['shipped', 'in_transit'] as const;
 export const COMPLETED_ORDER_STATUSES = ['delivered'] as const;
 
@@ -610,9 +610,9 @@ export function getOrderStatusLabel(status: string): string {
     pending: 'Menunggu Pembayaran',
     paid: 'Diproses',
     processing: 'Diproses',
-    awaiting_shipment: 'Dikemas',
-    shipped: 'Dikirim',
-    in_transit: 'Dalam Pengiriman',
+    awaiting_shipment: 'Siap Dikirim',
+    shipped: 'Diserahkan ke Kurir',
+    in_transit: 'Dalam Perjalanan',
     delivered: 'Selesai',
     cancelled: 'Dibatalkan',
   };
@@ -626,9 +626,9 @@ export function getOrderStatusDisplay(status: string): OrderStatusDisplay {
     pending: { label: 'Menunggu Pembayaran', variant: 'warning' },
     paid: { label: 'Diproses', variant: 'primary' },
     processing: { label: 'Diproses', variant: 'primary' },
-    awaiting_shipment: { label: 'Dikemas', variant: 'primary' },
-    shipped: { label: 'Dikirim', variant: 'primary' },
-    in_transit: { label: 'Dalam Pengiriman', variant: 'primary' },
+    awaiting_shipment: { label: 'Siap Dikirim', variant: 'primary' },
+    shipped: { label: 'Diserahkan ke Kurir', variant: 'primary' },
+    in_transit: { label: 'Dalam Perjalanan', variant: 'primary' },
     delivered: { label: 'Selesai', variant: 'success' },
     cancelled: { label: 'Dibatalkan', variant: 'danger' },
   };
@@ -659,6 +659,10 @@ export function getOrderPrimaryStatusDisplay(
     }
 
     return { label: 'Menunggu Pembayaran', variant: 'warning' };
+  }
+
+  if (orderStatus === 'cancelled') {
+    return getOrderStatusDisplay(orderStatus);
   }
 
   if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {

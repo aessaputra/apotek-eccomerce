@@ -31,12 +31,13 @@ describe('order.service lifecycle helpers', () => {
     expect(getOrderStatusLabel('paid')).toBe('Diproses');
   });
 
-  test('maps awaiting_shipment to a Dikemas-aligned label', () => {
-    expect(getOrderStatusLabel('awaiting_shipment')).toBe('Dikemas');
+  test('maps awaiting_shipment to a siap dikirim label', () => {
+    expect(getOrderStatusLabel('awaiting_shipment')).toBe('Siap Dikirim');
   });
 
-  test('maps in_transit to a localized active shipping label', () => {
-    expect(getOrderStatusLabel('in_transit')).toBe('Dalam Pengiriman');
+  test('maps shipped and in_transit to the current shipping labels', () => {
+    expect(getOrderStatusLabel('shipped')).toBe('Diserahkan ke Kurir');
+    expect(getOrderStatusLabel('in_transit')).toBe('Dalam Perjalanan');
   });
 
   test('maps delivered orders to the completed label', () => {
@@ -53,11 +54,15 @@ describe('order.service lifecycle helpers', () => {
       variant: 'primary',
     });
     expect(getOrderPrimaryStatusDisplay('awaiting_shipment', 'settlement')).toEqual({
-      label: 'Dikemas',
+      label: 'Siap Dikirim',
+      variant: 'primary',
+    });
+    expect(getOrderPrimaryStatusDisplay('shipped', 'settlement')).toEqual({
+      label: 'Diserahkan ke Kurir',
       variant: 'primary',
     });
     expect(getOrderPrimaryStatusDisplay('in_transit', 'settlement')).toEqual({
-      label: 'Dalam Pengiriman',
+      label: 'Dalam Perjalanan',
       variant: 'primary',
     });
     expect(getOrderPrimaryStatusDisplay('delivered', 'settlement')).toEqual({
@@ -69,6 +74,13 @@ describe('order.service lifecycle helpers', () => {
   test('marks backend-expired pending payments as danger', () => {
     expect(getOrderPrimaryStatusDisplay('pending', 'pending', '2020-01-01T00:00:00Z')).toEqual({
       label: 'Pembayaran Kadaluarsa',
+      variant: 'danger',
+    });
+  });
+
+  test('keeps cancelled orders aligned to the official cancelled label', () => {
+    expect(getOrderPrimaryStatusDisplay('cancelled', 'cancel')).toEqual({
+      label: 'Dibatalkan',
       variant: 'danger',
     });
   });
@@ -85,8 +97,8 @@ describe('order.service lifecycle helpers', () => {
 
   test('exports lifecycle buckets aligned with backend changelog', () => {
     expect(UNPAID_ORDER_STATUSES).toEqual(['pending']);
-    expect(UNPAID_PAYMENT_STATUSES).toEqual(['pending', 'authorize']);
-    expect(PACKING_ORDER_STATUSES).toEqual(['paid', 'processing', 'awaiting_shipment']);
+    expect(UNPAID_PAYMENT_STATUSES).toEqual(['pending']);
+    expect(PACKING_ORDER_STATUSES).toEqual(['processing', 'awaiting_shipment']);
     expect(SHIPPED_ORDER_STATUSES).toEqual(['shipped', 'in_transit']);
     expect(COMPLETED_ORDER_STATUSES).toEqual(['delivered']);
   });
