@@ -128,14 +128,17 @@ export interface CategoryItemProps {
 
 export interface CategorySkeletonProps {
   isLargeScreen?: boolean;
+  count?: number;
 }
 
 export const CategorySkeleton = memo(function CategorySkeleton({
   isLargeScreen = false,
+  count = 8,
 }: CategorySkeletonProps) {
-  const skeletonItems = [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+  const skeletonItems = Array.from({ length: count }, (_, i) => i + 1).map(i => (
     <SkeletonCard
       key={i}
+      testID="category-skeleton-item"
       minWidth={86}
       maxWidth={110}
       $gtSm={{ minWidth: 178, maxWidth: 232 }}

@@ -22,11 +22,13 @@ export interface ProductCardProps {
 
 export interface ProductCardSkeletonProps {
   width: number;
+  count?: number;
 }
 
 const SkeletonCard = memo(function SkeletonCard({ width }: { width: number }) {
   return (
     <Card
+      testID="product-skeleton-item"
       width={width}
       padding="$3"
       gap="$2"
@@ -51,10 +53,11 @@ const SkeletonCard = memo(function SkeletonCard({ width }: { width: number }) {
 
 export const ProductCardSkeleton = memo(function ProductCardSkeleton({
   width,
+  count = 3,
 }: ProductCardSkeletonProps) {
   return (
     <XStack gap="$2.5" pr="$2">
-      {[1, 2, 3].map(i => (
+      {Array.from({ length: count }, (_, i) => i + 1).map(i => (
         <SkeletonCard key={i} width={width} />
       ))}
     </XStack>

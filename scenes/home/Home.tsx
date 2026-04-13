@@ -138,6 +138,16 @@ export default function Home() {
         : 'scroll';
   const isLargeScreen = media.gtSm;
 
+  // Compute viewport-aligned skeleton counts
+  const categorySkeletonCount = isLargeScreen
+    ? categoryLayout === 'grid4'
+      ? 8
+      : categoryLayout === 'grid3'
+        ? 6
+        : 4
+    : 2;
+  const productSkeletonCount = 2;
+
   const handleOpenCart = () => {
     router.push('/cart');
   };
@@ -298,7 +308,7 @@ export default function Home() {
           <YStack gap="$2.5">
             <SectionTitle>Categories</SectionTitle>
             {isLoadingCategories && categories.length === 0 ? (
-              <CategorySkeleton isLargeScreen={isLargeScreen} />
+              <CategorySkeleton isLargeScreen={isLargeScreen} count={categorySkeletonCount} />
             ) : categories.length === 0 ? (
               <Text fontSize={13} color="$colorSubtle">
                 No categories available
@@ -340,7 +350,7 @@ export default function Home() {
             <SectionTitle>Latest Products</SectionTitle>
             {isLoadingProducts && products.length === 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <ProductCardSkeleton width={productWidth} />
+                <ProductCardSkeleton width={productWidth} count={productSkeletonCount} />
               </ScrollView>
             ) : products.length === 0 ? (
               <Text fontSize={13} color="$colorSubtle">

@@ -41,4 +41,22 @@ describe('<CategorySkeleton />', () => {
     render(<CategorySkeleton isLargeScreen />);
     expect(screen.toJSON()).toBeTruthy();
   });
+
+  test('renders with custom count', async () => {
+    render(<CategorySkeleton isLargeScreen={false} count={4} />);
+    const items = screen.getAllByTestId('category-skeleton-item');
+    expect(items).toHaveLength(4);
+  });
+
+  test('renders default 8 items when count not specified', async () => {
+    render(<CategorySkeleton isLargeScreen />);
+    const items = screen.getAllByTestId('category-skeleton-item');
+    expect(items).toHaveLength(8);
+  });
+
+  test('renders correct count for mobile layout', async () => {
+    render(<CategorySkeleton isLargeScreen={false} count={2} />);
+    const items = screen.getAllByTestId('category-skeleton-item');
+    expect(items).toHaveLength(2);
+  });
 });

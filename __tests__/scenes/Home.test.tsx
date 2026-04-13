@@ -1,11 +1,22 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import * as ReactNative from 'react-native';
 import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
 import Home from '@/scenes/home/Home';
 import type { UseHomeDataReturn } from '@/hooks';
 
+type AddToCartResult = Promise<{ error: Error | null }>;
+
 const mockPush = jest.fn();
 const mockUseHomeData = jest.fn<() => UseHomeDataReturn>();
-const mockAddProductToCart = jest.fn(async () => ({ error: null }));
+const mockUseWindowDimensions = jest.fn(() => ({
+  width: 390,
+  height: 844,
+  scale: 1,
+  fontScale: 1,
+}));
+const mockAddProductToCart = jest.fn<
+  (userId: string, productId: string, quantity: number) => AddToCartResult
+>(async () => ({ error: null }));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -30,7 +41,8 @@ jest.mock('@/hooks', () => ({
 }));
 
 jest.mock('@/services', () => ({
-  addProductToCart: (...args: unknown[]) => mockAddProductToCart(...args),
+  addProductToCart: (userId: string, productId: string, quantity: number) =>
+    mockAddProductToCart(userId, productId, quantity),
 }));
 
 jest.mock('@/slices', () => ({
@@ -50,7 +62,9 @@ jest.mock('@/components/elements/CategoryItem', () => {
   return {
     __esModule: true,
     default: ({ category }: { category: { name: string } }) => <Text>{category.name}</Text>,
-    CategorySkeleton: () => <Text>Category Skeleton</Text>,
+    CategorySkeleton: ({ count }: { count?: number }) => (
+      <Text>Category Skeleton {count ?? 8}</Text>
+    ),
   };
 });
 
@@ -67,7 +81,9 @@ jest.mock('@/components/elements/ProductCard', () => {
         <Button title={`Add ${item.name}`} onPress={onAddToCart} />
       </View>
     ),
-    ProductCardSkeleton: () => <Text>Product Skeleton</Text>,
+    ProductCardSkeleton: ({ count }: { count?: number }) => (
+      <Text>Product Skeleton {count ?? 3}</Text>
+    ),
   };
 });
 
@@ -132,10 +148,17 @@ function createHomeData(): UseHomeDataReturn {
 
 describe('<Home />', () => {
   beforeEach(() => {
+    jest.spyOn(ReactNative, 'useWindowDimensions').mockImplementation(mockUseWindowDimensions);
     mockPush.mockClear();
     mockUseHomeData.mockReset();
     mockUseHomeData.mockReturnValue(createHomeData());
     mockAddProductToCart.mockClear();
+    mockUseWindowDimensions.mockReturnValue({
+      width: 390,
+      height: 844,
+      scale: 1,
+      fontScale: 1,
+    });
     mockAddProductToCart.mockResolvedValue({ error: null });
   });
 
@@ -164,6 +187,21 @@ describe('<Home />', () => {
     render(<Home />);
 
     expect(screen.getAllByTestId('home-banner-skeleton')).toHaveLength(2);
+  });
+
+  it('renders category and product skeletons with viewport-aligned counts while loading', () => {
+    mockUseHomeData.mockReturnValue({
+      ...createHomeData(),
+      categories: [],
+      products: [],
+      isLoadingCategories: true,
+      isLoadingProducts: true,
+    });
+
+    render(<Home />);
+
+    expect(screen.getByText('Category Skeleton 2')).toBeTruthy();
+    expect(screen.getByText('Product Skeleton 2')).toBeTruthy();
   });
 
   it('shows a success dialog after a product is added to cart successfully', async () => {
