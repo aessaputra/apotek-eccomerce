@@ -5,6 +5,8 @@ import { OrderStatusTabs } from '@/components/elements/OrderStatusTabs';
 import type { OrderTab } from '@/components/elements/OrderStatusTabs';
 import { OrdersHeroCard } from '@/components/elements/OrdersHeroCard';
 import { BuyAgainCarousel } from '@/components/elements/BuyAgainCarousel';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
+import { CheckCircleIcon } from '@/components/icons';
 import { useAppSlice } from '@/slices';
 import {
   getOrderTabCounts,
@@ -27,6 +29,7 @@ export default function Orders() {
     useAppSlice();
   const [counts, setCounts] = useState<OrderTabCounts>(EMPTY_COUNTS);
   const [pastProducts, setPastProducts] = useState<PastPurchaseProduct[]>([]);
+  const [cartSuccessProductName, setCartSuccessProductName] = useState<string | null>(null);
   const latestRequestIdRef = useRef(0);
   const hasViewedCompletedOrdersTab = user?.id
     ? completedOrdersTabViewedByUser[user.id] === true
@@ -119,12 +122,16 @@ export default function Orders() {
         return;
       }
 
-      if (__DEV__) {
-        console.log('[Orders] Product added to cart:', product.name);
-      }
+      setCartSuccessProductName(product.name);
     },
     [user?.id],
   );
+
+  const handleCartSuccessDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setCartSuccessProductName(null);
+    }
+  }, []);
 
   return (
     <YStack flex={1} backgroundColor="$background" paddingTop="$4">
@@ -134,6 +141,18 @@ export default function Orders() {
         products={pastProducts.slice(0, 2)}
         onProductPress={handleProductPress}
         onAddToCart={handleAddToCart}
+      />
+
+      <AppAlertDialog
+        open={cartSuccessProductName !== null}
+        onOpenChange={handleCartSuccessDialogOpenChange}
+        title="Produk berhasil ditambahkan"
+        description={`${cartSuccessProductName ?? 'Produk'} berhasil ditambahkan ke keranjang`}
+        confirmText="OK"
+        confirmColor="$primary"
+        confirmTextColor="$white"
+        hideTitle
+        icon={<CheckCircleIcon size={48} color="$primary" />}
       />
     </YStack>
   );

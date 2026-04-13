@@ -60,6 +60,7 @@ export default function AppAlertDialog({
           key="overlay"
           animation="quick"
           opacity={0.5}
+          backgroundColor="$sheetOverlay"
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
         />
@@ -67,6 +68,7 @@ export default function AppAlertDialog({
           key="content"
           bordered
           elevate
+          backgroundColor="$surfaceSubtle"
           width="90%"
           maxWidth="$20"
           animation={['quick', { opacity: { overshootClamping: true } }]}

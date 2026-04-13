@@ -109,6 +109,7 @@ export default function Home() {
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
+  const successDialogColor = '$primary';
   const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
   const contentMaxWidth = media.gtLg ? 1080 : media.gtMd ? 920 : media.gtSm ? 720 : 560;
   const contentWidth = Math.min(screenWidth, contentMaxWidth);
@@ -391,10 +392,10 @@ export default function Home() {
         title="Produk berhasil ditambahkan"
         description={`${cartSuccessProductName ?? 'Produk'} berhasil ditambahkan ke keranjang`}
         confirmText="OK"
-        confirmColor="$success"
+        confirmColor={successDialogColor}
         confirmTextColor="$white"
         hideTitle
-        icon={<CheckCircleIcon size={48} color="$success" />}
+        icon={<CheckCircleIcon size={48} color={successDialogColor} />}
       />
     </ScreenRoot>
   );
