@@ -1,6 +1,6 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
-import { Text, XStack, YStack, styled } from 'tamagui';
+import { ScrollView, useWindowDimensions } from 'react-native';
+import { Text, XStack, YStack, styled, useMedia } from 'tamagui';
 import { RotateCcw } from '@tamagui/lucide-icons';
 import { BuyAgainCard } from '@/components/elements/BuyAgainCard';
 import type { PastPurchaseProduct } from '@/services/order.service';
@@ -27,6 +27,18 @@ interface BuyAgainCarouselProps {
 
 export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
   ({ products, onProductPress, onAddToCart }) => {
+    const media = useMedia();
+    const { width: screenWidth } = useWindowDimensions();
+
+    const HORIZONTAL_PADDING = 32;
+    const CARD_GAP = 10;
+    const PEEK_OFFSET = 6;
+    const DESKTOP_CARD_WIDTH = 156;
+
+    const cardWidth = media.gtSm
+      ? DESKTOP_CARD_WIDTH
+      : Math.max(140, Math.floor((screenWidth - HORIZONTAL_PADDING - CARD_GAP - PEEK_OFFSET) / 2));
+
     if (products.length === 0) {
       return null;
     }
@@ -43,12 +55,13 @@ export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 16,
-            gap: 12,
+            gap: CARD_GAP,
           }}>
           {products.map(product => (
             <BuyAgainCard
               key={product.id}
               product={product}
+              width={cardWidth}
               onPress={onProductPress}
               onAddToCart={onAddToCart}
             />

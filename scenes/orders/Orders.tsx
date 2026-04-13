@@ -109,7 +109,7 @@ export default function Orders() {
       <OrdersHeroCard />
       <OrderStatusTabs counts={counts} onTabChange={handleTabChange} />
       <BuyAgainCarousel
-        products={pastProducts}
+        products={pastProducts.slice(0, 2)}
         onProductPress={handleProductPress}
         onAddToCart={handleAddToCart}
       />
