@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { YStack } from 'tamagui';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { OrderStatusTabs } from '@/components/elements/OrderStatusTabs';
@@ -23,10 +23,14 @@ const EMPTY_COUNTS: OrderTabCounts = {
 
 export default function Orders() {
   const router = useRouter();
-  const { user } = useAppSlice();
+  const { user, dispatch, completedOrdersTabViewedByUser, markCompletedOrdersTabViewed } =
+    useAppSlice();
   const [counts, setCounts] = useState<OrderTabCounts>(EMPTY_COUNTS);
   const [pastProducts, setPastProducts] = useState<PastPurchaseProduct[]>([]);
   const latestRequestIdRef = useRef(0);
+  const hasViewedCompletedOrdersTab = user?.id
+    ? completedOrdersTabViewedByUser[user.id] === true
+    : false;
 
   const loadData = useCallback(async () => {
     if (!user?.id) {
@@ -71,9 +75,27 @@ export default function Orders() {
     }, [loadData]),
   );
 
-  const handleTabChange = (tab: OrderTab) => {
-    router.push(`/orders/${tab}`);
-  };
+  const displayCounts = useMemo(() => {
+    if (!hasViewedCompletedOrdersTab) {
+      return counts;
+    }
+
+    return {
+      ...counts,
+      completed: 0,
+    };
+  }, [counts, hasViewedCompletedOrdersTab]);
+
+  const handleTabChange = useCallback(
+    (tab: OrderTab) => {
+      if (tab === 'completed' && user?.id && !hasViewedCompletedOrdersTab) {
+        dispatch(markCompletedOrdersTabViewed(user.id));
+      }
+
+      router.push(`/orders/${tab}`);
+    },
+    [dispatch, hasViewedCompletedOrdersTab, markCompletedOrdersTabViewed, router, user?.id],
+  );
 
   const handleProductPress = useCallback(
     (product: PastPurchaseProduct) => {
@@ -107,7 +129,7 @@ export default function Orders() {
   return (
     <YStack flex={1} backgroundColor="$background" paddingTop="$4">
       <OrdersHeroCard />
-      <OrderStatusTabs counts={counts} onTabChange={handleTabChange} />
+      <OrderStatusTabs counts={displayCounts} onTabChange={handleTabChange} />
       <BuyAgainCarousel
         products={pastProducts.slice(0, 2)}
         onProductPress={handleProductPress}
