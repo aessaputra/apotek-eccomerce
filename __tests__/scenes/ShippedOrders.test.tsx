@@ -57,9 +57,7 @@ describe('<ShippedOrders />', () => {
     render(<ShippedOrders />);
 
     expect(
-      screen.getByText(
-        'Pesanan yang sudah diserahkan ke kurir atau dalam perjalanan akan muncul di sini.',
-      ),
+      screen.getByText('Pesanan yang sudah diserahkan ke kurir akan muncul di sini.'),
     ).not.toBeNull();
   });
 });

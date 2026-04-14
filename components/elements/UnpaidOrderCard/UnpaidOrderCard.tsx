@@ -6,14 +6,12 @@ import { PayNowButton } from '@/components/elements/PayNowButton';
 import { StatusBadge } from '@/components/elements/StatusBadge';
 import { PackageIcon } from '@/components/icons';
 import { isBackendExpired, type OrderListItem } from '@/services';
+import { formatRupiah } from '@/scenes/cart/cart.constants';
+import { formatOrderNumber } from '@/utils/orderNumber';
 
 export interface UnpaidOrderCardProps {
   order: OrderListItem;
   onPress?: () => void;
-}
-
-function formatRupiah(amount: number): string {
-  return `Rp ${amount.toLocaleString('id-ID')}`;
 }
 
 function getProductImageUrl(order: OrderListItem): string | null {
@@ -38,7 +36,7 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
 }: UnpaidOrderCardProps) {
   const imageUrl = useMemo(() => getProductImageUrl(order), [order]);
   const productInfo = useMemo(() => getProductDisplayInfo(order), [order]);
-  const orderNumber = `APT-${order.id.slice(0, 8).toUpperCase()}`;
+  const orderNumber = formatOrderNumber(order.id);
   const [isTimerExpired, setIsTimerExpired] = useState(false);
 
   // Check if backend already marked order as expired
@@ -48,10 +46,7 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
 
   const handleTimerExpired = useCallback(() => {
     setIsTimerExpired(true);
-    if (__DEV__) {
-      console.log('[UnpaidOrderCard] Order expired:', order.id);
-    }
-  }, [order.id]);
+  }, []);
 
   return (
     <Card

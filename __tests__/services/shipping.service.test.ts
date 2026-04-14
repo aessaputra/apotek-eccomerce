@@ -4,6 +4,7 @@ import {
   getShippingRatesForAddress,
   searchBiteshipArea,
   getAreaById,
+  getPublicOrderTracking,
 } from '@/services/shipping.service';
 
 const mockInvoke = jest.fn();
@@ -364,5 +365,71 @@ describe('shipping.service', () => {
 
     expect(error).toBeNull();
     expect(data).toBeNull();
+  });
+
+  test('getPublicOrderTracking maps public tracking response', async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        id: 'tracking-1',
+        waybill_id: 'JNE12345',
+        status: 'dropping_off',
+        link: 'https://tracking.example/jne12345',
+        courier: {
+          company: 'jne',
+          driver_name: 'Budi',
+          driver_phone: '08123456789',
+        },
+        history: [
+          {
+            note: 'Paket sedang diantar',
+            status: 'dropping_off',
+            updated_at: '2026-04-14T08:00:00+07:00',
+          },
+        ],
+      },
+      error: null,
+    });
+
+    const { data, error } = await getPublicOrderTracking('order-123');
+
+    expect(error).toBeNull();
+    expect(data).toMatchObject({
+      id: 'tracking-1',
+      waybill_id: 'JNE12345',
+      status: 'dropping_off',
+      link: 'https://tracking.example/jne12345',
+      courier: {
+        company: 'jne',
+        driver_name: 'Budi',
+        driver_phone: '08123456789',
+      },
+      history: [
+        {
+          note: 'Paket sedang diantar',
+          status: 'dropping_off',
+          updated_at: '2026-04-14T08:00:00+07:00',
+        },
+      ],
+    });
+
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'biteship',
+      expect.objectContaining({
+        body: {
+          action: 'track_public',
+          payload: {
+            order_id: 'order-123',
+          },
+        },
+      }),
+    );
+  });
+
+  test('getPublicOrderTracking validates order id', async () => {
+    const { data, error } = await getPublicOrderTracking('   ');
+
+    expect(data).toBeNull();
+    expect(error?.message).toContain('Order ID is required.');
+    expect(mockInvoke).not.toHaveBeenCalled();
   });
 });

@@ -1,14 +1,16 @@
 import React from 'react';
 import { Card, Separator, Text, XStack, YStack, styled } from 'tamagui';
-import { PackageIcon, TruckIcon } from '@/components/icons';
+import { TruckIcon } from '@/components/icons';
 import { StatusBadge } from '@/components/elements/StatusBadge';
 import {
   getOrderPrimaryStatusDisplay,
-  getOrderStatusLabel,
   type OrderListItem,
   type OrderStatusVariant,
 } from '@/services';
 import { formatCourierServiceName } from '@/constants/courier.constants';
+import { formatRupiah } from '@/scenes/cart/cart.constants';
+import { formatOrderDateTime } from '@/utils/orderDate';
+import { formatOrderNumber } from '@/utils/orderNumber';
 
 const ORDER_CARD_HEIGHT = 148;
 
@@ -32,21 +34,6 @@ const OrderCardContainer = styled(Card, {
     elevated: true,
   },
 });
-
-function formatRupiah(amount: number): string {
-  return `Rp ${amount.toLocaleString('id-ID')}`;
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 interface StatusDisplay {
   label: string;
@@ -86,7 +73,7 @@ export const OrderCard = React.memo(function OrderCard({
       <YStack gap="$2" padding="$3">
         <XStack justifyContent="space-between" alignItems="center" gap="$2">
           <Text fontSize="$3" color="$colorSubtle" numberOfLines={1} flex={1}>
-            {formatDate(order.created_at)}
+            {formatOrderDateTime(order.created_at)}
           </Text>
           <StatusBadge variant={statusDisplay.variant} size="compact">
             {statusDisplay.label}
@@ -98,7 +85,7 @@ export const OrderCard = React.memo(function OrderCard({
         <XStack justifyContent="space-between" alignItems="center" gap="$2">
           <YStack flex={1} gap="$1" minWidth={0}>
             <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={1}>
-              APT-{order.id.slice(0, 8).toUpperCase()}
+              {formatOrderNumber(order.id)}
             </Text>
             <Text fontSize="$3" color="$colorSubtle" numberOfLines={1}>
               {itemNames}
@@ -117,15 +104,6 @@ export const OrderCard = React.memo(function OrderCard({
               </XStack>
             ) : null}
           </YStack>
-        </XStack>
-
-        <XStack justifyContent="space-between" alignItems="center" marginTop="$1">
-          <XStack alignItems="center" gap="$1">
-            <PackageIcon size={14} color="$colorSubtle" />
-            <Text fontSize="$2" color="$colorSubtle">
-              {getOrderStatusLabel(order.status)}
-            </Text>
-          </XStack>
         </XStack>
       </YStack>
     </OrderCardContainer>

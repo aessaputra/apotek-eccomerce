@@ -29,6 +29,7 @@ export type OrdersRoutes = {
   'orders/index': undefined;
   'orders/success': { orderId?: string };
   'orders/order-detail/[orderId]': { orderId: string };
+  'orders/track-shipment/[orderId]': { orderId: string };
 };
 
 // Profile routes
@@ -86,6 +87,7 @@ export type OrdersStackParams = {
   index: undefined;
   success: { orderId?: string };
   'order-detail/[orderId]': { orderId: string };
+  'track-shipment/[orderId]': { orderId: string };
 };
 
 export type AuthStackParams = {

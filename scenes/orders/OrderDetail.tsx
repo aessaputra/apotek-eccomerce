@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { ScrollView, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Button, Card, Separator, Spinner, Text, XStack, YStack, styled, useTheme } from 'tamagui';
+import { Button, Separator, Spinner, Text, XStack, YStack, styled, useTheme } from 'tamagui';
 import { TruckIcon, PackageIcon, AlertCircleIcon } from '@/components/icons';
+import OrderSectionCard from '@/components/elements/OrderSectionCard';
 import { StatusBadge } from '@/components/elements/StatusBadge';
 import {
   getOrderPrimaryStatusDisplay,
@@ -11,40 +12,19 @@ import {
   type OrderStatusVariant,
 } from '@/services';
 import { getThemeColor } from '@/utils/theme';
-import { useOrderDetail } from '@/hooks/useOrderDetail';
+import { formatOrderDateTime } from '@/utils/orderDate';
+import { formatOrderNumber } from '@/utils/orderNumber';
+import { useOrderDetail } from '@/hooks';
 import { PaymentCountdownTimer } from '@/components/elements/PaymentCountdownTimer';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import Image from '@/components/elements/Image';
 import { formatCourierServiceName } from '@/constants/courier.constants';
-
-const SectionCard = styled(Card, {
-  bordered: true,
-  size: '$4',
-  backgroundColor: '$surface',
-  borderColor: '$surfaceBorder',
-  marginHorizontal: '$4',
-  marginBottom: '$3',
-});
+import { formatRupiah } from '@/scenes/cart/cart.constants';
 
 const SecondaryStatusText = styled(Text, {
   fontSize: '$2',
   color: '$colorMuted',
 });
-
-function formatRupiah(amount: number): string {
-  return `Rp ${amount.toLocaleString('id-ID')}`;
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 function getProductImageUrl(
   productImages?: { url: string; sort_order: number }[] | null,
@@ -52,6 +32,10 @@ function getProductImageUrl(
   if (!productImages?.length) return null;
   const sorted = [...productImages].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   return sorted[0]?.url ?? null;
+}
+
+function shouldShowTrackingSection(status: string): boolean {
+  return status === 'shipped' || status === 'in_transit';
 }
 
 export default function OrderDetail() {
@@ -66,13 +50,22 @@ export default function OrderDetail() {
   const { order, status, isLoading, isRefreshing, error, refresh } = useOrderDetail(orderId);
   const [isPaymentExpired, setIsPaymentExpired] = useState(false);
   const refreshTintColor = getThemeColor(theme, 'primary');
+  const shouldShowTracking = shouldShowTrackingSection(order?.status ?? '');
 
   const handlePaymentExpired = useCallback(() => {
     setIsPaymentExpired(true);
-    if (__DEV__) {
-      console.log('[OrderDetail] Payment expired for order:', orderId);
+  }, []);
+
+  const handleTrackShipment = useCallback(() => {
+    if (!order?.id) {
+      return;
     }
-  }, [orderId]);
+
+    router.push({
+      pathname: '/orders/track-shipment/[orderId]',
+      params: { orderId: order.id },
+    });
+  }, [order?.id, router]);
 
   if (!orderId) {
     return (
@@ -191,7 +184,7 @@ export default function OrderDetail() {
     );
   }
 
-  const orderNumber = `APT-${order.id.slice(0, 8).toUpperCase()}`;
+  const orderNumber = formatOrderNumber(order.id);
   const totalAmount = order.gross_amount ?? order.total_amount ?? 0;
   const shippingCost = order.shipping_cost ?? 0;
   const subtotal = totalAmount - shippingCost;
@@ -230,10 +223,10 @@ export default function OrderDetail() {
           />
         }
         contentContainerStyle={{
-          paddingBottom: order.payment_status === 'pending' ? 100 : 24,
+          paddingBottom: order.payment_status === 'pending' || shouldShowTracking ? 100 : 24,
         }}>
         <YStack paddingVertical="$4" gap="$3">
-          <SectionCard>
+          <OrderSectionCard>
             <YStack padding="$4" gap="$4">
               <YStack gap="$2">
                 <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
@@ -254,7 +247,7 @@ export default function OrderDetail() {
                   )}
                 </XStack>
                 <Text fontSize="$3" color="$colorSubtle">
-                  {formatDate(order.created_at)}
+                  {formatOrderDateTime(order.created_at)}
                 </Text>
               </YStack>
 
@@ -278,9 +271,9 @@ export default function OrderDetail() {
                 </XStack>
               )}
             </YStack>
-          </SectionCard>
+          </OrderSectionCard>
 
-          <SectionCard>
+          <OrderSectionCard>
             <YStack padding="$4" gap="$3">
               <XStack alignItems="center" gap="$2">
                 <PackageIcon size={20} color="$primary" />
@@ -340,10 +333,10 @@ export default function OrderDetail() {
                 })}
               </YStack>
             </YStack>
-          </SectionCard>
+          </OrderSectionCard>
 
           {order.addresses && (
-            <SectionCard>
+            <OrderSectionCard>
               <YStack padding="$4" gap="$3">
                 <XStack alignItems="center" gap="$2">
                   <TruckIcon size={20} color="$primary" />
@@ -369,11 +362,11 @@ export default function OrderDetail() {
                   </Text>
                 </YStack>
               </YStack>
-            </SectionCard>
+            </OrderSectionCard>
           )}
 
           {(order.courier_code || order.courier_service) && (
-            <SectionCard>
+            <OrderSectionCard>
               <YStack padding="$4" gap="$3">
                 <XStack alignItems="center" gap="$2">
                   <TruckIcon size={20} color="$primary" />
@@ -388,6 +381,11 @@ export default function OrderDetail() {
                   <Text fontSize="$3" color="$color" fontWeight="500">
                     {formatCourierServiceName(order.courier_code, order.courier_service)}
                   </Text>
+                  {order.waybill_number && (
+                    <Text fontSize="$3" color="$colorSubtle">
+                      No. Resi: {order.waybill_number}
+                    </Text>
+                  )}
                   {order.shipping_etd && (
                     <Text fontSize="$3" color="$colorSubtle">
                       Estimasi: {order.shipping_etd}
@@ -400,10 +398,10 @@ export default function OrderDetail() {
                   )}
                 </YStack>
               </YStack>
-            </SectionCard>
+            </OrderSectionCard>
           )}
 
-          <SectionCard>
+          <OrderSectionCard>
             <YStack padding="$4" gap="$3">
               <XStack justifyContent="space-between" alignItems="center">
                 <Text fontSize="$3" color="$colorSubtle">
@@ -433,7 +431,7 @@ export default function OrderDetail() {
                 </Text>
               </XStack>
             </YStack>
-          </SectionCard>
+          </OrderSectionCard>
         </YStack>
       </ScrollView>
 
@@ -452,6 +450,17 @@ export default function OrderDetail() {
           disabled={!canResumePayment}
           aria-label="Bayar pesanan"
           aria-describedby="Tombol untuk melanjutkan pembayaran"
+        />
+      )}
+
+      {order.payment_status !== 'pending' && shouldShowTracking && (
+        <BottomActionBar
+          buttonTitle="Lacak Pengiriman"
+          onPress={handleTrackShipment}
+          isLoading={isLoading}
+          disabled={!order.waybill_number}
+          aria-label="Lacak pengiriman pesanan"
+          aria-describedby="Tombol untuk membuka layar tracking pengiriman"
         />
       )}
     </YStack>

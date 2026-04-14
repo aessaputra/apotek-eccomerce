@@ -18,6 +18,10 @@ jest.mock('@/hooks/useOrderDetail', () => ({
   useOrderDetail: (...args: unknown[]) => mockUseOrderDetail(...args),
 }));
 
+jest.mock('@/hooks', () => ({
+  useOrderDetail: (...args: unknown[]) => mockUseOrderDetail(...args),
+}));
+
 jest.mock('@/components/elements/PaymentCountdownTimer', () => ({
   PaymentCountdownTimer: () => null,
 }));
@@ -282,5 +286,78 @@ describe('<OrderDetail />', () => {
 
     expect(screen.getByText('Ongkir')).not.toBeNull();
     expect(screen.getByText('Metode Pengiriman')).not.toBeNull();
+  });
+
+  test('renders tracking bottom action for shipped orders', () => {
+    mockUseOrderDetail.mockReturnValue({
+      order: {
+        ...mockOrder,
+        status: 'shipped',
+        waybill_number: 'JNE12345',
+      },
+      status: 'success',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(),
+    });
+
+    render(<OrderDetail />);
+
+    expect(mockBottomActionBar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buttonTitle: 'Lacak Pengiriman',
+        disabled: false,
+      }),
+    );
+  });
+
+  test('disables tracking bottom action when shipped order has no waybill', () => {
+    mockUseOrderDetail.mockReturnValue({
+      order: {
+        ...mockOrder,
+        status: 'shipped',
+        waybill_number: null,
+      },
+      status: 'success',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(),
+    });
+
+    render(<OrderDetail />);
+
+    expect(mockBottomActionBar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buttonTitle: 'Lacak Pengiriman',
+        disabled: true,
+      }),
+    );
+  });
+
+  test('navigates to tracking screen from bottom action', () => {
+    mockUseOrderDetail.mockReturnValue({
+      order: {
+        ...mockOrder,
+        status: 'in_transit',
+        waybill_number: 'JNE12345',
+      },
+      status: 'success',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(),
+    });
+
+    render(<OrderDetail />);
+
+    const actionProps = mockBottomActionBar.mock.calls.at(-1)?.[0] as { onPress: () => void };
+    actionProps.onPress();
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/orders/track-shipment/[orderId]',
+      params: { orderId: 'test-order-id' },
+    });
   });
 });

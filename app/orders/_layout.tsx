@@ -63,6 +63,14 @@ function OrdersStackLayout() {
           headerBackTitle: 'Pesanan',
         }}
       />
+      <Stack.Screen
+        name="track-shipment/[orderId]"
+        options={{
+          title: 'Lacak Pengiriman',
+          headerTitleAlign: 'center',
+          headerBackTitle: 'Detail Pesanan',
+        }}
+      />
     </Stack>
   );
 }

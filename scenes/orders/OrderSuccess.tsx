@@ -14,10 +14,13 @@ import {
 import { CheckCircle, Package, Clock3, ReceiptText } from '@tamagui/lucide-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
+import { formatOrderDateTime } from '@/utils/orderDate';
+import { formatOrderNumber } from '@/utils/orderNumber';
 import { getThemeColor } from '@/utils/theme';
 import type { RouteParams } from '@/types/routes.types';
 import { useOrderDetail } from '@/hooks/useOrderDetail';
 import type { OrderStatusVariant } from '@/services/order.service';
+import { formatRupiah } from '@/scenes/cart/cart.constants';
 
 const SectionCard = styled(Card, {
   bordered: true,
@@ -27,25 +30,6 @@ const SectionCard = styled(Card, {
   borderRadius: '$5',
   width: '100%',
 });
-
-function formatOrderNumber(orderId: string): string {
-  return `APT-${orderId.slice(0, 8).toUpperCase()}`;
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatRupiah(amount: number): string {
-  return `Rp ${amount.toLocaleString('id-ID')}`;
-}
 
 function getPaymentBadgeVariant(
   paymentStatus: string | null | undefined,
@@ -260,7 +244,7 @@ export default function OrderSuccess() {
                   <XStack alignItems="center" gap="$2">
                     <Clock3 size={15} color={subtleColor} />
                     <Text fontSize="$3" color="$colorSubtle">
-                      {formatDate(order.created_at)}
+                      {formatOrderDateTime(order.created_at)}
                     </Text>
                   </XStack>
                 </YStack>
