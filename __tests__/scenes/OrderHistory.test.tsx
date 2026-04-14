@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { fireEvent } from '@testing-library/react-native';
 import { render, screen } from '@/test-utils/renderWithTheme';
 import OrderHistory from '@/scenes/profile/OrderHistory';
 
@@ -53,6 +54,14 @@ describe('<OrderHistory />', () => {
     expect(
       screen.getByText('Riwayat pesanan yang kadaluarsa atau dibatalkan akan muncul di sini.'),
     ).not.toBeNull();
+  });
+
+  test('navigates shop now CTA to /home', () => {
+    render(<OrderHistory />);
+
+    fireEvent.press(screen.getByText('Belanja Sekarang'));
+
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 
   test('passes elevated={false} to OrderCard for flat/no-shadow rendering', () => {

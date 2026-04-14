@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { fireEvent } from '@testing-library/react-native';
 import { render, screen } from '@/test-utils/renderWithTheme';
 import CompletedOrders from '@/scenes/orders/CompletedOrders';
 
@@ -57,5 +58,13 @@ describe('<CompletedOrders />', () => {
     render(<CompletedOrders />);
 
     expect(screen.getByText('Pesanan yang sudah selesai akan muncul di sini.')).not.toBeNull();
+  });
+
+  test('navigates shop now CTA to /home', () => {
+    render(<CompletedOrders />);
+
+    fireEvent.press(screen.getByText('Belanja Sekarang'));
+
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 });

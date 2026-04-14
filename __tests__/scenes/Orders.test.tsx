@@ -189,4 +189,53 @@ describe('<Orders />', () => {
       expect(screen.getByText('Vitamin C berhasil ditambahkan ke keranjang')).toBeTruthy();
     });
   });
+
+  test('navigates buy again product presses to product details with the product id', async () => {
+    const product: PastPurchaseProduct = {
+      id: 'product-1',
+      name: 'Vitamin C',
+      slug: 'vitamin-c',
+      imageUrl: null,
+      price: 25000,
+    };
+
+    mockGetPastPurchasedProducts.mockResolvedValue({
+      data: [product],
+      error: null,
+    });
+
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+      dispatch: jest.fn(),
+      completedOrdersTabViewedByUser: {},
+      markCompletedOrdersTabViewed: jest.fn((userId: string) => ({
+        type: 'app/markCompletedOrdersTabViewed',
+        payload: userId,
+      })),
+    });
+
+    render(<Orders />);
+
+    await waitFor(() => {
+      expect(mockBuyAgainCarousel).toHaveBeenCalled();
+    });
+
+    const lastCall = mockBuyAgainCarousel.mock.calls.at(-1)?.[0];
+    if (!lastCall) {
+      throw new Error('BuyAgainCarousel was not called');
+    }
+
+    const buyAgainCarouselProps = lastCall as {
+      onProductPress: (product: PastPurchaseProduct) => void;
+    };
+
+    act(() => {
+      buyAgainCarouselProps.onProductPress(product);
+    });
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/product-details',
+      params: { id: 'product-1', name: 'Vitamin C' },
+    });
+  });
 });

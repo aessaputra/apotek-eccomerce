@@ -170,7 +170,7 @@ export default function Home() {
   const handleProductPress = useCallback(
     (productId: string, productName: string) => {
       router.push({
-        pathname: '/home/product-details',
+        pathname: '/product-details',
         params: { id: productId, name: productName },
       });
     },

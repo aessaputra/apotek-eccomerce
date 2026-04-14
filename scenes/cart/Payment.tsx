@@ -15,7 +15,7 @@ import type { PaymentResult } from '@/types/payment';
 const PAYMENT_SUCCESS_STATUSES = ['settlement'];
 const PAYMENT_PENDING_STATUSES = ['pending', 'authorize'];
 const PAYMENT_FAILED_STATUSES = ['deny', 'cancel', 'expire', 'failure'];
-const ORDERS_ROUTE = '/(tabs)/orders';
+const ORDERS_ROUTE = '/orders';
 
 const DEEP_LINK_PATTERNS = [
   'gojek://',

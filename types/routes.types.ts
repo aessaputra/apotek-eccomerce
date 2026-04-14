@@ -10,10 +10,12 @@ export type AuthRoutes = {
 export type HomeRoutes = {
   home: undefined;
   'home/index': undefined;
-  'home/details': undefined;
-  'home/product-details': { id: string; name?: string };
   'home/category-product-list': { categoryId: string; categoryName?: string };
   'home/all-products': undefined;
+};
+
+export type ProductDetailsRoutes = {
+  'product-details': { id: string; name?: string };
 };
 
 // Cart routes
@@ -53,6 +55,7 @@ export type GoogleAuthRoutes = {
 
 export type AppRoutes = AuthRoutes &
   HomeRoutes &
+  ProductDetailsRoutes &
   CartRoutes &
   OrdersRoutes &
   ProfileRoutes &
@@ -72,8 +75,6 @@ export type ProfileStackParams = {
 
 export type HomeStackParams = {
   index: undefined;
-  details: undefined;
-  'product-details': { id: string; name?: string };
   'category-product-list': { categoryId: string; categoryName?: string };
   'all-products': undefined;
 };

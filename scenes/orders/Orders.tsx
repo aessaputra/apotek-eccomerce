@@ -102,7 +102,10 @@ export default function Orders() {
 
   const handleProductPress = useCallback(
     (product: PastPurchaseProduct) => {
-      router.push(`/product/${product.slug}`);
+      router.push({
+        pathname: '/product-details',
+        params: { id: product.id, name: product.name },
+      });
     },
     [router],
   );

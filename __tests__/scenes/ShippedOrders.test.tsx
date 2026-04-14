@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { fireEvent } from '@testing-library/react-native';
 import { render, screen } from '@/test-utils/renderWithTheme';
 import ShippedOrders from '@/scenes/orders/ShippedOrders';
 
@@ -59,5 +60,13 @@ describe('<ShippedOrders />', () => {
     expect(
       screen.getByText('Pesanan yang sudah diserahkan ke kurir akan muncul di sini.'),
     ).not.toBeNull();
+  });
+
+  test('navigates shop now CTA to /home', () => {
+    render(<ShippedOrders />);
+
+    fireEvent.press(screen.getByText('Belanja Sekarang'));
+
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 });

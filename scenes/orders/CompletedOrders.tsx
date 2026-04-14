@@ -14,7 +14,7 @@ const EmptyState = React.memo(function EmptyState() {
   const router = useRouter();
 
   const handleShopNow = useCallback(() => {
-    router.push('/(tabs)/home');
+    router.push('/home');
   }, [router]);
 
   return (

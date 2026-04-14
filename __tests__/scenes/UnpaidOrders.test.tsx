@@ -1,8 +1,10 @@
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
+import { fireEvent } from '@testing-library/react-native';
 import { render, screen } from '@/test-utils/renderWithTheme';
 import UnpaidOrders from '@/scenes/orders/UnpaidOrders';
 import type { OrderListItem } from '@/services/order.service';
 
+const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 const mockRefreshIfNeeded = jest.fn();
 const mockLoadMore = jest.fn();
@@ -95,13 +97,14 @@ jest.mock('@/slices', () => ({
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: mockPush,
   }),
 }));
 
 describe('UnpaidOrders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPush.mockClear();
     hookState.orders = mockOrders;
     hookState.error = null;
     hookState.hasMore = false;
@@ -126,6 +129,17 @@ describe('UnpaidOrders', () => {
     render(<UnpaidOrders />);
 
     expect(screen.getByText('Belum Ada Pesanan')).toBeTruthy();
+  });
+
+  test('navigates shop now CTA to /home from the empty state', () => {
+    hookState.orders = [];
+    hookState.isUsingCachedData = false;
+
+    render(<UnpaidOrders />);
+
+    fireEvent.press(screen.getByText('Belanja Sekarang'));
+
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 
   test('shows loading state', () => {
