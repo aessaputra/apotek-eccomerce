@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { Linking, RefreshControl, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Button, Separator, Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
+import { ArrowUpRight, Clock3 } from '@tamagui/lucide-icons';
 import OrderSectionCard from '@/components/elements/OrderSectionCard';
 import { AlertCircleIcon, PackageIcon, TruckIcon } from '@/components/icons';
 import { StatusBadge } from '@/components/elements/StatusBadge';
@@ -16,22 +17,22 @@ function formatTrackingStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     confirmed: 'Pesanan Dikonfirmasi',
     allocated: 'Kurir Dialokasikan',
-    picking_up: 'Kurir Menuju Pickup',
-    pickingUp: 'Kurir Menuju Pickup',
-    picked: 'Paket Sudah Diambil',
-    picked_up: 'Paket Sudah Diambil',
-    dropping_off: 'Dalam Pengantaran',
-    droppingOff: 'Dalam Pengantaran',
-    delivering: 'Dalam Pengantaran',
-    in_transit: 'Dalam Perjalanan',
+    picking_up: 'Kurir Menuju Penjemputan',
+    pickingUp: 'Kurir Menuju Penjemputan',
+    picked: 'Paket Sudah Dijemput',
+    picked_up: 'Paket Sudah Dijemput',
+    dropping_off: 'Sedang Dikirim',
+    droppingOff: 'Sedang Dikirim',
+    delivering: 'Sedang Dikirim',
+    in_transit: 'Sedang Dikirim',
     on_hold: 'Tertahan',
     onHold: 'Tertahan',
     delivered: 'Terkirim',
     rejected: 'Pengiriman Ditolak',
-    courier_not_found: 'Kurir Tidak Ditemukan',
-    courierNotFound: 'Kurir Tidak Ditemukan',
-    return_in_transit: 'Sedang Dikembalikan',
-    returnInTransit: 'Sedang Dikembalikan',
+    courier_not_found: 'Kurir Belum Ditemukan',
+    courierNotFound: 'Kurir Belum Ditemukan',
+    return_in_transit: 'Dalam Proses Pengembalian',
+    returnInTransit: 'Dalam Proses Pengembalian',
     returned: 'Dikembalikan',
     cancelled: 'Dibatalkan',
     disposed: 'Dibuang',
@@ -53,6 +54,47 @@ function getTrackingStatusVariant(status: string): OrderStatusVariant {
     return 'warning';
   }
   return 'primary';
+}
+
+function getTrackingHeroCopy(status: string): {
+  title: string;
+  description: string;
+  tone: '$successSoft' | '$warningSoft' | '$dangerSoft' | '$primarySoft';
+} {
+  if (status === 'delivered') {
+    return {
+      title: 'Pesanan Sudah Terkirim',
+      description: 'Kurir telah menyelesaikan pengantaran. Silakan cek detail riwayat di bawah.',
+      tone: '$successSoft',
+    };
+  }
+
+  if (['rejected', 'disposed', 'courier_not_found', 'courierNotFound'].includes(status)) {
+    return {
+      title: 'Pengiriman Perlu Perhatian',
+      description: 'Status pengiriman berubah dan memerlukan pengecekan lebih lanjut.',
+      tone: '$dangerSoft',
+    };
+  }
+
+  if (
+    ['on_hold', 'onHold', 'cancelled', 'returned', 'return_in_transit', 'returnInTransit'].includes(
+      status,
+    )
+  ) {
+    return {
+      title: 'Pengiriman Sedang Tertahan',
+      description:
+        'Ada pembaruan status yang perlu diperhatikan sebelum pesanan melanjutkan perjalanan.',
+      tone: '$warningSoft',
+    };
+  }
+
+  return {
+    title: 'Perjalanan Paket Anda',
+    description: 'Lihat status terbaru, resi, dan riwayat perpindahan paket Anda di satu layar.',
+    tone: '$primarySoft',
+  };
 }
 
 function formatTrackingDate(dateString: string): string {
@@ -207,6 +249,8 @@ export default function TrackShipment() {
           ]
         : [];
 
+  const heroContent = getTrackingHeroCopy(tracking?.status ?? order.status);
+
   return (
     <YStack flex={1} backgroundColor="$background">
       <ScrollView
@@ -219,56 +263,131 @@ export default function TrackShipment() {
         }
         contentContainerStyle={{ paddingVertical: 16, paddingBottom: 24 }}>
         <OrderSectionCard>
-          <YStack padding="$4" gap="$3">
-            <XStack justifyContent="space-between" alignItems="center" gap="$3">
-              <YStack flex={1} gap="$1">
-                <Text fontSize="$2" color="$colorMuted" fontWeight="500">
-                  NOMOR PESANAN
-                </Text>
-                <Text fontSize="$6" fontWeight="700" color="$color">
-                  {formatOrderNumber(order.id)}
-                </Text>
-              </YStack>
+          <YStack padding="$4" gap="$4">
+            <YStack gap="$3">
+              <XStack alignItems="center" gap="$3">
+                <YStack
+                  width={56}
+                  height={56}
+                  borderRadius="$10"
+                  backgroundColor={heroContent.tone}
+                  alignItems="center"
+                  justifyContent="center">
+                  <TruckIcon size={28} color="$primary" />
+                </YStack>
+
+                <YStack flex={1} gap="$1">
+                  <Text fontSize="$4" fontWeight="700" color="$color">
+                    {heroContent.title}
+                  </Text>
+                  <Text fontSize="$3" color="$colorSubtle">
+                    {heroContent.description}
+                  </Text>
+                </YStack>
+              </XStack>
+
               {tracking && (
-                <StatusBadge variant={getTrackingStatusVariant(tracking.status)}>
-                  {formatTrackingStatusLabel(tracking.status)}
-                </StatusBadge>
-              )}
-            </XStack>
-
-            <Separator />
-
-            <YStack gap="$2">
-              <Text fontSize="$3" color="$color">
-                {formatCourierServiceName(order.courier_code, order.courier_service)}
-              </Text>
-              {order.waybill_number && (
-                <Text fontSize="$3" color="$colorSubtle">
-                  No. Resi: {order.waybill_number}
-                </Text>
-              )}
-              {tracking?.courier.driver_name && (
-                <Text fontSize="$3" color="$colorSubtle">
-                  Driver: {tracking.courier.driver_name}
-                </Text>
-              )}
-              {tracking?.courier.driver_phone && (
-                <Text fontSize="$3" color="$colorSubtle">
-                  Kontak Driver: {tracking.courier.driver_phone}
-                </Text>
+                <XStack>
+                  <StatusBadge variant={getTrackingStatusVariant(tracking.status)}>
+                    {formatTrackingStatusLabel(tracking.status)}
+                  </StatusBadge>
+                </XStack>
               )}
             </YStack>
 
-            {tracking?.link && (
-              <Button
-                size="$4"
-                backgroundColor="$primary"
-                color="$onPrimary"
-                onPress={handleOpenTrackingLink}
-                disabled={!isSafeExternalUrl(tracking.link)}>
-                Buka Tracking Kurir
-              </Button>
-            )}
+            <Separator />
+
+            <YStack gap="$3">
+              <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
+                <YStack flex={1} gap="$1">
+                  <Text fontSize="$2" color="$colorMuted" fontWeight="500">
+                    NOMOR PESANAN
+                  </Text>
+                  <Text fontSize="$5" fontWeight="700" color="$color">
+                    {formatOrderNumber(order.id)}
+                  </Text>
+                </YStack>
+
+                <YStack alignItems="flex-end" gap="$1">
+                  <Text fontSize="$2" color="$colorMuted" fontWeight="500">
+                    TERAKHIR DIPERBARUI
+                  </Text>
+                  <XStack alignItems="center" gap="$1.5">
+                    <Clock3 size={14} color="$colorSubtle" />
+                    <Text fontSize="$3" color="$colorSubtle">
+                      {formatTrackingDate(
+                        (tracking?.history[0] ?? trackingTimeline[0])?.updated_at ??
+                          order.updated_at ??
+                          order.created_at,
+                      )}
+                    </Text>
+                  </XStack>
+                </YStack>
+              </XStack>
+
+              <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
+                <YStack flex={1} gap="$1">
+                  <Text fontSize="$2" color="$colorMuted" fontWeight="500">
+                    KURIR
+                  </Text>
+                  <Text fontSize="$3" color="$color">
+                    {formatCourierServiceName(order.courier_code, order.courier_service)}
+                  </Text>
+                </YStack>
+
+                {order.waybill_number ? (
+                  <YStack flex={1} gap="$1" alignItems="flex-end">
+                    <Text fontSize="$2" color="$colorMuted" fontWeight="500">
+                      NOMOR RESI
+                    </Text>
+                    <Text fontSize="$3" color="$color" textAlign="right">
+                      {order.waybill_number}
+                    </Text>
+                  </YStack>
+                ) : null}
+              </XStack>
+
+              {(tracking?.courier.driver_name || tracking?.courier.driver_phone) && (
+                <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
+                  {tracking?.courier.driver_name ? (
+                    <YStack flex={1} gap="$1">
+                      <Text fontSize="$2" color="$colorMuted" fontWeight="500">
+                        DRIVER
+                      </Text>
+                      <Text fontSize="$3" color="$colorSubtle">
+                        {tracking.courier.driver_name}
+                      </Text>
+                    </YStack>
+                  ) : (
+                    <YStack flex={1} />
+                  )}
+
+                  {tracking?.courier.driver_phone ? (
+                    <YStack flex={1} gap="$1" alignItems="flex-end">
+                      <Text fontSize="$2" color="$colorMuted" fontWeight="500">
+                        KONTAK DRIVER
+                      </Text>
+                      <Text fontSize="$3" color="$colorSubtle" textAlign="right">
+                        {tracking.courier.driver_phone}
+                      </Text>
+                    </YStack>
+                  ) : null}
+                </XStack>
+              )}
+
+              {tracking?.link && (
+                <Button
+                  size="$4"
+                  chromeless
+                  alignSelf="flex-start"
+                  color="$primary"
+                  iconAfter={<ArrowUpRight size={16} color={getThemeColor(theme, 'primary')} />}
+                  onPress={handleOpenTrackingLink}
+                  disabled={!isSafeExternalUrl(tracking.link)}>
+                  Lihat Tracking Kurir Eksternal
+                </Button>
+              )}
+            </YStack>
           </YStack>
         </OrderSectionCard>
 

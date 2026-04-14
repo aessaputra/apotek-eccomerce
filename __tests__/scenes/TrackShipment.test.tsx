@@ -77,9 +77,17 @@ describe('<TrackShipment />', () => {
 
     render(<TrackShipment />);
 
+    expect(screen.getByText('Perjalanan Paket Anda')).not.toBeNull();
+    expect(
+      screen.getByText(
+        'Lihat status terbaru, resi, dan riwayat perpindahan paket Anda di satu layar.',
+      ),
+    ).not.toBeNull();
     expect(screen.getByText('Riwayat Pengiriman')).not.toBeNull();
-    expect(screen.getByText('No. Resi: JNE12345')).not.toBeNull();
-    expect(screen.getByText('Driver: Budi')).not.toBeNull();
+    expect(screen.getByText('NOMOR RESI')).not.toBeNull();
+    expect(screen.getByText('JNE12345')).not.toBeNull();
+    expect(screen.getByText('DRIVER')).not.toBeNull();
+    expect(screen.getByText('Budi')).not.toBeNull();
     expect(screen.getByText('Paket sedang diantar ke alamat tujuan')).not.toBeNull();
   });
 
@@ -137,7 +145,7 @@ describe('<TrackShipment />', () => {
 
     render(<TrackShipment />);
 
-    fireEvent.press(screen.getByText('Buka Tracking Kurir'));
+    fireEvent.press(screen.getByText('Lihat Tracking Kurir Eksternal'));
     expect(mockOpenURL).toHaveBeenCalledWith('https://tracking.example/JNE12345');
   });
 });
