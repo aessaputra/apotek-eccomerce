@@ -1,53 +1,55 @@
 # SERVICES
 
-API abstraction layer. ALL Supabase calls go through here — components and hooks never import the Supabase client directly.
+Service-layer boundary for Supabase queries, edge-function calls, and backend integration. Components, scenes, and most hooks should depend on this layer rather than reaching for infra clients directly.
 
 ## STRUCTURE
 
 ```
 services/
-├── index.ts                    # Barrel re-export (all services)
-├── supabase.service.ts         # Low-level Supabase client helpers
-├── auth.service.ts             # Sign in/up, Google OAuth, session, password reset
-├── profile.service.ts          # User profile CRUD
-├── user.service.ts             # User metadata operations
-├── address.service.ts          # Address CRUD + default address
-├── regional.service.ts         # Regional/province data
-├── googlePlaces.service.ts     # Google Places API integration
-├── home.service.ts             # Categories, products, product details
-├── cart.service.ts             # Cart operations (add, update, remove, clear)
-├── order.service.ts            # Order creation + history
-├── checkout.service.ts         # Checkout flow (calls edge functions)
-├── shipping.service.ts         # Shipping rate calculation (Biteship)
-├── address.service.test.ts
-├── shipping.service.test.ts
-└── home.service.test.ts
+├── index.ts                  # Public barrel
+├── supabase.service.ts       # Low-level Supabase helpers
+├── auth.service.ts           # Auth + OAuth flow
+├── user.service.ts           # User/profile lookup helpers
+├── profile.service.ts        # Profile CRUD
+├── address.service.ts        # Address CRUD + defaults
+├── regional.service.ts       # Province/city/district data
+├── googlePlaces.service.ts   # Google Places integration
+├── home.service.ts           # Categories, products, banners
+├── cart.service.ts           # Cart queries + realtime helpers
+├── order.service.ts          # Order history/detail state
+├── checkout.service.ts       # Checkout + payment bootstrap
+└── shipping.service.ts       # Shipping quote integration
 ```
-
-## CONVENTIONS
-
-- **Naming**: `[domain].service.ts` — one file per business domain
-- **Imports**: Always `import { supabase } from '@/utils/supabase'` — never from `@supabase/supabase-js`
-- **Types**: Import from `@/types/supabase` (`Tables<'table_name'>`) for row types, `@/types/[domain]` for domain types
-- **Return pattern**: Return Supabase `{ data, error }` or throw — let callers handle
-- **Error logging**: `if (__DEV__) console.warn(...)` — never bare `console.log`
-- **Barrel exports**: Every public function re-exported via `index.ts`
 
 ## WHERE TO LOOK
 
-| Task               | File                         | Notes                                                      |
-| ------------------ | ---------------------------- | ---------------------------------------------------------- |
-| Add auth method    | `auth.service.ts`            | Google OAuth uses `expo-auth-session` + `expo-web-browser` |
-| Add product query  | `home.service.ts`            | Uses Supabase `.select()` with joins                       |
-| Add shipping logic | `shipping.service.ts`        | Proxies to Biteship via Supabase edge function             |
-| Add payment logic  | `checkout.service.ts`        | Calls `create-snap-token` edge function                    |
-| Add address logic  | `address.service.ts`         | User addresses with default selection                      |
-| Add regional data  | `regional.service.ts`        | Provinces, cities, districts                               |
-| Add Google Places  | `googlePlaces.service.ts`    | Address autocomplete and place details                     |
-| Add new domain     | Create `[domain].service.ts` | Add to `index.ts` barrel                                   |
+| Task              | File                                         | Notes                                             |
+| ----------------- | -------------------------------------------- | ------------------------------------------------- |
+| Auth/session flow | `auth.service.ts`                            | Web/native OAuth differences live here            |
+| Product/home data | `home.service.ts`                            | Categories, banners, product detail queries       |
+| Cart lifecycle    | `cart.service.ts`                            | Fetching, mutation, realtime subscription helpers |
+| Order state       | `order.service.ts`                           | Status mapping, detail/history fetches            |
+| Checkout/payment  | `checkout.service.ts`                        | Payment bootstrap and edge-function calls         |
+| Shipping quotes   | `shipping.service.ts`                        | Courier quote integration                         |
+| Address data      | `address.service.ts` + `regional.service.ts` | Saved addresses plus region lookup                |
+
+## CONVENTIONS
+
+- One service file per business domain.
+- Import the client from `@/utils/supabase`; do not construct ad hoc Supabase clients.
+- Prefer domain types from `@/types/*` and generated table types from `@/types/supabase`.
+- Keep low-level query shaping, normalization, retry behavior, and transport concerns in services.
+- Re-export public service APIs through `services/index.ts` when they are intended for broad use.
+- Service logging should stay behind `if (__DEV__)` guards.
+
+## TESTING
+
+- Service tests live in `__tests__/services/`.
+- Mock Supabase and external integrations inline in each test file.
+- Test observable behavior at the service boundary: returned data shape, error translation, retry/abort behavior, and realtime wiring.
 
 ## ANTI-PATTERNS
 
-- **NEVER** call Supabase from components/hooks — always go through a service
-- **NEVER** use bare `console.log` — guard with `if (__DEV__)`
-- **NEVER** skip barrel export — add new services to `index.ts`
+- **NEVER** call Supabase directly from scenes or components when a service belongs here.
+- **NEVER** skip the barrel export for a widely shared service helper.
+- **NEVER** mix presentation concerns into this directory.

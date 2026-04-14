@@ -1,239 +1,159 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-04-06
-**Commit:** 26d2160
+**Generated:** 2026-04-14
+**Commit:** 233d0df
 **Branch:** dev
 
 ## OVERVIEW
 
-Expo SDK 54 pharmacy e-commerce app (React Native 0.81.5, React 19.1, TypeScript strict). Multi-platform (iOS, Android, Web) with Tamagui UI, Redux Toolkit state, Supabase auth/backend, and co-located edge functions. New Architecture enabled.
+Expo SDK 54 pharmacy e-commerce app built with React Native 0.81, React 19, TypeScript strict mode, Expo Router v6, Tamagui, Redux Toolkit, Zustand, and Supabase. It targets iOS, Android, and Web, with EAS-based preview/deploy flows and centralized Jest coverage.
 
 ## STRUCTURE
 
 ```
 ./
-├── app/                # Expo Router v6 routes (THIN RE-EXPORTS to scenes/)
-├── scenes/             # Actual screen components (Home, Auth, Cart, Orders, Profile)
+├── app/                # Expo Router route files — thin wrappers only
+├── scenes/             # Screen orchestration — see scenes/AGENTS.md
 ├── components/         # Reusable UI — see components/AGENTS.md
-│   ├── elements/       # Atomic UI components (23 components)
-│   ├── layouts/        # Layout components (TabBarIconWithPill)
-│   ├── icons/          # Custom icon components
-│   ├── AddressForm/    # Complex composite (address form + area picker + map)
-│   ├── AreaPicker/     # Area/district selector
-│   └── MapPin/         # Map integration component
-├── services/           # API abstraction layer — see services/AGENTS.md
-├── hooks/              # Custom React hooks (20 hooks)
-├── slices/             # Redux Toolkit slices (single app.slice.ts)
-├── stores/             # Zustand store (areaPickerStore.ts - address form state)
-├── providers/          # AuthProvider + Redux + Query providers
-├── types/              # TypeScript types (13 type files)
-├── constants/          # App constants (address, auth, ui)
-├── utils/              # Utilities (config, crypto, device, fonts, images, store, supabase)
-├── assets/             # Poppins fonts + images
-├── android/            # Native Android project (local dev builds)
-├── test-utils/         # renderWithTheme.tsx (Tamagui test wrapper)
-├── __tests__/          # 74 test files (centralized, not co-located)
-└── tamagui.config.ts   # Tamagui theme config
+├── services/           # Data access + backend integration — see services/AGENTS.md
+├── hooks/              # Reusable stateful orchestration — see hooks/AGENTS.md
+├── providers/          # App composition root (theme, redux, auth, query)
+├── slices/             # Redux Toolkit slice(s)
+├── stores/             # Zustand state for local/form flows
+├── types/              # Domain + route + Supabase types
+├── constants/          # Domain constants + theme fallbacks
+├── utils/              # Infra helpers (Supabase, config, crypto, theme, storage)
+├── test-utils/         # Tamagui-aware RTL helpers
+├── __tests__/          # Centralized tests grouped by domain
+├── themes.ts           # Brand + dark theme tokens
+└── tamagui.config.ts   # Tamagui config + media/font setup
 ```
+
+## CHILD AGENTS
+
+- `components/AGENTS.md` — Tamagui component patterns, folder shape, UI-specific rules.
+- `services/AGENTS.md` — service-layer rules, Supabase boundaries, typed return patterns.
+- `scenes/AGENTS.md` — screen-level orchestration, route-to-scene boundary, feature screen map.
+- `hooks/AGENTS.md` — hook naming/export/testing patterns and orchestration responsibilities.
+
+Read the closest child file before editing inside that directory. Root covers global rules only.
 
 ## WHERE TO LOOK
 
-| Task               | Location                                                 | Notes                                                            |
-| ------------------ | -------------------------------------------------------- | ---------------------------------------------------------------- |
-| Add a new screen   | `scenes/[name]/` + `app/[group]/[name].tsx`              | Route file re-exports from scene                                 |
-| Add a new route    | `app/[group]/`                                           | Expo Router file-based; update `_layout.tsx` if tab/stack needed |
-| Add a UI component | `components/elements/[Name]/`                            | Follow `Name.tsx` + `index.ts` + `Name.test.tsx` pattern         |
-| Add an API call    | `services/[domain].service.ts`                           | Never call Supabase directly from components                     |
-| Add Redux state    | `slices/app.slice.ts` → register in `utils/store.ts`     | Single slice currently                                           |
-| Add Zustand state  | `stores/[name]Store.ts`                                  | For local/form state (e.g., areaPickerStore.ts)                  |
-| Add a custom hook  | `hooks/use[Name].ts`                                     | Co-locate test as `use[Name].test.ts`                            |
-| Add a type         | `types/[domain].types.ts`                                | One file per domain                                              |
-| Route param types  | `types/routes.types.ts`                                  | Keep route params in sync with `useLocalSearchParams` usage      |
-| Add a constant     | `constants/[domain].constants.ts`                        |                                                                  |
-| Auth flow          | `providers/AuthProvider.tsx` + `app/_layout.tsx`         | Auth guard in root layout useEffect                              |
-| Env variables      | `.env.dev` → `app.config.ts` (extra) → `utils/config.ts` | dotenvx managed                                                  |
-| CI/CD              | `.github/workflows/test.yml` + `preview.yml`             | Tests on PR; EAS Update on push                                  |
+| Task                      | Location                                        | Notes                                                     |
+| ------------------------- | ----------------------------------------------- | --------------------------------------------------------- |
+| Add a route               | `app/[group]/`                                  | Keep route files thin; export screen from `scenes/`       |
+| Add a screen              | `scenes/[feature]/`                             | Screen logic belongs here, not in `app/`                  |
+| Add UI                    | `components/elements/` or `components/layouts/` | Use Tamagui primitives only                               |
+| Add backend/data call     | `services/[domain].service.ts`                  | Components and scenes should not call Supabase directly   |
+| Add reusable screen logic | `hooks/use[Name].ts`                            | Hooks compose service calls, view state, and side effects |
+| Add auth wiring           | `providers/AuthProvider.tsx`                    | Session init, redirects, role/banned checks               |
+| Add global state          | `slices/app.slice.ts` + `utils/store.ts`        | Single Redux slice pattern currently                      |
+| Add form-local state      | `stores/areaPickerStore.ts`                     | Zustand is reserved for local/form workflows              |
+| Add types                 | `types/[domain].ts` and `types/routes.types.ts` | Keep route params synchronized with router usage          |
+| Add config/env wiring     | `app.config.ts` + `utils/config.ts`             | dotenvx-managed env flow                                  |
+| Add tests                 | `__tests__/[domain]/`                           | Tests are centralized, not co-located                     |
+| Check CI/deploy           | `.github/workflows/` + `eas.json`               | PR test workflow + preview channel publishing             |
 
 ## ARCHITECTURE PATTERNS
 
-**Routing: Two-Layer Re-Export**
+### Routing: two-layer re-export
 
-- `app/` files are thin wrappers: `export { default } from '@/scenes/[name]'`
-- Actual screen logic lives in `scenes/`
-- Navigation: Bottom tabs (home, orders, profile) + Stack per tab + route groups
+- `app/` contains Expo Router route files.
+- Most route files are one-line re-exports into `scenes/`.
+- Keep navigation structure in `app/`; keep screen implementation in `scenes/`.
 
-**Auth Guard (Centralized + Route-Level)**
+### Service-layer boundary
 
-- `app/_layout.tsx` useEffect watches `checked` + `loggedIn` from AuthProvider
-- Protected stacks are wrapped with `withAuthGuard` for defense-in-depth rendering guard
-- Protected routes: home, orders, profile, cart → redirect to `/login`
-- Auth screens → redirect to `/home` when authenticated
+- Most Supabase and backend access goes through `services/*.service.ts`.
+- Components, hooks, and scenes should normally consume service functions instead of importing infra clients directly.
+- `services/index.ts` is the public barrel for cross-feature service utilities.
 
-**Service Layer (Mandatory)**
+### Provider composition
 
-- ALL Supabase calls go through `services/*.service.ts`
-- Components/hooks never import `supabase` client directly
-- Services return typed results, handle errors with `__DEV__` console guards
+- `providers/Provider.tsx` owns the base provider stack: Gesture Handler → Safe Area → Redux → Tamagui → Navigation theme.
+- `app/_layout.tsx` is the true root composition point; it wires `Provider`, `QueryProvider`, route guards, asset preloading, and splash handling together.
+- `providers/AuthProvider.tsx` handles session bootstrap, OAuth hash handling, role/banned-user rejection, and auth state listeners.
+- Root auth redirects are enforced in `app/_layout.tsx`; some protected screens also use `withAuthGuard` for defense in depth.
 
-**State: Redux Toolkit**
+### State split
 
-- Single `slices/app.slice.ts` for global state
-- Logger middleware active in development
-- AuthProvider manages session state separately via React context
+- Redux Toolkit stores app-wide state and caches in `slices/app.slice.ts`.
+- Zustand is used narrowly for local workflow state such as area/address form selection.
+- Hooks are a common integration point between services and scenes, but some scenes also call service functions directly.
+
+### Theme system
+
+- Tamagui themes live in `themes.ts` and are wired through `tamagui.config.ts`.
+- `constants/ui.ts` contains shared UI constants plus theme fallbacks for non-Tamagui consumers.
+- `utils/theme.ts` bridges theme values into navigation headers and non-Tamagui APIs.
 
 ## CONVENTIONS
 
-- **Path alias**: `@/*` maps to project root (`./`)
-- **File naming**: PascalCase for components (`Button.tsx`), camelCase for utils/services (`auth.service.ts`)
-- **Component structure**: `Name/Name.tsx` + `Name/index.ts` (barrel) + `Name/Name.test.tsx`
-- **Tests**: Co-located with source (`.test.ts(x)` suffix), use `renderWithTheme` for Tamagui components
-- **Console logging**: ALWAYS guard with `if (__DEV__)` in app code
-- **ESLint**: Flat config (`eslint.config.js`) — expo + prettier
-- **Prettier**: `singleQuote`, `trailingComma: all`, `printWidth: 100`, `bracketSameLine: true`, `arrowParens: avoid`
-- **Pre-commit**: Husky runs lint-staged (lint --fix + format) then jest
+- **Path alias:** `@/*` points to the repository root.
+- **File naming:** PascalCase for component files/folders; camelCase for hooks, utils, services, constants.
+- **Component source shape:** `Name/Name.tsx` + `index.ts` inside `components/`.
+- **Logging:** guard application logs with `if (__DEV__)`.
+- **Tests:** live under `__tests__/`, grouped by domain (`components`, `hooks`, `scenes`, `services`, `utils`, etc.).
+- **Formatting:** Prettier uses single quotes, trailing commas, print width 100, `arrowParens: avoid`.
+- **Linting:** flat ESLint config with Expo + Prettier integration.
+- **Pre-commit:** Husky runs lint-staged and then Jest.
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
-- **NEVER** call Supabase client directly from components — use `services/*.service.ts`
-- **NEVER** put screen logic in `app/` route files — they are re-export wrappers only
-- **NEVER** use `@ts-ignore` or `as any` — zero occurrences, keep it that way
-- **NEVER** use `console.log` without `__DEV__` guard in app code (edge functions are exempt)
-- **NEVER** use `require()` unless platform-specific dynamic import is needed (3 approved usages exist)
-- **NEVER** add Tamagui babel plugin — disabled intentionally (causes Metro issues). Tamagui runs at runtime only via metro plugin
+- **NEVER** put real screen logic in `app/` route files.
+- **NEVER** call Supabase directly from components or scenes.
+- **NEVER** add `@ts-ignore`, `@ts-expect-error`, or `as any`.
+- **NEVER** use bare `console.log` in app code.
+- **NEVER** use `StyleSheet.create()` or NativeWind for core UI; use Tamagui.
+- **NEVER** add the Tamagui babel plugin back into `babel.config.js`; it is intentionally disabled.
+- **NEVER** create `__mocks__/` directories for tests; use inline `jest.mock()`.
 
 ## UNIQUE STYLES
 
-- **UI Framework**: Tamagui (not StyleSheet, not NativeWind) — all components use Tamagui primitives
-- **Theme Mode**: Tamagui `brand` + `brand_dark`, selected automatically from system color scheme
-- **Language**: Indonesian UI labels (`Beranda`, `Pesanan`, `Akun`) — backend/code in English
-- **State Management**: Redux Toolkit (global) + Zustand (local/form state in `stores/`)
-- **Test Location**: Centralized in `__tests__/` (NOT co-located with source)
-- **Mocking pattern**: Inline `jest.mock()` in each test file, no `__mocks__/` directories
-- **Fake timers**: Global in jest.setup.js for Reanimated/Animated components
-- **act() suppression**: jest.setup.js suppresses act warnings for Tamagui Animated + Icon components
-- **Crypto polyfill**: Custom `utils/cryptoPolyfill.ts` for React Native crypto support
-- **LargeSecureStore**: Custom secure storage wrapper in `utils/LargeSecureStore.ts`
+- Indonesian UI copy, English code/domain names.
+- Tamagui `brand` / `brand_dark` themes with a soft-charcoal dark palette.
+- Centralized tests instead of source-adjacent tests.
+- Custom `LargeSecureStore` and `cryptoPolyfill` support the React Native Supabase client.
+- `utils/supabase.ts` owns client creation and imports the crypto polyfill first; do not reorder that setup casually.
 
 ## COMMANDS
 
 ```bash
 # Development
-npm run dev                    # All platforms (dotenvx .env.dev)
-npm run dev:ios                # iOS only
-npm run dev:android            # Android only
-npm run dev:web                # Web only
+npm run dev
+npm run dev:ios
+npm run dev:android
+npm run dev:web
+npm run dev:doctor
 
 # Quality
-npm run lint                   # ESLint (expo lint)
-npm run format                 # Prettier write
-npm run format:check           # Prettier check only
-npm run test                   # Jest (--verbose --passWithNoTests)
-npm run test:watch             # Jest watch mode
+npm run lint
+npm run format
+npm run format:check
+npm run test
+npm run test:watch
 
-# Build & Deploy
-npm run dev:build:mobile       # EAS build (iOS + Android)
-npm run dev:build:web          # Export web static
-npm run dev:deploy:web         # Build + deploy to EAS Hosting
-
-# Environment
-npm run dev:secret:push        # Push .env.dev to EAS secrets
-npm run dev:config:public      # Show public config
-npm run dev:doctor             # Expo health check
+# Build & deploy
+npm run dev:build:mobile
+npm run dev:build:web
+npm run dev:serve:web
+npm run dev:deploy:web
+npm run dev:secret:push
+npm run dev:config:public
 ```
+
+## TESTING & CI NOTES
+
+- Jest uses `jest-expo` with global fake timers and centralized setup in `jest.setup.js`.
+- Use `test-utils/renderWithTheme.tsx` for Tamagui-aware rendering.
+- CI in `.github/workflows/test.yml` runs format check, lint, and Jest on PRs and branch pushes.
+- Preview publishing in `.github/workflows/preview.yml` uses branch-based env selection and EAS Update.
 
 ## NOTES
 
-- **Node 20.x** required (specified in `eas.json` build config)
-- **`legacy-peer-deps=true`** in `.npmrc` — required for dependency resolution
-- **Coverage** enabled by default for: components, hooks, scenes, services, slices, utils, providers
-- **No E2E tests** — only unit/integration via Jest + React Testing Library
-- **74 test files** in `__tests__/` directory
-- **~36k lines** of TypeScript/TSX code
-- **38 large files** (>300 lines) — complexity hotspots
-- **Android native dir** exists for local dev builds — EAS handles production builds
-- **`app.json` owner**: `"i-have-no-company"` — update before publishing
-- **Tamagui babel plugin disabled** intentionally — runs at runtime only via metro plugin
-
-## DARK-THEME COLOR SYSTEM
-
-**Updated:** 2026-03-27
-
-### Overview
-
-The app uses a pharmacy-focused dark-mode color system with a "soft-charcoal" hierarchy instead of pure black. This reduces eye strain while maintaining clear visual hierarchy through elevation levels.
-
-### Architecture
-
-- **Theme files**: `themes.ts` exports `brand` (light) and `brand_dark` (dark) theme objects
-- **Config**: `tamagui.config.ts` uses `createTamagui({...defaultConfig, themes})`
-- **Fallbacks**: `constants/ui.ts` provides `THEME_FALLBACKS` (light) and `DARK_THEME_FALLBACKS` (dark) for non-Tamagui consumers
-- **Navigation**: `providers/Provider.tsx` defines `BrandNavigationTheme` and `BrandNavigationDarkTheme`
-
-### Dark Mode Palette (Soft-Charcoal Hierarchy)
-
-#### Elevation Model
-
-| Level | Token             | Hex       | Usage                        |
-| ----- | ----------------- | --------- | ---------------------------- |
-| 0     | `background`      | `#0F1419` | App canvas (deepest)         |
-| 0.5   | `backgroundHover` | `#141B22` | Hover state on canvas        |
-| 1     | `surface`         | `#1A2329` | Cards, containers            |
-| 2     | `surfaceSubtle`   | `#242D35` | Elevated cards, modals       |
-| 3     | `surfaceElevated` | `#2D3A44` | Highest elevation, dropdowns |
-
-Each elevation level increases luminosity by ~8% for perceptible depth without harsh contrast jumps.
-
-#### Text Hierarchy
-
-| Token                    | Hex       | Contrast Ratio | WCAG Level | Usage                           |
-| ------------------------ | --------- | -------------- | ---------- | ------------------------------- |
-| `color`                  | `#F0F4F8` | ~16.75:1       | AAA        | Primary text (headings, labels) |
-| `colorSubtle`            | `#A8B8C4` | ~9.10:1        | AAA        | Secondary text (body)           |
-| `colorMuted`             | `#7A8A9A` | ~5.23:1        | AA         | Muted / tertiary text           |
-| `placeholderColor`       | `#7A8A9A` | ~5.23:1        | AA         | Form hints and placeholders     |
-| `searchPlaceholderColor` | `#B0B0B0` | ~8.53:1        | AAA        | Search-field placeholder text   |
-| `colorDisabled`          | `#5A6A7A` | ~3.33:1        | -          | Disabled states                 |
-
-#### Brand Accent (Cyan)
-
-| Token                  | Hex                      | Usage                        |
-| ---------------------- | ------------------------ | ---------------------------- |
-| `primary`              | `#06B6D4`                | Primary interactive elements |
-| `brandPrimary`         | `#06B6D4`                | Brand primary color          |
-| `brandPrimarySoft`     | `hsla(187, 92%, 47%, 1)` | Secondary actions            |
-| `tabBarPillBackground` | `rgba(6,182,212,0.20)`   | Tab bar active indicator     |
-| `outlineColor`         | `rgba(6,182,212,0.3)`    | Focus ring                   |
-
-#### Border Colors
-
-| Token              | Hex       | Usage                           |
-| ------------------ | --------- | ------------------------------- |
-| `borderColor`      | `#5A7887` | Accessible input/action borders |
-| `borderColorHover` | `#6E96A4` | Hover state borders             |
-| `borderColorFocus` | `#06B6D4` | Focus state borders             |
-| `surfaceBorder`    | `#2D3A44` | Surface borders                 |
-
-### Light Mode Palette (Preserved)
-
-Light mode maintains the professional teal direction:
-
-- **Background**: `#FFFFFF` (pure white)
-- **Primary text**: `#0F2F2B` (deep teal)
-- **Accent**: `#0F766E` (brand teal)
-- **Surfaces**: Subtle gray progression (`#F9FAFB`, `#FFFFFF`)
-
-### Token Consumers
-
-Key components that consume theme tokens:
-
-- **Search inputs**: `surfaceElevated`, `borderColor`, `primary`, `searchPlaceholderColor`
-- **Category cards**: `surface`, `primary`, `color`
-- **Product cards**: `surface`, `surfaceElevated`, `color`, `colorSubtle`
-- **Tab bar**: `tabBarInactive`, `tabBarPillBackground`, `primary`
-- **Form inputs**: `background`, `borderColor`, `borderColorFocus`, `color`, `placeholderColor`
-
-### Verification Notes
-
-- **Static contrast analysis**: Ratios calculated using WCAG luminance formula
-- **Runtime validation required**: Manual testing on devices is still needed for iOS, Android, screen-reader, and authenticated-route certification
-- **WebAIM web checks completed**: See `docs/WEBAIM_VALIDATION_REPORT.md` for browser-run contrast validation of final theme pairs
+- Node 20.x is required.
+- `.npmrc` enables `legacy-peer-deps=true`.
+- `app.config.ts` loads dotenvx-backed config and exposes public env into Expo config.
+- `app.json` still contains a placeholder Expo owner and should be checked before production publishing.
+- `android/` is present for local native builds; EAS handles hosted build/deploy flows.
