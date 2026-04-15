@@ -131,6 +131,7 @@ describe('useAddressForm', () => {
       result.current.setFieldValue('receiverName', 'John Doe');
       result.current.setFieldValue('phoneNumber', '081234567890');
       result.current.setFieldValue('streetAddress', 'Jl. Sudirman');
+      result.current.setFieldValue('addressNote', 'Blok A2');
       result.current.setFieldValue('areaId', 'AREA-123');
       result.current.setFieldValue('city', 'Jakarta');
       result.current.setFieldValue('postalCode', '12345');
@@ -172,6 +173,7 @@ describe('useAddressForm', () => {
       receiver_name: 'Jane Doe',
       phone_number: '089876543210',
       street_address: 'Jl. Thamrin',
+      address_note: 'Blok C dekat apotek',
       city: 'Jakarta Pusat',
       postal_code: '10110',
       province: 'DKI Jakarta',
@@ -193,6 +195,7 @@ describe('useAddressForm', () => {
     });
 
     expect(result.current.values.receiverName).toBe('Jane Doe');
+    expect(result.current.values.addressNote).toBe('Blok C dekat apotek');
     expect(result.current.values.areaId).toBe('AREA-456');
     expect(result.current.values.areaName).toBe('Menteng');
   });
@@ -205,6 +208,7 @@ describe('useAddressForm', () => {
       receiver_name: 'Legacy User',
       phone_number: '081111111111',
       street_address: 'Jl. Legacy No. 1',
+      address_note: null,
       city: 'Jakarta Barat',
       postal_code: '11510',
       province: 'DKI Jakarta',
@@ -227,6 +231,7 @@ describe('useAddressForm', () => {
 
     expect(result.current.values.areaId).toBe('AREA-LEGACY-123');
     expect(result.current.values.areaName).toBe('');
+    expect(result.current.values.addressNote).toBe('');
     expect(result.current.values.receiverName).toBe('Legacy User');
     expect(result.current.values.city).toBe('Jakarta Barat');
   });

@@ -21,6 +21,7 @@ export interface AddressFormValues {
   receiverName: string;
   phoneNumber: string;
   streetAddress: string;
+  addressNote: string;
   areaId: string;
   areaName: string;
   city: string;
@@ -35,6 +36,7 @@ export const initialFormValues: AddressFormValues = {
   receiverName: '',
   phoneNumber: '',
   streetAddress: '',
+  addressNote: '',
   areaId: '',
   areaName: '',
   city: '',
@@ -134,7 +136,10 @@ export function validateAreaId(value: string): string | null {
 }
 
 export function validateAllFields(
-  values: Omit<AddressFormValues, 'province' | 'isDefault' | 'areaName' | 'latitude' | 'longitude'>,
+  values: Omit<
+    AddressFormValues,
+    'province' | 'isDefault' | 'areaName' | 'latitude' | 'longitude' | 'addressNote'
+  >,
 ): AddressFormErrors | null {
   const errors: AddressFormErrors = {
     receiverName: validateReceiverName(values.receiverName),

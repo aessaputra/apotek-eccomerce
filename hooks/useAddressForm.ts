@@ -30,6 +30,7 @@ export interface UseAddressFormReturn {
     receiverNameRef: React.RefObject<RNTextInput | null>;
     phoneNumberRef: React.RefObject<RNTextInput | null>;
     streetAddressRef: React.RefObject<RNTextInput | null>;
+    addressNoteRef: React.RefObject<RNTextInput | null>;
     cityRef: React.RefObject<RNTextInput | null>;
     postalCodeRef: React.RefObject<RNTextInput | null>;
     provinceRef: React.RefObject<RNTextInput | null>;
@@ -76,6 +77,7 @@ export function useAddressForm(): UseAddressFormReturn {
   const receiverNameRef = useRef<RNTextInput | null>(null);
   const phoneNumberRef = useRef<RNTextInput | null>(null);
   const streetAddressRef = useRef<RNTextInput | null>(null);
+  const addressNoteRef = useRef<RNTextInput | null>(null);
   const cityRef = useRef<RNTextInput | null>(null);
   const postalCodeRef = useRef<RNTextInput | null>(null);
   const provinceRef = useRef<RNTextInput | null>(null);
@@ -197,6 +199,7 @@ export function useAddressForm(): UseAddressFormReturn {
       receiverName: address.receiver_name,
       phoneNumber: address.phone_number,
       streetAddress: address.street_address,
+      addressNote: address.address_note || '',
       areaId: address.area_id || '',
       areaName: address.area_name || '',
       city: address.city,
@@ -236,6 +239,7 @@ export function useAddressForm(): UseAddressFormReturn {
       receiverNameRef,
       phoneNumberRef,
       streetAddressRef,
+      addressNoteRef,
       cityRef,
       postalCodeRef,
       provinceRef,
