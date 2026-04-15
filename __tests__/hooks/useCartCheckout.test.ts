@@ -46,6 +46,7 @@ const selectedAddress: Address = {
   receiver_name: 'User',
   phone_number: '08123456789',
   street_address: 'Jl. Test 1',
+  address_note: null,
   city: 'Jakarta',
   city_id: 'CITY-1',
   province: 'DKI Jakarta',
