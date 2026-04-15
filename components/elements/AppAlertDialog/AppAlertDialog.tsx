@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { AlertDialog, Button, YStack } from 'tamagui';
 
 export interface AppAlertDialogProps {
@@ -45,6 +45,15 @@ export default function AppAlertDialog({
   const resolvedConfirmText = confirmLabel ?? confirmText ?? 'OK';
   const resolvedCancelText = cancelLabel ?? cancelText;
 
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen !== open) {
+        onOpenChange(nextOpen);
+      }
+    },
+    [onOpenChange, open],
+  );
+
   const handleConfirm = () => {
     onConfirm?.();
   };
@@ -53,8 +62,12 @@ export default function AppAlertDialog({
     onCancel?.();
   };
 
+  if (!open) {
+    return null;
+  }
+
   return (
-    <AlertDialog modal native={false} open={open} onOpenChange={onOpenChange}>
+    <AlertDialog modal native={false} open={open} onOpenChange={handleOpenChange}>
       <AlertDialog.Portal>
         <AlertDialog.Overlay
           key="overlay"

@@ -61,6 +61,7 @@ export const HIDDEN_ROUTE_SCREENS = new Set<string>([
   'address-form',
   'addresses',
   'address-search',
+  'address-map',
   'area-picker',
   'product-details',
   'search',

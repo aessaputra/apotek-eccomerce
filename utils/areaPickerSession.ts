@@ -32,5 +32,13 @@ export function consumePendingAreaSelection(): PendingAreaSelection | null {
     postalCode: area.postal_code?.toString(),
   };
 
+  useAreaPickerStore.setState({
+    selectedProvince: null,
+    selectedCity: null,
+    selectedDistrict: null,
+    selectedArea: null,
+    stage: 'province',
+  });
+
   return selection;
 }

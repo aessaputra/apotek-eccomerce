@@ -1,24 +1,8 @@
 import { test, expect, jest } from '@jest/globals';
 import { waitFor } from '@testing-library/react-native';
 import { render, renderWithDarkTheme, screen, fireEvent } from '@/test-utils/renderWithTheme';
-import MapPinSheet from '@/components/MapPin/MapPinSheet';
+import MapPicker from '@/components/MapPin/MapPicker';
 import * as Location from 'expo-location';
-
-jest.mock('tamagui', () => {
-  const actual = jest.requireActual('tamagui') as typeof import('tamagui');
-  const { View } = jest.requireActual('react-native') as typeof import('react-native');
-
-  const Sheet = ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <View>{children}</View> : null;
-
-  Sheet.Overlay = View;
-  Sheet.Frame = View;
-
-  return {
-    ...actual,
-    Sheet,
-  };
-});
 
 jest.mock('react-native-maps', () => {
   const React = jest.requireActual('react') as typeof import('react');
@@ -97,7 +81,7 @@ const mockedRequestForegroundPermissionsAsync = jest.mocked(
 const mockedGetCurrentPositionAsync = jest.mocked(Location.getCurrentPositionAsync);
 const mockedGetLastKnownPositionAsync = jest.mocked(Location.getLastKnownPositionAsync);
 
-describe('<MapPinSheet />', () => {
+describe('<MapPicker />', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedGetLastKnownPositionAsync.mockResolvedValue(null);
@@ -105,11 +89,10 @@ describe('<MapPinSheet />', () => {
 
   test('renders selected coordinates in light and dark themes', async () => {
     render(
-      <MapPinSheet
-        isOpen
-        onClose={jest.fn()}
-        onConfirm={jest.fn()}
+      <MapPicker
         initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+        onConfirm={jest.fn()}
+        onDismiss={jest.fn()}
       />,
     );
 
@@ -117,11 +100,10 @@ describe('<MapPinSheet />', () => {
     expect(screen.getByText('-6.200000, 106.800000')).not.toBeNull();
 
     renderWithDarkTheme(
-      <MapPinSheet
-        isOpen
-        onClose={jest.fn()}
-        onConfirm={jest.fn()}
+      <MapPicker
         initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+        onConfirm={jest.fn()}
+        onDismiss={jest.fn()}
       />,
     );
 
@@ -130,14 +112,13 @@ describe('<MapPinSheet />', () => {
 
   test('updates coordinates from map press and confirms selection', async () => {
     const onConfirm = jest.fn();
-    const onClose = jest.fn();
+    const onDismiss = jest.fn();
 
     render(
-      <MapPinSheet
-        isOpen
-        onClose={onClose}
-        onConfirm={onConfirm}
+      <MapPicker
         initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+        onConfirm={onConfirm}
+        onDismiss={onDismiss}
       />,
     );
 
@@ -148,8 +129,32 @@ describe('<MapPinSheet />', () => {
     fireEvent.press(screen.getByText('Konfirmasi'));
     fireEvent.press(screen.getByText('Ya, Konfirmasi'));
 
-    expect(onConfirm).toHaveBeenCalledWith({ latitude: -6.3, longitude: 106.9 });
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledWith({
+      latitude: -6.3,
+      longitude: 106.9,
+      didAdjustPin: true,
+    });
+  });
+
+  test('confirms unchanged initial pin with didAdjustPin false', () => {
+    const onConfirm = jest.fn();
+
+    render(
+      <MapPicker
+        initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+        onConfirm={onConfirm}
+        onDismiss={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Konfirmasi'));
+    fireEvent.press(screen.getByText('Ya, Konfirmasi'));
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      latitude: -6.2,
+      longitude: 106.8,
+      didAdjustPin: false,
+    });
   });
 
   test('requests current location when opened without initial coordinates', async () => {
@@ -172,7 +177,7 @@ describe('<MapPinSheet />', () => {
       timestamp: Date.now(),
     });
 
-    render(<MapPinSheet isOpen onClose={jest.fn()} onConfirm={jest.fn()} />);
+    render(<MapPicker onConfirm={jest.fn()} onDismiss={jest.fn()} />);
 
     await waitFor(() => {
       expect(mockedRequestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
@@ -196,7 +201,7 @@ describe('<MapPinSheet />', () => {
       expires: 'never',
     });
 
-    render(<MapPinSheet isOpen onClose={jest.fn()} onConfirm={jest.fn()} />);
+    render(<MapPicker onConfirm={jest.fn()} onDismiss={jest.fn()} />);
 
     await waitFor(() => {
       expect(
@@ -228,7 +233,7 @@ describe('<MapPinSheet />', () => {
       timestamp: Date.now(),
     });
 
-    render(<MapPinSheet isOpen onClose={jest.fn()} onConfirm={jest.fn()} />);
+    render(<MapPicker onConfirm={jest.fn()} onDismiss={jest.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByText('-6.220000, 106.820000')).not.toBeNull();
@@ -236,14 +241,13 @@ describe('<MapPinSheet />', () => {
   });
 
   test('asks for confirmation before closing after pin changes', async () => {
-    const onClose = jest.fn();
+    const onDismiss = jest.fn();
 
     render(
-      <MapPinSheet
-        isOpen
-        onClose={onClose}
-        onConfirm={jest.fn()}
+      <MapPicker
         initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+        onConfirm={jest.fn()}
+        onDismiss={onDismiss}
       />,
     );
 
@@ -252,22 +256,37 @@ describe('<MapPinSheet />', () => {
     fireEvent.press(screen.getByLabelText('Tutup peta'));
 
     expect(screen.getByText('Batalkan Penyesuaian Pin?')).not.toBeNull();
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByText('Tutup'));
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  test('calls onDismiss immediately when no pin changes', () => {
+    const onDismiss = jest.fn();
+
+    render(
+      <MapPicker
+        initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+        onConfirm={jest.fn()}
+        onDismiss={onDismiss}
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText('Tutup peta'));
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   test('calls onEditAddressPress when user taps Ubah', () => {
     const onEditAddressPress = jest.fn();
 
     render(
-      <MapPinSheet
-        isOpen
-        onClose={jest.fn()}
-        onConfirm={jest.fn()}
+      <MapPicker
         initialCoords={{ latitude: -6.2, longitude: 106.8 }}
+        onConfirm={jest.fn()}
+        onDismiss={jest.fn()}
         selectedAddressSummary="Jalan Ciruas Petir, Walantaka, Kota Serang"
         onEditAddressPress={onEditAddressPress}
       />,

@@ -3,6 +3,7 @@ import * as Crypto from 'expo-crypto';
 import { useDebounce } from './useDebounce';
 import config from '@/utils/config';
 import {
+  sanitizeAddressCandidate,
   getPlacePredictions,
   getPlaceDetails,
   convertPlaceDetailsToAddress,
@@ -240,6 +241,16 @@ export function useAddressSuggestions(
         }
 
         const address = convertPlaceDetailsToAddress(data);
+        const fallbackStreetAddress =
+          sanitizeAddressCandidate(suggestion.primaryText) ||
+          sanitizeAddressCandidate(suggestion.name) ||
+          sanitizeAddressCandidate(suggestion.fullAddress.split(',')[0]) ||
+          suggestion.primaryText ||
+          suggestion.name;
+        const resolvedStreetAddress =
+          address.streetAddress === 'Lokasi' && fallbackStreetAddress
+            ? fallbackStreetAddress
+            : address.streetAddress;
 
         setQuery('');
         setResults([]);
@@ -250,7 +261,7 @@ export function useAddressSuggestions(
           id: suggestion.id,
           placeId: suggestion.placeId,
           fullAddress: data.formattedAddress,
-          streetAddress: address.streetAddress,
+          streetAddress: resolvedStreetAddress,
           city: address.city,
           district: address.district,
           province: address.province,
@@ -259,6 +270,7 @@ export function useAddressSuggestions(
           latitude: address.latitude,
           longitude: address.longitude,
           accuracy: null,
+          buildingName: suggestion.buildingName,
         };
       } catch (retrieveFailure) {
         if (__DEV__) {

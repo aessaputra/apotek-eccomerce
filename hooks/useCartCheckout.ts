@@ -21,6 +21,10 @@ interface PersistedCheckoutSession {
   order_id: string | null;
   selected_address_id: string | null;
   selected_shipping_key: string | null;
+  destination_area_id: string | null;
+  destination_postal_code: number | null;
+  selected_address_latitude: number | null;
+  selected_address_longitude: number | null;
 }
 
 function createTypedError(type: ErrorType, message: string): AppError {
@@ -47,10 +51,15 @@ function withFallbackMessage(error: AppError, fallback: string): AppError {
   };
 }
 
+function stringifyCoordinate(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : 'null';
+}
+
 export interface UseCartCheckoutParams {
   userId?: string;
   selectedAddress: Address | null;
   selectedAddressId: string | null;
+  loadingSelectedAddress?: boolean;
   selectedShippingOption: ShippingOption | null;
   selectedShippingKey: string | null;
   quoteDestination: {
@@ -78,6 +87,7 @@ export function useCartCheckout({
   userId,
   selectedAddress,
   selectedAddressId,
+  loadingSelectedAddress = false,
   selectedShippingOption,
   selectedShippingKey,
   quoteDestination,
@@ -101,14 +111,22 @@ export function useCartCheckout({
       [
         userId ?? '',
         selectedAddressId ?? '',
+        stringifyCoordinate(selectedAddress?.latitude),
+        stringifyCoordinate(selectedAddress?.longitude),
         selectedShippingKey ?? '',
+        quoteDestination.areaId ?? '',
+        quoteDestination.postalCode ?? '',
         snapshot.itemCount,
         snapshot.estimatedWeightGrams,
         snapshot.packageValue,
       ].join('|'),
     [
       selectedAddressId,
+      selectedAddress?.latitude,
+      selectedAddress?.longitude,
       selectedShippingKey,
+      quoteDestination.areaId,
+      quoteDestination.postalCode,
       snapshot.estimatedWeightGrams,
       snapshot.itemCount,
       snapshot.packageValue,
@@ -184,9 +202,68 @@ export function useCartCheckout({
 
     const persistedAddressId = persisted.selected_address_id ?? null;
     const persistedShippingKey = persisted.selected_shipping_key ?? null;
-    const isWaitingAddressHydration = Boolean(persistedAddressId) && !selectedAddressId;
+    const persistedLatitude = persisted.selected_address_latitude ?? null;
+    const persistedLongitude = persisted.selected_address_longitude ?? null;
+    const currentLatitude = selectedAddress?.latitude ?? null;
+    const currentLongitude = selectedAddress?.longitude ?? null;
+    const isSamePersistedAddress =
+      Boolean(persistedAddressId) && persistedAddressId === selectedAddressId;
+    const isSameAddressCoordinateHydrating =
+      isSamePersistedAddress && loadingSelectedAddress && Boolean(selectedAddress);
+    const canCompareLatitude =
+      Boolean(selectedAddress) &&
+      (!isSameAddressCoordinateHydrating || currentLatitude !== null || persistedLatitude === null);
+    const canCompareLongitude =
+      Boolean(selectedAddress) &&
+      (!isSameAddressCoordinateHydrating ||
+        currentLongitude !== null ||
+        persistedLongitude === null);
+    const hasKnownAddressIdMismatch =
+      Boolean(persistedAddressId) &&
+      Boolean(selectedAddressId) &&
+      persistedAddressId !== selectedAddressId;
+    const hasKnownAddressCoordinateMismatch =
+      canCompareLatitude && currentLatitude !== persistedLatitude;
+    const hasKnownAddressLongitudeMismatch =
+      canCompareLongitude && currentLongitude !== persistedLongitude;
+    const hasKnownShippingMismatch =
+      Boolean(persistedShippingKey) &&
+      Boolean(selectedShippingKey) &&
+      persistedShippingKey !== selectedShippingKey;
+    const hasKnownQuoteAreaMismatch =
+      persisted.destination_area_id !== null &&
+      quoteDestination.areaId !== null &&
+      persisted.destination_area_id !== quoteDestination.areaId;
+    const hasKnownQuotePostalCodeMismatch =
+      persisted.destination_postal_code !== null &&
+      quoteDestination.postalCode !== null &&
+      persisted.destination_postal_code !== quoteDestination.postalCode;
+    const hasKnownMismatch =
+      hasKnownAddressIdMismatch ||
+      hasKnownAddressCoordinateMismatch ||
+      hasKnownAddressLongitudeMismatch ||
+      hasKnownShippingMismatch ||
+      hasKnownQuoteAreaMismatch ||
+      hasKnownQuotePostalCodeMismatch;
+    const isWaitingAddressHydration =
+      Boolean(persistedAddressId) &&
+      (!selectedAddressId || (persistedAddressId === selectedAddressId && !selectedAddress));
     const isWaitingShippingHydration = Boolean(persistedShippingKey) && !selectedShippingKey;
-    const isHydrationPending = isWaitingAddressHydration || isWaitingShippingHydration;
+    const isWaitingQuoteHydration =
+      Boolean(persistedShippingKey) &&
+      persistedShippingKey === selectedShippingKey &&
+      (persisted.destination_area_id !== null || persisted.destination_postal_code !== null) &&
+      quoteDestination.areaId === null &&
+      quoteDestination.postalCode === null;
+    const isHydrationPending =
+      isWaitingAddressHydration || isWaitingShippingHydration || isWaitingQuoteHydration;
+
+    if (hasKnownMismatch) {
+      setCheckoutIdempotencyKey(null);
+      setActiveOrderId(null);
+      await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
+      return;
+    }
 
     if (persisted.fingerprint === checkoutFingerprint || isHydrationPending) {
       setCheckoutIdempotencyKey(persisted.idempotency_key);
@@ -200,9 +277,13 @@ export function useCartCheckout({
   }, [
     checkoutFingerprint,
     getPersistData,
+    loadingSelectedAddress,
     removePersistData,
+    selectedAddress,
     selectedAddressId,
     selectedShippingKey,
+    quoteDestination.areaId,
+    quoteDestination.postalCode,
     userId,
   ]);
 
@@ -262,6 +343,10 @@ export function useCartCheckout({
         order_id: orderIdForPayment,
         selected_address_id: selectedAddressId,
         selected_shipping_key: selectedShippingKey,
+        destination_area_id: quoteDestination.areaId,
+        destination_postal_code: quoteDestination.postalCode,
+        selected_address_latitude: selectedAddress?.latitude ?? null,
+        selected_address_longitude: selectedAddress?.longitude ?? null,
       });
 
       setStartingCheckout(true);
@@ -300,6 +385,10 @@ export function useCartCheckout({
           order_id: orderData.order_id,
           selected_address_id: selectedAddressId,
           selected_shipping_key: selectedShippingKey,
+          destination_area_id: quoteDestination.areaId,
+          destination_postal_code: quoteDestination.postalCode,
+          selected_address_latitude: selectedAddress?.latitude ?? null,
+          selected_address_longitude: selectedAddress?.longitude ?? null,
         });
       }
 

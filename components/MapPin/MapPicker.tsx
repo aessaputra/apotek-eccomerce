@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
-import { Sheet, YStack, XStack, Text } from 'tamagui';
+import { YStack, XStack, Text } from 'tamagui';
 import { MapPin, X } from '@tamagui/lucide-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -26,26 +26,28 @@ export interface MapCoords {
   longitude: number;
 }
 
-export interface MapPinSheetProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (coords: MapCoords) => void;
+export interface MapPickerResult extends MapCoords {
+  didAdjustPin: boolean;
+}
+
+export interface MapPickerProps {
   initialCoords?: MapCoords;
   selectedAddressSummary?: string;
+  onConfirm: (result: MapPickerResult) => void;
+  onDismiss: () => void;
   onEditAddressPress?: () => void;
 }
 
 const JAKARTA_FALLBACK: MapCoords = { latitude: -6.2088, longitude: 106.8456 };
 const DEFAULT_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
 
-function MapPinSheet({
-  isOpen,
-  onClose,
-  onConfirm,
+function MapPicker({
   initialCoords,
   selectedAddressSummary,
+  onConfirm,
+  onDismiss,
   onEditAddressPress,
-}: MapPinSheetProps) {
+}: MapPickerProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<import('react-native-maps').default | null>(null);
   const regionAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,8 +72,6 @@ function MapPinSheet({
   }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
-
     isCancelledRef.current = false;
     hasInteracted.current = false;
 
@@ -176,7 +176,7 @@ function MapPinSheet({
     };
 
     void initialiseLocation();
-  }, [isOpen, initialCoords]);
+  }, [initialCoords]);
 
   const handleMapPress = useCallback((event: MapPressEvent) => {
     hasInteracted.current = true;
@@ -193,11 +193,13 @@ function MapPinSheet({
   }, []);
 
   const handleConfirmLocation = useCallback(() => {
-    onConfirm(selectedCoords);
+    onConfirm({
+      ...selectedCoords,
+      didAdjustPin: hasInteracted.current,
+    });
     setShowConfirmDialog(false);
     setShowDiscardDialog(false);
-    onClose();
-  }, [onConfirm, selectedCoords, onClose]);
+  }, [onConfirm, selectedCoords]);
 
   const handleCancelConfirm = useCallback(() => {
     setShowConfirmDialog(false);
@@ -209,208 +211,176 @@ function MapPinSheet({
       return;
     }
 
-    onClose();
-  }, [onClose]);
+    onDismiss();
+  }, [onDismiss]);
 
   const handleDiscardChanges = useCallback(() => {
     setShowDiscardDialog(false);
-    onClose();
-  }, [onClose]);
-
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        handleDismissRequest();
-      }
-    },
-    [handleDismissRequest],
-  );
+    onDismiss();
+  }, [onDismiss]);
 
   const coordLabel = isLocating
     ? 'Mencari lokasi GPS...'
     : `${selectedCoords.latitude.toFixed(6)}, ${selectedCoords.longitude.toFixed(6)}`;
 
   return (
-    <Sheet
-      open={isOpen}
-      onOpenChange={handleOpenChange}
-      modal
-      dismissOnSnapToBottom={false}
-      disableDrag
-      snapPoints={[100]}
-      animation="medium"
-      animationConfig={{
-        type: 'spring',
-        damping: 24,
-        mass: 0.9,
-        stiffness: 200,
-      }}>
-      <Sheet.Overlay
-        animation="lazy"
-        enterStyle={{ opacity: 0 }}
-        exitStyle={{ opacity: 0 }}
-        backgroundColor="$sheetOverlay"
-      />
-      <Sheet.Frame backgroundColor="$background" pointerEvents="box-none">
-        <YStack flex={1} pointerEvents="box-none">
-          <YStack flex={1} overflow="hidden" pointerEvents="auto">
-            {MapView && Marker ? (
-              <MapView
-                ref={mapRef}
-                style={{ flex: 1 }}
-                initialRegion={{
-                  ...selectedCoords,
-                  ...DEFAULT_DELTA,
-                }}
-                onPress={handleMapPress}
-                showsUserLocation
-                showsMyLocationButton>
-                <Marker coordinate={selectedCoords} draggable onDragEnd={handleMarkerDragEnd} />
-              </MapView>
-            ) : (
-              <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$3">
-                <Text fontSize="$5" color="$colorSubtle" textAlign="center" fontWeight="500">
-                  Peta Tidak Tersedia
-                </Text>
-                <Text fontSize="$3" color="$colorMuted" textAlign="center">
-                  Konfirmasi lokasi berdasarkan alamat yang dipilih.
-                </Text>
-
-                {selectedAddressSummary ? (
-                  <YStack
-                    width="100%"
-                    backgroundColor="$surface"
-                    borderRadius="$4"
-                    borderWidth={1.5}
-                    borderColor="$surfaceBorder"
-                    padding="$4"
-                    gap="$2">
-                    <Text fontSize="$2" color="$colorMuted" fontWeight="500">
-                      Alamat Terpilih
-                    </Text>
-                    <Text fontSize="$4" color="$color" fontWeight="500">
-                      {selectedAddressSummary}
-                    </Text>
-                  </YStack>
-                ) : null}
-
-                {selectedCoords ? (
-                  <XStack gap="$1.5" alignItems="center">
-                    <MapPin size={14} color="$primary" />
-                    <Text fontSize="$3" color="$colorSubtle">
-                      {selectedCoords.latitude.toFixed(6)}, {selectedCoords.longitude.toFixed(6)}
-                    </Text>
-                  </XStack>
-                ) : null}
-              </YStack>
-            )}
-
-            <XStack
-              position="absolute"
-              top={insets.top + 12}
-              left={12}
-              zIndex={100}
-              width={44}
-              height={44}
-              borderRadius={22}
-              backgroundColor="$surfaceElevated"
-              alignItems="center"
-              justifyContent="center"
-              pressStyle={{ opacity: 0.8, scale: 0.95 }}
-              animation="quick"
-              onPress={handleDismissRequest}
-              accessibilityRole="button"
-              accessibilityLabel="Tutup peta"
-              pointerEvents="auto">
-              <X size={22} color="$color" />
-            </XStack>
+    <YStack flex={1} backgroundColor="$background">
+      <YStack flex={1} overflow="hidden">
+        {MapView && Marker ? (
+          <MapView
+            ref={mapRef}
+            style={{ flex: 1 }}
+            initialRegion={{
+              ...selectedCoords,
+              ...DEFAULT_DELTA,
+            }}
+            onPress={handleMapPress}
+            showsUserLocation
+            showsMyLocationButton>
+            <Marker coordinate={selectedCoords} draggable onDragEnd={handleMarkerDragEnd} />
+          </MapView>
+        ) : (
+          <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$3">
+            <Text fontSize="$5" color="$colorSubtle" textAlign="center" fontWeight="500">
+              Peta Tidak Tersedia
+            </Text>
+            <Text fontSize="$3" color="$colorMuted" textAlign="center">
+              Konfirmasi lokasi berdasarkan alamat yang dipilih.
+            </Text>
 
             {selectedAddressSummary ? (
               <YStack
-                position="absolute"
-                top={insets.top + 68}
-                left={16}
-                right={16}
+                width="100%"
                 backgroundColor="$surface"
-                borderRadius="$5"
+                borderRadius="$4"
                 borderWidth={1.5}
                 borderColor="$surfaceBorder"
                 padding="$4"
-                gap="$2"
-                shadowColor="$shadowColor"
-                shadowOpacity={0.15}
-                shadowRadius={16}
-                shadowOffset={{ width: 0, height: 8 }}>
+                gap="$2">
                 <Text fontSize="$2" color="$colorMuted" fontWeight="500">
                   Alamat Terpilih
                 </Text>
-                <XStack justifyContent="space-between" gap="$3" alignItems="center">
-                  <Text flex={1} fontSize="$4" color="$color" fontWeight="500" numberOfLines={2}>
-                    {selectedAddressSummary}
-                  </Text>
-                  <Text
-                    color="$primary"
-                    fontSize="$3"
-                    fontWeight="600"
-                    pressStyle={{ opacity: 0.8 }}
-                    onPress={() => onEditAddressPress?.()}>
-                    Ubah
-                  </Text>
-                </XStack>
+                <Text fontSize="$4" color="$color" fontWeight="500">
+                  {selectedAddressSummary}
+                </Text>
               </YStack>
             ) : null}
+
+            {selectedCoords ? (
+              <XStack gap="$1.5" alignItems="center">
+                <MapPin size={14} color="$primary" />
+                <Text fontSize="$3" color="$colorSubtle">
+                  {selectedCoords.latitude.toFixed(6)}, {selectedCoords.longitude.toFixed(6)}
+                </Text>
+              </XStack>
+            ) : null}
           </YStack>
+        )}
 
+        <XStack
+          position="absolute"
+          top={insets.top + 12}
+          left={12}
+          zIndex={100}
+          width={44}
+          height={44}
+          borderRadius={22}
+          backgroundColor="$surfaceElevated"
+          alignItems="center"
+          justifyContent="center"
+          pressStyle={{ opacity: 0.8, scale: 0.95 }}
+          animation="quick"
+          onPress={handleDismissRequest}
+          accessibilityRole="button"
+          accessibilityLabel="Tutup peta"
+          pointerEvents="auto">
+          <X size={22} color="$color" />
+        </XStack>
+
+        {selectedAddressSummary ? (
           <YStack
-            paddingHorizontal="$4"
-            paddingTop="$3"
-            paddingBottom={Math.max(insets.bottom, 16)}
+            position="absolute"
+            top={insets.top + 68}
+            left={16}
+            right={16}
+            backgroundColor="$surface"
+            borderRadius="$5"
+            borderWidth={1.5}
+            borderColor="$surfaceBorder"
+            padding="$4"
             gap="$2"
-            backgroundColor="$background"
-            borderTopWidth={1}
-            borderTopColor="$surfaceBorder"
-            pointerEvents="auto">
-            <YStack
-              backgroundColor="$surface"
-              borderRadius="$4"
-              paddingHorizontal="$3"
-              paddingVertical="$2"
-              gap="$1"
-              alignItems="center">
-              <Text fontSize="$3" color="$color" fontWeight="600" textAlign="center">
-                Alamatmu di sini
+            shadowColor="$shadowColor"
+            shadowOpacity={0.15}
+            shadowRadius={16}
+            shadowOffset={{ width: 0, height: 8 }}>
+            <Text fontSize="$2" color="$colorMuted" fontWeight="500">
+              Alamat Terpilih
+            </Text>
+            <XStack justifyContent="space-between" gap="$3" alignItems="center">
+              <Text flex={1} fontSize="$4" color="$color" fontWeight="500" numberOfLines={2}>
+                {selectedAddressSummary}
               </Text>
-              <Text fontSize="$2" color="$colorSubtle" textAlign="center">
-                Mohon periksa kembali lokasi peta
-              </Text>
-            </YStack>
-
-            <XStack gap="$2" alignItems="center">
-              <MapPin size={16} color="$primary" />
-              <Text fontSize="$3" color="$colorSubtle" flex={1} numberOfLines={1}>
-                {coordLabel}
+              <Text
+                color="$primary"
+                fontSize="$3"
+                fontWeight="600"
+                pressStyle={{ opacity: 0.8 }}
+                onPress={() => onEditAddressPress?.()}>
+                Ubah
               </Text>
             </XStack>
-
-            {locationMessage ? (
-              <Text fontSize="$2" color="$colorMuted">
-                {locationMessage}
-              </Text>
-            ) : null}
-
-            <Button
-              title="Konfirmasi"
-              backgroundColor="$primary"
-              borderRadius="$4"
-              minHeight={56}
-              onPress={handleConfirmRequest}
-              disabled={isLocating || !selectedCoords}
-              isLoading={isLocating}
-              titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
-            />
           </YStack>
+        ) : null}
+      </YStack>
+
+      <YStack
+        paddingHorizontal="$4"
+        paddingTop="$3"
+        paddingBottom={Math.max(insets.bottom, 16)}
+        gap="$2"
+        backgroundColor="$background"
+        borderTopWidth={1}
+        borderTopColor="$surfaceBorder"
+        pointerEvents="auto">
+        <YStack
+          backgroundColor="$surface"
+          borderRadius="$4"
+          paddingHorizontal="$3"
+          paddingVertical="$2"
+          gap="$1"
+          alignItems="center">
+          <Text fontSize="$3" color="$color" fontWeight="600" textAlign="center">
+            Alamatmu di sini
+          </Text>
+          <Text fontSize="$2" color="$colorSubtle" textAlign="center">
+            Mohon periksa kembali lokasi peta
+          </Text>
         </YStack>
-      </Sheet.Frame>
+
+        <XStack gap="$2" alignItems="center">
+          <MapPin size={16} color="$primary" />
+          <Text fontSize="$3" color="$colorSubtle" flex={1} numberOfLines={1}>
+            {coordLabel}
+          </Text>
+        </XStack>
+
+        {locationMessage ? (
+          <Text fontSize="$2" color="$colorMuted">
+            {locationMessage}
+          </Text>
+        ) : null}
+
+        <Button
+          title="Konfirmasi"
+          backgroundColor="$primary"
+          borderRadius="$4"
+          minHeight={56}
+          onPress={handleConfirmRequest}
+          disabled={isLocating || !selectedCoords}
+          isLoading={isLocating}
+          titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
+        />
+      </YStack>
 
       <AppAlertDialog
         open={showConfirmDialog}
@@ -441,8 +411,8 @@ function MapPinSheet({
         cancelColor="$primary"
         cancelTextColor="$onPrimary"
       />
-    </Sheet>
+    </YStack>
   );
 }
 
-export default MapPinSheet;
+export default MapPicker;

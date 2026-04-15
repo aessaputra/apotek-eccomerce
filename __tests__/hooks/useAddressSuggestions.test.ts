@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { AddressSuggestion } from '@/types/geocoding';
 import { useAddressSuggestions } from '@/hooks/useAddressSuggestions';
-import { getAddressRecommendations } from '@/services/googlePlaces.service';
+import {
+  convertPlaceDetailsToAddress,
+  getAddressRecommendations,
+  getPlaceDetails,
+} from '@/services/googlePlaces.service';
 
 jest.mock('expo-crypto', () => ({
   __esModule: true,
@@ -32,6 +36,7 @@ jest.mock('@/services/googlePlaces.service', () => ({
     latitude: 0,
     longitude: 0,
   })),
+  sanitizeAddressCandidate: jest.fn((value?: string) => value?.trim() ?? ''),
   getAddressRecommendations: jest.fn(),
 }));
 
@@ -49,6 +54,8 @@ function createDeferred<T>() {
 
 describe('useAddressSuggestions initial recommendations flow', () => {
   const mockedGetAddressRecommendations = jest.mocked(getAddressRecommendations);
+  const mockedGetPlaceDetails = jest.mocked(getPlaceDetails);
+  const mockedConvertPlaceDetailsToAddress = jest.mocked(convertPlaceDetailsToAddress);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -174,5 +181,94 @@ describe('useAddressSuggestions initial recommendations flow', () => {
 
     expect(result.current.results).toEqual([]);
     expect(result.current.error).toBe('Gagal mengambil alamat');
+  });
+
+  it('preserves the selected suggestion label when details fallback to Lokasi', async () => {
+    mockedGetPlaceDetails.mockResolvedValue({
+      data: {
+        placeId: 'place-1',
+        name: 'Lokasi',
+        formattedAddress: 'Lokasi, Kota Serang, Banten',
+        coordinates: { latitude: -6.2, longitude: 106.8 },
+        addressComponents: [],
+      },
+      error: null,
+    });
+    mockedConvertPlaceDetailsToAddress.mockReturnValue({
+      streetAddress: 'Lokasi',
+      city: 'Kota Serang',
+      district: 'Walantaka',
+      province: 'Banten',
+      postalCode: '42183',
+      latitude: -6.2,
+      longitude: 106.8,
+    });
+
+    const { result } = renderHook(() => useAddressSuggestions());
+
+    const suggestion: AddressSuggestion = {
+      id: 'place-1',
+      placeId: 'place-1',
+      name: 'Jl. Raya Ciruas',
+      fullAddress: 'Jl. Raya Ciruas No. 12, Kota Serang, Banten 42183',
+      primaryText: 'Jl. Raya Ciruas No. 12',
+      secondaryText: 'Kota Serang, Banten 42183',
+    };
+
+    let selected = null;
+
+    await act(async () => {
+      selected = await result.current.selectSuggestion(suggestion);
+    });
+
+    expect(selected).toMatchObject({
+      streetAddress: 'Jl. Raya Ciruas No. 12',
+      city: 'Kota Serang',
+      province: 'Banten',
+      postalCode: '42183',
+    });
+  });
+
+  it('keeps place-details street address when it is already specific', async () => {
+    mockedGetPlaceDetails.mockResolvedValue({
+      data: {
+        placeId: 'place-2',
+        name: 'Jl. Sudirman',
+        formattedAddress: 'Jl. Sudirman No. 8, Jakarta',
+        coordinates: { latitude: -6.2, longitude: 106.8 },
+        addressComponents: [],
+      },
+      error: null,
+    });
+    mockedConvertPlaceDetailsToAddress.mockReturnValue({
+      streetAddress: 'Jl. Sudirman No. 8',
+      city: 'Jakarta',
+      district: 'Menteng',
+      province: 'DKI Jakarta',
+      postalCode: '10310',
+      latitude: -6.2,
+      longitude: 106.8,
+    });
+
+    const { result } = renderHook(() => useAddressSuggestions());
+
+    const suggestion: AddressSuggestion = {
+      id: 'place-2',
+      placeId: 'place-2',
+      name: 'Jl. Sudirman',
+      fullAddress: 'Jl. Sudirman No. 8, Jakarta',
+      primaryText: 'Jl. Sudirman No. 8',
+      secondaryText: 'Jakarta',
+    };
+
+    let selected = null;
+
+    await act(async () => {
+      selected = await result.current.selectSuggestion(suggestion);
+    });
+
+    expect(selected).toMatchObject({
+      streetAddress: 'Jl. Sudirman No. 8',
+    });
   });
 });

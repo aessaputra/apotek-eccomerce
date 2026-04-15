@@ -185,6 +185,7 @@ export default function Cart() {
     userId: user?.id,
     selectedAddress,
     selectedAddressId,
+    loadingSelectedAddress,
     selectedShippingOption,
     selectedShippingKey,
     quoteDestination,

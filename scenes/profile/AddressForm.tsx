@@ -15,14 +15,12 @@ import { useAppSlice } from '@/slices';
 import { useAddressForm } from '@/hooks/useAddressForm';
 import { useAddressData } from '@/hooks/useAddressData';
 import { buildAddressPayload } from '@/services/address.service';
-import {
-  reverseGeocodeCoordinates,
-  sanitizeAddressCandidate,
-} from '@/services/googlePlaces.service';
+import { sanitizeAddressCandidate } from '@/services/googlePlaces.service';
 import type { RouteParams } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 import { consumePendingAddressSelection } from '@/utils/addressSearchSession';
 import { consumePendingAreaSelection } from '@/utils/areaPickerSession';
+import { consumePendingMapPickerResult } from '@/utils/mapPickerSession';
 import {
   formatLevel2Display,
   resolveAreaNames,
@@ -56,7 +54,6 @@ export default function AddressFormScreen() {
   const isEdit = !!id;
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [mapConfirmRequiredDialogOpen, setMapConfirmRequiredDialogOpen] = useState(false);
-  const [mapOpenRequestKey, setMapOpenRequestKey] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [areaProximity, setAreaProximity] = useState<{
     latitude: number;
@@ -96,7 +93,6 @@ export default function AddressFormScreen() {
     validateAll,
     populateFromAddress,
     setArea,
-    clearArea,
     refs,
     mapConfirmed,
     setMapConfirmed,
@@ -138,6 +134,66 @@ export default function AddressFormScreen() {
       clearDataError();
     }
   }, [clearDataError, dataError, generalError, setGeneralError]);
+
+  const buildMapRouteParams = useCallback(
+    (overrides?: {
+      latitude?: number | null;
+      longitude?: number | null;
+      streetAddress?: string;
+      areaName?: string;
+      city?: string;
+      province?: string;
+      postalCode?: string;
+    }): RouteParams<'profile/address-map'> => {
+      const params: RouteParams<'profile/address-map'> = {};
+
+      const latitude = overrides?.latitude ?? values.latitude;
+      const longitude = overrides?.longitude ?? values.longitude;
+      const streetAddress = overrides?.streetAddress ?? values.streetAddress;
+      const areaName = overrides?.areaName ?? values.areaName;
+      const city = overrides?.city ?? values.city;
+      const province = overrides?.province ?? values.province;
+      const postalCode = overrides?.postalCode ?? values.postalCode;
+
+      if (latitude != null && longitude != null) {
+        params.latitude = String(latitude);
+        params.longitude = String(longitude);
+      }
+
+      if (streetAddress) {
+        params.streetAddress = streetAddress;
+      }
+
+      if (areaName) {
+        params.areaName = areaName;
+      }
+
+      if (city) {
+        params.city = city;
+      }
+
+      if (province) {
+        params.province = province;
+      }
+
+      if (postalCode) {
+        params.postalCode = postalCode;
+      }
+
+      return params;
+    },
+    [values],
+  );
+
+  const handleOpenMap = useCallback(
+    (overrides?: Parameters<typeof buildMapRouteParams>[0]) => {
+      router.push({
+        pathname: '/profile/address-map',
+        params: buildMapRouteParams(overrides),
+      });
+    },
+    [buildMapRouteParams, router],
+  );
 
   const applySelectedArea = useCallback(
     (selectedArea: {
@@ -213,9 +269,37 @@ export default function AddressFormScreen() {
         longitude: selectedAddress.longitude,
       });
       setMapConfirmed(false);
-      setMapOpenRequestKey(current => current + 1);
+      handleOpenMap({
+        latitude: selectedAddress.latitude,
+        longitude: selectedAddress.longitude,
+        streetAddress: sanitizedStreetAddress,
+        areaName: values.areaName,
+        city: values.areaId ? values.city : selectedAddress.city,
+        province: values.areaId ? values.province : selectedAddress.province,
+        postalCode: values.areaId ? values.postalCode : selectedAddress.postalCode,
+      });
     },
-    [clearTransientErrors, setFieldValue, setMapConfirmed, values.areaId],
+    [
+      clearTransientErrors,
+      handleOpenMap,
+      setFieldValue,
+      setMapConfirmed,
+      values.areaId,
+      values.areaName,
+      values.city,
+      values.postalCode,
+      values.province,
+    ],
+  );
+
+  const applyMapPickerResult = useCallback(
+    (result: { latitude: number; longitude: number; didAdjustPin: boolean }) => {
+      clearTransientErrors();
+      setFieldValue('latitude', result.latitude);
+      setFieldValue('longitude', result.longitude);
+      setMapConfirmed(true);
+    },
+    [clearTransientErrors, setFieldValue, setMapConfirmed],
   );
 
   useFocusEffect(
@@ -229,7 +313,12 @@ export default function AddressFormScreen() {
       if (selectedAddress) {
         applySelectedAddress(selectedAddress);
       }
-    }, [applySelectedAddress, applySelectedArea]),
+
+      const mapPickerResult = consumePendingMapPickerResult();
+      if (mapPickerResult) {
+        applyMapPickerResult(mapPickerResult);
+      }
+    }, [applySelectedAddress, applySelectedArea, applyMapPickerResult]),
   );
 
   const handleOpenAreaPicker = useCallback(() => {
@@ -262,45 +351,6 @@ export default function AddressFormScreen() {
       params,
     });
   }, [areaProximity, router, values.streetAddress]);
-
-  const handleCoordinatesChange = useCallback(
-    async (coords: { latitude: number; longitude: number } | null) => {
-      if (!coords) {
-        return;
-      }
-
-      const { data: reversedAddress, error } = await reverseGeocodeCoordinates(coords);
-
-      if (error || !reversedAddress) {
-        return;
-      }
-
-      const cityChanged =
-        reversedAddress.city.trim().toLowerCase() !== values.city.trim().toLowerCase();
-      const provinceChanged =
-        reversedAddress.province.trim().toLowerCase() !== values.province.trim().toLowerCase();
-      const postalChanged = reversedAddress.postalCode.trim() !== values.postalCode.trim();
-
-      if (values.areaId && (cityChanged || provinceChanged || postalChanged)) {
-        clearArea();
-        setFieldValue('city', reversedAddress.city || values.city);
-        setFieldValue('province', reversedAddress.province || values.province);
-        setFieldValue('postalCode', reversedAddress.postalCode || values.postalCode);
-        setGeneralError(
-          'Area pengiriman berubah setelah titik peta dipindahkan. Pilih ulang area pengiriman.',
-        );
-      }
-    },
-    [
-      clearArea,
-      setFieldValue,
-      setGeneralError,
-      values.areaId,
-      values.city,
-      values.postalCode,
-      values.province,
-    ],
-  );
 
   const handleDismissError = useCallback(() => {
     setGeneralError(null);
@@ -395,9 +445,6 @@ export default function AddressFormScreen() {
                 refs={refs}
                 onFieldSave={setFieldValue}
                 onFieldValidate={validateField}
-                onCoordinatesChange={handleCoordinatesChange}
-                onMapConfirmed={setMapConfirmed}
-                openMapRequestKey={mapOpenRequestKey}
                 onAreaPickerPress={handleOpenAreaPicker}
                 onStreetAddressPress={handleOpenStreetAddressSearch}
               />
@@ -441,7 +488,7 @@ export default function AddressFormScreen() {
         cancelText="Batal"
         onConfirm={() => {
           setMapConfirmRequiredDialogOpen(false);
-          setMapOpenRequestKey(current => current + 1);
+          handleOpenMap();
         }}
         onCancel={() => setMapConfirmRequiredDialogOpen(false)}
         confirmColor="$primary"

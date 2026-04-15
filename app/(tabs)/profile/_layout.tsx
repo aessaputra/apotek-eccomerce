@@ -52,6 +52,12 @@ function ProfileStackLayout() {
         }}
       />
       <Stack.Screen
+        name="address-map"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="order-history"
         options={{
           title: 'Riwayat Pesanan',

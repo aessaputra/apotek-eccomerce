@@ -29,6 +29,28 @@ function withFallbackMessage(error: AppError, fallback: string): AppError {
   };
 }
 
+function stringifyCoordinate(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : 'null';
+}
+
+function createShippingQuoteSignature(params: {
+  addressId: string;
+  latitude: number | null | undefined;
+  longitude: number | null | undefined;
+  itemCount: number;
+  estimatedWeightGrams: number;
+  packageValue: number;
+}): string {
+  return [
+    params.addressId,
+    stringifyCoordinate(params.latitude),
+    stringifyCoordinate(params.longitude),
+    params.itemCount,
+    params.estimatedWeightGrams,
+    params.packageValue,
+  ].join('-');
+}
+
 export interface UseCartShippingParams {
   selectedAddress: Address | null;
   selectedAddressId: string | null;
@@ -70,6 +92,11 @@ export function useCartShipping({
   const [shippingSheetOpen, setShippingSheetOpen] = useState(false);
   const [quoteDestinationAreaId, setQuoteDestinationAreaId] = useState<string | null>(null);
   const [quoteDestinationPostalCode, setQuoteDestinationPostalCode] = useState<number | null>(null);
+  const selectedAddressLatitude = selectedAddress?.latitude;
+  const selectedAddressLongitude = selectedAddress?.longitude;
+  const snapshotItemCount = snapshot.itemCount;
+  const snapshotEstimatedWeightGrams = snapshot.estimatedWeightGrams;
+  const snapshotPackageValue = snapshot.packageValue;
 
   const expectedQuoteSignatureRef = useRef<string | null>(null);
   const shippingQuoteRequestIdRef = useRef(0);
@@ -110,7 +137,7 @@ export function useCartShipping({
       return;
     }
 
-    if (snapshot.estimatedWeightGrams <= 0 || snapshot.itemCount <= 0) {
+    if (snapshotEstimatedWeightGrams <= 0 || snapshotItemCount <= 0) {
       setShippingError(
         createTypedError(
           ErrorType.VALIDATION,
@@ -121,7 +148,14 @@ export function useCartShipping({
     }
 
     const requestId = ++shippingQuoteRequestIdRef.current;
-    const signature = `${selectedAddress.id}-${snapshot.itemCount}-${snapshot.estimatedWeightGrams}-${snapshot.packageValue}`;
+    const signature = createShippingQuoteSignature({
+      addressId: selectedAddress.id,
+      latitude: selectedAddressLatitude,
+      longitude: selectedAddressLongitude,
+      itemCount: snapshotItemCount,
+      estimatedWeightGrams: snapshotEstimatedWeightGrams,
+      packageValue: snapshotPackageValue,
+    });
     expectedQuoteSignatureRef.current = signature;
 
     const isStaleQuoteResponse = () =>
@@ -136,9 +170,9 @@ export function useCartShipping({
       for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
         const { data, error } = await getShippingRatesForAddress({
           address: selectedAddress,
-          package_weight_grams: snapshot.estimatedWeightGrams,
-          package_value: snapshot.packageValue,
-          package_name: `Checkout package (${snapshot.itemCount} item)`,
+          package_weight_grams: snapshotEstimatedWeightGrams,
+          package_value: snapshotPackageValue,
+          package_name: `Checkout package (${snapshotItemCount} item)`,
         });
 
         if (isStaleQuoteResponse()) {
@@ -195,9 +229,11 @@ export function useCartShipping({
     isOffline,
     onOfflineAction,
     selectedAddress,
-    snapshot.estimatedWeightGrams,
-    snapshot.itemCount,
-    snapshot.packageValue,
+    selectedAddressLatitude,
+    selectedAddressLongitude,
+    snapshotEstimatedWeightGrams,
+    snapshotItemCount,
+    snapshotPackageValue,
   ]);
 
   const handleSelectShippingKey = useCallback((shippingKey: string) => {
@@ -237,12 +273,14 @@ export function useCartShipping({
       return;
     }
 
-    const shippingInputSignature = [
-      selectedAddress.id,
-      snapshot.itemCount,
-      snapshot.estimatedWeightGrams,
-      snapshot.packageValue,
-    ].join('-');
+    const shippingInputSignature = createShippingQuoteSignature({
+      addressId: selectedAddress.id,
+      latitude: selectedAddressLatitude,
+      longitude: selectedAddressLongitude,
+      itemCount: snapshotItemCount,
+      estimatedWeightGrams: snapshotEstimatedWeightGrams,
+      packageValue: snapshotPackageValue,
+    });
 
     if (previousShippingInputSignatureRef.current === shippingInputSignature) {
       return;
@@ -251,16 +289,18 @@ export function useCartShipping({
     previousShippingInputSignatureRef.current = shippingInputSignature;
     resetShippingSelection();
 
-    if (snapshot.itemCount > 0 && snapshot.estimatedWeightGrams > 0) {
+    if (snapshotItemCount > 0 && snapshotEstimatedWeightGrams > 0) {
       void handleCalculateShipping();
     }
   }, [
     handleCalculateShipping,
     resetShippingSelection,
     selectedAddress?.id,
-    snapshot.estimatedWeightGrams,
-    snapshot.itemCount,
-    snapshot.packageValue,
+    selectedAddressLatitude,
+    selectedAddressLongitude,
+    snapshotEstimatedWeightGrams,
+    snapshotItemCount,
+    snapshotPackageValue,
   ]);
 
   useEffect(() => {

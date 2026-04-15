@@ -1,14 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { YStack, XStack, Text } from 'tamagui';
 import { ChevronRight } from '@tamagui/lucide-icons';
 import type { TextInput as RNTextInput } from 'react-native';
 import FormInput from '@/components/elements/FormInput';
 import { AreaPickerTrigger } from '@/components/AreaPicker';
-import { MapPinSheet } from '@/components/MapPin';
-import type { MapCoords } from '@/components/MapPin';
 import type { AddressFormErrors, AddressFormValues } from '@/utils/addressValidation';
 import { ADDRESS_PLACEHOLDER_STREET } from '@/constants/address';
-import { sanitizeAddressCandidate } from '@/services/googlePlaces.service';
 
 export interface AddressFormProps {
   values: AddressFormValues;
@@ -24,9 +21,6 @@ export interface AddressFormProps {
   };
   onFieldSave: <K extends keyof AddressFormValues>(field: K, value: AddressFormValues[K]) => void;
   onFieldValidate: (field: keyof AddressFormErrors, value: string) => void;
-  onCoordinatesChange?: (coords: MapCoords | null) => void;
-  onMapConfirmed?: (confirmed: boolean) => void;
-  openMapRequestKey?: number;
   onAreaPickerPress?: () => void;
   onStreetAddressPress?: () => void;
 }
@@ -38,34 +32,9 @@ function AddressForm({
   refs,
   onFieldSave,
   onFieldValidate,
-  onCoordinatesChange,
-  onMapConfirmed,
-  openMapRequestKey,
   onAreaPickerPress,
   onStreetAddressPress,
 }: AddressFormProps) {
-  const [mapPinOpen, setMapPinOpen] = useState(false);
-
-  useEffect(() => {
-    if (!openMapRequestKey) return;
-    setMapPinOpen(true);
-  }, [openMapRequestKey]);
-
-  const handleMapPinConfirm = useCallback(
-    (coords: MapCoords) => {
-      onFieldSave('latitude', coords.latitude);
-      onFieldSave('longitude', coords.longitude);
-      onCoordinatesChange?.(coords);
-      onMapConfirmed?.(true);
-    },
-    [onFieldSave, onCoordinatesChange, onMapConfirmed],
-  );
-
-  const currentMapCoords =
-    values.latitude != null && values.longitude != null
-      ? { latitude: values.latitude, longitude: values.longitude }
-      : null;
-
   const handleReceiverNameChange = useCallback(
     (text: string) => {
       onFieldSave('receiverName', text);
@@ -173,23 +142,6 @@ function AddressForm({
           </Text>
         ) : null}
       </YStack>
-
-      <MapPinSheet
-        isOpen={mapPinOpen}
-        onClose={() => setMapPinOpen(false)}
-        onConfirm={handleMapPinConfirm}
-        initialCoords={currentMapCoords ?? undefined}
-        selectedAddressSummary={[
-          sanitizeAddressCandidate(values.streetAddress) || values.streetAddress,
-          values.areaName,
-          values.city,
-          values.province,
-          values.postalCode,
-        ]
-          .filter(Boolean)
-          .join(', ')}
-        onEditAddressPress={() => setMapPinOpen(false)}
-      />
     </YStack>
   );
 }
