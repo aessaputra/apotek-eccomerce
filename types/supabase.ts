@@ -9,6 +9,7 @@ export type Database = {
     Tables: {
       addresses: {
         Row: {
+          address_note: string | null;
           area_id: string | null;
           area_name: string | null;
           city: string;
@@ -28,6 +29,7 @@ export type Database = {
           street_address: string;
         };
         Insert: {
+          address_note?: string | null;
           area_id?: string | null;
           area_name?: string | null;
           city: string;
@@ -47,6 +49,7 @@ export type Database = {
           street_address: string;
         };
         Update: {
+          address_note?: string | null;
           area_id?: string | null;
           area_name?: string | null;
           city?: string;
