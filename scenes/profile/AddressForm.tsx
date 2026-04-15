@@ -387,6 +387,7 @@ export default function AddressFormScreen() {
       receiver_name: values.receiverName.trim(),
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
+      address_note: values.addressNote.trim() || null,
       area_id: values.areaId,
       area_name: values.areaName || null,
       city: values.city.trim(),

@@ -15,6 +15,7 @@ export interface AddressFormProps {
     receiverNameRef: React.RefObject<RNTextInput | null>;
     phoneNumberRef: React.RefObject<RNTextInput | null>;
     streetAddressRef: React.RefObject<RNTextInput | null>;
+    addressNoteRef: React.RefObject<RNTextInput | null>;
     cityRef: React.RefObject<RNTextInput | null>;
     postalCodeRef: React.RefObject<RNTextInput | null>;
     provinceRef: React.RefObject<RNTextInput | null>;
@@ -64,6 +65,17 @@ function AddressForm({
   const handleOpenStreetSearch = useCallback(() => {
     onStreetAddressPress?.();
   }, [onStreetAddressPress]);
+
+  const handleAddressNoteChange = useCallback(
+    (text: string) => {
+      onFieldSave('addressNote', text);
+    },
+    [onFieldSave],
+  );
+
+  const handleAddressNoteBlur = useCallback(() => {
+    onFieldSave('addressNote', values.addressNote.trim());
+  }, [onFieldSave, values.addressNote]);
 
   const handleOpenAreaPicker = useCallback(() => {
     onAreaPickerPress?.();
@@ -141,6 +153,19 @@ function AddressForm({
             {errors.streetAddress}
           </Text>
         ) : null}
+
+        <FormInput
+          ref={refs.addressNoteRef}
+          value={values.addressNote}
+          onChangeText={handleAddressNoteChange}
+          onBlur={handleAddressNoteBlur}
+          placeholder="Detail Lainnya (Blok / Unit No., Patokan)"
+          autoCapitalize="sentences"
+          editable={!isSaving}
+          returnKeyType="done"
+          aria-label="Detail lainnya"
+          aria-describedby="Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)"
+        />
       </YStack>
     </YStack>
   );

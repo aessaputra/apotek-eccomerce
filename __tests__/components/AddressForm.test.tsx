@@ -14,6 +14,7 @@ describe('<AddressForm />', () => {
           receiverNameRef: { current: null },
           phoneNumberRef: { current: null },
           streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
           cityRef: { current: null },
           postalCodeRef: { current: null },
           provinceRef: { current: null },
@@ -40,6 +41,7 @@ describe('<AddressForm />', () => {
           receiverNameRef: { current: null },
           phoneNumberRef: { current: null },
           streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
           cityRef: { current: null },
           postalCodeRef: { current: null },
           provinceRef: { current: null },
@@ -54,5 +56,37 @@ describe('<AddressForm />', () => {
     fireEvent.press(screen.getByText('Nama Jalan, Gedung, No. Rumah'));
 
     expect(onStreetAddressPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves and trims the optional address note field', () => {
+    const onFieldSave = jest.fn();
+
+    render(
+      <AddressForm
+        values={{
+          ...initialFormValues,
+          addressNote: '  Blok A2 dekat gerbang  ',
+        }}
+        errors={initialFormErrors}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={onFieldSave}
+        onFieldValidate={jest.fn()}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={jest.fn()}
+      />,
+    );
+
+    fireEvent(screen.getByLabelText('Detail lainnya'), 'blur');
+
+    expect(onFieldSave).toHaveBeenCalledWith('addressNote', 'Blok A2 dekat gerbang');
   });
 });
