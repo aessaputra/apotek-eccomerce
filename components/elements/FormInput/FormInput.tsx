@@ -1,7 +1,10 @@
 import { forwardRef, useState, useId } from 'react';
+import { TextInput } from 'react-native';
 import { Input, XStack, YStack, Text, styled, useTheme } from 'tamagui';
 import { XCircleIcon } from '@/components/icons';
+import { FORM_FIELD } from '@/constants/ui';
 import { getThemeColor } from '@/utils/theme';
+import { fonts } from '@/utils/fonts';
 
 export interface FormInputProps {
   /** Label untuk input field */
@@ -59,7 +62,6 @@ const InputContainer = styled(XStack, {
   borderRadius: '$4',
   borderColor: '$borderColorHover',
   paddingHorizontal: '$4',
-  minHeight: 56,
   alignItems: 'center',
   overflow: 'hidden',
 
@@ -68,7 +70,6 @@ const InputContainer = styled(XStack, {
       true: {
         alignItems: 'flex-start',
         paddingVertical: '$4',
-        minHeight: 120,
       },
     },
     focused: {
@@ -99,11 +100,9 @@ const StyledInput = styled(Input, {
   margin: 0,
   fontSize: 16,
   color: '$color',
-  minHeight: 56,
-  textAlignVertical: 'center',
 });
 
-const FormInput = forwardRef<Input, FormInputProps>(
+const FormInput = forwardRef<TextInput, FormInputProps>(
   (
     {
       label,
@@ -140,6 +139,25 @@ const FormInput = forwardRef<Input, FormInputProps>(
     const ariaDescribedBy =
       externalAriaDescribedBy ?? ([helperId, errorId].filter(Boolean).join(' ') || undefined);
 
+    const borderColorValue = error
+      ? getThemeColor(theme, 'danger')
+      : isFocused
+        ? getThemeColor(theme, 'primary')
+        : getThemeColor(theme, 'borderColorHover');
+    const surfaceColor = getThemeColor(theme, 'surface');
+    const placeholderColor = getThemeColor(theme, 'placeholderColor');
+    const textColor = getThemeColor(theme, 'color');
+
+    const handleFocus = () => {
+      setIsFocused(true);
+      onFocus?.();
+    };
+
+    const handleBlur = () => {
+      setIsFocused(false);
+      onBlur?.();
+    };
+
     return (
       <YStack>
         {label && (
@@ -149,41 +167,80 @@ const FormInput = forwardRef<Input, FormInputProps>(
           </Text>
         )}
 
-        <InputContainer
-          multiline={multiline}
-          focused={isFocused && !error}
-          error={!!error}
-          disabled={isDisabled}
-          minHeight={multiline ? 120 : 56}>
-          <StyledInput
-            ref={ref}
-            placeholder={placeholder}
-            placeholderTextColor="$placeholderColor"
-            value={value}
-            onChangeText={onChangeText}
-            keyboardType={keyboardType}
-            autoCapitalize={autoCapitalize}
-            autoCorrect={autoCorrect}
-            returnKeyType={returnKeyType}
-            onSubmitEditing={onSubmitEditing}
-            blurOnSubmit={blurOnSubmit}
-            editable={!isDisabled}
-            multiline={multiline}
-            numberOfLines={multiline ? numberOfLines : undefined}
-            onFocus={() => {
-              setIsFocused(true);
-              onFocus?.();
-            }}
-            onBlur={() => {
-              setIsFocused(false);
-              onBlur?.();
-            }}
-            aria-label={ariaLabel || label || placeholder}
-            aria-describedby={ariaDescribedBy}
-            accessibilityLiveRegion={error ? 'polite' : undefined}
-            underlineColorAndroid={getThemeColor(theme, 'colorTransparent')}
-          />
-        </InputContainer>
+        {multiline ? (
+          <InputContainer
+            multiline
+            focused={isFocused && !error}
+            error={!!error}
+            disabled={isDisabled}
+            minHeight={FORM_FIELD.MULTILINE_MIN_HEIGHT}>
+            <StyledInput
+              ref={ref}
+              placeholder={placeholder}
+              placeholderTextColor="$placeholderColor"
+              value={value}
+              onChangeText={onChangeText}
+              keyboardType={keyboardType}
+              autoCapitalize={autoCapitalize}
+              autoCorrect={autoCorrect}
+              returnKeyType={returnKeyType}
+              onSubmitEditing={onSubmitEditing}
+              blurOnSubmit={blurOnSubmit}
+              editable={!isDisabled}
+              multiline
+              numberOfLines={numberOfLines}
+              textAlignVertical="top"
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              aria-label={ariaLabel || label || placeholder}
+              aria-describedby={ariaDescribedBy}
+              accessibilityLiveRegion={error ? 'polite' : undefined}
+              underlineColorAndroid={getThemeColor(theme, 'colorTransparent')}
+            />
+          </InputContainer>
+        ) : (
+          <XStack
+            alignItems="center"
+            paddingHorizontal={FORM_FIELD.HORIZONTAL_PADDING}
+            overflow="hidden"
+            backgroundColor={surfaceColor}
+            borderWidth={isFocused ? FORM_FIELD.ACTIVE_BORDER_WIDTH : FORM_FIELD.BORDER_WIDTH}
+            borderRadius={FORM_FIELD.BORDER_RADIUS}
+            borderColor={borderColorValue}
+            height={FORM_FIELD.HEIGHT}
+            opacity={isDisabled ? 0.6 : 1}>
+            <TextInput
+              ref={ref}
+              style={{
+                flex: 1,
+                height: '100%',
+                padding: 0,
+                margin: 0,
+                fontSize: 16,
+                fontFamily: theme.bodyFont?.val || fonts.poppins.regular,
+                color: textColor,
+              }}
+              placeholder={placeholder}
+              placeholderTextColor={placeholderColor}
+              value={value}
+              onChangeText={onChangeText}
+              keyboardType={keyboardType}
+              autoCapitalize={autoCapitalize}
+              autoCorrect={autoCorrect}
+              returnKeyType={returnKeyType}
+              onSubmitEditing={onSubmitEditing}
+              blurOnSubmit={blurOnSubmit}
+              editable={!isDisabled}
+              textAlignVertical="center"
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              aria-label={ariaLabel || label || placeholder}
+              aria-describedby={ariaDescribedBy}
+              accessibilityLiveRegion={error ? 'polite' : undefined}
+              underlineColorAndroid={getThemeColor(theme, 'colorTransparent')}
+            />
+          </XStack>
+        )}
 
         {helperText && !error && (
           <Text id={helperId} fontSize="$2" color="$colorSubtle" marginTop="$1">
