@@ -9,6 +9,7 @@ const mockAddress: Address = {
   receiver_name: 'John Doe',
   phone_number: '081234567890',
   street_address: 'Jl. Sudirman No. 1',
+  address_note: null,
   city: 'Jakarta',
   city_id: null,
   area_id: null,
