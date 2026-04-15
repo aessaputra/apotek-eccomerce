@@ -357,6 +357,11 @@ export default function OrderDetail() {
                   <Text fontSize="$3" color="$colorSubtle">
                     {order.addresses.street_address}
                   </Text>
+                  {order.addresses.address_note ? (
+                    <Text fontSize="$3" color="$colorSubtle">
+                      {order.addresses.address_note}
+                    </Text>
+                  ) : null}
                   <Text fontSize="$3" color="$colorSubtle">
                     {order.addresses.city}, {order.addresses.province} {order.addresses.postal_code}
                   </Text>

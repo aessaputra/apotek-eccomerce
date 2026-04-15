@@ -63,6 +63,7 @@ const mockOrder = {
     receiver_name: 'John Doe',
     phone_number: '08123456789',
     street_address: 'Jl. Test No. 123',
+    address_note: 'Blok B dekat pos satpam',
     city: 'Jakarta',
     province: 'DKI Jakarta',
     postal_code: '12345',
@@ -142,8 +143,30 @@ describe('<OrderDetail />', () => {
     expect(screen.getByText('Produk')).not.toBeNull();
     expect(screen.getByText('Alamat Pengiriman')).not.toBeNull();
     expect(screen.getByText('John Doe')).not.toBeNull();
+    expect(screen.getByText('Blok B dekat pos satpam')).not.toBeNull();
     expect(screen.getByText('Metode Pengiriman')).not.toBeNull();
     expect(screen.getByText('Total')).not.toBeNull();
+  });
+
+  test('hides address note when no supplementary detail was saved', () => {
+    mockUseOrderDetail.mockReturnValue({
+      order: {
+        ...mockOrder,
+        addresses: {
+          ...mockOrder.addresses,
+          address_note: null,
+        },
+      },
+      status: 'success',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(),
+    });
+
+    render(<OrderDetail />);
+
+    expect(screen.queryByText('Blok B dekat pos satpam')).toBeNull();
   });
 
   test('renders payment status label for settled payment', () => {
