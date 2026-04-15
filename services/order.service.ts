@@ -62,6 +62,7 @@ const ORDER_DETAIL_SELECT = `
     receiver_name,
     phone_number,
     street_address,
+    address_note,
     city,
     province,
     postal_code
@@ -129,6 +130,7 @@ export type OrderWithItems = Order & {
     receiver_name: string;
     phone_number: string;
     street_address: string;
+    address_note: string | null;
     city: string;
     province: string | null;
     postal_code: string;

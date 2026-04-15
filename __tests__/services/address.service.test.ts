@@ -14,6 +14,7 @@ const baseAddress: Address = {
   receiver_name: '  John Doe  ',
   phone_number: ' 081234567890 ',
   street_address: ' Jl. Sudirman No. 1 ',
+  address_note: ' Blok A2 dekat gerbang ',
   city: ' Jakarta ',
   city_id: null,
   province: ' DKI Jakarta ',
@@ -36,6 +37,7 @@ describe('toByteshipShippingAddress', () => {
       recipient_name: 'John Doe',
       phone_number: '081234567890',
       street_address: 'Jl. Sudirman No. 1',
+      destination_note: 'Blok A2 dekat gerbang',
       city: 'Jakarta',
       province: 'DKI Jakarta',
       postal_code: '12345',
@@ -54,6 +56,7 @@ describe('toByteshipShippingAddress', () => {
     expect(result.latitude).toBe(-6.2);
     expect(result.longitude).toBe(106.8);
     expect(result.country_code).toBe('ID');
+    expect(result.destination_note).toBe('Blok A2 dekat gerbang');
   });
 
   test('omits coordinates when only one coordinate value exists', () => {

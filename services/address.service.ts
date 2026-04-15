@@ -6,6 +6,7 @@ export interface ByteshipShippingAddress {
   recipient_name: string;
   phone_number: string;
   street_address: string;
+  destination_note?: string;
   city: string;
   province: string;
   postal_code: string;
@@ -73,6 +74,9 @@ export function toByteshipShippingAddress(address: Address): ByteshipShippingAdd
     province: requireField(address.province, 'province'),
     postal_code: requireField(address.postal_code, 'postal_code'),
     country_code: (normalizeText(address.country_code) || DEFAULT_COUNTRY_CODE).toUpperCase(),
+    ...(normalizeText(address.address_note)
+      ? { destination_note: normalizeText(address.address_note) }
+      : {}),
   };
 
   const latitude = parseCoordinate(address.latitude);
