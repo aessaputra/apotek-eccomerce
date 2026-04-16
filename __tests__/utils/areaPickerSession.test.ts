@@ -56,6 +56,25 @@ describe('areaPickerSession', () => {
       selectedCity: null,
       selectedDistrict: null,
       selectedArea: null,
+      selectedPostalCode: null,
+    });
+  });
+
+  test('consumePendingAreaSelection preserves explicit postal code override from session state', () => {
+    setPendingAreaSelection({
+      area: {
+        id: 'area-3',
+        name: 'Walantaka',
+        postal_code: 42183,
+      },
+      provinceName: 'Banten',
+      regencyName: 'Kota Serang',
+      districtName: 'Walantaka',
+      postalCode: ' 421-83 ',
+    });
+
+    expect(consumePendingAreaSelection()).toMatchObject({
+      postalCode: ' 421-83 ',
     });
   });
 });
