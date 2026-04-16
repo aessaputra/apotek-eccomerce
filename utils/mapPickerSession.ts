@@ -1,13 +1,12 @@
 import type { MapPickerResult } from '@/components/MapPin';
+import { createPendingSelectionSession } from '@/utils/pendingSelectionSession';
 
-let pendingMapPickerResult: MapPickerResult | null = null;
+const pendingMapPickerSession = createPendingSelectionSession<MapPickerResult>();
 
 export function setPendingMapPickerResult(result: MapPickerResult): void {
-  pendingMapPickerResult = result;
+  pendingMapPickerSession.set(result);
 }
 
 export function consumePendingMapPickerResult(): MapPickerResult | null {
-  const result = pendingMapPickerResult;
-  pendingMapPickerResult = null;
-  return result;
+  return pendingMapPickerSession.consume();
 }

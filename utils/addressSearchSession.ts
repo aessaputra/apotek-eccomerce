@@ -1,13 +1,12 @@
 import type { SelectedAddressSuggestion } from '@/types/geocoding';
+import { createPendingSelectionSession } from '@/utils/pendingSelectionSession';
 
-let pendingAddressSelection: SelectedAddressSuggestion | null = null;
+const pendingAddressSelectionSession = createPendingSelectionSession<SelectedAddressSuggestion>();
 
 export function setPendingAddressSelection(selection: SelectedAddressSuggestion): void {
-  pendingAddressSelection = selection;
+  pendingAddressSelectionSession.set(selection);
 }
 
 export function consumePendingAddressSelection(): SelectedAddressSuggestion | null {
-  const selection = pendingAddressSelection;
-  pendingAddressSelection = null;
-  return selection;
+  return pendingAddressSelectionSession.consume();
 }
