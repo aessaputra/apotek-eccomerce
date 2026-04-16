@@ -15,17 +15,21 @@ import { useAppSlice } from '@/slices';
 import { useAddressForm } from '@/hooks/useAddressForm';
 import { useAddressData } from '@/hooks/useAddressData';
 import { buildAddressPayload } from '@/services/address.service';
-import { sanitizeAddressCandidate } from '@/services/googlePlaces.service';
 import type { RouteParams } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 import { consumePendingAddressSelection } from '@/utils/addressSearchSession';
 import { consumePendingAreaSelection } from '@/utils/areaPickerSession';
 import { consumePendingMapPickerResult } from '@/utils/mapPickerSession';
 import {
-  formatLevel2Display,
-  resolveAreaNames,
-  buildAreaDisplayName,
-} from '@/utils/areaFormatters';
+  applyMapPickerSelection,
+  applyPendingSelections,
+  applySelectedAddressSelection,
+  applySelectedAreaSelection,
+  buildAddressMapRouteParams,
+} from './addressFormFlow';
+import type { PendingAreaSelection } from '@/utils/areaPickerSession';
+import type { SelectedAddressSuggestion } from '@/types/geocoding';
+import type { MapPickerResult } from '@/components/MapPin';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -135,101 +139,37 @@ export default function AddressFormScreen() {
     }
   }, [clearDataError, dataError, generalError, setGeneralError]);
 
-  const buildMapRouteParams = useCallback(
-    (overrides?: {
-      latitude?: number | null;
-      longitude?: number | null;
-      streetAddress?: string;
-      areaName?: string;
-      city?: string;
-      province?: string;
-      postalCode?: string;
-    }): RouteParams<'profile/address-map'> => {
-      const params: RouteParams<'profile/address-map'> = {};
-
-      const latitude = overrides?.latitude ?? values.latitude;
-      const longitude = overrides?.longitude ?? values.longitude;
-      const streetAddress = overrides?.streetAddress ?? values.streetAddress;
-      const areaName = overrides?.areaName ?? values.areaName;
-      const city = overrides?.city ?? values.city;
-      const province = overrides?.province ?? values.province;
-      const postalCode = overrides?.postalCode ?? values.postalCode;
-
-      if (latitude != null && longitude != null) {
-        params.latitude = String(latitude);
-        params.longitude = String(longitude);
-      }
-
-      if (streetAddress) {
-        params.streetAddress = streetAddress;
-      }
-
-      if (areaName) {
-        params.areaName = areaName;
-      }
-
-      if (city) {
-        params.city = city;
-      }
-
-      if (province) {
-        params.province = province;
-      }
-
-      if (postalCode) {
-        params.postalCode = postalCode;
-      }
-
-      return params;
-    },
-    [values],
-  );
-
   const handleOpenMap = useCallback(
-    (overrides?: Parameters<typeof buildMapRouteParams>[0]) => {
+    (overrides?: Parameters<typeof buildAddressMapRouteParams>[1]) => {
       router.push({
         pathname: '/profile/address-map',
-        params: buildMapRouteParams(overrides),
+        params: buildAddressMapRouteParams(
+          {
+            latitude: values.latitude,
+            longitude: values.longitude,
+            streetAddress: values.streetAddress,
+            areaName: values.areaName,
+            areaId: values.areaId,
+            city: values.city,
+            province: values.province,
+            postalCode: values.postalCode,
+          },
+          overrides,
+        ),
       });
     },
-    [buildMapRouteParams, router],
+    [router, values],
   );
 
   const applySelectedArea = useCallback(
-    (selectedArea: {
-      area: {
-        id: string;
-        name: string;
-        administrative_division_level_2_name?: string;
-        administrative_division_level_2_type?: string;
-        administrative_division_level_3_name?: string;
-        administrative_division_level_1_name?: string;
-        postal_code?: number;
-      };
-      provinceName?: string;
-      regencyName?: string;
-      districtName?: string;
-      postalCode?: string;
-    }) => {
-      const area = selectedArea.area;
-      const resolved = resolveAreaNames(selectedArea as Parameters<typeof resolveAreaNames>[0]);
-      const areaDisplayName = buildAreaDisplayName({
-        ...resolved,
-        regency: formatLevel2Display(resolved.regency, area.administrative_division_level_2_type),
+    (selectedArea: PendingAreaSelection) => {
+      applySelectedAreaSelection(selectedArea, {
+        clearTransientErrors,
+        setArea,
+        setAreaProximity,
+        setCoordinateFieldValue: setFieldValue,
+        resetMapConfirmation,
       });
-
-      clearTransientErrors();
-      setArea({
-        id: area.id,
-        name: areaDisplayName || area.name,
-        city: resolved.regency,
-        province: resolved.province,
-        postalCode: resolved.postalCode,
-      });
-      setAreaProximity(null);
-      setFieldValue('latitude', null);
-      setFieldValue('longitude', null);
-      resetMapConfirmation();
     },
     [clearTransientErrors, resetMapConfirmation, setArea, setFieldValue],
   );
@@ -243,82 +183,66 @@ export default function AddressFormScreen() {
   );
 
   const applySelectedAddress = useCallback(
-    (selectedAddress: {
-      streetAddress: string;
-      city: string;
-      province: string;
-      postalCode: string;
-      latitude: number;
-      longitude: number;
-    }) => {
-      clearTransientErrors();
-      const sanitizedStreetAddress =
-        sanitizeAddressCandidate(selectedAddress.streetAddress) || selectedAddress.streetAddress;
-      setFieldValue('streetAddress', sanitizedStreetAddress);
-
-      if (!values.areaId) {
-        setFieldValue('city', selectedAddress.city);
-        setFieldValue('province', selectedAddress.province);
-        setFieldValue('postalCode', selectedAddress.postalCode);
-      }
-
-      setFieldValue('latitude', selectedAddress.latitude);
-      setFieldValue('longitude', selectedAddress.longitude);
-      setAreaProximity({
-        latitude: selectedAddress.latitude,
-        longitude: selectedAddress.longitude,
-      });
-      setMapConfirmed(false);
-      handleOpenMap({
-        latitude: selectedAddress.latitude,
-        longitude: selectedAddress.longitude,
-        streetAddress: sanitizedStreetAddress,
-        areaName: values.areaName,
-        city: values.areaId ? values.city : selectedAddress.city,
-        province: values.areaId ? values.province : selectedAddress.province,
-        postalCode: values.areaId ? values.postalCode : selectedAddress.postalCode,
+    (
+      selectedAddress: SelectedAddressSuggestion,
+      addressContext: {
+        areaId: string;
+        areaName: string;
+        city: string;
+        province: string;
+        postalCode: string;
+      },
+    ) => {
+      applySelectedAddressSelection(selectedAddress, addressContext, {
+        clearTransientErrors,
+        setTextFieldValue: setFieldValue,
+        setCoordinateFieldValue: setFieldValue,
+        setAreaProximity,
+        setMapConfirmed,
+        handleOpenMap,
       });
     },
-    [
-      clearTransientErrors,
-      handleOpenMap,
-      setFieldValue,
-      setMapConfirmed,
-      values.areaId,
-      values.areaName,
-      values.city,
-      values.postalCode,
-      values.province,
-    ],
+    [clearTransientErrors, handleOpenMap, setFieldValue, setMapConfirmed],
   );
 
   const applyMapPickerResult = useCallback(
-    (result: { latitude: number; longitude: number; didAdjustPin: boolean }) => {
-      clearTransientErrors();
-      setFieldValue('latitude', result.latitude);
-      setFieldValue('longitude', result.longitude);
-      setMapConfirmed(true);
+    (result: MapPickerResult) => {
+      applyMapPickerSelection(result, {
+        clearTransientErrors,
+        setCoordinateFieldValue: setFieldValue,
+        setMapConfirmed,
+      });
     },
     [clearTransientErrors, setFieldValue, setMapConfirmed],
   );
 
   useFocusEffect(
     useCallback(() => {
-      const selectedArea = consumePendingAreaSelection();
-      if (selectedArea) {
-        applySelectedArea(selectedArea);
-      }
-
-      const selectedAddress = consumePendingAddressSelection();
-      if (selectedAddress) {
-        applySelectedAddress(selectedAddress);
-      }
-
-      const mapPickerResult = consumePendingMapPickerResult();
-      if (mapPickerResult) {
-        applyMapPickerResult(mapPickerResult);
-      }
-    }, [applySelectedAddress, applySelectedArea, applyMapPickerResult]),
+      applyPendingSelections({
+        consumePendingAreaSelection,
+        consumePendingAddressSelection,
+        consumePendingMapPickerResult,
+        getCurrentAddressContext: () => ({
+          areaId: values.areaId,
+          areaName: values.areaName,
+          city: values.city,
+          province: values.province,
+          postalCode: values.postalCode,
+        }),
+        applySelectedArea,
+        applySelectedAddress,
+        applyMapPickerResult,
+      });
+    }, [
+      applySelectedAddress,
+      applySelectedArea,
+      applyMapPickerResult,
+      values.areaId,
+      values.areaName,
+      values.city,
+      values.postalCode,
+      values.province,
+    ]),
   );
 
   const handleOpenAreaPicker = useCallback(() => {

@@ -15,7 +15,23 @@ const mockConsumePendingAddressSelection = jest.fn<
     longitude: number;
   } | null
 >();
-const mockConsumePendingAreaSelection = jest.fn(() => null);
+type PendingAreaSelection = {
+  area: {
+    id: string;
+    name: string;
+    administrative_division_level_2_name?: string;
+    administrative_division_level_2_type?: string;
+    administrative_division_level_3_name?: string;
+    administrative_division_level_1_name?: string;
+    postal_code?: number;
+  };
+  provinceName?: string;
+  regencyName?: string;
+  districtName?: string;
+  postalCode?: string;
+};
+
+const mockConsumePendingAreaSelection = jest.fn<() => PendingAreaSelection | null>();
 type PendingMapPickerResult = {
   latitude: number;
   longitude: number;
@@ -32,6 +48,21 @@ const mockClearArea = jest.fn();
 const mockSetMapConfirmed = jest.fn();
 const mockResetMapConfirmation = jest.fn();
 const mockSetGeneralError = jest.fn();
+
+const mockValues = {
+  receiverName: '',
+  phoneNumber: '',
+  streetAddress: '',
+  addressNote: '',
+  areaId: 'area-1',
+  areaName: 'Walantaka',
+  city: 'Kota Serang',
+  postalCode: '42183',
+  province: 'Banten',
+  isDefault: false,
+  latitude: null as number | null,
+  longitude: null as number | null,
+};
 
 jest.mock('expo-router', () => ({
   __esModule: true,
@@ -67,20 +98,7 @@ jest.mock('@/slices', () => ({
 
 jest.mock('@/hooks/useAddressForm', () => ({
   useAddressForm: () => ({
-    values: {
-      receiverName: '',
-      phoneNumber: '',
-      streetAddress: '',
-      addressNote: '',
-      areaId: 'area-1',
-      areaName: 'Walantaka',
-      city: 'Kota Serang',
-      postalCode: '42183',
-      province: 'Banten',
-      isDefault: false,
-      latitude: null,
-      longitude: null,
-    },
+    values: mockValues,
     errors: {
       receiverName: null,
       phoneNumber: null,
@@ -190,15 +208,75 @@ jest.mock('@/utils/mapPickerSession', () => ({
 
 jest.mock('@/utils/areaFormatters', () => ({
   formatLevel2Display: (value: string) => value,
-  resolveAreaNames: jest.fn(),
-  buildAreaDisplayName: jest.fn(() => ''),
+  resolveAreaNames: (selectedArea: {
+    area: {
+      administrative_division_level_2_name?: string;
+      administrative_division_level_1_name?: string;
+      postal_code?: number;
+      name: string;
+    };
+    districtName?: string;
+    regencyName?: string;
+    provinceName?: string;
+    postalCode?: string;
+  }) => ({
+    district: selectedArea.districtName || selectedArea.area.name,
+    regency:
+      selectedArea.regencyName || selectedArea.area.administrative_division_level_2_name || '',
+    province:
+      selectedArea.provinceName || selectedArea.area.administrative_division_level_1_name || '',
+    postalCode: selectedArea.postalCode || String(selectedArea.area.postal_code ?? ''),
+  }),
+  buildAreaDisplayName: ({
+    district,
+    regency,
+    province,
+    postalCode,
+  }: {
+    district: string;
+    regency: string;
+    province: string;
+    postalCode: string;
+  }) => [district, regency, province, postalCode].filter(Boolean).join(', '),
 }));
 
 describe('<AddressFormScreen /> address flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockValues.receiverName = '';
+    mockValues.phoneNumber = '';
+    mockValues.streetAddress = '';
+    mockValues.addressNote = '';
+    mockValues.areaId = 'area-1';
+    mockValues.areaName = 'Walantaka';
+    mockValues.city = 'Kota Serang';
+    mockValues.postalCode = '42183';
+    mockValues.province = 'Banten';
+    mockValues.isDefault = false;
+    mockValues.latitude = null;
+    mockValues.longitude = null;
     mockConsumePendingAddressSelection.mockReturnValue(null);
+    mockConsumePendingAreaSelection.mockReturnValue(null);
     mockConsumePendingMapPickerResult.mockReturnValue(null);
+
+    mockSetFieldValue.mockImplementation((...args: unknown[]) => {
+      const [field, value] = args as [keyof typeof mockValues, unknown];
+      (mockValues as Record<string, unknown>)[field] = value;
+    });
+    mockSetArea.mockImplementation((...args: unknown[]) => {
+      const [area] = args as [
+        { id: string; name: string; city: string; province: string; postalCode: string },
+      ];
+      mockValues.areaId = area.id;
+      mockValues.areaName = area.name;
+      mockValues.city = area.city;
+      mockValues.province = area.province;
+      mockValues.postalCode = area.postalCode;
+    });
+    mockSetMapConfirmed.mockImplementation((...args: unknown[]) => {
+      const [confirmed] = args as [boolean];
+      (mockValues as Record<string, unknown>).mapConfirmed = confirmed;
+    });
   });
 
   it('opens the map route automatically after consuming a selected address', () => {
@@ -255,5 +333,52 @@ describe('<AddressFormScreen /> address flow', () => {
 
     expect(mockClearArea).not.toHaveBeenCalled();
     expect(mockSetGeneralError).not.toHaveBeenCalled();
+  });
+
+  it('applies mixed pending sources in area → address → map precedence order', () => {
+    mockConsumePendingAreaSelection.mockReturnValueOnce({
+      area: {
+        id: 'area-2',
+        name: 'Ciruas',
+        administrative_division_level_2_name: 'Kabupaten Serang',
+        administrative_division_level_2_type: 'regency',
+        administrative_division_level_3_name: 'Ciruas',
+        administrative_division_level_1_name: 'Banten',
+        postal_code: 42182,
+      },
+    });
+    mockConsumePendingAddressSelection.mockReturnValueOnce({
+      streetAddress: 'Jl. Raya Baru',
+      city: 'Jakarta Selatan',
+      province: 'DKI Jakarta',
+      postalCode: '12345',
+      latitude: -6.21,
+      longitude: 106.81,
+    });
+    mockConsumePendingMapPickerResult.mockReturnValueOnce({
+      latitude: -6.22,
+      longitude: 106.82,
+      didAdjustPin: true,
+    });
+
+    render(<AddressFormScreen />);
+
+    expect(mockValues.areaId).toBe('area-2');
+    expect(mockValues.areaName).toContain('Ciruas');
+    expect(mockValues.streetAddress).toBe('Jl. Raya Baru');
+    expect(mockValues.latitude).toBe(-6.22);
+    expect(mockValues.longitude).toBe(106.82);
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/profile/address-map',
+      params: {
+        areaName: expect.stringContaining('Ciruas'),
+        city: 'Kabupaten Serang',
+        latitude: '-6.21',
+        longitude: '106.81',
+        postalCode: '42182',
+        province: 'Banten',
+        streetAddress: 'Jl. Raya Baru',
+      },
+    });
   });
 });
