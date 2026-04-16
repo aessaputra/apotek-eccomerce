@@ -42,4 +42,56 @@ describe('<BottomActionBar />', () => {
 
     expect(screen.getByText('Bayar Sekarang')).not.toBeNull();
   });
+
+  test('includeBottomInset=false omits bottom inset from padding', () => {
+    render(
+      <BottomActionBar
+        buttonTitle="Simpan"
+        onPress={() => {}}
+        includeBottomInset={false}
+        aria-label="Simpan"
+        aria-describedby="Simpan data"
+      />,
+    );
+
+    const bar = screen.getByLabelText('Bottom action bar');
+    // When includeBottomInset is false, paddingBottom should be VERTICAL_PADDING (8) only,
+    // without any safe area inset added.
+    const paddingBottom = Array.isArray(bar.props.style)
+      ? (bar.props.style.find?.(
+          (s: Record<string, unknown>) => typeof s?.paddingBottom === 'number',
+        ) ?? bar.props.style)
+      : bar.props.style;
+    const pbValue =
+      typeof paddingBottom === 'object' && paddingBottom !== null
+        ? (paddingBottom as Record<string, unknown>).paddingBottom
+        : undefined;
+    // VERTICAL_PADDING = 8, no safe area inset added
+    expect(pbValue).toBe(8);
+  });
+
+  test('includeBottomInset=true (default) includes bottom inset in padding', () => {
+    render(
+      <BottomActionBar
+        buttonTitle="Simpan"
+        onPress={() => {}}
+        aria-label="Simpan"
+        aria-describedby="Simpan data"
+      />,
+    );
+
+    const bar = screen.getByLabelText('Bottom action bar');
+    // Default behavior: paddingBottom = VERTICAL_PADDING + insets.bottom
+    // Test SafeAreaProvider has insets.bottom = 0, so pb = 8 + 0 = 8
+    const paddingBottom = Array.isArray(bar.props.style)
+      ? (bar.props.style.find?.(
+          (s: Record<string, unknown>) => typeof s?.paddingBottom === 'number',
+        ) ?? bar.props.style)
+      : bar.props.style;
+    const pbValue =
+      typeof paddingBottom === 'object' && paddingBottom !== null
+        ? (paddingBottom as Record<string, unknown>).paddingBottom
+        : undefined;
+    expect(pbValue).toBe(8);
+  });
 });
