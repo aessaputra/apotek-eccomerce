@@ -420,7 +420,7 @@ export default function AddressFormScreen() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']}>
+    <SafeAreaView edges={[]}>
       <KeyboardAvoidingWrapper
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>

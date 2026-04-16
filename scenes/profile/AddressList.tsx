@@ -234,7 +234,7 @@ export default function AddressList() {
         {addresses.length > 0 && (
           <YStack
             position="absolute"
-            bottom={insets.bottom}
+            bottom={0}
             left={0}
             right={0}
             backgroundColor="$background"

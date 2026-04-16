@@ -74,13 +74,12 @@ export default function EditProfile() {
     }
   }, [user]);
 
-  const insets = useSafeAreaInsets();
   const avatarSize = windowWidth < 375 ? 100 : 120;
-  const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
+  const insets = useSafeAreaInsets();
   const keyboardGap = 16;
   const extraBottomOffset = Platform.OS === 'android' ? keyboardHeight : 0;
   const scrollPaddingBottom =
-    bottomBarHeight + FORM_SCROLL_PADDING.COMPACT + keyboardHeight + keyboardGap;
+    BOTTOM_BAR_HEIGHT + insets.bottom + FORM_SCROLL_PADDING.COMPACT + keyboardHeight + keyboardGap;
 
   const validateName = useCallback((value: string): string | null => {
     const trimmed = value.trim();
@@ -225,7 +224,7 @@ export default function EditProfile() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']}>
+    <SafeAreaView edges={[]}>
       <KeyboardAvoidingWrapper
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
