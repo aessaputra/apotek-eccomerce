@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 import { YStack, XStack, Text } from 'tamagui';
 import { ChevronRight } from '@tamagui/lucide-icons';
 import type { TextInput as RNTextInput } from 'react-native';
@@ -36,6 +36,8 @@ function AddressForm({
   onAreaPickerPress,
   onStreetAddressPress,
 }: AddressFormProps) {
+  const streetAddressErrorId = useId();
+
   const handleReceiverNameChange = useCallback(
     (text: string) => {
       onFieldSave('receiverName', text);
@@ -123,36 +125,48 @@ function AddressForm({
         />
       </YStack>
 
-      <YStack gap="$1">
-        <YStack
-          backgroundColor="$background"
-          borderWidth={1}
-          borderColor={errors.streetAddress ? '$danger' : '$surfaceBorder'}
-          borderRadius="$4"
-          minHeight={56}
-          paddingHorizontal="$4"
-          paddingVertical="$3.5"
-          justifyContent="center"
-          opacity={isSaving ? 0.5 : 1}
-          pressStyle={{ opacity: 0.9, scale: 0.995 }}
-          onPress={isSaving ? undefined : handleOpenStreetSearch}>
-          <XStack justifyContent="space-between" alignItems="center" gap="$3">
-            <Text
-              flex={1}
-              fontSize="$4"
-              color={values.streetAddress ? '$color' : '$placeholderColor'}
-              numberOfLines={2}>
-              {values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
-            </Text>
-            <ChevronRight size={20} color="$colorMuted" />
-          </XStack>
-        </YStack>
+      <YStack gap="$3">
+        <YStack gap="$1">
+          <YStack
+            backgroundColor="$background"
+            borderWidth={1.5}
+            borderColor={errors.streetAddress ? '$danger' : '$surfaceBorder'}
+            borderRadius="$4"
+            minHeight={56}
+            paddingHorizontal="$4"
+            paddingTop="$3"
+            paddingBottom="$3"
+            justifyContent="center"
+            opacity={isSaving ? 0.5 : 1}
+            role="button"
+            aria-disabled={isSaving}
+            aria-invalid={!!errors.streetAddress}
+            aria-label={values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
+            aria-describedby={
+              errors.streetAddress ? streetAddressErrorId : 'Membuka pencarian alamat pengiriman'
+            }
+            pressStyle={{ opacity: 0.9, scale: 0.995 }}
+            animation="quick"
+            onPress={isSaving ? undefined : handleOpenStreetSearch}>
+            <XStack justifyContent="space-between" alignItems="center" gap="$3">
+              <Text
+                flex={1}
+                fontSize="$4"
+                color={values.streetAddress ? '$color' : '$colorMuted'}
+                fontWeight="400"
+                numberOfLines={2}>
+                {values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
+              </Text>
+              <ChevronRight size={20} color="$colorMuted" />
+            </XStack>
+          </YStack>
 
-        {errors.streetAddress ? (
-          <Text fontSize="$2" color="$danger">
-            {errors.streetAddress}
-          </Text>
-        ) : null}
+          {errors.streetAddress ? (
+            <Text id={streetAddressErrorId} fontSize="$2" color="$danger" marginTop="$1">
+              {errors.streetAddress}
+            </Text>
+          ) : null}
+        </YStack>
 
         <FormInput
           ref={refs.addressNoteRef}

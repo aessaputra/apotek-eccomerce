@@ -89,4 +89,61 @@ describe('<AddressForm />', () => {
 
     expect(onFieldSave).toHaveBeenCalledWith('addressNote', 'Blok A2 dekat gerbang');
   });
+
+  it('does not open street address search when isSaving is true', () => {
+    const onStreetAddressPress = jest.fn();
+
+    render(
+      <AddressForm
+        values={initialFormValues}
+        errors={initialFormErrors}
+        isSaving={true}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={jest.fn()}
+        onFieldValidate={jest.fn()}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={onStreetAddressPress}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Nama Jalan, Gedung, No. Rumah'));
+
+    expect(onStreetAddressPress).not.toHaveBeenCalled();
+  });
+
+  it('exposes the street address row as a disabled button when saving', () => {
+    render(
+      <AddressForm
+        values={initialFormValues}
+        errors={initialFormErrors}
+        isSaving={true}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={jest.fn()}
+        onFieldValidate={jest.fn()}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={jest.fn()}
+      />,
+    );
+
+    const streetAddressTrigger = screen.getByLabelText('Nama Jalan, Gedung, No. Rumah');
+
+    expect(streetAddressTrigger.props.role).toBe('button');
+    expect(streetAddressTrigger.props['aria-disabled']).toBe(true);
+  });
 });
