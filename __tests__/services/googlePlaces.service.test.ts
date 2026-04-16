@@ -8,6 +8,7 @@ import {
   getPlaceDetails,
   getPlacePredictions,
   reverseGeocodeCoordinates,
+  sanitizeAddressCandidate,
 } from '@/services/googlePlaces.service';
 
 jest.mock('@/utils/config', () => ({
@@ -318,6 +319,23 @@ describe('googlePlaces.service', () => {
       expect(result2.data?.placeId).toBe('ChIJ123');
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
+
+    test('normalizes fallback placeId when response id is missing', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          formattedAddress: 'Jl. Sudirman, Jakarta',
+          addressComponents: [],
+          location: { latitude: -6.2, longitude: 106.8 },
+          types: [],
+        }),
+      } as Response);
+
+      const result = await getPlaceDetails('places/ChIJ123', 'session-123');
+
+      expect(result.error).toBeNull();
+      expect(result.data?.placeId).toBe('ChIJ123');
+    });
   });
 
   describe('getAddressRecommendations', () => {
@@ -592,6 +610,12 @@ describe('googlePlaces.service', () => {
   });
 
   describe('convertPlaceDetailsToAddress', () => {
+    test('sanitizes leading plus codes from public address candidates', () => {
+      expect(sanitizeAddressCandidate('  Jalan Raya Serang  ')).toBe('Jalan Raya Serang');
+      expect(sanitizeAddressCandidate('')).toBe('');
+      expect(sanitizeAddressCandidate('V6FJ+Q3G, Pelawad, Ciruas')).toBe('');
+    });
+
     test('extracts street address correctly', () => {
       const details = {
         placeId: 'ChIJ123',
@@ -638,6 +662,23 @@ describe('googlePlaces.service', () => {
 
       expect(result.city).toBe('Kota Tangerang');
     });
+
+    test('falls back when route-derived street address is a plus code', () => {
+      const details = {
+        placeId: 'ChIJ456',
+        name: 'V6FJ+Q3G',
+        formattedAddress: 'Jalan Raya Serang, Ciruas',
+        coordinates: { latitude: -6.12, longitude: 106.17 },
+        addressComponents: [
+          { longName: 'V6FJ+Q3G', shortName: 'V6FJ+Q3G', types: ['route'] },
+          { longName: 'Ciruas', shortName: 'Ciruas', types: ['locality'] },
+        ],
+      };
+
+      const result = convertPlaceDetailsToAddress(details);
+
+      expect(result.streetAddress).toBe('Jalan Raya Serang');
+    });
   });
 
   describe('reverseGeocodeCoordinates', () => {
@@ -677,6 +718,70 @@ describe('googlePlaces.service', () => {
       });
 
       expect(result.error?.message).toContain('Alamat dari titik peta tidak ditemukan');
+    });
+
+    test('falls back to formatted address when the first segment from parts is a plus code', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              place_id: 'plus-code-street',
+              formatted_address: 'Jalan Raya Serang, Ciruas, Banten',
+              address_components: [
+                { long_name: 'V6FJ+Q3G', short_name: 'V6FJ+Q3G', types: ['route'] },
+                { long_name: 'Ciruas', short_name: 'Ciruas', types: ['locality'] },
+              ],
+              types: ['route'],
+              geometry: { location: { lat: -6.2, lng: 106.8 } },
+            },
+          ],
+          status: 'OK',
+        }),
+      } as Response);
+
+      const result = await reverseGeocodeCoordinates({
+        latitude: -6.2,
+        longitude: 106.8,
+      });
+
+      expect(result.error).toBeNull();
+      expect(result.data?.streetAddress).toBe('Jalan Raya Serang');
+    });
+
+    test('uses sublocality as city fallback when higher-level city fields are missing', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              place_id: 'sublocality-city-fallback',
+              formatted_address: 'Komplek Ruko Hijau, Pelawad, Banten',
+              address_components: [
+                { long_name: 'Komplek Ruko Hijau', short_name: 'Ruko Hijau', types: ['premise'] },
+                { long_name: 'Pelawad', short_name: 'Pelawad', types: ['sublocality'] },
+                {
+                  long_name: 'Banten',
+                  short_name: 'Banten',
+                  types: ['administrative_area_level_1'],
+                },
+              ],
+              types: ['premise'],
+              geometry: { location: { lat: -6.19, lng: 106.18 } },
+            },
+          ],
+          status: 'OK',
+        }),
+      } as Response);
+
+      const result = await reverseGeocodeCoordinates({
+        latitude: -6.19,
+        longitude: 106.18,
+      });
+
+      expect(result.error).toBeNull();
+      expect(result.data?.city).toBe('Pelawad');
+      expect(result.data?.province).toBe('Banten');
     });
   });
 
