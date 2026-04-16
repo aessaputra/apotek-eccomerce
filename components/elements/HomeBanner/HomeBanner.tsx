@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Card, Image, Text, YStack, styled, XStack } from 'tamagui';
 import type {
   HomeBannerCTA,
@@ -114,6 +114,8 @@ export const HomeBannerSkeleton = memo(function HomeBannerSkeleton({
 });
 
 function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const previousMediaUrlRef = useRef<string | null | undefined>(banner?.mediaUrl);
   const hasText = Boolean(banner?.title || banner?.body);
   const hasValidCTA =
     banner?.ctaKind === 'route' && Boolean(banner?.cta?.label && banner?.cta?.route);
@@ -123,6 +125,15 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
   const theme = banner ? getBannerTheme(banner.intent) : BANNER_THEME_CONFIG.promotional;
   const cta = banner?.cta;
   const aspectRatio = banner ? getAspectRatio(banner.placementKey) : 3 / 1;
+  const showsImage = hasMediaUrl && !imageFailed;
+  const mediaUrl = banner?.mediaUrl;
+
+  useEffect(() => {
+    if (previousMediaUrlRef.current !== mediaUrl) {
+      previousMediaUrlRef.current = mediaUrl;
+      setImageFailed(false);
+    }
+  }, [mediaUrl]);
 
   if (!banner || !hasVisibleContent) {
     return null;
@@ -131,21 +142,26 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
   if (!hasText && !hasValidCTA && hasMediaUrl) {
     return (
       <BannerContainer testID={`home-banner-${banner.placementKey}`} aspectRatio={aspectRatio}>
-        <Image
-          source={{ uri: banner.mediaUrl! }}
-          width="100%"
-          height="100%"
-          resizeMode="cover"
-          accessible={false}
-          testID={`home-banner-image-${banner.placementKey}`}
-        />
+        {imageFailed ? (
+          <YStack flex={1} backgroundColor={theme.fallbackBg} />
+        ) : (
+          <Image
+            source={{ uri: banner.mediaUrl! }}
+            width="100%"
+            height="100%"
+            resizeMode="cover"
+            accessible={false}
+            testID={`home-banner-image-${banner.placementKey}`}
+            onError={() => setImageFailed(true)}
+          />
+        )}
       </BannerContainer>
     );
   }
 
   return (
     <BannerContainer testID={`home-banner-${banner.placementKey}`} aspectRatio={aspectRatio}>
-      {hasMediaUrl ? (
+      {showsImage ? (
         <Image
           source={{ uri: banner.mediaUrl! }}
           width="100%"
@@ -156,6 +172,7 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
           left={0}
           accessible={false}
           testID={`home-banner-image-${banner.placementKey}`}
+          onError={() => setImageFailed(true)}
         />
       ) : (
         <YStack flex={1} backgroundColor={theme.fallbackBg} />
@@ -164,29 +181,29 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
       <ContentOverlay>
         {banner.title ? (
           <Text
-            color={hasMediaUrl ? theme.titleColor : '$color'}
+            color={showsImage ? theme.titleColor : '$color'}
             fontSize={15}
             lineHeight={20}
             fontWeight="700"
             letterSpacing={-0.3}
             numberOfLines={2}
-            textShadowColor={hasMediaUrl ? 'rgba(0,0,0,0.5)' : undefined}
-            textShadowOffset={hasMediaUrl ? { width: 0, height: 1 } : undefined}
-            textShadowRadius={hasMediaUrl ? 3 : undefined}>
+            textShadowColor={showsImage ? 'rgba(0,0,0,0.5)' : undefined}
+            textShadowOffset={showsImage ? { width: 0, height: 1 } : undefined}
+            textShadowRadius={showsImage ? 3 : undefined}>
             {banner.title}
           </Text>
         ) : null}
 
         {banner.body ? (
           <Text
-            color={hasMediaUrl ? theme.bodyColor : '$colorSubtle'}
+            color={showsImage ? theme.bodyColor : '$colorSubtle'}
             fontSize={13}
             lineHeight={17}
             fontWeight="500"
             numberOfLines={2}
-            textShadowColor={hasMediaUrl ? 'rgba(0,0,0,0.4)' : undefined}
-            textShadowOffset={hasMediaUrl ? { width: 0, height: 1 } : undefined}
-            textShadowRadius={hasMediaUrl ? 2 : undefined}>
+            textShadowColor={showsImage ? 'rgba(0,0,0,0.4)' : undefined}
+            textShadowOffset={showsImage ? { width: 0, height: 1 } : undefined}
+            textShadowRadius={showsImage ? 2 : undefined}>
             {banner.body}
           </Text>
         ) : null}
