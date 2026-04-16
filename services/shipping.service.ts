@@ -1,5 +1,6 @@
 import { supabase } from '@/utils/supabase';
 import config from '@/utils/config';
+import { parsePostalCode } from '@/utils/postalCode';
 import type { Address } from '@/types/address';
 import type {
   BiteshipArea,
@@ -172,13 +173,17 @@ function mapTrackingEvent(value: unknown): TrackingEvent | null {
   };
 }
 
+function isTrackingEvent(event: TrackingEvent | null): event is TrackingEvent {
+  return event !== null;
+}
+
 function mapTrackingResult(value: unknown): TrackingResult {
   const record = toRecord(value);
   const courier = toRecord(record.courier);
   const origin = toRecord(record.origin);
   const destination = toRecord(record.destination);
   const history = Array.isArray(record.history)
-    ? record.history.map(mapTrackingEvent).filter(Boolean)
+    ? record.history.map(mapTrackingEvent).filter(isTrackingEvent)
     : [];
 
   const id = toStringValue(record.id).trim();
@@ -338,16 +343,6 @@ async function resolveDestinationAreaId(
   }
 
   return { areaId: null, error: null };
-}
-
-function parsePostalCode(postalCode: string): number | null {
-  const digitsOnly = postalCode.replace(/\D/g, '');
-  if (digitsOnly.length !== 5) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(digitsOnly, 10);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 async function invokeBiteship(
