@@ -285,7 +285,7 @@ export default function Home() {
               fontWeight="800"
               letterSpacing={-0.8}
               maxWidth={media.gtSm ? 320 : '100%'}>
-              Sehat jadi mudah
+              Belanja obat makin mudah
             </Text>
 
             <SearchShell
