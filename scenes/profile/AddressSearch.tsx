@@ -19,6 +19,10 @@ import type { GeocodingProximity } from '@/types/geocoding';
 import type { RouteParams } from '@/types/routes.types';
 import { setPendingAddressSelection } from '@/utils/addressSearchSession';
 import { ADDRESS_PLACEHOLDER_STREET } from '@/constants/address';
+import {
+  parseAddressSearchInitialLocation,
+  shouldShowInitialAddressRecommendations,
+} from './addressRouteParams';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -33,19 +37,11 @@ export default function AddressSearchScreen() {
   const nearbyLocationRef = useRef<GeocodingProximity | null>(null);
 
   const initialQuery = typeof params.query === 'string' ? params.query : '';
-  const latitude = typeof params.latitude === 'string' ? Number(params.latitude) : NaN;
-  const longitude = typeof params.longitude === 'string' ? Number(params.longitude) : NaN;
+  const seededInitialQueryPendingRef = useRef(initialQuery.trim().length >= 2);
 
   const initialLocation = useMemo(() => {
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      return null;
-    }
-
-    return {
-      latitude,
-      longitude,
-    };
-  }, [latitude, longitude]);
+    return parseAddressSearchInitialLocation(params);
+  }, [params]);
 
   const {
     query,
@@ -129,7 +125,17 @@ export default function AddressSearchScreen() {
   }, [initialQuery, setQuery]);
 
   useEffect(() => {
-    if (query.trim().length >= 2) {
+    if (query === initialQuery) {
+      seededInitialQueryPendingRef.current = false;
+    }
+  }, [initialQuery, query]);
+
+  useEffect(() => {
+    if (seededInitialQueryPendingRef.current) {
+      return;
+    }
+
+    if (!shouldShowInitialAddressRecommendations(query)) {
       return;
     }
 
@@ -232,7 +238,7 @@ export default function AddressSearchScreen() {
                 isLoading={isLoading}
                 isSelecting={isRetrieving}
                 error={error}
-                showInitialRecommendations={query.trim().length < 2}
+                showInitialRecommendations={shouldShowInitialAddressRecommendations(query)}
                 onSelect={handleSelectSuggestion}
               />
             </ScrollView>

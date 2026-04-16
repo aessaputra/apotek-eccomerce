@@ -86,6 +86,31 @@ describe('<AddressMapScreen />', () => {
     ).not.toBeNull();
   });
 
+  it('omits initial coords when route coordinate params are invalid', () => {
+    mockRouteParams = {
+      latitude: 'invalid',
+      longitude: '106.8',
+    };
+
+    render(<AddressMapScreen />);
+
+    expect(screen.getByText('no-coords')).not.toBeNull();
+  });
+
+  it('builds the selected address summary from sanitized and trimmed route fields', () => {
+    mockRouteParams = {
+      streetAddress: '8FVC9G8F+5W',
+      areaName: '  Walantaka  ',
+      city: ' Kota Serang ',
+      province: ' Banten ',
+      postalCode: ' 42183 ',
+    };
+
+    render(<AddressMapScreen />);
+
+    expect(screen.getByText('Walantaka, Kota Serang, Banten, 42183')).not.toBeNull();
+  });
+
   it('stores confirmed coordinates and navigates back', () => {
     render(<AddressMapScreen />);
 

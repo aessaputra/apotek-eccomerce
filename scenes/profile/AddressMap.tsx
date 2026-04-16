@@ -6,7 +6,7 @@ import { MapPicker } from '@/components/MapPin';
 import type { MapCoords, MapPickerResult } from '@/components/MapPin';
 import type { RouteParams } from '@/types/routes.types';
 import { setPendingMapPickerResult } from '@/utils/mapPickerSession';
-import { sanitizeAddressCandidate } from '@/services/googlePlaces.service';
+import { buildSelectedAddressSummary, parseAddressMapInitialCoords } from './addressRouteParams';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -18,27 +18,12 @@ export default function AddressMapScreen() {
   const params = useLocalSearchParams<RouteParams<'profile/address-map'>>();
 
   const initialCoords = useMemo<MapCoords | undefined>(() => {
-    const lat = typeof params.latitude === 'string' ? Number(params.latitude) : NaN;
-    const lng = typeof params.longitude === 'string' ? Number(params.longitude) : NaN;
-
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      return { latitude: lat, longitude: lng };
-    }
-
-    return undefined;
-  }, [params.latitude, params.longitude]);
+    return parseAddressMapInitialCoords(params);
+  }, [params]);
 
   const selectedAddressSummary = useMemo(() => {
-    const parts = [
-      params.streetAddress ? sanitizeAddressCandidate(params.streetAddress) : '',
-      params.areaName,
-      params.city,
-      params.province,
-      params.postalCode,
-    ].filter(Boolean);
-
-    return parts.join(', ') || undefined;
-  }, [params.streetAddress, params.areaName, params.city, params.province, params.postalCode]);
+    return buildSelectedAddressSummary(params);
+  }, [params]);
 
   const handleConfirm = useCallback(
     (result: MapPickerResult) => {

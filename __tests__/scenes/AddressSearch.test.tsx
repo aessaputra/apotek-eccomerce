@@ -32,6 +32,7 @@ jest.mock('expo-location', () => ({
   getCurrentPositionAsync: jest.fn(),
   PermissionStatus: {
     GRANTED: 'granted',
+    DENIED: 'denied',
   },
   Accuracy: {
     Balanced: 'balanced',
@@ -187,6 +188,48 @@ describe('<AddressSearchScreen />', () => {
     });
   });
 
+  it('does not store a pending selection or navigate back when selectSuggestion returns null', async () => {
+    const suggestion: AddressSuggestion = {
+      id: 'place-null',
+      placeId: 'place-null',
+      name: 'Jalan Gagal',
+      fullAddress: 'Jalan Gagal, Serang',
+      primaryText: 'Jalan Gagal',
+      secondaryText: 'Serang',
+    };
+
+    mockSuggestionState.results = [suggestion];
+    mockSelectSuggestion.mockResolvedValue(null);
+
+    render(<AddressSearchScreen />);
+
+    fireEvent.press(screen.getByText('Jalan Gagal'));
+
+    await waitFor(() => {
+      expect(mockSelectSuggestion).toHaveBeenCalledWith(suggestion);
+    });
+
+    expect(mockSetPendingAddressSelection).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it('falls back to GPS when route params coordinates are invalid', async () => {
+    mockRouteParams = { latitude: 'invalid', longitude: '106.84' };
+
+    render(<AddressSearchScreen />);
+
+    await waitFor(() => {
+      expect(mockedRequestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(mockLoadInitialSuggestions).toHaveBeenCalledWith({
+        latitude: -6.2,
+        longitude: 106.8,
+      });
+    });
+  });
+
   it('reloads nearby recommendations when the query is cleared', async () => {
     mockSuggestionState.query = 'Jalan Ciruas';
 
@@ -222,5 +265,52 @@ describe('<AddressSearchScreen />', () => {
         longitude: 106.8,
       });
     });
+  });
+
+  it('does not load nearby recommendations on first mount while a seeded route query is still hydrating into hook state', async () => {
+    mockRouteParams = { query: 'Jalan Ciruas' };
+    mockSuggestionState.query = '';
+
+    const { rerender } = render(<AddressSearchScreen />);
+
+    await waitFor(() => {
+      expect(mockSetQuery).toHaveBeenCalledWith('Jalan Ciruas');
+    });
+
+    expect(mockLoadInitialSuggestions).not.toHaveBeenCalled();
+    expect(mockedRequestForegroundPermissionsAsync).not.toHaveBeenCalled();
+
+    mockSuggestionState.query = 'Jalan Ciruas';
+    rerender(<AddressSearchScreen />);
+
+    expect(mockLoadInitialSuggestions).not.toHaveBeenCalled();
+    expect(mockedRequestForegroundPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('does not request GPS again after permission is denied across rerenders', async () => {
+    mockedRequestForegroundPermissionsAsync.mockResolvedValue({
+      status: Location.PermissionStatus.DENIED,
+      canAskAgain: true,
+      granted: false,
+      expires: 'never',
+    });
+
+    const { rerender } = render(<AddressSearchScreen />);
+
+    await waitFor(() => {
+      expect(mockedRequestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+    });
+
+    mockSuggestionState.query = 'Ja';
+    rerender(<AddressSearchScreen />);
+
+    mockSuggestionState.query = '';
+    rerender(<AddressSearchScreen />);
+
+    await waitFor(() => {
+      expect(mockedRequestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockLoadInitialSuggestions).not.toHaveBeenCalled();
   });
 });
