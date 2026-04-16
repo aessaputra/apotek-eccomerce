@@ -1,5 +1,6 @@
 import type { BiteshipArea } from '@/types/shipping';
 import { useAreaPickerStore } from '@/stores/areaPickerStore';
+import { toPostalCodeString } from '@/utils/postalCode';
 
 export interface PendingAreaSelection {
   area: BiteshipArea;
@@ -15,6 +16,7 @@ export function setPendingAreaSelection(selection: PendingAreaSelection): void {
     selectedProvince: selection.provinceName ? { code: '', name: selection.provinceName } : null,
     selectedCity: selection.regencyName ? { code: '', name: selection.regencyName } : null,
     selectedDistrict: selection.districtName ? { code: '', name: selection.districtName } : null,
+    selectedPostalCode: selection.postalCode ?? null,
   });
 }
 
@@ -29,7 +31,7 @@ export function consumePendingAreaSelection(): PendingAreaSelection | null {
     provinceName: state.selectedProvince?.name,
     regencyName: state.selectedCity?.name,
     districtName: state.selectedDistrict?.name,
-    postalCode: area.postal_code?.toString(),
+    postalCode: state.selectedPostalCode ?? toPostalCodeString(area.postal_code),
   };
 
   useAreaPickerStore.setState({
@@ -37,6 +39,7 @@ export function consumePendingAreaSelection(): PendingAreaSelection | null {
     selectedCity: null,
     selectedDistrict: null,
     selectedArea: null,
+    selectedPostalCode: null,
     stage: 'province',
   });
 

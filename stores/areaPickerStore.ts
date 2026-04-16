@@ -10,6 +10,7 @@ export interface AreaPickerSelection {
   selectedCity: RegionalRegency | null;
   selectedDistrict: RegionalDistrict | null;
   selectedArea: BiteshipArea | null;
+  selectedPostalCode: string | null;
 }
 
 interface AreaPickerActions {
@@ -18,6 +19,7 @@ interface AreaPickerActions {
   selectCity: (city: RegionalRegency | null) => void;
   selectDistrict: (district: RegionalDistrict | null) => void;
   selectArea: (area: BiteshipArea | null) => void;
+  setPostalCode: (postalCode: string | null) => void;
   reset: () => void;
 }
 
@@ -27,6 +29,7 @@ const initialState: AreaPickerSelection = {
   selectedCity: null,
   selectedDistrict: null,
   selectedArea: null,
+  selectedPostalCode: null,
 };
 
 export const useAreaPickerStore = create<AreaPickerSelection & AreaPickerActions>(set => ({
@@ -40,6 +43,7 @@ export const useAreaPickerStore = create<AreaPickerSelection & AreaPickerActions
       selectedCity: null,
       selectedDistrict: null,
       selectedArea: null,
+      selectedPostalCode: null,
       stage: province ? 'city' : 'province',
     }),
 
@@ -48,6 +52,7 @@ export const useAreaPickerStore = create<AreaPickerSelection & AreaPickerActions
       selectedCity: city,
       selectedDistrict: null,
       selectedArea: null,
+      selectedPostalCode: null,
       stage: city ? 'district' : 'city',
     }),
 
@@ -55,10 +60,13 @@ export const useAreaPickerStore = create<AreaPickerSelection & AreaPickerActions
     set({
       selectedDistrict: district,
       selectedArea: null,
+      selectedPostalCode: null,
       stage: district ? 'postal' : 'district',
     }),
 
   selectArea: area => set({ selectedArea: area }),
+
+  setPostalCode: selectedPostalCode => set({ selectedPostalCode }),
 
   reset: () => set(initialState),
 }));
