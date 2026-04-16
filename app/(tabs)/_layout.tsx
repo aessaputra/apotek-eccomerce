@@ -5,6 +5,7 @@ import type {
 } from '@react-navigation/bottom-tabs';
 import { Tabs, useRouter, useSegments } from 'expo-router';
 import { useTheme } from 'tamagui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TabBarLabel from '@/components/layouts/TabBarLabel';
 import TabBarButton from '@/components/layouts/TabBarButton';
 import TabBarIcon from '@/components/layouts/TabBarIcon';
@@ -27,8 +28,12 @@ export default function TabsLayout() {
   const router = useRouter();
   const segments = useSegments();
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const currentGroup = segments[1] as string | undefined;
   const visibleSegments = segments.slice(1);
+
+  /** Android-only bottom inset to avoid 3-button navigation overlap. */
+  const androidBottomInset = Platform.OS === 'android' ? insets.bottom : 0;
 
   const tabBarColors = useMemo(() => {
     const background = getThemeColor(
@@ -66,9 +71,9 @@ export default function TabsLayout() {
       display: (hideTabBar ? 'none' : 'flex') as 'none' | 'flex',
       flexDirection: 'row' as const,
       width: '100%' as const,
-      height: TAB_BAR_HEIGHT,
+      height: TAB_BAR_HEIGHT + androidBottomInset,
       paddingTop: TAB_BAR_PADDING_TOP,
-      paddingBottom: TAB_BAR_PADDING_BOTTOM,
+      paddingBottom: TAB_BAR_PADDING_BOTTOM + androidBottomInset,
       backgroundColor: tabBarColors.background,
       borderTopWidth: TAB_BAR_BORDER_TOP_WIDTH,
       borderTopColor: tabBarColors.borderColor,
@@ -78,7 +83,7 @@ export default function TabsLayout() {
     return Platform.OS === 'web'
       ? { ...base, ...shadowStyle }
       : { ...base, ...shadowStyle, elevation: TAB_BAR_ELEVATION };
-  }, [hideTabBar, tabBarColors]);
+  }, [hideTabBar, tabBarColors, androidBottomInset]);
 
   const renderTabIcon = useCallback((tabName: TabRouteName) => {
     const TabIcon = ({ color, focused }: { color: string; focused: boolean }) => {
