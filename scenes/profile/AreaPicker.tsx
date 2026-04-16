@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Check, MapPin, Search } from '@tamagui/lucide-icons';
-import { Card, Input, ScrollView, Spinner, Text, XStack, YStack, styled } from 'tamagui';
+import { ArrowLeft, MapPin, Search } from '@tamagui/lucide-icons';
+import { Input, ScrollView, Text, XStack, YStack, styled } from 'tamagui';
 import Button from '@/components/elements/Button';
 import type { RouteParams } from '@/types/routes.types';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
@@ -16,7 +16,7 @@ import {
   searchBiteshipArea,
 } from '@/services';
 import { setPendingAreaSelection } from '@/utils/areaPickerSession';
-import { adminNamesMatch, normalize } from '@/utils/areaNormalization';
+import { adminNamesMatch } from '@/utils/areaNormalization';
 import { normalizePostalCode } from '@/utils/postalCode';
 import {
   buildPendingAreaSelection,
@@ -24,8 +24,15 @@ import {
   type PostalOption,
 } from './areaPickerHelpers';
 import { resolveCurrentLocationSelection } from './areaPickerCurrentLocation';
-
-type SelectionStage = 'province' | 'city' | 'district' | 'postal';
+import AreaPickerSelectionSummary from './AreaPickerSelectionSummary';
+import AreaPickerStageList from './AreaPickerStageList';
+import {
+  filterNamedOptions,
+  filterPostalOptions,
+  findSelectedPostalOption,
+  getStageTitle,
+  type SelectionStage,
+} from './areaPickerState';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -79,29 +86,30 @@ export default function AreaPickerScreen() {
     void loadProvinces();
   }, [resetState]);
 
-  const filteredProvinces = useMemo(() => {
-    const trimmed = normalize(query);
-    return provinceOptions.filter(option => !trimmed || normalize(option.name).includes(trimmed));
-  }, [provinceOptions, query]);
+  const filteredProvinces = useMemo(
+    () => filterNamedOptions(provinceOptions, query),
+    [provinceOptions, query],
+  );
 
-  const filteredCities = useMemo(() => {
-    const trimmed = normalize(query);
-    return cityOptions.filter(option => !trimmed || normalize(option.name).includes(trimmed));
-  }, [cityOptions, query]);
+  const filteredCities = useMemo(
+    () => filterNamedOptions(cityOptions, query),
+    [cityOptions, query],
+  );
 
-  const filteredDistricts = useMemo(() => {
-    const trimmed = normalize(query);
-    return districtOptions.filter(option => !trimmed || normalize(option.name).includes(trimmed));
-  }, [districtOptions, query]);
+  const filteredDistricts = useMemo(
+    () => filterNamedOptions(districtOptions, query),
+    [districtOptions, query],
+  );
 
-  const filteredPostalOptions = useMemo(() => {
-    const trimmed = normalize(query);
-    return postalOptions.filter(option => !trimmed || normalize(option.label).includes(trimmed));
-  }, [postalOptions, query]);
+  const filteredPostalOptions = useMemo(
+    () => filterPostalOptions(postalOptions, query),
+    [postalOptions, query],
+  );
 
-  const selectedPostalOption = useMemo(() => {
-    return postalOptions.find(option => option.label === selectedPostalLabel) ?? null;
-  }, [postalOptions, selectedPostalLabel]);
+  const selectedPostalOption = useMemo(
+    () => findSelectedPostalOption(postalOptions, selectedPostalLabel),
+    [postalOptions, selectedPostalLabel],
+  );
 
   const matchesHierarchy = useCallback(
     (area: BiteshipArea, provinceName: string, regencyName: string, districtName: string) => {
@@ -287,6 +295,35 @@ export default function AreaPickerScreen() {
     [loadPostalCodes, selectedCity, selectedProvince],
   );
 
+  const handlePostalSelect = useCallback(
+    async (option: PostalOption) => {
+      if (!selectedProvince || !selectedCity || !selectedDistrict) {
+        return;
+      }
+
+      setIsLoadingStage(true);
+      setStageError(null);
+      setSelectedPostalLabel(option.label);
+      const resolvedArea = await resolveAreaByPostal(
+        selectedProvince,
+        selectedCity,
+        selectedDistrict,
+        option.label,
+      );
+      setIsLoadingStage(false);
+
+      if (!resolvedArea) {
+        setStageError(
+          'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
+        );
+        return;
+      }
+
+      handleAreaSelection(resolvedArea);
+    },
+    [handleAreaSelection, resolveAreaByPostal, selectedCity, selectedDistrict, selectedProvince],
+  );
+
   const handleUseCurrentLocation = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     setIsLoadingStage(true);
@@ -427,141 +464,7 @@ export default function AreaPickerScreen() {
     router.back();
   }, [navigateToStage, router, stage]);
 
-  const stageTitle =
-    stage === 'province'
-      ? 'Provinsi'
-      : stage === 'city'
-        ? 'Kota / Kabupaten'
-        : stage === 'district'
-          ? 'Kecamatan'
-          : 'Kode Pos';
-
-  const renderContent = () => {
-    if (isLoadingStage) {
-      return (
-        <YStack alignItems="center" paddingVertical="$8" gap="$3">
-          <Spinner size="large" color="$primary" />
-          <Text fontSize="$3" color="$colorMuted">
-            Memuat {stageTitle.toLowerCase()}...
-          </Text>
-        </YStack>
-      );
-    }
-
-    if (stageError) {
-      return (
-        <YStack alignItems="center" paddingVertical="$8" gap="$2">
-          <Text fontSize="$3" color="$danger" textAlign="center">
-            {stageError}
-          </Text>
-        </YStack>
-      );
-    }
-
-    if (stage === 'province') {
-      return filteredProvinces.map(option => (
-        <Card
-          key={option.code}
-          borderRadius="$0"
-          borderWidth={0}
-          borderBottomWidth={1}
-          borderColor="$surfaceBorder"
-          backgroundColor="$background"
-          paddingVertical="$4"
-          paddingHorizontal="$1"
-          onPress={() => void handleProvinceSelect(option)}>
-          <Text fontSize="$5" color="$color">
-            {option.name.toUpperCase()}
-          </Text>
-        </Card>
-      ));
-    }
-
-    if (stage === 'city') {
-      return filteredCities.map(option => (
-        <Card
-          key={option.code}
-          borderRadius="$0"
-          borderWidth={0}
-          borderBottomWidth={1}
-          borderColor="$surfaceBorder"
-          backgroundColor="$background"
-          paddingVertical="$4"
-          paddingHorizontal="$1"
-          onPress={() => void handleCitySelect(option)}>
-          <Text fontSize="$5" color="$color">
-            {option.name.toUpperCase()}
-          </Text>
-        </Card>
-      ));
-    }
-
-    if (stage === 'district') {
-      return filteredDistricts.map(option => (
-        <Card
-          key={option.code}
-          borderRadius="$0"
-          borderWidth={0}
-          borderBottomWidth={1}
-          borderColor="$surfaceBorder"
-          backgroundColor="$background"
-          paddingVertical="$4"
-          paddingHorizontal="$1"
-          onPress={() => void handleDistrictSelect(option)}>
-          <Text fontSize="$5" color="$color">
-            {option.name.toUpperCase()}
-          </Text>
-        </Card>
-      ));
-    }
-
-    return filteredPostalOptions.map(option => {
-      const isSelected = option.label === selectedPostalLabel;
-      return (
-        <Card
-          key={option.label}
-          borderRadius="$0"
-          borderWidth={0}
-          borderBottomWidth={1}
-          borderColor="$surfaceBorder"
-          backgroundColor="$background"
-          paddingVertical="$4"
-          paddingHorizontal="$1"
-          onPress={async () => {
-            if (!selectedProvince || !selectedCity || !selectedDistrict) {
-              return;
-            }
-
-            setIsLoadingStage(true);
-            setStageError(null);
-            setSelectedPostalLabel(option.label);
-            const resolvedArea = await resolveAreaByPostal(
-              selectedProvince,
-              selectedCity,
-              selectedDistrict,
-              option.label,
-            );
-            setIsLoadingStage(false);
-
-            if (!resolvedArea) {
-              setStageError(
-                'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
-              );
-              return;
-            }
-
-            handleAreaSelection(resolvedArea);
-          }}>
-          <XStack justifyContent="space-between" alignItems="center">
-            <Text fontSize="$5" color={isSelected ? '$primary' : '$color'}>
-              {option.label}
-            </Text>
-            {isSelected ? <Check size={18} color="$primary" /> : null}
-          </XStack>
-        </Card>
-      );
-    });
-  };
+  const stageTitle = getStageTitle(stage);
 
   return (
     <SafeAreaView edges={['top', 'bottom']}>
@@ -634,141 +537,34 @@ export default function AreaPickerScreen() {
             <MapPin size={16} color="$primary" />
           </Button>
 
-          <YStack gap="$3">
-            <XStack justifyContent="space-between" alignItems="center">
-              <Text fontSize="$3" color="$colorMuted">
-                Lokasi Terpilih
-              </Text>
-              {(selectedProvince || selectedCity || selectedDistrict) && (
-                <Text color="$primary" fontSize="$3" fontWeight="500" onPress={resetState}>
-                  Atur Ulang
-                </Text>
-              )}
-            </XStack>
-
-            <YStack gap="$1" paddingLeft="$2">
-              <XStack
-                alignItems="center"
-                gap="$2"
-                minHeight={44}
-                role="button"
-                aria-label={
-                  selectedProvince ? `Ubah provinsi ${selectedProvince.name}` : 'Pilih provinsi'
-                }
-                onPress={() => selectedProvince && navigateToStage('province')}>
-                <YStack
-                  width={2}
-                  height={stage === 'province' ? 20 : '100%'}
-                  backgroundColor={stage === 'province' ? '$primary' : '$colorMuted'}
-                />
-                <Text
-                  fontSize="$5"
-                  color={selectedProvince ? '$color' : '$colorMuted'}
-                  fontWeight={stage === 'province' ? '600' : '400'}>
-                  {selectedProvince?.name.toUpperCase() || 'Pilih Provinsi'}
-                </Text>
-              </XStack>
-
-              {(selectedProvince || stage !== 'province') && (
-                <XStack
-                  alignItems="center"
-                  gap="$2"
-                  minHeight={44}
-                  role="button"
-                  aria-label={
-                    selectedCity ? `Ubah kota ${selectedCity.name}` : 'Pilih kota atau kabupaten'
-                  }
-                  onPress={() => selectedCity && navigateToStage('city')}>
-                  <YStack
-                    width={2}
-                    height={stage === 'city' ? 20 : '100%'}
-                    backgroundColor={
-                      stage === 'city'
-                        ? '$primary'
-                        : selectedCity
-                          ? '$colorMuted'
-                          : '$colorDisabled'
-                    }
-                  />
-                  <Text
-                    fontSize="$5"
-                    color={selectedCity ? '$color' : '$colorMuted'}
-                    fontWeight={stage === 'city' ? '600' : '400'}>
-                    {selectedCity?.name.toUpperCase() || 'Pilih Kota/Kabupaten'}
-                  </Text>
-                </XStack>
-              )}
-
-              {(selectedCity || stage === 'district' || stage === 'postal') && (
-                <XStack
-                  alignItems="center"
-                  gap="$2"
-                  minHeight={44}
-                  role="button"
-                  aria-label={
-                    selectedDistrict ? `Ubah kecamatan ${selectedDistrict.name}` : 'Pilih kecamatan'
-                  }
-                  onPress={() => selectedDistrict && navigateToStage('district')}>
-                  <YStack
-                    width={2}
-                    height={stage === 'district' ? 20 : '100%'}
-                    backgroundColor={
-                      stage === 'district'
-                        ? '$primary'
-                        : selectedDistrict
-                          ? '$colorMuted'
-                          : '$colorDisabled'
-                    }
-                  />
-                  <Text
-                    fontSize="$5"
-                    color={selectedDistrict ? '$color' : '$colorMuted'}
-                    fontWeight={stage === 'district' ? '600' : '400'}>
-                    {selectedDistrict?.name.toUpperCase() || 'Pilih Kecamatan'}
-                  </Text>
-                </XStack>
-              )}
-
-              {(selectedDistrict || stage === 'postal') && (
-                <XStack alignItems="center" gap="$2" minHeight={44}>
-                  <YStack
-                    width={2}
-                    height={20}
-                    backgroundColor={
-                      stage === 'postal'
-                        ? '$primary'
-                        : selectedPostalOption
-                          ? '$colorMuted'
-                          : '$colorDisabled'
-                    }
-                  />
-                  {selectedPostalOption ? (
-                    <Card
-                      borderRadius="$4"
-                      borderWidth={1.5}
-                      borderColor="$surfaceBorder"
-                      padding="$3"
-                      backgroundColor="$background"
-                      flex={1}>
-                      <Text fontSize="$5" color="$primary">
-                        {selectedPostalOption.label}
-                      </Text>
-                    </Card>
-                  ) : (
-                    <Text
-                      fontSize="$5"
-                      color="$colorMuted"
-                      fontWeight={stage === 'postal' ? '600' : '400'}>
-                      {stage === 'postal' ? 'Pilih Kode Pos' : 'Kode Pos'}
-                    </Text>
-                  )}
-                </XStack>
-              )}
-            </YStack>
-          </YStack>
+          <AreaPickerSelectionSummary
+            stage={stage}
+            selectedProvince={selectedProvince}
+            selectedCity={selectedCity}
+            selectedDistrict={selectedDistrict}
+            selectedPostalOption={selectedPostalOption}
+            onReset={resetState}
+            onNavigateToStage={navigateToStage}
+          />
 
           <ScrollView flex={1} keyboardShouldPersistTaps="handled">
-            <YStack>{renderContent()}</YStack>
+            <YStack>
+              <AreaPickerStageList
+                stage={stage}
+                stageTitle={stageTitle}
+                isLoadingStage={isLoadingStage}
+                stageError={stageError}
+                provinceOptions={filteredProvinces}
+                cityOptions={filteredCities}
+                districtOptions={filteredDistricts}
+                postalOptions={filteredPostalOptions}
+                selectedPostalLabel={selectedPostalLabel}
+                onProvinceSelect={handleProvinceSelect}
+                onCitySelect={handleCitySelect}
+                onDistrictSelect={handleDistrictSelect}
+                onPostalSelect={handlePostalSelect}
+              />
+            </YStack>
           </ScrollView>
         </YStack>
       </YStack>
