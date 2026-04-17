@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { updateCartItemQuantity } from '@/services/cart.service';
 import type { CartItemWithProduct, CartSnapshot } from '@/types/cart';
+import { buildCartSnapshot } from '@/utils/cart';
 
 interface OptimisticQuantityEntry {
   quantity: number;
@@ -21,21 +22,7 @@ interface UseCartQuantityReturn {
   updateQuantity: (cartItemId: string, newQuantity: number) => void;
 }
 
-function buildSnapshot(items: CartItemWithProduct[]): CartSnapshot {
-  return items.reduce(
-    (nextSnapshot, item) => {
-      nextSnapshot.itemCount += item.quantity;
-      nextSnapshot.estimatedWeightGrams += item.quantity * item.product.weight;
-      nextSnapshot.packageValue += item.quantity * item.product.price;
-      return nextSnapshot;
-    },
-    {
-      itemCount: 0,
-      estimatedWeightGrams: 0,
-      packageValue: 0,
-    },
-  );
-}
+const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
@@ -91,7 +78,7 @@ export function useCartQuantity({
       return snapshot;
     }
 
-    return buildSnapshot(optimisticItems);
+    return buildCartSnapshot(optimisticItems, DEFAULT_ITEM_WEIGHT_GRAMS);
   }, [optimisticItems, optimisticQuantities, snapshot]);
 
   const updateQuantity = useCallback(

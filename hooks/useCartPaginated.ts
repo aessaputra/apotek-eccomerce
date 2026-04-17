@@ -9,29 +9,10 @@ import type {
   CartRealtimeConnectionState,
   CartSnapshot,
 } from '@/types/cart';
+import { buildCartSnapshot, EMPTY_CART_SNAPSHOT } from '@/utils/cart';
 import { State } from '@/utils/store';
 
-const EMPTY_SNAPSHOT: CartSnapshot = {
-  itemCount: 0,
-  estimatedWeightGrams: 0,
-  packageValue: 0,
-};
-
-function buildSnapshot(items: CartItemWithProduct[]): CartSnapshot {
-  return items.reduce(
-    (nextSnapshot, item) => {
-      nextSnapshot.itemCount += item.quantity;
-      nextSnapshot.estimatedWeightGrams += item.quantity * item.product.weight;
-      nextSnapshot.packageValue += item.quantity * item.product.price;
-      return nextSnapshot;
-    },
-    {
-      itemCount: 0,
-      estimatedWeightGrams: 0,
-      packageValue: 0,
-    },
-  );
-}
+const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 
 export interface UseCartPaginatedReturn {
   cartId: string | null;
@@ -66,7 +47,7 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   const refreshRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(async () => {});
   const lastHandledCartClearedAtRef = useRef<number | null>(null);
 
-  const snapshot = useMemo(() => buildSnapshot(items), [items]);
+  const snapshot = useMemo(() => buildCartSnapshot(items, DEFAULT_ITEM_WEIGHT_GRAMS), [items]);
 
   useEffect(() => {
     return () => {
@@ -309,7 +290,7 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   return {
     cartId,
     items,
-    snapshot: items.length === 0 ? EMPTY_SNAPSHOT : snapshot,
+    snapshot: items.length === 0 ? EMPTY_CART_SNAPSHOT : snapshot,
     error,
     isLoading,
     isRefreshing,

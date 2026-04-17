@@ -3,6 +3,7 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Tables } from '@/types/supabase';
 import { CART_PAGE_SIZE } from '@/constants/cart.constants';
 import { runDedupedRequest } from '@/utils/requestDeduplication';
+import { buildCartSnapshot } from '@/utils/cart';
 import type {
   CartRealtimeChange,
   CartRealtimeConnectionState,
@@ -75,27 +76,7 @@ type CartSnapshotRow = Pick<CartItemRow, 'quantity'> & {
 type CartRealtimeRecord = Partial<Pick<CartItemRow, 'id' | 'cart_id' | 'product_id' | 'quantity'>>;
 
 function toCartSnapshot(rows: CartSnapshotRow[]): CartSnapshot {
-  return rows.reduce(
-    (snapshot, row) => {
-      if (!row.product) {
-        return snapshot;
-      }
-
-      const quantity = row.quantity;
-      const weight = row.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS;
-
-      snapshot.itemCount += quantity;
-      snapshot.estimatedWeightGrams += quantity * weight;
-      snapshot.packageValue += quantity * row.product.price;
-
-      return snapshot;
-    },
-    {
-      itemCount: 0,
-      estimatedWeightGrams: 0,
-      packageValue: 0,
-    } as CartSnapshot,
-  );
+  return buildCartSnapshot(rows, DEFAULT_ITEM_WEIGHT_GRAMS);
 }
 
 function isAbortError(error: unknown): error is Error {
@@ -503,21 +484,7 @@ export async function getCartWithItems(
     });
   }
 
-  let itemCount = 0;
-  let estimatedWeightGrams = 0;
-  let packageValue = 0;
-
-  for (const item of itemsWithProducts) {
-    itemCount += item.quantity;
-    estimatedWeightGrams += item.quantity * (item.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS);
-    packageValue += item.quantity * item.product.price;
-  }
-
-  const snapshot: CartSnapshot = {
-    itemCount,
-    estimatedWeightGrams,
-    packageValue,
-  };
+  const snapshot = buildCartSnapshot(itemsWithProducts, DEFAULT_ITEM_WEIGHT_GRAMS);
 
   return {
     data: {
