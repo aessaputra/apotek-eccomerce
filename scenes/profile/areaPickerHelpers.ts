@@ -41,14 +41,22 @@ export async function findDistrictCandidateByPostalCode(
     return null;
   }
 
+  let matchedDistrict: RegionalDistrict | null = null;
+  let matchedOptions: PostalOption[] = [];
+
   for (const district of districts) {
     const options = await resolvePostalOptions(province, regency, district);
     if (options.some(option => normalizePostalCode(option.label) === normalizedPostalCode)) {
-      return { district, options };
+      if (matchedDistrict) {
+        return null;
+      }
+
+      matchedDistrict = district;
+      matchedOptions = options;
     }
   }
 
-  return null;
+  return matchedDistrict ? { district: matchedDistrict, options: matchedOptions } : null;
 }
 
 export function normalizeCurrentLocationAddress(
@@ -61,7 +69,7 @@ export function normalizeCurrentLocationAddress(
   return {
     province: address.province,
     city: address.city,
-    district: address.district || address.city,
+    district: address.district || '',
     postalCode: address.postalCode || '',
   };
 }

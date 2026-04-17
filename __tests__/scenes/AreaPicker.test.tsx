@@ -65,6 +65,27 @@ describe('AreaPicker helper behavior', () => {
     expect(match?.options).toEqual([{ label: '42135' }, { label: '42136' }, { label: '42183' }]);
   });
 
+  test('findDistrictCandidateByPostalCode returns null when multiple districts share the same postal code', async () => {
+    const province = { code: '36', name: 'Banten' };
+    const regency = { code: '36.73', name: 'Kota Serang' };
+    const districts = [
+      { code: '36.73.01', name: 'Serang' },
+      { code: '36.73.03', name: 'Walantaka' },
+    ];
+
+    const resolvePostalOptions = jest.fn(async () => [{ label: '42183' }]);
+
+    const match = await findDistrictCandidateByPostalCode(
+      districts,
+      province,
+      regency,
+      '42183',
+      resolvePostalOptions,
+    );
+
+    expect(match).toBeNull();
+  });
+
   test('canonical normalization helpers still match city and regency names consistently', () => {
     expect(normalizeAdminName('Kabupaten Serang')).toBe('SERANG');
     expect(normalizeExactAdminName('Kota Serang')).toBe('KOTA SERANG');
