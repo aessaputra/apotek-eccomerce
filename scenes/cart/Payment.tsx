@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { BackHandler, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,107 +6,26 @@ import { WebView } from 'react-native-webview';
 import { Spinner, Text, XStack, YStack, Button as TamaguiButton } from 'tamagui';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { CloseIcon, LockIcon } from '@/components/icons';
-import { useAppSlice, appActions } from '@/slices';
+import { useAppSlice } from '@/slices';
 import type { RouteParams } from '@/types/routes.types';
-import { pollOrderPaymentStatus } from '@/services/checkout.service';
-import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
+import { useDataPersist } from '@/hooks/useDataPersist';
 import type { PaymentResult } from '@/types/payment';
+import {
+  isDeepLink,
+  isTrustedPaymentUrl,
+  ORDERS_ROUTE,
+  parsePaymentNavigationStatus,
+  resolveRouteParam,
+} from '@/scenes/cart/payment.utils';
+import { usePaymentFlow } from '@/scenes/cart/usePaymentFlow';
 
-const PAYMENT_SUCCESS_STATUSES = ['settlement'];
-const PAYMENT_PENDING_STATUSES = ['pending', 'authorize'];
-const PAYMENT_FAILED_STATUSES = ['deny', 'cancel', 'expire', 'failure'];
-const ORDERS_ROUTE = '/orders';
-
-const DEEP_LINK_PATTERNS = [
-  'gojek://',
-  'shopeeid://',
-  'gopay://',
-  '//wsa.wallet.airpay.co.id/',
-  'simulator.sandbox.midtrans.com',
-];
-
-const TRUSTED_PAYMENT_HOSTS = [
-  // Production
-  'app.midtrans.com',
-  'midtrans.com',
-  'snap.midtrans.com',
-  '3ds.midtrans.com',
-  'secure.midtrans.com',
-  'api.midtrans.com',
-  'cdn.midtrans.com',
-  // Sandbox
-  'app.sandbox.midtrans.com',
-  'sandbox.midtrans.com',
-  'snap-sandbox.midtrans.com',
-  'api.sandbox.midtrans.com',
-  // Payment methods
-  'gojek.midtrans.com',
-  'gopay.midtrans.com',
-  'qris.midtrans.com',
-];
-
-function isDeepLink(url: string): boolean {
-  const lowerUrl = url.toLowerCase();
-  return DEEP_LINK_PATTERNS.some(pattern => lowerUrl.includes(pattern));
-}
-
-function isTrustedPaymentUrl(url: string): boolean {
-  try {
-    const urlObj = new URL(url);
-    return TRUSTED_PAYMENT_HOSTS.some(host => urlObj.hostname.endsWith(host));
-  } catch {
-    return false;
-  }
-}
-
-function translateCheckoutError(message: string | undefined, fallback: string): string {
-  const normalized = (message || '').toLowerCase();
-
-  if (
-    normalized.includes('timeout') ||
-    normalized.includes('timed out') ||
-    normalized.includes('abort')
-  ) {
-    return 'Permintaan timeout. Pastikan koneksi stabil lalu coba lagi.';
-  }
-
-  if (
-    normalized.includes('network') ||
-    normalized.includes('fetch') ||
-    normalized.includes('offline') ||
-    normalized.includes('koneksi')
-  ) {
-    return 'Koneksi internet bermasalah. Silakan cek jaringan Anda lalu coba lagi.';
-  }
-
-  if (
-    normalized.includes('midtrans') ||
-    normalized.includes('snap') ||
-    normalized.includes('payment')
-  ) {
-    return 'Layanan pembayaran sedang bermasalah. Silakan coba beberapa saat lagi.';
-  }
-
-  if (
-    normalized.includes('database') ||
-    normalized.includes('duplicate') ||
-    normalized.includes('constraint')
-  ) {
-    return 'Sistem sedang sibuk menyimpan data pembayaran. Silakan coba lagi.';
-  }
-
-  return fallback;
-}
-
-function isPollingTimeoutError(message: string | undefined): boolean {
-  const normalized = (message || '').toLowerCase();
-
-  return (
-    normalized.includes('masih diproses') ||
-    normalized.includes('beberapa saat lagi') ||
-    normalized.includes('status pembayaran')
-  );
-}
+export {
+  isDeepLink,
+  isPollingTimeoutError,
+  isTrustedPaymentUrl,
+  parsePaymentNavigationStatus,
+  translateCheckoutError,
+} from '@/scenes/cart/payment.utils';
 
 export default function Payment() {
   const router = useRouter();
@@ -114,32 +33,35 @@ export default function Payment() {
   const { user, dispatch, markCartCleared } = useAppSlice();
   const { removePersistData } = useDataPersist();
   const { paymentUrl, orderId } = useLocalSearchParams<RouteParams<'cart/payment'>>();
-  const resolvedPaymentUrl = useMemo(
-    () => (Array.isArray(paymentUrl) ? paymentUrl[0] : paymentUrl) ?? '',
-    [paymentUrl],
-  );
-  const resolvedOrderId = useMemo(
-    () => (Array.isArray(orderId) ? orderId[0] : orderId) ?? '',
-    [orderId],
-  );
+  const resolvedPaymentUrl = useMemo(() => resolveRouteParam(paymentUrl), [paymentUrl]);
+  const resolvedOrderId = useMemo(() => resolveRouteParam(orderId), [orderId]);
 
   const isValidPaymentUrl = useMemo(
     () => isTrustedPaymentUrl(resolvedPaymentUrl),
     [resolvedPaymentUrl],
   );
 
-  const [isPolling, setIsPolling] = useState(false);
-  const [paymentResult, setPaymentResult] = useState<PaymentResult['status'] | null>(null);
-  const [postPaymentState, setPostPaymentState] = useState<'idle' | 'verifying' | 'timeout'>(
-    'idle',
-  );
-  const [postPaymentMessage, setPostPaymentMessage] = useState<string | null>(null);
-  const [confirmCloseDialogOpen, setConfirmCloseDialogOpen] = useState(false);
-  const [webviewLoading, setWebviewLoading] = useState(true);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const finalizeOnceRef = useRef(false);
-  const shouldHidePaymentChrome =
-    postPaymentState !== 'idle' || isPolling || paymentResult === 'success';
+  const {
+    confirmCloseDialogOpen,
+    finalizePaymentFlow,
+    isPolling,
+    paymentError,
+    paymentResult,
+    postPaymentMessage,
+    postPaymentState,
+    setConfirmCloseDialogOpen,
+    setPaymentError,
+    setWebviewLoading,
+    shouldHidePaymentChrome,
+    webviewLoading,
+  } = usePaymentFlow({
+    resolvedOrderId,
+    userId: user?.id,
+    dispatch,
+    markCartCleared,
+    router,
+    removePersistData,
+  });
 
   useEffect(() => {
     if (!resolvedPaymentUrl) {
@@ -156,137 +78,72 @@ export default function Payment() {
     });
 
     return () => backHandler.remove();
-  }, [resolvedPaymentUrl, shouldHidePaymentChrome]);
+  }, [resolvedPaymentUrl, setConfirmCloseDialogOpen, shouldHidePaymentChrome]);
 
-  const finalizePaymentFlow = useCallback(
-    async (_reason: PaymentResult['status']) => {
-      if (finalizeOnceRef.current) {
-        return;
-      }
-
-      finalizeOnceRef.current = true;
-      setPaymentResult(_reason);
-      setConfirmCloseDialogOpen(false);
-      setWebviewLoading(false);
-      setPaymentError(null);
-      setPostPaymentState('verifying');
-      setPostPaymentMessage(null);
-
-      if (!resolvedOrderId) {
-        await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-        router.replace(ORDERS_ROUTE);
-        return;
-      }
-
-      setIsPolling(true);
-      const { data, error } = await pollOrderPaymentStatus(resolvedOrderId, 12, 2000);
-      setIsPolling(false);
-
-      const paymentStatus = data?.payment_status ?? '';
-      const terminalFailedStates = ['deny', 'cancel', 'expire'];
-
-      await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-
-      if (!error && PAYMENT_SUCCESS_STATUSES.includes(paymentStatus)) {
-        if (user?.id) {
-          dispatch(appActions.invalidateUnpaidOrdersCache(user.id));
-          dispatch(
-            appActions.invalidateOrdersByStatusCache({ cacheKey: 'packing', userId: user.id }),
-          );
-          dispatch(
-            appActions.invalidateOrdersByStatusCache({ cacheKey: 'shipped', userId: user.id }),
-          );
-          dispatch(
-            appActions.invalidateOrdersByStatusCache({ cacheKey: 'completed', userId: user.id }),
-          );
-        }
-
-        dispatch(markCartCleared(Date.now()));
-
-        router.replace(`/orders/success?orderId=${resolvedOrderId}`);
-        return;
-      }
-
-      if (error) {
-        if (isPollingTimeoutError(error.message)) {
-          setPostPaymentState('timeout');
-          setPostPaymentMessage('Pembayaran sedang diproses. Cek status di halaman Pesanan.');
-          return;
-        }
-
-        setPostPaymentState('timeout');
-        setPostPaymentMessage(
-          translateCheckoutError(
-            error.message,
-            'Status pembayaran belum dapat dipastikan. Silakan cek halaman pesanan.',
-          ),
-        );
-        return;
-      }
-
-      if (terminalFailedStates.includes(paymentStatus)) {
-        setPaymentError('Pembayaran terdeteksi gagal atau dibatalkan. Silakan ulangi pembayaran.');
-
-        if (user?.id) {
-          dispatch(appActions.invalidateUnpaidOrdersCache(user.id));
-          dispatch(
-            appActions.invalidateOrdersByStatusCache({ cacheKey: 'packing', userId: user.id }),
-          );
-          dispatch(
-            appActions.invalidateOrdersByStatusCache({ cacheKey: 'shipped', userId: user.id }),
-          );
-          dispatch(
-            appActions.invalidateOrdersByStatusCache({ cacheKey: 'completed', userId: user.id }),
-          );
-        }
-
-        router.replace(ORDERS_ROUTE);
-        return;
-      }
-
-      setPostPaymentState('timeout');
-      setPostPaymentMessage('Pembayaran sedang diproses. Cek status di halaman Pesanan.');
-    },
-    [dispatch, markCartCleared, removePersistData, resolvedOrderId, router, user?.id],
+  const handlePaymentNavigation = useCallback(
+    (url?: string): PaymentResult['status'] | null => parsePaymentNavigationStatus(url),
+    [],
   );
 
-  const handlePaymentNavigation = useCallback((url?: string): PaymentResult['status'] | null => {
-    const safeUrl = (url || '').toLowerCase();
-    if (!safeUrl) {
-      return null;
-    }
+  const handleShouldStartLoadWithRequest = useCallback(
+    (request: { url?: string }) => {
+      const url = request.url || '';
 
-    const transactionStatusMatch = safeUrl.match(/transaction_status=([^&]+)/);
-    const transactionStatus =
-      transactionStatusMatch && transactionStatusMatch[1]
-        ? decodeURIComponent(transactionStatusMatch[1])
-        : '';
+      if (isDeepLink(url)) {
+        void Linking.canOpenURL(url)
+          .then(canOpen => {
+            if (canOpen) {
+              return Linking.openURL(url);
+            }
 
-    if (PAYMENT_SUCCESS_STATUSES.some(status => transactionStatus.includes(status))) {
-      return 'success';
-    }
-
-    if (PAYMENT_FAILED_STATUSES.some(status => transactionStatus.includes(status))) {
-      return 'cancel';
-    }
-
-    if (PAYMENT_PENDING_STATUSES.some(status => transactionStatus.includes(status))) {
-      return 'pending';
-    }
-
-    const reachedFinish =
-      safeUrl.includes('/finish') || safeUrl.includes('/unfinish') || safeUrl.includes('/error');
-
-    if (reachedFinish) {
-      if (safeUrl.includes('/error') || safeUrl.includes('/unfinish')) {
-        return 'cancel';
+            setPaymentError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
+            return Promise.resolve();
+          })
+          .catch(() => {
+            setPaymentError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
+          });
+        return false;
       }
 
-      return 'pending';
-    }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return false;
+      }
 
-    return null;
-  }, []);
+      const navigationStatus = handlePaymentNavigation(url);
+      if (navigationStatus) {
+        void finalizePaymentFlow(navigationStatus);
+        return false;
+      }
+
+      if (!isTrustedPaymentUrl(url)) {
+        setPaymentError('Navigasi ke halaman tidak dikenal diblokir untuk keamanan.');
+        return false;
+      }
+
+      return true;
+    },
+    [finalizePaymentFlow, handlePaymentNavigation, setPaymentError],
+  );
+
+  const handleNavigationStateChange = useCallback(
+    (navState: { url?: string }) => {
+      const navigationStatus = handlePaymentNavigation(navState.url);
+      if (navigationStatus) {
+        void finalizePaymentFlow(navigationStatus);
+      }
+    },
+    [finalizePaymentFlow, handlePaymentNavigation],
+  );
+
+  const handleWebViewError = useCallback(() => {
+    setPaymentError('Koneksi pembayaran terputus. Kami akan cek status order Anda.');
+    void finalizePaymentFlow('pending');
+  }, [finalizePaymentFlow, setPaymentError]);
+
+  const handleWebViewHttpError = useCallback(() => {
+    setPaymentError('Halaman pembayaran tidak dapat dimuat. Kami cek status pembayaran Anda.');
+    void finalizePaymentFlow('pending');
+  }, [finalizePaymentFlow, setPaymentError]);
 
   if (!resolvedPaymentUrl || !isValidPaymentUrl) {
     return (
@@ -387,58 +244,10 @@ export default function Payment() {
             style={{ flex: 1 }}
             onLoadStart={() => setWebviewLoading(true)}
             onLoadEnd={() => setWebviewLoading(false)}
-            onShouldStartLoadWithRequest={request => {
-              const url = request.url || '';
-
-              if (isDeepLink(url)) {
-                void Linking.canOpenURL(url)
-                  .then(canOpen => {
-                    if (canOpen) {
-                      return Linking.openURL(url);
-                    }
-
-                    setPaymentError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
-                    return Promise.resolve();
-                  })
-                  .catch(() => {
-                    setPaymentError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
-                  });
-                return false;
-              }
-
-              if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                return false;
-              }
-
-              const navigationStatus = handlePaymentNavigation(url);
-              if (navigationStatus) {
-                void finalizePaymentFlow(navigationStatus);
-                return false;
-              }
-
-              if (!isTrustedPaymentUrl(url)) {
-                setPaymentError('Navigasi ke halaman tidak dikenal diblokir untuk keamanan.');
-                return false;
-              }
-
-              return true;
-            }}
-            onNavigationStateChange={navState => {
-              const navigationStatus = handlePaymentNavigation(navState.url);
-              if (navigationStatus) {
-                void finalizePaymentFlow(navigationStatus);
-              }
-            }}
-            onError={() => {
-              setPaymentError('Koneksi pembayaran terputus. Kami akan cek status order Anda.');
-              void finalizePaymentFlow('pending');
-            }}
-            onHttpError={() => {
-              setPaymentError(
-                'Halaman pembayaran tidak dapat dimuat. Kami cek status pembayaran Anda.',
-              );
-              void finalizePaymentFlow('pending');
-            }}
+            onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+            onNavigationStateChange={handleNavigationStateChange}
+            onError={handleWebViewError}
+            onHttpError={handleWebViewHttpError}
           />
 
           {webviewLoading && (
