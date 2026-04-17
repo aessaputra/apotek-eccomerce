@@ -112,7 +112,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 async function resolveCurrentCoordinates(
   locationModule: LocationModule,
-): Promise<Location.LocationObject | null> {
+): Promise<{ location: Location.LocationObject | null; usedLastKnown: boolean }> {
   let current: Location.LocationObject | null = null;
 
   try {
@@ -128,10 +128,13 @@ async function resolveCurrentCoordinates(
   }
 
   if (current) {
-    return current;
+    return { location: current, usedLastKnown: false };
   }
 
-  return locationModule.getLastKnownPositionAsync({ maxAge: 10 * 60 * 1000 });
+  return {
+    location: await locationModule.getLastKnownPositionAsync({ maxAge: 10 * 60 * 1000 }),
+    usedLastKnown: true,
+  };
 }
 
 async function resolveAddressFromCoordinates(
@@ -139,13 +142,12 @@ async function resolveAddressFromCoordinates(
   reverseGeocode: ResolveCurrentLocationSelectionParams['reverseGeocode'],
   latitude: number,
   longitude: number,
-): Promise<{ resolvedAddress: CurrentLocationAddress | null; fullAddress?: string }> {
+): Promise<{ resolvedAddress: CurrentLocationAddress | null }> {
   const { data: reversed, error: reverseError } = await reverseGeocode({ latitude, longitude });
 
   if (reversed && !reverseError) {
     return {
       resolvedAddress: normalizeCurrentLocationAddress(reversed),
-      fullAddress: reversed.fullAddress,
     };
   }
 
@@ -187,7 +189,7 @@ export async function resolveCurrentLocationSelection(
     };
   }
 
-  const current = await resolveCurrentCoordinates(locationModule);
+  const { location: current, usedLastKnown } = await resolveCurrentCoordinates(locationModule);
   if (!current) {
     return {
       kind: 'error',
@@ -197,7 +199,7 @@ export async function resolveCurrentLocationSelection(
     };
   }
 
-  const { resolvedAddress, fullAddress } = await resolveAddressFromCoordinates(
+  const { resolvedAddress } = await resolveAddressFromCoordinates(
     locationModule,
     params.reverseGeocode,
     current.coords.latitude,
@@ -252,9 +254,19 @@ export async function resolveCurrentLocationSelection(
   );
 
   let finalMatchedRegency = exactMatchedRegency;
+  const hasStrongDistrictSignal = Boolean(resolvedAddress.district);
 
-  if (!finalMatchedRegency && fuzzyMatchedRegencies.length === 1) {
-    finalMatchedRegency = fuzzyMatchedRegencies[0];
+  if (!finalMatchedRegency && fuzzyMatchedRegencies.length === 1 && hasStrongDistrictSignal) {
+    const corroboratedRegency = districtSearchResults.find(({ regency, districts }) => {
+      return (
+        regency.code === fuzzyMatchedRegencies[0]?.code &&
+        districts.some(d => adminNamesMatch(d.name, resolvedAddress.district))
+      );
+    });
+
+    if (corroboratedRegency) {
+      finalMatchedRegency = corroboratedRegency.regency;
+    }
   }
 
   if (!finalMatchedRegency && fuzzyMatchedRegencies.length > 1) {
@@ -267,16 +279,6 @@ export async function resolveCurrentLocationSelection(
 
     if (disambiguatedRegency) {
       finalMatchedRegency = disambiguatedRegency.regency;
-    }
-  }
-
-  if (!finalMatchedRegency) {
-    const foundDistrict = districtSearchResults.find(({ districts }) =>
-      districts.some(d => adminNamesMatch(d.name, resolvedAddress.city)),
-    );
-
-    if (foundDistrict) {
-      finalMatchedRegency = foundDistrict.regency;
     }
   }
 
@@ -300,41 +302,27 @@ export async function resolveCurrentLocationSelection(
     };
   }
 
-  const matchedDistrict = districts.find(option => {
-    return normalizeAdminName(option.name) === normalizeAdminName(resolvedAddress.district);
-  });
-
-  const districtCandidate =
-    matchedDistrict ||
-    districts.find(option =>
-      normalizeAdminName(
-        fullAddress ??
-          `${resolvedAddress.district}, ${resolvedAddress.city}, ${resolvedAddress.province}`,
-      ).includes(normalizeAdminName(option.name)),
-    );
-
-  if (!districtCandidate) {
-    return {
-      kind: 'manual',
-      stage: 'district',
-      errorMessage: 'Kecamatan tidak cocok otomatis. Silakan pilih manual.',
-      province: matchedProvince,
-      regency: finalMatchedRegency,
-      districtOptions: districts,
-    };
-  }
-
-  let finalDistrictCandidate = districtCandidate;
-  let options = await params.resolvePostalOptions(
-    matchedProvince,
-    finalMatchedRegency,
-    finalDistrictCandidate,
-  );
+  const matchedDistrict = resolvedAddress.district
+    ? districts.find(option => {
+        return normalizeAdminName(option.name) === normalizeAdminName(resolvedAddress.district);
+      })
+    : undefined;
   const normalizedResolvedPostalCode = normalizePostalCode(resolvedAddress.postalCode);
+
+  let finalDistrictCandidate = matchedDistrict;
+  let options =
+    finalDistrictCandidate && !usedLastKnown
+      ? await params.resolvePostalOptions(
+          matchedProvince,
+          finalMatchedRegency,
+          finalDistrictCandidate,
+        )
+      : [];
 
   if (
     normalizedResolvedPostalCode &&
-    !options.some(option => normalizePostalCode(option.label) === normalizedResolvedPostalCode)
+    (!finalDistrictCandidate ||
+      !options.some(option => normalizePostalCode(option.label) === normalizedResolvedPostalCode))
   ) {
     const postalMatchedDistrict = await findDistrictCandidateByPostalCode(
       districts,
@@ -348,6 +336,25 @@ export async function resolveCurrentLocationSelection(
       finalDistrictCandidate = postalMatchedDistrict.district;
       options = postalMatchedDistrict.options;
     }
+  }
+
+  if (!finalDistrictCandidate) {
+    return {
+      kind: 'manual',
+      stage: 'district',
+      errorMessage: 'Kecamatan tidak cocok otomatis. Silakan pilih manual.',
+      province: matchedProvince,
+      regency: finalMatchedRegency,
+      districtOptions: districts,
+    };
+  }
+
+  if (options.length === 0) {
+    options = await params.resolvePostalOptions(
+      matchedProvince,
+      finalMatchedRegency,
+      finalDistrictCandidate,
+    );
   }
 
   if (options.length === 0) {
@@ -365,8 +372,7 @@ export async function resolveCurrentLocationSelection(
   const exactPostal = options.find(
     option => normalizePostalCode(option.label) === normalizedResolvedPostalCode,
   );
-  const fallbackPostal = options.length === 1 ? options[0] : null;
-  const selectedOption = exactPostal ?? fallbackPostal;
+  const selectedOption = exactPostal ?? null;
 
   if (!selectedOption) {
     return {
