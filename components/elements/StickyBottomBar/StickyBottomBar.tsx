@@ -2,6 +2,7 @@ import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { XStack, YStack, Text, Button, Spinner } from 'tamagui';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
+import { formatPrice } from '@/services/home.service';
 
 export interface StickyBottomBarProps {
   grandTotal: number;
@@ -10,15 +11,6 @@ export interface StickyBottomBarProps {
   onConfirm: () => void;
   confirmText?: string;
 }
-
-const formatRupiah = (amount: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
 
 export const StickyBottomBar = ({
   grandTotal,
@@ -48,7 +40,7 @@ export const StickyBottomBar = ({
           Total
         </Text>
         <Text fontSize="$6" fontWeight="800" color="$color">
-          {formatRupiah(grandTotal)}
+          {formatPrice(grandTotal)}
         </Text>
       </YStack>
 
