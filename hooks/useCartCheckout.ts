@@ -2,58 +2,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
-import { createCheckoutOrder, createSnapToken } from '@/services/checkout.service';
+import { createCheckoutOrder } from '@/services/checkout.service';
+import {
+  buildCheckoutFingerprint,
+  buildPersistedCheckoutSession,
+  PersistedCheckoutSession,
+  requestSnapTokenWithRetry,
+  toTranslatedCheckoutError,
+} from '@/hooks/useCartCheckout.helpers';
 import {
   ErrorType,
   classifyError,
-  isRetryableError,
+  createTypedError,
   translateErrorMessage,
+  withFallbackMessage,
   type AppError,
 } from '@/utils/error';
-import { withRetry } from '@/utils/retry';
 import type { Address } from '@/types/address';
 import type { CartSnapshot } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
-
-interface PersistedCheckoutSession {
-  fingerprint: string;
-  idempotency_key: string;
-  order_id: string | null;
-  selected_address_id: string | null;
-  selected_shipping_key: string | null;
-  destination_area_id: string | null;
-  destination_postal_code: number | null;
-  selected_address_latitude: number | null;
-  selected_address_longitude: number | null;
-}
-
-function createTypedError(type: ErrorType, message: string): AppError {
-  const draft: AppError = {
-    type,
-    message,
-    retryable: false,
-  };
-
-  return {
-    ...draft,
-    retryable: isRetryableError(draft),
-  };
-}
-
-function withFallbackMessage(error: AppError, fallback: string): AppError {
-  if (error.message?.trim()) {
-    return error;
-  }
-
-  return {
-    ...error,
-    message: fallback,
-  };
-}
-
-function stringifyCoordinate(value: number | null | undefined): string {
-  return typeof value === 'number' && Number.isFinite(value) ? String(value) : 'null';
-}
 
 export interface UseCartCheckoutParams {
   userId?: string;
@@ -108,84 +75,63 @@ export function useCartCheckout({
 
   const checkoutFingerprint = useMemo(
     () =>
-      [
-        userId ?? '',
-        selectedAddressId ?? '',
-        stringifyCoordinate(selectedAddress?.latitude),
-        stringifyCoordinate(selectedAddress?.longitude),
-        selectedShippingKey ?? '',
-        quoteDestination.areaId ?? '',
-        quoteDestination.postalCode ?? '',
-        snapshot.itemCount,
-        snapshot.estimatedWeightGrams,
-        snapshot.packageValue,
-      ].join('|'),
-    [
-      selectedAddressId,
-      selectedAddress?.latitude,
-      selectedAddress?.longitude,
-      selectedShippingKey,
-      quoteDestination.areaId,
-      quoteDestination.postalCode,
-      snapshot.estimatedWeightGrams,
-      snapshot.itemCount,
-      snapshot.packageValue,
-      userId,
-    ],
+      buildCheckoutFingerprint({
+        userId,
+        selectedAddress,
+        selectedAddressId,
+        selectedShippingKey,
+        quoteDestination,
+        snapshot,
+      }),
+    [quoteDestination, selectedAddress, selectedAddressId, selectedShippingKey, snapshot, userId],
   );
+
+  const resetCheckoutState = useCallback(() => {
+    setCheckoutIdempotencyKey(null);
+    setActiveOrderId(null);
+  }, []);
 
   const handleCheckoutError = useCallback(
     (error: unknown, fallbackMessage: string) => {
-      const classifiedError = withFallbackMessage(classifyError(error), fallbackMessage);
-      const translatedMessage = translateErrorMessage(classifiedError);
-
-      onError?.({
-        ...classifiedError,
-        message: translatedMessage,
-      });
+      onError?.(toTranslatedCheckoutError(error, fallbackMessage));
     },
     [onError],
   );
 
   const clearCheckoutSession = useCallback(async () => {
-    setCheckoutIdempotencyKey(null);
-    setActiveOrderId(null);
+    resetCheckoutState();
     setPaymentError(null);
     await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-  }, [removePersistData]);
+  }, [removePersistData, resetCheckoutState]);
 
-  const requestSnapTokenWithRetry = useCallback(async (orderId: string) => {
-    return withRetry(
-      async () => {
-        const { data, error } = await createSnapToken(orderId);
-
-        if (error || !data) {
-          throw error ?? new Error('Gagal membuat token pembayaran.');
-        }
-
-        return data;
-      },
-      {
-        maxRetries: 2,
-        baseDelay: 800,
-        maxDelay: 4000,
-        shouldRetry: error => {
-          const classifiedError = classifyError(error);
-
-          return (
-            classifiedError.type === ErrorType.NETWORK ||
-            classifiedError.type === ErrorType.TIMEOUT ||
-            classifiedError.type === ErrorType.SERVER
-          );
-        },
-      },
-    );
-  }, []);
+  const persistCheckoutSession = useCallback(
+    async (idempotencyKey: string, orderId: string | null) => {
+      await setPersistData<PersistedCheckoutSession>(
+        DataPersistKeys.CHECKOUT_SESSION,
+        buildPersistedCheckoutSession({
+          fingerprint: checkoutFingerprint,
+          idempotencyKey,
+          orderId,
+          selectedAddress,
+          selectedAddressId,
+          selectedShippingKey,
+          quoteDestination,
+        }),
+      );
+    },
+    [
+      checkoutFingerprint,
+      quoteDestination,
+      selectedAddress,
+      selectedAddressId,
+      selectedShippingKey,
+      setPersistData,
+    ],
+  );
 
   const syncCheckoutSession = useCallback(async () => {
     if (!userId) {
-      setCheckoutIdempotencyKey(null);
-      setActiveOrderId(null);
+      resetCheckoutState();
       await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
       return;
     }
@@ -195,8 +141,7 @@ export function useCartCheckout({
     );
 
     if (!persisted) {
-      setCheckoutIdempotencyKey(null);
-      setActiveOrderId(null);
+      resetCheckoutState();
       return;
     }
 
@@ -252,15 +197,13 @@ export function useCartCheckout({
     const isWaitingQuoteHydration =
       Boolean(persistedShippingKey) &&
       persistedShippingKey === selectedShippingKey &&
-      (persisted.destination_area_id !== null || persisted.destination_postal_code !== null) &&
-      quoteDestination.areaId === null &&
-      quoteDestination.postalCode === null;
+      ((persisted.destination_area_id !== null && quoteDestination.areaId === null) ||
+        (persisted.destination_postal_code !== null && quoteDestination.postalCode === null));
     const isHydrationPending =
       isWaitingAddressHydration || isWaitingShippingHydration || isWaitingQuoteHydration;
 
     if (hasKnownMismatch) {
-      setCheckoutIdempotencyKey(null);
-      setActiveOrderId(null);
+      resetCheckoutState();
       await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
       return;
     }
@@ -271,14 +214,14 @@ export function useCartCheckout({
       return;
     }
 
-    setCheckoutIdempotencyKey(null);
-    setActiveOrderId(null);
+    resetCheckoutState();
     await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
   }, [
     checkoutFingerprint,
     getPersistData,
     loadingSelectedAddress,
     removePersistData,
+    resetCheckoutState,
     selectedAddress,
     selectedAddressId,
     selectedShippingKey,
@@ -337,17 +280,7 @@ export function useCartCheckout({
 
       let orderIdForPayment = activeOrderId;
 
-      await setPersistData<PersistedCheckoutSession>(DataPersistKeys.CHECKOUT_SESSION, {
-        fingerprint: checkoutFingerprint,
-        idempotency_key: currentIdempotencyKey,
-        order_id: orderIdForPayment,
-        selected_address_id: selectedAddressId,
-        selected_shipping_key: selectedShippingKey,
-        destination_area_id: quoteDestination.areaId,
-        destination_postal_code: quoteDestination.postalCode,
-        selected_address_latitude: selectedAddress?.latitude ?? null,
-        selected_address_longitude: selectedAddress?.longitude ?? null,
-      });
+      await persistCheckoutSession(currentIdempotencyKey, orderIdForPayment);
 
       setStartingCheckout(true);
 
@@ -379,17 +312,7 @@ export function useCartCheckout({
         orderIdForPayment = orderData.order_id;
         setCheckoutIdempotencyKey(orderData.checkout_idempotency_key);
         setActiveOrderId(orderData.order_id);
-        await setPersistData<PersistedCheckoutSession>(DataPersistKeys.CHECKOUT_SESSION, {
-          fingerprint: checkoutFingerprint,
-          idempotency_key: orderData.checkout_idempotency_key,
-          order_id: orderData.order_id,
-          selected_address_id: selectedAddressId,
-          selected_shipping_key: selectedShippingKey,
-          destination_area_id: quoteDestination.areaId,
-          destination_postal_code: quoteDestination.postalCode,
-          selected_address_latitude: selectedAddress?.latitude ?? null,
-          selected_address_longitude: selectedAddress?.longitude ?? null,
-        });
+        await persistCheckoutSession(orderData.checkout_idempotency_key, orderData.order_id);
       }
 
       const snapData = await requestSnapTokenWithRetry(orderIdForPayment);
@@ -415,7 +338,6 @@ export function useCartCheckout({
     }
   }, [
     activeOrderId,
-    checkoutFingerprint,
     checkoutIdempotencyKey,
     clearCheckoutSession,
     handleCheckoutError,
@@ -424,13 +346,10 @@ export function useCartCheckout({
     onOfflineAction,
     quoteDestination.areaId,
     quoteDestination.postalCode,
-    requestSnapTokenWithRetry,
     router,
+    persistCheckoutSession,
     selectedAddress,
-    selectedAddressId,
     selectedShippingOption,
-    selectedShippingKey,
-    setPersistData,
     userId,
   ]);
 

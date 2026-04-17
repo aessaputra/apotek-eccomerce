@@ -302,6 +302,52 @@ describe('useCartCheckout', () => {
     });
   });
 
+  it('clears local checkout state and persisted session when clearing checkout session manually', async () => {
+    mockGetPersistData.mockResolvedValue({
+      fingerprint: 'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000',
+      idempotency_key: 'idem-1',
+      order_id: 'order-1',
+      selected_address_id: 'address-1',
+      selected_shipping_key: 'jne-reg',
+      destination_area_id: 'AREA-1',
+      destination_postal_code: 12345,
+      selected_address_latitude: null,
+      selected_address_longitude: null,
+    });
+
+    const { result } = renderHook(() =>
+      useCartCheckout({
+        userId: 'user-1',
+        selectedAddress,
+        selectedAddressId: 'address-1',
+        loadingSelectedAddress: false,
+        selectedShippingOption,
+        selectedShippingKey: 'jne-reg',
+        quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+        snapshot,
+        isOffline: false,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.activeOrderId).toBe('order-1');
+    });
+
+    mockGetPersistData.mockResolvedValue(undefined);
+
+    await act(async () => {
+      await result.current.clearCheckoutSession();
+    });
+
+    await waitFor(() => {
+      expect(result.current.activeOrderId).toBeNull();
+    });
+
+    expect(result.current.isCheckoutResumable).toBe(false);
+    expect(result.current.paymentError).toBeNull();
+    expect(mockRemovePersistData).toHaveBeenCalledWith(DataPersistKeys.CHECKOUT_SESSION);
+  });
+
   it('clears persisted checkout session when same address id has different coordinates', async () => {
     mockGetPersistData.mockResolvedValue({
       fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
@@ -558,5 +604,39 @@ describe('useCartCheckout', () => {
     });
 
     expect(mockRemovePersistData).toHaveBeenCalledWith(DataPersistKeys.CHECKOUT_SESSION);
+  });
+
+  it('keeps persisted session while quote destination is only partially hydrated', async () => {
+    mockGetPersistData.mockResolvedValue({
+      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      idempotency_key: 'idem-1',
+      order_id: 'order-1',
+      selected_address_id: 'address-1',
+      selected_shipping_key: 'grab-instant',
+      destination_area_id: 'AREA-1',
+      destination_postal_code: 12345,
+      selected_address_latitude: -6.2,
+      selected_address_longitude: 106.8,
+    });
+
+    const { result } = renderHook(() =>
+      useCartCheckout({
+        userId: 'user-1',
+        selectedAddress: selectedAddressWithCoords,
+        selectedAddressId: 'address-1',
+        loadingSelectedAddress: false,
+        selectedShippingOption: null,
+        selectedShippingKey: 'grab-instant',
+        quoteDestination: { areaId: 'AREA-1', postalCode: null },
+        snapshot,
+        isOffline: false,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.activeOrderId).toBe('order-1');
+    });
+
+    expect(mockRemovePersistData).not.toHaveBeenCalled();
   });
 });
