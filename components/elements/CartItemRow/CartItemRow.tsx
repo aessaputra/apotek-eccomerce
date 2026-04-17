@@ -13,6 +13,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { RectButton } from 'react-native-gesture-handler';
+import { formatPrice } from '@/services/home.service';
 import { getThemeColor } from '@/utils/theme';
 
 export interface CartItemRowProps {
@@ -21,15 +22,6 @@ export interface CartItemRowProps {
   onRemove: (cartItemId: string) => void;
   isUpdating?: boolean;
 }
-
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
-};
 
 function DeleteAction({
   progress,

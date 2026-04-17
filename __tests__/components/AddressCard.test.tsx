@@ -9,15 +9,15 @@ const mockAddress: Address = {
   receiver_name: 'John Doe',
   phone_number: '081234567890',
   street_address: 'Jl. Sudirman No. 1',
+  address_note: null,
   city: 'Jakarta',
   city_id: null,
+  area_id: null,
   country_code: 'ID',
   province: 'DKI Jakarta',
   province_id: null,
-  district_id: null,
   latitude: null,
   longitude: null,
-  subdistrict_id: null,
   postal_code: '12345',
   is_default: false,
   created_at: '2025-01-01T00:00:00Z',
@@ -37,12 +37,12 @@ describe('<AddressCard />', () => {
 
   test('shows default badge when isDefault is true', async () => {
     render(<AddressCard address={mockAddress} isDefault />);
-    expect(screen.getByText('Default')).not.toBeNull();
+    expect(screen.getByText('Utama')).not.toBeNull();
   });
 
   test('does not show default badge when isDefault is false', async () => {
     render(<AddressCard address={mockAddress} isDefault={false} />);
-    expect(screen.queryByText('Default')).toBeNull();
+    expect(screen.queryByText('Utama')).toBeNull();
   });
 
   test('calls onPress when card is pressed', async () => {

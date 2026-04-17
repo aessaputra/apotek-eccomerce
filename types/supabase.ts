@@ -9,13 +9,13 @@ export type Database = {
     Tables: {
       addresses: {
         Row: {
+          address_note: string | null;
           area_id: string | null;
           area_name: string | null;
           city: string;
           city_id: string | null;
           country_code: string | null;
           created_at: string;
-          district_id: string | null;
           id: string;
           is_default: boolean | null;
           latitude: number | null;
@@ -27,16 +27,15 @@ export type Database = {
           province_id: string | null;
           receiver_name: string;
           street_address: string;
-          subdistrict_id: string | null;
         };
         Insert: {
+          address_note?: string | null;
           area_id?: string | null;
           area_name?: string | null;
           city: string;
           city_id?: string | null;
           country_code?: string | null;
           created_at?: string;
-          district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
           latitude?: number | null;
@@ -48,16 +47,15 @@ export type Database = {
           province_id?: string | null;
           receiver_name: string;
           street_address: string;
-          subdistrict_id?: string | null;
         };
         Update: {
+          address_note?: string | null;
           area_id?: string | null;
           area_name?: string | null;
           city?: string;
           city_id?: string | null;
           country_code?: string | null;
           created_at?: string;
-          district_id?: string | null;
           id?: string;
           is_default?: boolean | null;
           latitude?: number | null;
@@ -69,7 +67,6 @@ export type Database = {
           province_id?: string | null;
           receiver_name?: string;
           street_address?: string;
-          subdistrict_id?: string | null;
         };
       };
       cart_items: {
@@ -133,6 +130,50 @@ export type Database = {
           logo_url?: string | null;
           name?: string;
           slug?: string;
+        };
+      };
+      home_banners: {
+        Row: {
+          body: string | null;
+          created_at: string;
+          cta_kind: string;
+          cta_label: string | null;
+          cta_route: string | null;
+          id: string;
+          intent: string;
+          is_active: boolean;
+          media_path: string | null;
+          placement_key: string;
+          title: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          body?: string | null;
+          created_at?: string;
+          cta_kind: string;
+          cta_label?: string | null;
+          cta_route?: string | null;
+          id?: string;
+          intent: string;
+          is_active?: boolean;
+          media_path?: string | null;
+          placement_key: string;
+          title?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          body?: string | null;
+          created_at?: string;
+          cta_kind?: string;
+          cta_label?: string | null;
+          cta_route?: string | null;
+          id?: string;
+          intent?: string;
+          is_active?: boolean;
+          media_path?: string | null;
+          placement_key?: string;
+          title?: string | null;
+          updated_at?: string;
         };
       };
       order_items: {

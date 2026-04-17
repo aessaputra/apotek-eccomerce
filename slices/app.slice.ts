@@ -114,12 +114,34 @@ function mergeProducts(
   });
 }
 
+export interface OrdersByStatusCache {
+  packing: Record<string, OrdersCacheEntry | undefined>;
+  shipped: Record<string, OrdersCacheEntry | undefined>;
+  completed: Record<string, OrdersCacheEntry | undefined>;
+}
+
+export interface UpsertOrdersByStatusCachePagePayload extends UpsertOrdersCachePagePayload {
+  cacheKey: 'packing' | 'shipped' | 'completed';
+}
+
+export interface SetOrdersByStatusCacheStatusPayload extends SetOrdersCacheStatusPayload {
+  cacheKey: 'packing' | 'shipped' | 'completed';
+}
+
+export interface InvalidateOrdersByStatusCachePayload {
+  cacheKey: 'packing' | 'shipped' | 'completed';
+  userId: string;
+}
+
 export interface AppState {
   checked: boolean;
   loggedIn: boolean;
   user?: User;
   cartClearedAt: number | null;
+  completedOrdersTabViewedByUser: Record<string, boolean | undefined>;
   ordersCache: Record<string, OrdersCacheEntry | undefined>;
+  unpaidOrdersCache: Record<string, OrdersCacheEntry | undefined>;
+  ordersByStatusCache: OrdersByStatusCache;
   productsCache: Record<string, ProductsCacheEntry | undefined>;
 }
 
@@ -128,7 +150,14 @@ const initialState: AppState = {
   loggedIn: false,
   user: undefined,
   cartClearedAt: null,
+  completedOrdersTabViewedByUser: {},
   ordersCache: {},
+  unpaidOrdersCache: {},
+  ordersByStatusCache: {
+    packing: {},
+    shipped: {},
+    completed: {},
+  },
   productsCache: {},
 };
 
@@ -149,6 +178,9 @@ const slice = createSlice({
     },
     markCartCleared: (state: AppState, { payload }: PayloadAction<number>) => {
       state.cartClearedAt = payload;
+    },
+    markCompletedOrdersTabViewed: (state: AppState, { payload }: PayloadAction<string>) => {
+      state.completedOrdersTabViewedByUser[payload] = true;
     },
     upsertOrdersCachePage: (
       state: AppState,
@@ -199,6 +231,118 @@ const slice = createSlice({
     },
     clearOrdersCacheEntry: (state: AppState, { payload }: PayloadAction<string>) => {
       delete state.ordersCache[payload];
+    },
+    upsertUnpaidOrdersCachePage: (
+      state: AppState,
+      { payload }: PayloadAction<UpsertOrdersCachePagePayload>,
+    ) => {
+      const currentEntry = state.unpaidOrdersCache[payload.userId] ?? createOrdersCacheEntry();
+      const nextItems =
+        payload.replace || payload.offset === 0
+          ? payload.items
+          : mergeOrders(currentEntry.items, payload.items);
+
+      state.unpaidOrdersCache[payload.userId] = {
+        ...currentEntry,
+        items: nextItems,
+        hasMore: payload.hasMore,
+        lastFetchedAt: payload.fetchedAt,
+        lastUpdatedAt: Date.now(),
+        payloadBytes: payload.payloadBytes,
+        queryDurationMs: payload.durationMs,
+        status: 'success',
+        error: null,
+      };
+    },
+    setUnpaidOrdersCacheStatus: (
+      state: AppState,
+      { payload }: PayloadAction<SetOrdersCacheStatusPayload>,
+    ) => {
+      const currentEntry = state.unpaidOrdersCache[payload.userId] ?? createOrdersCacheEntry();
+      state.unpaidOrdersCache[payload.userId] = {
+        ...currentEntry,
+        status: payload.status,
+        error: payload.error ?? null,
+      };
+    },
+    invalidateUnpaidOrdersCache: (state: AppState, { payload }: PayloadAction<string>) => {
+      const currentEntry = state.unpaidOrdersCache[payload];
+
+      if (!currentEntry) {
+        return;
+      }
+
+      state.unpaidOrdersCache[payload] = {
+        ...currentEntry,
+        items: [],
+        hasMore: true,
+        payloadBytes: 0,
+        queryDurationMs: 0,
+        lastFetchedAt: null,
+        status: 'idle',
+        error: null,
+      };
+    },
+    clearUnpaidOrdersCacheEntry: (state: AppState, { payload }: PayloadAction<string>) => {
+      delete state.unpaidOrdersCache[payload];
+    },
+    upsertOrdersByStatusCachePage: (
+      state: AppState,
+      { payload }: PayloadAction<UpsertOrdersByStatusCachePagePayload>,
+    ) => {
+      const currentEntry =
+        state.ordersByStatusCache[payload.cacheKey][payload.userId] ?? createOrdersCacheEntry();
+      const nextItems =
+        payload.replace || payload.offset === 0
+          ? payload.items
+          : mergeOrders(currentEntry.items, payload.items);
+
+      state.ordersByStatusCache[payload.cacheKey][payload.userId] = {
+        ...currentEntry,
+        items: nextItems,
+        hasMore: payload.hasMore,
+        lastFetchedAt: payload.fetchedAt,
+        lastUpdatedAt: Date.now(),
+        payloadBytes: payload.payloadBytes,
+        queryDurationMs: payload.durationMs,
+        status: 'success',
+        error: null,
+      };
+    },
+    setOrdersByStatusCacheStatus: (
+      state: AppState,
+      { payload }: PayloadAction<SetOrdersByStatusCacheStatusPayload>,
+    ) => {
+      const currentEntry =
+        state.ordersByStatusCache[payload.cacheKey][payload.userId] ?? createOrdersCacheEntry();
+      state.ordersByStatusCache[payload.cacheKey][payload.userId] = {
+        ...currentEntry,
+        status: payload.status,
+        error: payload.error ?? null,
+      };
+    },
+    invalidateOrdersByStatusCache: (
+      state: AppState,
+      { payload }: PayloadAction<InvalidateOrdersByStatusCachePayload>,
+    ) => {
+      const currentEntry = state.ordersByStatusCache[payload.cacheKey][payload.userId];
+
+      if (!currentEntry) {
+        return;
+      }
+
+      state.ordersByStatusCache[payload.cacheKey][payload.userId] = {
+        ...currentEntry,
+        lastFetchedAt: null,
+        status: 'idle',
+        error: null,
+      };
+    },
+    clearOrdersByStatusCacheEntry: (
+      state: AppState,
+      { payload }: PayloadAction<InvalidateOrdersByStatusCachePayload>,
+    ) => {
+      delete state.ordersByStatusCache[payload.cacheKey][payload.userId];
     },
     upsertProductsCachePage: (
       state: AppState,

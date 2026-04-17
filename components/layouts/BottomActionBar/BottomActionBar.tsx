@@ -25,6 +25,12 @@ export interface BottomActionBarProps {
   disabled?: boolean;
   extraBottomOffset?: number;
   keyboardAnchored?: boolean;
+  /**
+   * Whether to include the bottom safe area inset in the bar's padding.
+   * Set to `false` when a parent `SafeAreaView` already applies the bottom inset
+   * to avoid double-spacing. Defaults to `true` for backward compatibility.
+   */
+  includeBottomInset?: boolean;
   /** Accessibility label for screen readers */
   'aria-label': string;
   /** Accessibility hint providing additional context for screen readers */
@@ -37,12 +43,13 @@ export default function BottomActionBar({
   disabled = false,
   extraBottomOffset = 0,
   keyboardAnchored = false,
+  includeBottomInset = true,
   'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedBy,
 }: BottomActionBarProps) {
   const insets = useSafeAreaInsets();
 
-  const bottomInset = insets.bottom;
+  const bottomInset = includeBottomInset ? insets.bottom : 0;
   const innerPaddingBottom = VERTICAL_PADDING + Math.max(0, bottomInset);
   const anchoredOnAndroid = Platform.OS === 'android' && keyboardAnchored;
   const bottomOffset = anchoredOnAndroid ? extraBottomOffset : 0;

@@ -5,7 +5,13 @@ import type { Address } from '@/types/address';
  * Joins street, city, province, and postal code with comma separation.
  */
 export function formatAddress(address: Address): string {
-  return [address.street_address, address.city, address.province, address.postal_code]
+  return [
+    address.street_address,
+    address.address_note,
+    address.city,
+    address.province,
+    address.postal_code,
+  ]
     .filter(Boolean)
     .join(', ');
 }

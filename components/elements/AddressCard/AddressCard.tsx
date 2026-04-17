@@ -1,6 +1,7 @@
 import { YStack, XStack, Text, Card, styled } from 'tamagui';
 import type { Address } from '@/types/address';
 import { DEFAULT_ACCENT_BORDER_WIDTH, PRESS_OPACITY } from '@/constants/address';
+import { formatAddress } from '@/utils/address';
 
 export interface AddressCardProps {
   address: Address;
@@ -16,7 +17,6 @@ const StyledCard = styled(Card, {
   mb: '$3',
   bw: 1,
   br: '$5',
-  elevation: 2,
   animation: 'quick',
 
   variants: {
@@ -50,16 +50,9 @@ export default function AddressCard({
   onEdit,
   badgeText,
 }: AddressCardProps) {
-  const formattedAddress = [
-    address.street_address,
-    address.city,
-    address.province,
-    address.postal_code,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  const formattedAddress = formatAddress(address);
 
-  const displayBadge = badgeText ?? (isDefault ? 'Default' : null);
+  const displayBadge = badgeText ?? (isDefault ? 'Utama' : null);
 
   return (
     <StyledCard

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAddress, getAddresses, getPreferredAddress } from '@/services/address.service';
-import { ErrorType, classifyError, isRetryableError, type AppError } from '@/utils/error';
+import {
+  ErrorType,
+  classifyError,
+  createTypedError,
+  withFallbackMessage,
+  type AppError,
+} from '@/utils/error';
 import type { Address } from '@/types/address';
 
 type AddressAbortableService<T extends (...args: any[]) => Promise<any>> = (
@@ -12,30 +18,6 @@ const getAddressAbortable = getAddress as AddressAbortableService<typeof getAddr
 const getPreferredAddressAbortable = getPreferredAddress as AddressAbortableService<
   typeof getPreferredAddress
 >;
-
-function createTypedError(type: ErrorType, message: string): AppError {
-  const draft: AppError = {
-    type,
-    message,
-    retryable: false,
-  };
-
-  return {
-    ...draft,
-    retryable: isRetryableError(draft),
-  };
-}
-
-function withFallbackMessage(error: AppError, fallback: string): AppError {
-  if (error.message?.trim()) {
-    return error;
-  }
-
-  return {
-    ...error,
-    message: fallback,
-  };
-}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';

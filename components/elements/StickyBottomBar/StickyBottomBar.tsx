@@ -1,8 +1,8 @@
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { XStack, YStack, Text, Button, Spinner, useTheme } from 'tamagui';
-import { BOTTOM_BAR_HEIGHT, getBottomBarShadow } from '@/constants/ui';
-import { getThemeColor } from '@/utils/theme';
+import { XStack, YStack, Text, Button, Spinner } from 'tamagui';
+import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
+import { formatPrice } from '@/services/home.service';
 
 export interface StickyBottomBarProps {
   grandTotal: number;
@@ -12,15 +12,6 @@ export interface StickyBottomBarProps {
   confirmText?: string;
 }
 
-const formatRupiah = (amount: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
-
 export const StickyBottomBar = ({
   grandTotal,
   isLoading = false,
@@ -29,7 +20,6 @@ export const StickyBottomBar = ({
   confirmText = 'Konfirmasi',
 }: StickyBottomBarProps) => {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
 
   return (
     <XStack
@@ -40,19 +30,17 @@ export const StickyBottomBar = ({
       height={BOTTOM_BAR_HEIGHT + insets.bottom}
       paddingBottom={insets.bottom}
       paddingHorizontal="$4"
-      backgroundColor="$background"
+      backgroundColor="$surface"
       borderTopWidth={1}
       borderTopColor="$surfaceBorder"
       alignItems="center"
-      gap="$3"
-      elevation={8}
-      {...getBottomBarShadow(getThemeColor(theme, 'shadowColor'))}>
+      gap="$3">
       <YStack flex={1}>
         <Text fontSize="$2" color="$colorSubtle">
           Total
         </Text>
         <Text fontSize="$6" fontWeight="800" color="$color">
-          {formatRupiah(grandTotal)}
+          {formatPrice(grandTotal)}
         </Text>
       </YStack>
 

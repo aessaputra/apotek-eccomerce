@@ -8,12 +8,11 @@ describe('<AreaPickerTrigger />', () => {
       <AreaPickerTrigger areaName="" areaId="" onPress={jest.fn()} error={null} disabled={false} />,
     );
 
-    expect(screen.getByText('Pilih area pengiriman')).not.toBeNull();
-    expect(screen.getByText('Wajib dipilih untuk kalkulasi ongkir')).not.toBeNull();
+    expect(screen.getByText('Pilih provinsi, kota, kecamatan, kode pos')).not.toBeNull();
 
     renderWithDarkTheme(
       <AreaPickerTrigger
-        areaName="Kelapa Gading"
+        areaName="Banten, Kabupaten Serang, Ciruas, 42182"
         areaId="area-1"
         onPress={jest.fn()}
         error={null}
@@ -21,7 +20,10 @@ describe('<AreaPickerTrigger />', () => {
       />,
     );
 
-    expect(screen.getByText('Kelapa Gading')).not.toBeNull();
+    expect(screen.getByText('BANTEN')).not.toBeNull();
+    expect(screen.getByText('KAB. SERANG')).not.toBeNull();
+    expect(screen.getByText('CIRUAS')).not.toBeNull();
+    expect(screen.getByText('42182')).not.toBeNull();
   });
 
   test('renders partial selection and error text', async () => {
@@ -35,7 +37,7 @@ describe('<AreaPickerTrigger />', () => {
     );
 
     expect(
-      screen.getByText('Area terpilih (silakan pilih ulang untuk melihat nama)'),
+      screen.getByText('Area tersimpan, silakan pilih ulang untuk menyegarkan detail'),
     ).not.toBeNull();
     expect(screen.getByText('Area wajib dipilih')).not.toBeNull();
   });
@@ -44,7 +46,7 @@ describe('<AreaPickerTrigger />', () => {
     const onPress = jest.fn();
     render(<AreaPickerTrigger areaName="" areaId="" onPress={onPress} disabled={false} />);
 
-    fireEvent.press(screen.getByText('Pilih area pengiriman'));
+    fireEvent.press(screen.getByText('Pilih provinsi, kota, kecamatan, kode pos'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

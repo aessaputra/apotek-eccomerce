@@ -3,6 +3,7 @@ import { Alert, Platform, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { YStack, Spinner, styled, ScrollView } from 'tamagui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AddressFieldsForm from '@/components/AddressForm/AddressForm';
@@ -16,6 +17,19 @@ import { useAddressData } from '@/hooks/useAddressData';
 import { buildAddressPayload } from '@/services/address.service';
 import type { RouteParams } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
+import { consumePendingAddressSelection } from '@/utils/addressSearchSession';
+import { consumePendingAreaSelection } from '@/utils/areaPickerSession';
+import { consumePendingMapPickerResult } from '@/utils/mapPickerSession';
+import {
+  applyMapPickerSelection,
+  applyPendingSelections,
+  applySelectedAddressSelection,
+  applySelectedAreaSelection,
+  buildAddressMapRouteParams,
+} from './addressFormFlow';
+import type { PendingAreaSelection } from '@/utils/areaPickerSession';
+import type { SelectedAddressSuggestion } from '@/types/geocoding';
+import type { MapPickerResult } from '@/components/MapPin';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -43,7 +57,13 @@ export default function AddressFormScreen() {
   const { id } = useLocalSearchParams<RouteParams<'profile/address-form'>>();
   const isEdit = !!id;
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [mapConfirmRequiredDialogOpen, setMapConfirmRequiredDialogOpen] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [areaProximity, setAreaProximity] = useState<{
+    latitude: number;
+    longitude: number;
+    bbox?: number[];
+  } | null>(null);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -77,8 +97,10 @@ export default function AddressFormScreen() {
     validateAll,
     populateFromAddress,
     setArea,
-    clearArea,
     refs,
+    mapConfirmed,
+    setMapConfirmed,
+    resetMapConfirmation,
   } = useAddressForm();
 
   const {
@@ -108,7 +130,7 @@ export default function AddressFormScreen() {
   const saving = dataSaving;
   const displayedError = generalError ?? dataError;
 
-  const handleFieldCommitted = useCallback(() => {
+  const clearTransientErrors = useCallback(() => {
     if (generalError) {
       setGeneralError(null);
     }
@@ -117,13 +139,142 @@ export default function AddressFormScreen() {
     }
   }, [clearDataError, dataError, generalError, setGeneralError]);
 
+  const handleOpenMap = useCallback(
+    (overrides?: Parameters<typeof buildAddressMapRouteParams>[1]) => {
+      router.push({
+        pathname: '/profile/address-map',
+        params: buildAddressMapRouteParams(
+          {
+            latitude: values.latitude,
+            longitude: values.longitude,
+            streetAddress: values.streetAddress,
+            areaName: values.areaName,
+            areaId: values.areaId,
+            city: values.city,
+            province: values.province,
+            postalCode: values.postalCode,
+          },
+          overrides,
+        ),
+      });
+    },
+    [router, values],
+  );
+
+  const applySelectedArea = useCallback(
+    (selectedArea: PendingAreaSelection) => {
+      applySelectedAreaSelection(selectedArea, {
+        clearTransientErrors,
+        setArea,
+        setAreaProximity,
+        setCoordinateFieldValue: setFieldValue,
+        resetMapConfirmation,
+      });
+    },
+    [clearTransientErrors, resetMapConfirmation, setArea, setFieldValue],
+  );
+
   const handleDefaultToggle = useCallback(
     (value: boolean) => {
       setFieldValue('isDefault', value);
-      handleFieldCommitted();
+      clearTransientErrors();
     },
-    [handleFieldCommitted, setFieldValue],
+    [clearTransientErrors, setFieldValue],
   );
+
+  const applySelectedAddress = useCallback(
+    (
+      selectedAddress: SelectedAddressSuggestion,
+      addressContext: {
+        areaId: string;
+        areaName: string;
+        city: string;
+        province: string;
+        postalCode: string;
+      },
+    ) => {
+      applySelectedAddressSelection(selectedAddress, addressContext, {
+        clearTransientErrors,
+        setTextFieldValue: setFieldValue,
+        setCoordinateFieldValue: setFieldValue,
+        setAreaProximity,
+        setMapConfirmed,
+        handleOpenMap,
+      });
+    },
+    [clearTransientErrors, handleOpenMap, setFieldValue, setMapConfirmed],
+  );
+
+  const applyMapPickerResult = useCallback(
+    (result: MapPickerResult) => {
+      applyMapPickerSelection(result, {
+        clearTransientErrors,
+        setCoordinateFieldValue: setFieldValue,
+        setMapConfirmed,
+      });
+    },
+    [clearTransientErrors, setFieldValue, setMapConfirmed],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      applyPendingSelections({
+        consumePendingAreaSelection,
+        consumePendingAddressSelection,
+        consumePendingMapPickerResult,
+        getCurrentAddressContext: () => ({
+          areaId: values.areaId,
+          areaName: values.areaName,
+          city: values.city,
+          province: values.province,
+          postalCode: values.postalCode,
+        }),
+        applySelectedArea,
+        applySelectedAddress,
+        applyMapPickerResult,
+      });
+    }, [
+      applySelectedAddress,
+      applySelectedArea,
+      applyMapPickerResult,
+      values.areaId,
+      values.areaName,
+      values.city,
+      values.postalCode,
+      values.province,
+    ]),
+  );
+
+  const handleOpenAreaPicker = useCallback(() => {
+    const params: RouteParams<'profile/area-picker'> = {};
+
+    if (values.areaId.trim()) {
+      params.selectedAreaId = values.areaId.trim();
+    }
+
+    router.push({
+      pathname: '/profile/area-picker',
+      params,
+    });
+  }, [router, values.areaId]);
+
+  const handleOpenStreetAddressSearch = useCallback(() => {
+    const params: RouteParams<'profile/address-search'> = {};
+
+    if (values.streetAddress.trim()) {
+      params.query = values.streetAddress.trim();
+    }
+
+    if (areaProximity) {
+      params.latitude = String(areaProximity.latitude);
+      params.longitude = String(areaProximity.longitude);
+    }
+
+    router.push({
+      pathname: '/profile/address-search',
+      params,
+    });
+  }, [areaProximity, router, values.streetAddress]);
 
   const handleDismissError = useCallback(() => {
     setGeneralError(null);
@@ -141,14 +292,27 @@ export default function AddressFormScreen() {
       return;
     }
 
+    const hasCoordinates = values.latitude != null && values.longitude != null;
+    if (!hasCoordinates) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setGeneralError('Pilih salah satu rekomendasi alamat jalan terlebih dulu.');
+      return;
+    }
+
+    if (!mapConfirmed) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setMapConfirmRequiredDialogOpen(true);
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const basePayload = {
       receiver_name: values.receiverName.trim(),
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
+      address_note: values.addressNote.trim() || null,
       area_id: values.areaId,
-      subdistrict_id: values.subdistrictId || values.areaId || null,
       area_name: values.areaName || null,
       city: values.city.trim(),
       postal_code: values.postalCode.trim(),
@@ -167,7 +331,7 @@ export default function AddressFormScreen() {
     if (success) {
       setSuccessDialogOpen(true);
     }
-  }, [id, saveAddress, setGeneralError, user?.id, validateAll, values]);
+  }, [id, saveAddress, setGeneralError, user?.id, validateAll, values, mapConfirmed]);
 
   if (loading) {
     return (
@@ -180,7 +344,7 @@ export default function AddressFormScreen() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']}>
+    <SafeAreaView edges={[]}>
       <KeyboardAvoidingWrapper
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
@@ -206,9 +370,8 @@ export default function AddressFormScreen() {
                 refs={refs}
                 onFieldSave={setFieldValue}
                 onFieldValidate={validateField}
-                onFieldCommitted={handleFieldCommitted}
-                onAreaSelect={setArea}
-                onAreaClear={clearArea}
+                onAreaPickerPress={handleOpenAreaPicker}
+                onStreetAddressPress={handleOpenStreetAddressSearch}
               />
 
               <DefaultAddressToggle
@@ -239,6 +402,24 @@ export default function AddressFormScreen() {
         description="Data alamat telah berhasil disimpan."
         confirmText="OK"
         onConfirm={() => router.back()}
+      />
+
+      <AppAlertDialog
+        open={mapConfirmRequiredDialogOpen}
+        onOpenChange={setMapConfirmRequiredDialogOpen}
+        title="Konfirmasi Lokasi Diperlukan"
+        description="Lokasi peta harus cocok dengan alamat agar pengiriman berhasil. Silakan buka peta lalu konfirmasi titik alamat Anda."
+        confirmText="Buka Peta"
+        cancelText="Batal"
+        onConfirm={() => {
+          setMapConfirmRequiredDialogOpen(false);
+          handleOpenMap();
+        }}
+        onCancel={() => setMapConfirmRequiredDialogOpen(false)}
+        confirmColor="$primary"
+        confirmTextColor="$onPrimary"
+        cancelColor="$background"
+        cancelTextColor="$colorSubtle"
       />
     </SafeAreaView>
   );

@@ -39,3 +39,17 @@ export const ADDRESS_ITEM_HEIGHT = 140;
 
 /** Horizontal padding for the address list container. */
 export const LIST_HORIZONTAL_PADDING = 20;
+
+export const ADDRESS_PLACEHOLDER_STREET = 'Nama Jalan, Gedung, No. Rumah';
+export const ADDRESS_PLACEHOLDER_RECEIVER = 'Nama Penerima';
+export const ADDRESS_PLACEHOLDER_PHONE = 'Nomor Telepon';
+
+export const ADDRESS_MIN_LENGTH_STREET = 10;
+export const ADDRESS_MIN_LENGTH_NAME = 2;
+export const ADDRESS_MAX_LENGTH_NAME = 100;
+export const ADDRESS_MIN_LENGTH_PHONE_DIGITS = 8;
+export const ADDRESS_MAX_LENGTH_PHONE_DIGITS = 15;
+export const ADDRESS_MIN_LENGTH_POSTAL = 5;
+export const ADDRESS_MAX_LENGTH_POSTAL = 10;
+
+export const DEFAULT_COUNTRY_CODE = 'ID';

@@ -100,4 +100,25 @@ describe('<ProductCardSkeleton />', () => {
 
     expect(screen.toJSON()).toBeTruthy();
   });
+
+  test('renders with custom count', async () => {
+    render(<ProductCardSkeleton width={150} count={5} />);
+    const items = screen.getAllByTestId('product-skeleton-item');
+
+    expect(items).toHaveLength(5);
+  });
+
+  test('renders default 3 items when count not specified', async () => {
+    render(<ProductCardSkeleton width={150} />);
+    const items = screen.getAllByTestId('product-skeleton-item');
+
+    expect(items).toHaveLength(3);
+  });
+
+  test('renders correct count for mobile layout', async () => {
+    render(<ProductCardSkeleton width={150} count={2} />);
+    const items = screen.getAllByTestId('product-skeleton-item');
+
+    expect(items).toHaveLength(2);
+  });
 });

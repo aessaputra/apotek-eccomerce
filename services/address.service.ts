@@ -1,10 +1,12 @@
 import { supabase } from '@/utils/supabase';
+import { parseCoordinate } from '@/utils/coordinates';
 import type { Address, AddressInsert, AddressUpdate } from '@/types/address';
 
 export interface ByteshipShippingAddress {
   recipient_name: string;
   phone_number: string;
   street_address: string;
+  destination_note?: string;
   city: string;
   province: string;
   postal_code: string;
@@ -27,23 +29,6 @@ function requireField(value: string | null | undefined, fieldName: string): stri
   }
 
   return normalized;
-}
-
-function parseCoordinate(value: number | string | null | undefined): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim();
-    if (!normalized) {
-      return null;
-    }
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
 }
 
 function withAbortSignal<T>(query: T, signal?: AbortSignal): T {
@@ -89,6 +74,9 @@ export function toByteshipShippingAddress(address: Address): ByteshipShippingAdd
     province: requireField(address.province, 'province'),
     postal_code: requireField(address.postal_code, 'postal_code'),
     country_code: (normalizeText(address.country_code) || DEFAULT_COUNTRY_CODE).toUpperCase(),
+    ...(normalizeText(address.address_note)
+      ? { destination_note: normalizeText(address.address_note) }
+      : {}),
   };
 
   const latitude = parseCoordinate(address.latitude);

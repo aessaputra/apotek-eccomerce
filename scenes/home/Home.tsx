@@ -1,14 +1,19 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Image, ScrollView, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
-import { CartIcon, PillIcon, SearchIcon, StarIcon } from '@/components/icons';
+import { CartIcon, CheckCircleIcon, SearchIcon } from '@/components/icons';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import CategoryItem, { CategorySkeleton } from '@/components/elements/CategoryItem';
 import ProductCard, { ProductCardSkeleton } from '@/components/elements/ProductCard';
+import HomeBanner, { HomeBannerSkeleton } from '@/components/elements/HomeBanner';
+import { HOME_BANNER_CTA_ROUTE_MAP } from '@/constants/homeBanner.constants';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useAppSlice } from '@/slices';
-import { useHomeData } from '@/hooks';
+import { useHomeData, useCartPaginated } from '@/hooks';
+import { addProductToCart } from '@/services';
+import type { HomeBannerCTA } from '@/types/homeBanner';
 import { getThemeColor } from '@/utils/theme';
 
 const ScreenRoot = styled(YStack, {
@@ -46,41 +51,13 @@ const SectionTitle = styled(Text, {
 const SurfaceIconButton = styled(Card, {
   width: 44,
   height: 44,
-  borderRadius: '$10',
+  borderRadius: '$4',
   backgroundColor: '$surface',
   borderWidth: 1,
   borderColor: '$surfaceBorder',
   alignItems: 'center',
   justifyContent: 'center',
-  elevation: 1,
   pressStyle: { opacity: 0.9 },
-});
-
-const PillAction = styled(XStack, {
-  alignSelf: 'flex-start',
-  backgroundColor: '$surface',
-  borderRadius: '$10',
-  paddingVertical: '$1',
-  paddingHorizontal: '$3',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  pressStyle: { opacity: 0.92 },
-});
-
-const BannerCard = styled(Card, {
-  backgroundColor: '$infoSoft',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  borderRadius: '$4',
-  padding: '$3.5',
-  elevation: 2,
-});
-
-const IllustrationPanel = styled(YStack, {
-  borderRadius: '$4',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '$surface',
 });
 
 const SearchShell = styled(Card, {
@@ -94,7 +71,6 @@ const SearchShell = styled(Card, {
   paddingLeft: '$2',
   paddingRight: '$3',
   gap: '$2',
-  elevation: 1,
   pressStyle: { opacity: 0.92 },
 });
 
@@ -117,11 +93,23 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { user } = useAppSlice();
-  const { categories, products, isLoadingCategories, isLoadingProducts, isRefreshing, refresh } =
-    useHomeData();
+  const {
+    banners,
+    categories,
+    products,
+    isLoadingBanners,
+    isLoadingCategories,
+    isLoadingProducts,
+    isRefreshing,
+    refresh,
+  } = useHomeData();
+
+  const { snapshot: cartSnapshot } = useCartPaginated({ userId: user?.id });
+  const [cartSuccessProductName, setCartSuccessProductName] = useState<string | null>(null);
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
+  const successDialogColor = '$primary';
   const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
   const contentMaxWidth = media.gtLg ? 1080 : media.gtMd ? 920 : media.gtSm ? 720 : 560;
   const contentWidth = Math.min(screenWidth, contentMaxWidth);
@@ -151,12 +139,22 @@ export default function Home() {
         : 'scroll';
   const isLargeScreen = media.gtSm;
 
-  const handleOpenOrders = () => {
+  // Compute viewport-aligned skeleton counts
+  const categorySkeletonCount = isLargeScreen
+    ? categoryLayout === 'grid4'
+      ? 8
+      : categoryLayout === 'grid3'
+        ? 6
+        : 4
+    : 2;
+  const productSkeletonCount = 2;
+
+  const handleOpenCart = () => {
     router.push('/cart');
   };
 
-  const handleOpenDetails = () => {
-    router.push('/home/details');
+  const handleOpenSearch = () => {
+    router.push('/home/search');
   };
 
   const handleCategoryPress = useCallback(
@@ -172,16 +170,41 @@ export default function Home() {
   const handleProductPress = useCallback(
     (productId: string, productName: string) => {
       router.push({
-        pathname: '/home/product-details',
+        pathname: '/product-details',
         params: { id: productId, name: productName },
       });
     },
     [router],
   );
 
+  const handleAddToCart = useCallback(
+    async (productId: string, productName: string) => {
+      if (!user?.id) return;
+      const { error } = await addProductToCart(user.id, productId, 1);
+
+      if (!error) {
+        setCartSuccessProductName(productName);
+      }
+    },
+    [user?.id],
+  );
+
+  const handleCartSuccessDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setCartSuccessProductName(null);
+    }
+  }, []);
+
   const userName = user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer';
   const userAvatarUrl = user?.avatar_url;
   const userInitial = userName.charAt(0).toUpperCase();
+
+  const handleBannerCTAPress = useCallback(
+    (cta: HomeBannerCTA) => {
+      router.push(HOME_BANNER_CTA_ROUTE_MAP[cta.route]);
+    },
+    [router],
+  );
 
   return (
     <ScreenRoot>
@@ -224,11 +247,32 @@ export default function Home() {
 
             <XStack gap="$2" alignItems="center">
               <SurfaceIconButton
-                onPress={handleOpenOrders}
+                onPress={handleOpenCart}
                 role="button"
                 aria-label="Cart"
                 aria-describedby="Open cart page">
-                <CartIcon size={16} color={iconColor} />
+                <CartIcon size={20} color={iconColor} />
+                {cartSnapshot.itemCount > 0 && (
+                  <YStack
+                    position="absolute"
+                    top={4}
+                    right={4}
+                    backgroundColor="$primary"
+                    borderRadius={100}
+                    borderWidth={1.5}
+                    borderColor="$surface"
+                    minWidth={18}
+                    height={18}
+                    justifyContent="center"
+                    alignItems="center"
+                    px={cartSnapshot.itemCount > 9 ? '$1.5' : 0}
+                    zIndex={10}
+                    pointerEvents="none">
+                    <Text color="$onPrimary" fontSize={9} fontWeight="900" lineHeight={11}>
+                      {cartSnapshot.itemCount > 99 ? '99+' : cartSnapshot.itemCount}
+                    </Text>
+                  </YStack>
+                )}
               </SurfaceIconButton>
             </XStack>
           </XStack>
@@ -241,11 +285,11 @@ export default function Home() {
               fontWeight="800"
               letterSpacing={-0.8}
               maxWidth={media.gtSm ? 320 : '100%'}>
-              Sehat jadi mudah
+              Belanja obat makin mudah
             </Text>
 
             <SearchShell
-              onPress={handleOpenDetails}
+              onPress={handleOpenSearch}
               role="button"
               aria-label="Search products"
               aria-describedby="Open product discovery details">
@@ -256,34 +300,16 @@ export default function Home() {
             </SearchShell>
           </YStack>
 
-          <BannerCard>
-            <XStack alignItems="center" gap="$3" justifyContent="space-between">
-              <YStack flex={1} minWidth={0} gap="$2">
-                <Text color="$color" fontSize={14} lineHeight={18} fontWeight="700">
-                  Your last order has{`\n`}been proceed
-                </Text>
-                <PillAction
-                  onPress={handleOpenOrders}
-                  role="button"
-                  aria-label="Track last order"
-                  aria-describedby="Open order tracking details">
-                  <Text color="$primary" fontSize={11} fontWeight="700">
-                    Track now
-                  </Text>
-                </PillAction>
-              </YStack>
-
-              <IllustrationPanel width={74} height={66}>
-                <PillIcon size={30} color={iconColor} />
-                <XStack width={24} height={4} borderRadius="$10" backgroundColor="$infoSoft" />
-              </IllustrationPanel>
-            </XStack>
-          </BannerCard>
+          {isLoadingBanners && !banners.home_banner_top ? (
+            <HomeBannerSkeleton />
+          ) : (
+            <HomeBanner banner={banners.home_banner_top} onCTAPress={handleBannerCTAPress} />
+          )}
 
           <YStack gap="$2.5">
             <SectionTitle>Categories</SectionTitle>
             {isLoadingCategories && categories.length === 0 ? (
-              <CategorySkeleton isLargeScreen={isLargeScreen} />
+              <CategorySkeleton isLargeScreen={isLargeScreen} count={categorySkeletonCount} />
             ) : categories.length === 0 ? (
               <Text fontSize={13} color="$colorSubtle">
                 No categories available
@@ -325,7 +351,7 @@ export default function Home() {
             <SectionTitle>Latest Products</SectionTitle>
             {isLoadingProducts && products.length === 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <ProductCardSkeleton width={productWidth} />
+                <ProductCardSkeleton width={productWidth} count={productSkeletonCount} />
               </ScrollView>
             ) : products.length === 0 ? (
               <Text fontSize={13} color="$colorSubtle">
@@ -344,6 +370,7 @@ export default function Home() {
                       width={productWidth}
                       iconColor={iconColor}
                       onPress={() => handleProductPress(item.id, item.name)}
+                      onAddToCart={() => handleAddToCart(item.id, item.name)}
                     />
                   ))}
                 </XStack>
@@ -351,31 +378,25 @@ export default function Home() {
             )}
           </YStack>
 
-          <BannerCard>
-            <XStack alignItems="center" justifyContent="space-between" gap="$2.5">
-              <YStack flex={1} minWidth={0} gap="$2.5">
-                <Text color="$color" fontSize={15} lineHeight={20} fontWeight="700">
-                  Explore great doctors{`\n`}for your better life
-                </Text>
-                <PillAction
-                  onPress={handleOpenDetails}
-                  role="button"
-                  aria-label="Explore doctors"
-                  aria-describedby="Open doctor discovery">
-                  <Text color="$primary" fontSize={12} fontWeight="700">
-                    Explore life
-                  </Text>
-                </PillAction>
-              </YStack>
-
-              <IllustrationPanel width={88} height={78} gap="$1">
-                <StarIcon size={18} color={iconColor} />
-                <PillIcon size={24} color={iconColor} />
-              </IllustrationPanel>
-            </XStack>
-          </BannerCard>
+          {isLoadingBanners && !banners.home_banner_bottom ? (
+            <HomeBannerSkeleton />
+          ) : (
+            <HomeBanner banner={banners.home_banner_bottom} onCTAPress={handleBannerCTAPress} />
+          )}
         </ContentStack>
       </ScrollView>
+
+      <AppAlertDialog
+        open={cartSuccessProductName !== null}
+        onOpenChange={handleCartSuccessDialogOpenChange}
+        title="Produk berhasil ditambahkan"
+        description={`${cartSuccessProductName ?? 'Produk'} berhasil ditambahkan ke keranjang`}
+        confirmText="OK"
+        confirmColor={successDialogColor}
+        confirmTextColor="$white"
+        hideTitle
+        icon={<CheckCircleIcon size={48} color={successDialogColor} />}
+      />
     </ScreenRoot>
   );
 }

@@ -1,12 +1,11 @@
-import { useState, useCallback } from 'react';
-import { YStack } from 'tamagui';
+import { useCallback, useId } from 'react';
+import { YStack, XStack, Text } from 'tamagui';
+import { ChevronRight } from '@tamagui/lucide-icons';
 import type { TextInput as RNTextInput } from 'react-native';
 import FormInput from '@/components/elements/FormInput';
-import { AreaPickerTrigger, AreaPickerSheet } from '@/components/AreaPicker';
-import { MapPinTrigger, MapPinSheet } from '@/components/MapPin';
-import type { MapCoords } from '@/components/MapPin';
+import { AreaPickerTrigger } from '@/components/AreaPicker';
 import type { AddressFormErrors, AddressFormValues } from '@/utils/addressValidation';
-import type { BiteshipArea } from '@/types/shipping';
+import { ADDRESS_PLACEHOLDER_STREET } from '@/constants/address';
 
 export interface AddressFormProps {
   values: AddressFormValues;
@@ -16,23 +15,15 @@ export interface AddressFormProps {
     receiverNameRef: React.RefObject<RNTextInput | null>;
     phoneNumberRef: React.RefObject<RNTextInput | null>;
     streetAddressRef: React.RefObject<RNTextInput | null>;
+    addressNoteRef: React.RefObject<RNTextInput | null>;
     cityRef: React.RefObject<RNTextInput | null>;
     postalCodeRef: React.RefObject<RNTextInput | null>;
     provinceRef: React.RefObject<RNTextInput | null>;
   };
   onFieldSave: <K extends keyof AddressFormValues>(field: K, value: AddressFormValues[K]) => void;
   onFieldValidate: (field: keyof AddressFormErrors, value: string) => void;
-  onFieldCommitted?: () => void;
-  onAreaSelect: (area: {
-    id: string;
-    subdistrictId: string;
-    name: string;
-    city: string;
-    province: string;
-    postalCode: string;
-  }) => void;
-  onAreaClear?: () => void;
-  onCoordinatesChange?: (coords: MapCoords | null) => void;
+  onAreaPickerPress?: () => void;
+  onStreetAddressPress?: () => void;
 }
 
 function AddressForm({
@@ -42,50 +33,16 @@ function AddressForm({
   refs,
   onFieldSave,
   onFieldValidate,
-  onFieldCommitted,
-  onAreaSelect,
-  onAreaClear,
-  onCoordinatesChange,
+  onAreaPickerPress,
+  onStreetAddressPress,
 }: AddressFormProps) {
-  const [areaPickerOpen, setAreaPickerOpen] = useState(false);
-  const [mapPinOpen, setMapPinOpen] = useState(false);
-
-  const handleMapPinConfirm = useCallback(
-    (coords: MapCoords) => {
-      onFieldSave('latitude', coords.latitude);
-      onFieldSave('longitude', coords.longitude);
-      onCoordinatesChange?.(coords);
-      onFieldCommitted?.();
-    },
-    [onFieldSave, onCoordinatesChange, onFieldCommitted],
-  );
-
-  const currentMapCoords =
-    values.latitude != null && values.longitude != null
-      ? { latitude: values.latitude, longitude: values.longitude }
-      : null;
-
-  const handleAreaSelect = useCallback(
-    (area: BiteshipArea) => {
-      onAreaSelect({
-        id: area.id,
-        subdistrictId: area.id,
-        name: area.name,
-        city: area.administrative_division_level_2_name || '',
-        province: area.administrative_division_level_1_name || '',
-        postalCode: area.postal_code?.toString() || '',
-      });
-      onFieldCommitted?.();
-    },
-    [onAreaSelect, onFieldCommitted],
-  );
+  const streetAddressErrorId = useId();
 
   const handleReceiverNameChange = useCallback(
     (text: string) => {
       onFieldSave('receiverName', text);
-      onFieldCommitted?.();
     },
-    [onFieldCommitted, onFieldSave],
+    [onFieldSave],
   );
 
   const handleReceiverNameBlur = useCallback(() => {
@@ -97,9 +54,8 @@ function AddressForm({
   const handlePhoneNumberChange = useCallback(
     (text: string) => {
       onFieldSave('phoneNumber', text);
-      onFieldCommitted?.();
     },
-    [onFieldCommitted, onFieldSave],
+    [onFieldSave],
   );
 
   const handlePhoneNumberBlur = useCallback(() => {
@@ -108,195 +64,123 @@ function AddressForm({
     onFieldValidate('phoneNumber', normalizedValue);
   }, [onFieldSave, onFieldValidate, values.phoneNumber]);
 
-  const handleStreetAddressChange = useCallback(
+  const handleOpenStreetSearch = useCallback(() => {
+    onStreetAddressPress?.();
+  }, [onStreetAddressPress]);
+
+  const handleAddressNoteChange = useCallback(
     (text: string) => {
-      onFieldSave('streetAddress', text);
-      onFieldCommitted?.();
+      onFieldSave('addressNote', text);
     },
-    [onFieldCommitted, onFieldSave],
+    [onFieldSave],
   );
 
-  const handleStreetAddressBlur = useCallback(() => {
-    const normalizedValue = values.streetAddress.trim();
-    onFieldSave('streetAddress', normalizedValue);
-    onFieldValidate('streetAddress', normalizedValue);
-  }, [onFieldSave, onFieldValidate, values.streetAddress]);
+  const handleAddressNoteBlur = useCallback(() => {
+    onFieldSave('addressNote', values.addressNote.trim());
+  }, [onFieldSave, values.addressNote]);
 
-  const handleCityChange = useCallback(
-    (text: string) => {
-      // Clear area selection if user manually edits city (data integrity)
-      if (values.areaId && text !== values.city) {
-        onAreaClear?.();
-      }
-      onFieldSave('city', text);
-      onFieldCommitted?.();
-    },
-    [onFieldCommitted, onFieldSave, onAreaClear, values.areaId, values.city],
-  );
-
-  const handleCityBlur = useCallback(() => {
-    const normalizedValue = values.city.trim();
-    onFieldSave('city', normalizedValue);
-    onFieldValidate('city', normalizedValue);
-  }, [onFieldSave, onFieldValidate, values.city]);
-
-  const handleProvinceChange = useCallback(
-    (text: string) => {
-      // Clear area selection if user manually edits province (data integrity)
-      if (values.areaId && text !== values.province) {
-        onAreaClear?.();
-      }
-      onFieldSave('province', text);
-      onFieldCommitted?.();
-    },
-    [onFieldCommitted, onFieldSave, onAreaClear, values.areaId, values.province],
-  );
-
-  const handleProvinceBlur = useCallback(() => {
-    onFieldSave('province', values.province.trim());
-  }, [onFieldSave, values.province]);
-
-  const handlePostalCodeChange = useCallback(
-    (text: string) => {
-      // Clear area selection if user manually edits postal code (data integrity)
-      if (values.areaId && text !== values.postalCode) {
-        onAreaClear?.();
-      }
-      onFieldSave('postalCode', text);
-      onFieldCommitted?.();
-    },
-    [onFieldCommitted, onFieldSave, onAreaClear, values.areaId, values.postalCode],
-  );
-
-  const handlePostalCodeBlur = useCallback(() => {
-    const normalizedValue = values.postalCode.trim();
-    onFieldSave('postalCode', normalizedValue);
-    onFieldValidate('postalCode', normalizedValue);
-  }, [onFieldSave, onFieldValidate, values.postalCode]);
+  const handleOpenAreaPicker = useCallback(() => {
+    onAreaPickerPress?.();
+  }, [onAreaPickerPress]);
 
   return (
-    <YStack gap="$3.5" marginBottom="$4">
-      <FormInput
-        ref={refs.receiverNameRef}
-        label="Nama Penerima"
-        required
-        value={values.receiverName}
-        onChangeText={handleReceiverNameChange}
-        onBlur={handleReceiverNameBlur}
-        error={errors.receiverName}
-        placeholder="Masukkan nama penerima"
-        autoCapitalize="words"
-        editable={!isSaving}
-        returnKeyType="next"
-        helperText="Wajib diisi sesuai nama penerima paket"
-        onSubmitEditing={() => refs.phoneNumberRef.current?.focus()}
-      />
+    <YStack gap="$4" marginBottom="$4">
+      <YStack gap="$3">
+        <FormInput
+          ref={refs.receiverNameRef}
+          required
+          value={values.receiverName}
+          onChangeText={handleReceiverNameChange}
+          onBlur={handleReceiverNameBlur}
+          error={errors.receiverName}
+          placeholder="Nama Penerima"
+          autoCapitalize="words"
+          editable={!isSaving}
+          returnKeyType="next"
+          onSubmitEditing={() => refs.phoneNumberRef.current?.focus()}
+        />
 
-      <FormInput
-        ref={refs.phoneNumberRef}
-        label="Nomor Telepon"
-        required
-        value={values.phoneNumber}
-        onChangeText={handlePhoneNumberChange}
-        onBlur={handlePhoneNumberBlur}
-        error={errors.phoneNumber}
-        placeholder="08xxxxxxxxxx"
-        keyboardType="phone-pad"
-        editable={!isSaving}
-        returnKeyType="next"
-        helperText="Wajib diisi, gunakan nomor aktif"
-        onSubmitEditing={() => refs.streetAddressRef.current?.focus()}
-      />
+        <FormInput
+          ref={refs.phoneNumberRef}
+          required
+          value={values.phoneNumber}
+          onChangeText={handlePhoneNumberChange}
+          onBlur={handlePhoneNumberBlur}
+          error={errors.phoneNumber}
+          placeholder="Nomor Telepon"
+          keyboardType="phone-pad"
+          editable={!isSaving}
+          returnKeyType="next"
+          onSubmitEditing={handleOpenStreetSearch}
+        />
+      </YStack>
 
-      <FormInput
-        ref={refs.streetAddressRef}
-        label="Alamat Lengkap"
-        required
-        value={values.streetAddress}
-        onChangeText={handleStreetAddressChange}
-        onBlur={handleStreetAddressBlur}
-        error={errors.streetAddress}
-        placeholder="Nama jalan, nomor rumah"
-        multiline
-        numberOfLines={4}
-        autoCapitalize="words"
-        editable={!isSaving}
-        returnKeyType="next"
-        helperText="Wajib diisi dengan jalan dan nomor rumah"
-        onSubmitEditing={() => refs.cityRef.current?.focus()}
-      />
+      <YStack gap="$3">
+        <AreaPickerTrigger
+          areaName={values.areaName}
+          areaId={values.areaId}
+          error={errors.areaId}
+          disabled={isSaving}
+          onPress={handleOpenAreaPicker}
+        />
+      </YStack>
 
-      <FormInput
-        ref={refs.cityRef}
-        label="Kota"
-        required
-        value={values.city}
-        onChangeText={handleCityChange}
-        onBlur={handleCityBlur}
-        error={errors.city}
-        placeholder="Masukkan kota"
-        autoCapitalize="words"
-        editable={!isSaving}
-        returnKeyType="next"
-        helperText="Wajib diisi sesuai kota tujuan"
-        onSubmitEditing={() => refs.postalCodeRef.current?.focus()}
-      />
+      <YStack gap="$3">
+        <YStack gap="$1">
+          <YStack
+            backgroundColor="$background"
+            borderWidth={1.5}
+            borderColor={errors.streetAddress ? '$danger' : '$surfaceBorder'}
+            borderRadius="$4"
+            minHeight={56}
+            paddingHorizontal="$4"
+            paddingTop="$3"
+            paddingBottom="$3"
+            justifyContent="center"
+            opacity={isSaving ? 0.5 : 1}
+            role="button"
+            aria-disabled={isSaving}
+            aria-invalid={!!errors.streetAddress}
+            aria-label={values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
+            aria-describedby={
+              errors.streetAddress ? streetAddressErrorId : 'Membuka pencarian alamat pengiriman'
+            }
+            pressStyle={{ opacity: 0.9, scale: 0.995 }}
+            animation="quick"
+            onPress={isSaving ? undefined : handleOpenStreetSearch}>
+            <XStack justifyContent="space-between" alignItems="center" gap="$3">
+              <Text
+                flex={1}
+                fontSize="$4"
+                color={values.streetAddress ? '$color' : '$colorMuted'}
+                fontWeight="400"
+                numberOfLines={2}>
+                {values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
+              </Text>
+              <ChevronRight size={20} color="$colorMuted" />
+            </XStack>
+          </YStack>
 
-      <FormInput
-        ref={refs.postalCodeRef}
-        label="Kode Pos"
-        required
-        value={values.postalCode}
-        onChangeText={handlePostalCodeChange}
-        onBlur={handlePostalCodeBlur}
-        error={errors.postalCode}
-        placeholder="5 digit kode pos"
-        keyboardType="numeric"
-        editable={!isSaving}
-        returnKeyType="next"
-        helperText="Wajib diisi dengan 5 digit kode pos"
-      />
+          {errors.streetAddress ? (
+            <Text id={streetAddressErrorId} fontSize="$2" color="$danger" marginTop="$1">
+              {errors.streetAddress}
+            </Text>
+          ) : null}
+        </YStack>
 
-      <AreaPickerTrigger
-        areaName={values.areaName}
-        areaId={values.areaId}
-        error={errors.areaId}
-        disabled={isSaving}
-        onPress={() => setAreaPickerOpen(true)}
-      />
-
-      <AreaPickerSheet
-        open={areaPickerOpen}
-        onOpenChange={setAreaPickerOpen}
-        onSelect={handleAreaSelect}
-        selectedAreaId={values.areaId}
-      />
-
-      <MapPinTrigger
-        value={currentMapCoords}
-        disabled={isSaving}
-        onPress={() => setMapPinOpen(true)}
-      />
-
-      <MapPinSheet
-        isOpen={mapPinOpen}
-        onClose={() => setMapPinOpen(false)}
-        onConfirm={handleMapPinConfirm}
-        initialCoords={currentMapCoords ?? undefined}
-      />
-
-      <FormInput
-        ref={refs.provinceRef}
-        label="Provinsi"
-        value={values.province}
-        onChangeText={handleProvinceChange}
-        onBlur={handleProvinceBlur}
-        placeholder="Masukkan provinsi (opsional)"
-        autoCapitalize="words"
-        editable={!isSaving}
-        returnKeyType="done"
-        helperText="Opsional, isi jika diperlukan"
-      />
+        <FormInput
+          ref={refs.addressNoteRef}
+          value={values.addressNote}
+          onChangeText={handleAddressNoteChange}
+          onBlur={handleAddressNoteBlur}
+          placeholder="Detail Lainnya (Blok / Unit No., Patokan)"
+          autoCapitalize="sentences"
+          editable={!isSaving}
+          returnKeyType="done"
+          aria-label="Detail lainnya"
+          aria-describedby="Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)"
+        />
+      </YStack>
     </YStack>
   );
 }

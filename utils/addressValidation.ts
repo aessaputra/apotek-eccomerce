@@ -1,7 +1,12 @@
-/**
- * Address form validation utilities
- * Provides validation functions for address form fields
- */
+import {
+  ADDRESS_MIN_LENGTH_STREET,
+  ADDRESS_MIN_LENGTH_NAME,
+  ADDRESS_MAX_LENGTH_NAME,
+  ADDRESS_MIN_LENGTH_PHONE_DIGITS,
+  ADDRESS_MAX_LENGTH_PHONE_DIGITS,
+  ADDRESS_MIN_LENGTH_POSTAL,
+  ADDRESS_MAX_LENGTH_POSTAL,
+} from '@/constants/address';
 
 export interface AddressFormErrors {
   receiverName: string | null;
@@ -16,8 +21,8 @@ export interface AddressFormValues {
   receiverName: string;
   phoneNumber: string;
   streetAddress: string;
+  addressNote: string;
   areaId: string;
-  subdistrictId: string;
   areaName: string;
   city: string;
   postalCode: string;
@@ -31,8 +36,8 @@ export const initialFormValues: AddressFormValues = {
   receiverName: '',
   phoneNumber: '',
   streetAddress: '',
+  addressNote: '',
   areaId: '',
-  subdistrictId: '',
   areaName: '',
   city: '',
   postalCode: '',
@@ -51,33 +56,20 @@ export const initialFormErrors: AddressFormErrors = {
   postalCode: null,
 };
 
-/**
- * Validates receiver name
- * - Required field
- * - Minimum 2 characters
- * - Maximum 100 characters
- */
 export function validateReceiverName(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
     return 'Nama penerima wajib diisi';
   }
-  if (trimmed.length < 2) {
-    return 'Nama penerima minimal 2 karakter';
+  if (trimmed.length < ADDRESS_MIN_LENGTH_NAME) {
+    return `Nama penerima minimal ${ADDRESS_MIN_LENGTH_NAME} karakter`;
   }
-  if (trimmed.length > 100) {
-    return 'Nama penerima maksimal 100 karakter';
+  if (trimmed.length > ADDRESS_MAX_LENGTH_NAME) {
+    return `Nama penerima maksimal ${ADDRESS_MAX_LENGTH_NAME} karakter`;
   }
   return null;
 }
 
-/**
- * Validates phone number
- * - Required field
- * - Must contain only valid phone characters (digits, spaces, +, -, parentheses)
- * - Minimum 8 digits
- * - Maximum 15 digits
- */
 export function validatePhoneNumber(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
@@ -88,54 +80,37 @@ export function validatePhoneNumber(value: string): string | null {
     return 'Format nomor telepon tidak valid';
   }
   const digitsOnly = trimmed.replace(/\D/g, '');
-  if (digitsOnly.length < 8) {
-    return 'Nomor telepon minimal 8 digit';
+  if (digitsOnly.length < ADDRESS_MIN_LENGTH_PHONE_DIGITS) {
+    return `Nomor telepon minimal ${ADDRESS_MIN_LENGTH_PHONE_DIGITS} digit`;
   }
-  if (digitsOnly.length > 15) {
-    return 'Nomor telepon maksimal 15 digit';
+  if (digitsOnly.length > ADDRESS_MAX_LENGTH_PHONE_DIGITS) {
+    return `Nomor telepon maksimal ${ADDRESS_MAX_LENGTH_PHONE_DIGITS} digit`;
   }
   return null;
 }
 
-/**
- * Validates street address
- * - Required field
- * - Minimum 10 characters
- */
 export function validateStreetAddress(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
     return 'Alamat lengkap wajib diisi';
   }
-  if (trimmed.length < 10) {
-    return 'Alamat lengkap minimal 10 karakter';
+  if (trimmed.length < ADDRESS_MIN_LENGTH_STREET) {
+    return `Alamat lengkap minimal ${ADDRESS_MIN_LENGTH_STREET} karakter`;
   }
   return null;
 }
 
-/**
- * Validates city name
- * - Required field
- * - Minimum 2 characters
- */
 export function validateCity(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
     return 'Kota wajib diisi';
   }
-  if (trimmed.length < 2) {
-    return 'Nama kota minimal 2 karakter';
+  if (trimmed.length < ADDRESS_MIN_LENGTH_NAME) {
+    return `Nama kota minimal ${ADDRESS_MIN_LENGTH_NAME} karakter`;
   }
   return null;
 }
 
-/**
- * Validates postal code
- * - Required field
- * - Must be numeric only
- * - Minimum 5 digits
- * - Maximum 10 digits
- */
 export function validatePostalCode(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
@@ -144,20 +119,15 @@ export function validatePostalCode(value: string): string | null {
   if (!/^\d+$/.test(trimmed)) {
     return 'Kode pos harus berupa angka';
   }
-  if (trimmed.length < 5) {
-    return 'Kode pos minimal 5 digit';
+  if (trimmed.length < ADDRESS_MIN_LENGTH_POSTAL) {
+    return `Kode pos minimal ${ADDRESS_MIN_LENGTH_POSTAL} digit`;
   }
-  if (trimmed.length > 10) {
-    return 'Kode pos maksimal 10 digit';
+  if (trimmed.length > ADDRESS_MAX_LENGTH_POSTAL) {
+    return `Kode pos maksimal ${ADDRESS_MAX_LENGTH_POSTAL} digit`;
   }
   return null;
 }
 
-/**
- * Validates area ID
- * - Required field
- * - Must be selected from available areas
- */
 export function validateAreaId(value: string): string | null {
   if (!value || value.trim().length === 0) {
     return 'Area pengiriman wajib dipilih';
@@ -165,14 +135,10 @@ export function validateAreaId(value: string): string | null {
   return null;
 }
 
-/**
- * Validates all form fields and returns errors object
- * Returns null if all fields are valid
- */
 export function validateAllFields(
   values: Omit<
     AddressFormValues,
-    'province' | 'isDefault' | 'areaName' | 'subdistrictId' | 'latitude' | 'longitude'
+    'province' | 'isDefault' | 'areaName' | 'latitude' | 'longitude' | 'addressNote'
   >,
 ): AddressFormErrors | null {
   const errors: AddressFormErrors = {

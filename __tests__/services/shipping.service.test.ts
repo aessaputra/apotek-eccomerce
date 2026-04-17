@@ -4,6 +4,7 @@ import {
   getShippingRatesForAddress,
   searchBiteshipArea,
   getAreaById,
+  getPublicOrderTracking,
 } from '@/services/shipping.service';
 
 const mockInvoke = jest.fn();
@@ -28,12 +29,12 @@ const baseAddress: Address = {
   receiver_name: 'John Doe',
   phone_number: '081234567890',
   street_address: 'Jl. Sudirman No. 1',
+  address_note: null,
   city: 'Jakarta',
-  city_id: 'DEST-AREA-ID',
+  city_id: null,
   province: 'DKI Jakarta',
   province_id: null,
-  district_id: null,
-  subdistrict_id: null,
+  area_id: 'DEST-AREA-ID',
   area_name: null,
   postal_code: '12345',
   is_default: true,
@@ -142,7 +143,7 @@ describe('shipping.service', () => {
     });
 
     const { data, error } = await getShippingRatesForAddress({
-      address: { ...baseAddress, city_id: null, district_id: null, subdistrict_id: null },
+      address: { ...baseAddress, area_id: null },
       package_weight_grams: 700,
     });
 
@@ -173,9 +174,7 @@ describe('shipping.service', () => {
     const { data, error } = await getShippingRatesForAddress({
       address: {
         ...baseAddress,
-        city_id: null,
-        district_id: null,
-        subdistrict_id: null,
+        area_id: null,
         postal_code: '421831',
       },
       package_weight_grams: 500,
@@ -188,7 +187,7 @@ describe('shipping.service', () => {
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
-  test('sends coordinates to Biteship when address has lat/lng for instant couriers', async () => {
+  test('sends coordinates alongside destination_area_id when address has lat/lng for instant couriers', async () => {
     mockInvoke.mockResolvedValueOnce({
       data: {
         pricing: [
@@ -238,6 +237,7 @@ describe('shipping.service', () => {
     const invokePayload = mockInvoke.mock.calls[0]?.[1] as {
       body?: {
         payload?: {
+          destination_area_id?: string;
           destination_latitude?: number;
           destination_longitude?: number;
           origin_latitude?: number;
@@ -247,6 +247,7 @@ describe('shipping.service', () => {
       };
     };
 
+    expect(invokePayload.body?.payload?.destination_area_id).toBe('DEST-AREA-ID');
     expect(invokePayload.body?.payload?.destination_latitude).toBe(-6.2088);
     expect(invokePayload.body?.payload?.destination_longitude).toBe(106.8456);
     expect(invokePayload.body?.payload?.origin_latitude).toBeDefined();
@@ -365,5 +366,71 @@ describe('shipping.service', () => {
 
     expect(error).toBeNull();
     expect(data).toBeNull();
+  });
+
+  test('getPublicOrderTracking maps public tracking response', async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        id: 'tracking-1',
+        waybill_id: 'JNE12345',
+        status: 'dropping_off',
+        link: 'https://tracking.example/jne12345',
+        courier: {
+          company: 'jne',
+          driver_name: 'Budi',
+          driver_phone: '08123456789',
+        },
+        history: [
+          {
+            note: 'Paket sedang diantar',
+            status: 'dropping_off',
+            updated_at: '2026-04-14T08:00:00+07:00',
+          },
+        ],
+      },
+      error: null,
+    });
+
+    const { data, error } = await getPublicOrderTracking('order-123');
+
+    expect(error).toBeNull();
+    expect(data).toMatchObject({
+      id: 'tracking-1',
+      waybill_id: 'JNE12345',
+      status: 'dropping_off',
+      link: 'https://tracking.example/jne12345',
+      courier: {
+        company: 'jne',
+        driver_name: 'Budi',
+        driver_phone: '08123456789',
+      },
+      history: [
+        {
+          note: 'Paket sedang diantar',
+          status: 'dropping_off',
+          updated_at: '2026-04-14T08:00:00+07:00',
+        },
+      ],
+    });
+
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'biteship',
+      expect.objectContaining({
+        body: {
+          action: 'track_public',
+          payload: {
+            order_id: 'order-123',
+          },
+        },
+      }),
+    );
+  });
+
+  test('getPublicOrderTracking validates order id', async () => {
+    const { data, error } = await getPublicOrderTracking('   ');
+
+    expect(data).toBeNull();
+    expect(error?.message).toContain('Order ID is required.');
+    expect(mockInvoke).not.toHaveBeenCalled();
   });
 });

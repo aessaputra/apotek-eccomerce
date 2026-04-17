@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { getCartWithItems, subscribeToCartChanges } from '@/services/cart.service';
 import type {
   CartItemWithProduct,
@@ -8,28 +9,10 @@ import type {
   CartRealtimeConnectionState,
   CartSnapshot,
 } from '@/types/cart';
+import { buildCartSnapshot, EMPTY_CART_SNAPSHOT } from '@/utils/cart';
+import { State } from '@/utils/store';
 
-const EMPTY_SNAPSHOT: CartSnapshot = {
-  itemCount: 0,
-  estimatedWeightGrams: 0,
-  packageValue: 0,
-};
-
-function buildSnapshot(items: CartItemWithProduct[]): CartSnapshot {
-  return items.reduce(
-    (nextSnapshot, item) => {
-      nextSnapshot.itemCount += item.quantity;
-      nextSnapshot.estimatedWeightGrams += item.quantity * item.product.weight;
-      nextSnapshot.packageValue += item.quantity * item.product.price;
-      return nextSnapshot;
-    },
-    {
-      itemCount: 0,
-      estimatedWeightGrams: 0,
-      packageValue: 0,
-    },
-  );
-}
+const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 
 export interface UseCartPaginatedReturn {
   cartId: string | null;
@@ -47,6 +30,7 @@ export interface UseCartPaginatedParams {
 }
 
 export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPaginatedReturn {
+  const cartClearedAt = useSelector((state: State) => state.app.cartClearedAt);
   const [cartId, setCartId] = useState<string | null>(null);
   const [items, setItems] = useState<CartItemWithProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -61,8 +45,9 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   const subscribedCartIdRef = useRef<string | null>(null);
   const hasConnectedOnceRef = useRef(false);
   const refreshRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(async () => {});
+  const lastHandledCartClearedAtRef = useRef<number | null>(null);
 
-  const snapshot = useMemo(() => buildSnapshot(items), [items]);
+  const snapshot = useMemo(() => buildCartSnapshot(items, DEFAULT_ITEM_WEIGHT_GRAMS), [items]);
 
   useEffect(() => {
     return () => {
@@ -215,6 +200,21 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   }, [refresh]);
 
   useEffect(() => {
+    if (!userId || !cartClearedAt) {
+      return;
+    }
+
+    if (lastHandledCartClearedAtRef.current === cartClearedAt) {
+      return;
+    }
+
+    lastHandledCartClearedAtRef.current = cartClearedAt;
+    setItems([]);
+    setError(null);
+    void refreshRef.current({ silent: true });
+  }, [cartClearedAt, userId]);
+
+  useEffect(() => {
     if (!userId) {
       fetchAbortControllerRef.current?.abort();
       fetchAbortControllerRef.current = null;
@@ -290,7 +290,7 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   return {
     cartId,
     items,
-    snapshot: items.length === 0 ? EMPTY_SNAPSHOT : snapshot,
+    snapshot: items.length === 0 ? EMPTY_CART_SNAPSHOT : snapshot,
     error,
     isLoading,
     isRefreshing,

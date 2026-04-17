@@ -2,16 +2,19 @@ import type { ComponentProps } from 'react';
 import {
   AlertCircle,
   Bell,
+  CheckCircle2,
   ChevronLeft,
   CircleHelp,
   Check,
   ChevronRight,
   Chrome,
+  Clock,
   CreditCard,
   Eye,
   EyeOff,
   Grid2x2,
   Heart,
+  History,
   Home,
   Lock,
   MapPin,
@@ -21,11 +24,13 @@ import {
   Pill,
   Search,
   Settings2,
+  ShoppingBag,
   ShoppingCart,
   Star,
   Trash2,
   Truck,
   User,
+  Wallet,
   Wrench,
   X,
   XCircle,
@@ -55,6 +60,10 @@ export function PackageIcon(props: IconProps) {
 
 export function HeartIcon(props: IconProps) {
   return <Heart {...props} />;
+}
+
+export function HistoryIcon(props: IconProps) {
+  return <History {...props} />;
 }
 
 export function BellIcon(props: IconProps) {
@@ -147,4 +156,20 @@ export function WrenchIcon(props: IconProps) {
 
 export function SettingsIcon(props: IconProps) {
   return <Settings2 {...props} />;
+}
+
+export function WalletIcon(props: IconProps) {
+  return <Wallet {...props} />;
+}
+
+export function CheckCircleIcon(props: IconProps) {
+  return <CheckCircle2 {...props} />;
+}
+
+export function ClockIcon(props: IconProps) {
+  return <Clock {...props} />;
+}
+
+export function ShoppingBagIcon(props: IconProps) {
+  return <ShoppingBag {...props} />;
 }

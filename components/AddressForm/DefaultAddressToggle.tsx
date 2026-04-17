@@ -47,8 +47,8 @@ function DefaultAddressToggle({ isDefault, isSaving, onToggle }: DefaultAddressT
       minHeight={MIN_TOUCH_TARGET}
       role="checkbox"
       accessibilityState={{ checked: isDefault }}
-      aria-label="Jadikan alamat default"
-      aria-describedby="Mengatur alamat ini sebagai alamat pengiriman default yang akan digunakan otomatis saat checkout"
+      aria-label="Jadikan alamat utama"
+      aria-describedby="Mengatur alamat ini sebagai alamat pengiriman utama yang akan digunakan otomatis saat checkout"
       pressStyle={{ opacity: PRESS_OPACITY }}>
       <XStack gap="$3" alignItems="center">
         <Checkbox
@@ -65,7 +65,7 @@ function DefaultAddressToggle({ isDefault, isSaving, onToggle }: DefaultAddressT
         </Checkbox>
         <YStack flex={1} gap="$1">
           <Text fontSize="$4" color="$color" fontWeight="600">
-            Jadikan alamat default
+            Jadikan alamat utama
           </Text>
           <Text fontSize="$3" color="$colorPress">
             Alamat ini akan digunakan secara otomatis saat checkout

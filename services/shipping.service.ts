@@ -1,12 +1,14 @@
 import { supabase } from '@/utils/supabase';
 import config from '@/utils/config';
+import { parsePostalCode } from '@/utils/postalCode';
 import type { Address } from '@/types/address';
 import type {
   BiteshipArea,
-  BiteshipOrderPayload,
   ShippingOption,
   ShippingQuoteParams,
   ShippingQuoteResult,
+  TrackingEvent,
+  TrackingResult,
 } from '@/types/shipping';
 
 interface BiteshipProxyResponse<T> {
@@ -149,17 +151,80 @@ function toStringValue(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+function toNullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function mapTrackingEvent(value: unknown): TrackingEvent | null {
+  const record = toRecord(value);
+  const note = toStringValue(record.note).trim();
+  const status = toStringValue(record.status).trim();
+  const updatedAt = toStringValue(record.updated_at).trim();
+
+  if (!note || !status || !updatedAt) {
+    return null;
+  }
+
+  return {
+    note,
+    status,
+    updated_at: updatedAt,
+    service_type: toNullableString(record.service_type) ?? undefined,
+  };
+}
+
+function isTrackingEvent(event: TrackingEvent | null): event is TrackingEvent {
+  return event !== null;
+}
+
+function mapTrackingResult(value: unknown): TrackingResult {
+  const record = toRecord(value);
+  const courier = toRecord(record.courier);
+  const origin = toRecord(record.origin);
+  const destination = toRecord(record.destination);
+  const history = Array.isArray(record.history)
+    ? record.history.map(mapTrackingEvent).filter(isTrackingEvent)
+    : [];
+
+  const id = toStringValue(record.id).trim();
+  const waybillId = toStringValue(record.waybill_id).trim();
+  const status = toStringValue(record.status).trim();
+  const courierCompany = toStringValue(courier.company).trim();
+
+  if (!id || !waybillId || !status || !courierCompany) {
+    throw new Error('Tracking response is missing required fields.');
+  }
+
+  return {
+    id,
+    waybill_id: waybillId,
+    status,
+    link: toNullableString(record.link),
+    order_id: toNullableString(record.order_id),
+    origin: {
+      contact_name: toNullableString(origin.contact_name),
+      address: toNullableString(origin.address),
+    },
+    destination: {
+      contact_name: toNullableString(destination.contact_name),
+      address: toNullableString(destination.address),
+    },
+    courier: {
+      company: courierCompany,
+      driver_name: toNullableString(courier.driver_name) ?? undefined,
+      driver_phone: toNullableString(courier.driver_phone) ?? undefined,
+      driver_photo_url: toNullableString(courier.driver_photo_url) ?? undefined,
+      driver_plate_number: toNullableString(courier.driver_plate_number) ?? undefined,
+    },
+    history,
+  };
+}
+
 const ORIGIN_LATITUDE = config.originLatitude;
 const ORIGIN_LONGITUDE = config.originLongitude;
 
 function normalizeAreaId(address: Address): string | null {
-  return (
-    address.area_id ||
-    address.subdistrict_id ||
-    address.district_id ||
-    address.city_id ||
-    address.province_id
-  );
+  return address.area_id || null;
 }
 
 function parseCoord(value: number | string | null | undefined): number | null {
@@ -280,16 +345,6 @@ async function resolveDestinationAreaId(
   return { areaId: null, error: null };
 }
 
-function parsePostalCode(postalCode: string): number | null {
-  const digitsOnly = postalCode.replace(/\D/g, '');
-  if (digitsOnly.length !== 5) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(digitsOnly, 10);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 async function invokeBiteship(
   body: Record<string, unknown>,
 ): Promise<{ data: unknown; error: Error | null }> {
@@ -406,24 +461,19 @@ export async function getShippingRatesForAddress(
   }
 }
 
-export const createBiteshipOrder = async (
+export async function getPublicOrderTracking(
   orderId: string,
-  params: BiteshipOrderPayload,
-): Promise<{
-  data: {
-    biteship_order_id: string;
-    waybill_id: string;
-    tracking_id: string;
-    status: string;
-  } | null;
-  error: Error | null;
-}> => {
+): Promise<{ data: TrackingResult | null; error: Error | null }> {
   try {
+    const normalizedOrderId = orderId.trim();
+    if (!normalizedOrderId) {
+      return { data: null, error: new Error('Order ID is required.') };
+    }
+
     const { data, error } = await invokeBiteship({
-      action: 'create_order',
+      action: 'track_public',
       payload: {
-        order_id: orderId,
-        ...params,
+        order_id: normalizedOrderId,
       },
     });
 
@@ -431,19 +481,11 @@ export const createBiteshipOrder = async (
       return { data: null, error: toInvokeError(error) };
     }
 
-    const response = toRecord(data);
-    const result = toRecord(response.data ?? response);
-
     return {
-      data: {
-        biteship_order_id: toStringValue(result.biteship_order_id) || toStringValue(result.id),
-        waybill_id: toStringValue(result.waybill_number),
-        tracking_id: toStringValue(result.tracking_id),
-        status: toStringValue(result.status),
-      },
+      data: mapTrackingResult(data),
       error: null,
     };
   } catch (error) {
     return { data: null, error: toError(error) };
   }
-};
+}

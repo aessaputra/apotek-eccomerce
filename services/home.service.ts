@@ -1,5 +1,23 @@
 import { supabase } from '@/utils/supabase';
 import type { Tables } from '@/types/supabase';
+import {
+  createEmptyHomeBanners,
+  HOME_BANNER_CTA_ROUTES,
+  HOME_BANNER_INTENTS,
+  HOME_BANNER_MEDIA_PREFIX_BY_PLACEMENT,
+  HOME_BANNER_PLACEMENTS,
+  HOME_BANNER_STORAGE_BUCKET,
+} from '@/constants/homeBanner.constants';
+import type {
+  HomeBannerCTA,
+  HomeBannersByPlacement,
+  HomeBannerCtaKind,
+  HomeBannerCtaRoute,
+  HomeBannerIntent,
+  HomeBannerItem,
+  HomeBannerPlacement,
+  HomeBannerRow,
+} from '@/types/homeBanner';
 import { classifyError, isRetryableError } from '@/utils/error';
 import { withRetry } from '@/utils/retry';
 
@@ -66,6 +84,8 @@ export interface ProductDetailsData extends ProductWithImages {
   category_logo_url: string | null;
 }
 
+export type { HomeBannersByPlacement, HomeBannerItem, HomeBannerPlacement };
+
 interface CartMutationResult {
   error: Error | null;
 }
@@ -113,6 +133,168 @@ function normalizeProductListRow(
       sort_order: image.sort_order,
     })),
   };
+}
+
+function normalizeOptionalText(value: string | null): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function isHomeBannerPlacement(value: string): value is HomeBannerPlacement {
+  return (HOME_BANNER_PLACEMENTS as readonly string[]).includes(value);
+}
+
+function isHomeBannerIntent(value: string): value is HomeBannerIntent {
+  return (HOME_BANNER_INTENTS as readonly string[]).includes(value);
+}
+
+function isHomeBannerCtaRoute(value: string): value is HomeBannerCtaRoute {
+  return (HOME_BANNER_CTA_ROUTES as readonly string[]).includes(value);
+}
+
+function isHomeBannerCtaKind(value: string): value is HomeBannerCtaKind {
+  return value === 'none' || value === 'route';
+}
+
+function hasVisibleBannerPayload(record: {
+  title: string | null;
+  body: string | null;
+  mediaPath: string | null;
+}): boolean {
+  return Boolean(record.title || record.body || record.mediaPath);
+}
+
+function matchesBannerMediaPrefix(mediaPath: string, placementKey: HomeBannerPlacement): boolean {
+  return mediaPath.startsWith(HOME_BANNER_MEDIA_PREFIX_BY_PLACEMENT[placementKey]);
+}
+
+export function resolveHomeBannerMediaUrl(mediaPath: string | null): string | null {
+  const normalizedPath = normalizeOptionalText(mediaPath);
+
+  if (!normalizedPath) {
+    return null;
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(HOME_BANNER_STORAGE_BUCKET).getPublicUrl(normalizedPath);
+
+  return publicUrl || null;
+}
+
+export function normalizeHomeBannerRecord(record: HomeBannerRow): HomeBannerItem | null {
+  if (!isHomeBannerPlacement(record.placement_key)) {
+    if (__DEV__) {
+      console.warn(
+        '[HomeService] normalizeHomeBannerRecord invalid placement:',
+        record.placement_key,
+      );
+    }
+    return null;
+  }
+
+  if (!isHomeBannerIntent(record.intent)) {
+    if (__DEV__) {
+      console.warn('[HomeService] normalizeHomeBannerRecord invalid intent:', record.intent);
+    }
+    return null;
+  }
+
+  const title = normalizeOptionalText(record.title);
+  const body = normalizeOptionalText(record.body);
+  const normalizedMediaPath = normalizeOptionalText(record.media_path);
+  const mediaPath =
+    normalizedMediaPath && matchesBannerMediaPrefix(normalizedMediaPath, record.placement_key)
+      ? normalizedMediaPath
+      : null;
+
+  if (normalizedMediaPath && !mediaPath && __DEV__) {
+    console.warn(
+      '[HomeService] normalizeHomeBannerRecord invalid media path for placement:',
+      record.placement_key,
+      normalizedMediaPath,
+    );
+  }
+
+  if (!hasVisibleBannerPayload({ title, body, mediaPath })) {
+    return null;
+  }
+
+  const normalizedCtaKind: HomeBannerCtaKind = isHomeBannerCtaKind(record.cta_kind)
+    ? record.cta_kind
+    : 'none';
+  const ctaLabel = normalizeOptionalText(record.cta_label);
+  const ctaRoute = normalizeOptionalText(record.cta_route);
+
+  let cta: HomeBannerCTA | null = null;
+  if (normalizedCtaKind === 'route' && ctaLabel && ctaRoute && isHomeBannerCtaRoute(ctaRoute)) {
+    cta = {
+      label: ctaLabel,
+      route: ctaRoute,
+    };
+  } else if (normalizedCtaKind === 'route' && __DEV__) {
+    console.warn('[HomeService] normalizeHomeBannerRecord invalid CTA payload:', record.id);
+  }
+
+  return {
+    id: record.id,
+    placementKey: record.placement_key,
+    intent: record.intent,
+    title,
+    body,
+    mediaPath,
+    mediaUrl: resolveHomeBannerMediaUrl(mediaPath),
+    ctaKind: cta ? 'route' : 'none',
+    cta,
+    isActive: record.is_active,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+  };
+}
+
+export async function getHomeBannersByPlacement(): Promise<HomeBannersByPlacement> {
+  const initialState = createEmptyHomeBanners();
+
+  try {
+    const { data, error } = await supabase
+      .from('home_banners')
+      .select('*')
+      .eq('is_active', true)
+      .in('placement_key', [...HOME_BANNER_PLACEMENTS])
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []).reduce<HomeBannersByPlacement>((acc, row) => {
+      const banner = normalizeHomeBannerRecord(row);
+
+      if (!banner) {
+        return acc;
+      }
+
+      if (acc[banner.placementKey]) {
+        if (__DEV__) {
+          console.warn(
+            '[HomeService] duplicate active banner for placement, keeping latest:',
+            banner.placementKey,
+          );
+        }
+        return acc;
+      }
+
+      acc[banner.placementKey] = banner;
+      return acc;
+    }, initialState);
+  } catch (error) {
+    logHomeServiceError('getHomeBannersByPlacement error', error);
+    throw toUserError(error, 'Failed to load home banners. Please try again.');
+  }
 }
 
 /**
@@ -240,6 +422,77 @@ export async function getProductsOptimized(
     };
   } catch (error) {
     logHomeServiceError('getProductsOptimized unexpected error', error);
+    return {
+      data: null,
+      error: isAbortError(error)
+        ? error
+        : toUserError(error, 'Failed to load products. Please try again.'),
+      metrics: null,
+    };
+  }
+}
+
+export const ALL_PRODUCTS_CACHE_KEY = '__ALL__';
+
+export async function getAllProductsOptimized(
+  params: GetProductsOptimizedParams = {},
+): Promise<ProductListResult> {
+  const offset = params.offset ?? 0;
+  const requestedLimit = Math.max(params.limit ?? PRODUCTS_PAGE_SIZE, 1);
+  const startedAt = Date.now();
+
+  try {
+    const data = await withRetry(
+      async () => {
+        let query = supabase
+          .from('products')
+          .select(PRODUCT_LIST_SELECT)
+          .eq('is_active', true)
+          .gt('stock', 0)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + requestedLimit);
+
+        if (params.signal) {
+          query = query.abortSignal(params.signal);
+        }
+
+        const { data: rows, error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        return rows;
+      },
+      {
+        maxRetries: 2,
+        baseDelay: 250,
+        maxDelay: 1000,
+        shouldRetry: error => !isAbortError(error) && isRetryableError(classifyError(error)),
+      },
+    );
+
+    const rows = (
+      (data ?? []) as unknown as Array<ProductRow & { product_images?: ProductListImage[] | null }>
+    ).map(normalizeProductListRow);
+    const hasMore = rows.length > requestedLimit;
+    const normalizedData = hasMore ? rows.slice(0, requestedLimit) : rows;
+    const fetchedAt = Date.now();
+
+    return {
+      data: normalizedData,
+      error: null,
+      metrics: {
+        durationMs: fetchedAt - startedAt,
+        payloadBytes: getPayloadBytes(normalizedData),
+        fetchedAt,
+        offset,
+        limit: requestedLimit,
+        hasMore,
+      },
+    };
+  } catch (error) {
+    logHomeServiceError('getAllProductsOptimized unexpected error', error);
     return {
       data: null,
       error: isAbortError(error)

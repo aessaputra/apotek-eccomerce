@@ -1,7 +1,16 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react-native';
-import { getCategories, getLatestProductsWithImages } from '@/services/home.service';
-import type { CategoryRow, ProductWithImages } from '@/services/home.service';
+import {
+  getCategories,
+  getHomeBannersByPlacement,
+  getLatestProductsWithImages,
+} from '@/services/home.service';
+import type {
+  CategoryRow,
+  HomeBannersByPlacement,
+  ProductWithImages,
+} from '@/services/home.service';
+import { createEmptyHomeBanners } from '@/constants/homeBanner.constants';
 import { useHomeData } from '@/hooks/useHomeData';
 
 let focusEffectCallback: (() => void | (() => void)) | undefined;
@@ -9,6 +18,9 @@ let focusEffectCallback: (() => void | (() => void)) | undefined;
 const mockGetCategories = getCategories as jest.MockedFunction<typeof getCategories>;
 const mockGetLatestProductsWithImages = getLatestProductsWithImages as jest.MockedFunction<
   typeof getLatestProductsWithImages
+>;
+const mockGetHomeBannersByPlacement = getHomeBannersByPlacement as jest.MockedFunction<
+  typeof getHomeBannersByPlacement
 >;
 
 jest.mock('expo-router', () => {
@@ -27,8 +39,30 @@ jest.mock('expo-router', () => {
 
 jest.mock('@/services/home.service', () => ({
   getCategories: jest.fn(),
+  getHomeBannersByPlacement: jest.fn(),
   getLatestProductsWithImages: jest.fn(),
 }));
+
+function createHomeBanners(): HomeBannersByPlacement {
+  return {
+    ...createEmptyHomeBanners(),
+    home_banner_top: {
+      id: 'banner-top',
+      placementKey: 'home_banner_top',
+      intent: 'informational',
+      title: 'Top Banner',
+      body: null,
+      mediaPath: null,
+      mediaUrl: null,
+      ctaKind: 'route',
+      cta: { label: 'Open Orders', route: 'home/all-products' },
+      isActive: true,
+      createdAt: '2026-04-03T00:00:00Z',
+      updatedAt: '2026-04-03T00:00:00Z',
+    },
+    home_banner_bottom: null,
+  };
+}
 
 function createCategory(index: number): CategoryRow {
   return {
@@ -63,9 +97,17 @@ function createProduct(index: number): ProductWithImages {
 }
 
 describe('useHomeData', () => {
+  let consoleWarnSpy: jest.SpiedFunction<typeof console.warn>;
+
+  beforeEach(() => {
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
   afterEach(() => {
+    consoleWarnSpy.mockRestore();
     focusEffectCallback = undefined;
     mockGetCategories.mockReset();
+    mockGetHomeBannersByPlacement.mockReset();
     mockGetLatestProductsWithImages.mockReset();
     cleanup();
   });
@@ -75,6 +117,7 @@ describe('useHomeData', () => {
     const products = [createProduct(1), createProduct(2)];
 
     mockGetCategories.mockResolvedValue(categories);
+    mockGetHomeBannersByPlacement.mockResolvedValue(createHomeBanners());
     mockGetLatestProductsWithImages.mockResolvedValue(products);
 
     const { result } = renderHook(() => useHomeData());
@@ -88,15 +131,19 @@ describe('useHomeData', () => {
     });
 
     expect(result.current.categories).toEqual(categories);
+    expect(result.current.banners.home_banner_top?.title).toBe('Top Banner');
     expect(result.current.products).toEqual(products);
     expect(result.current.error).toBeNull();
+    expect(result.current.bannerError).toBeNull();
     expect(mockGetCategories).toHaveBeenCalledTimes(1);
+    expect(mockGetHomeBannersByPlacement).toHaveBeenCalledTimes(1);
     expect(mockGetLatestProductsWithImages).toHaveBeenCalledWith(10);
   });
 
   it('handles errors gracefully', async () => {
     const errorMessage = 'Network error';
     mockGetCategories.mockRejectedValue(new Error(errorMessage));
+    mockGetHomeBannersByPlacement.mockRejectedValue(new Error('Banner error'));
     mockGetLatestProductsWithImages.mockRejectedValue(new Error(errorMessage));
 
     const { result } = renderHook(() => useHomeData());
@@ -107,6 +154,8 @@ describe('useHomeData', () => {
     });
 
     expect(result.current.error).toBe(errorMessage);
+    expect(result.current.bannerError).toBe('Banner error');
+    expect(result.current.banners).toEqual(createEmptyHomeBanners());
     expect(result.current.categories).toEqual([]);
     expect(result.current.products).toEqual([]);
   });
@@ -116,6 +165,7 @@ describe('useHomeData', () => {
     const products = [createProduct(1)];
 
     mockGetCategories.mockResolvedValue(categories);
+    mockGetHomeBannersByPlacement.mockResolvedValue(createHomeBanners());
     mockGetLatestProductsWithImages.mockResolvedValue(products);
 
     const { result } = renderHook(() => useHomeData());
@@ -125,6 +175,7 @@ describe('useHomeData', () => {
     });
 
     mockGetCategories.mockClear();
+    mockGetHomeBannersByPlacement.mockClear();
     mockGetLatestProductsWithImages.mockClear();
 
     await act(async () => {
@@ -132,6 +183,7 @@ describe('useHomeData', () => {
     });
 
     expect(mockGetCategories).toHaveBeenCalledTimes(1);
+    expect(mockGetHomeBannersByPlacement).toHaveBeenCalledTimes(1);
     expect(mockGetLatestProductsWithImages).toHaveBeenCalledTimes(1);
   });
 
@@ -152,8 +204,11 @@ describe('useHomeData', () => {
         }),
     );
 
+    mockGetHomeBannersByPlacement.mockResolvedValue(createHomeBanners());
+
     const { result } = renderHook(() => useHomeData());
 
+    expect(result.current.isLoadingBanners).toBe(true);
     expect(result.current.isLoadingCategories).toBe(true);
     expect(result.current.isLoadingProducts).toBe(true);
 
@@ -165,6 +220,7 @@ describe('useHomeData', () => {
     await waitFor(() => {
       expect(result.current.isLoadingCategories).toBe(false);
       expect(result.current.isLoadingProducts).toBe(false);
+      expect(result.current.isLoadingBanners).toBe(false);
     });
   });
 
@@ -177,6 +233,23 @@ describe('useHomeData', () => {
     mockGetCategories
       .mockResolvedValueOnce(initialCategories)
       .mockResolvedValueOnce(refreshedCategories);
+    mockGetHomeBannersByPlacement.mockResolvedValueOnce(createHomeBanners()).mockResolvedValueOnce({
+      ...createHomeBanners(),
+      home_banner_bottom: {
+        id: 'banner-bottom',
+        placementKey: 'home_banner_bottom',
+        intent: 'branding',
+        title: 'Bottom Banner',
+        body: null,
+        mediaPath: 'banners/home_banner_bottom/banner.webp',
+        mediaUrl: 'https://example.com/banner.webp',
+        ctaKind: 'none',
+        cta: null,
+        isActive: true,
+        createdAt: '2026-04-03T00:00:00Z',
+        updatedAt: '2026-04-03T00:00:00Z',
+      },
+    });
     mockGetLatestProductsWithImages
       .mockResolvedValueOnce(initialProducts)
       .mockResolvedValueOnce(refreshedProducts);
@@ -186,6 +259,7 @@ describe('useHomeData', () => {
     await waitFor(() => {
       expect(result.current.categories).toEqual(initialCategories);
       expect(result.current.products).toEqual(initialProducts);
+      expect(result.current.banners.home_banner_top?.title).toBe('Top Banner');
     });
 
     await act(async () => {
@@ -195,9 +269,11 @@ describe('useHomeData', () => {
     await waitFor(() => {
       expect(result.current.categories).toEqual(refreshedCategories);
       expect(result.current.products).toEqual(refreshedProducts);
+      expect(result.current.banners.home_banner_bottom?.title).toBe('Bottom Banner');
     });
 
     expect(mockGetCategories).toHaveBeenCalledTimes(2);
+    expect(mockGetHomeBannersByPlacement).toHaveBeenCalledTimes(2);
     expect(mockGetLatestProductsWithImages).toHaveBeenCalledTimes(2);
   });
 
@@ -216,6 +292,9 @@ describe('useHomeData', () => {
           resolveCategories = resolve;
         }),
     );
+    mockGetHomeBannersByPlacement
+      .mockResolvedValueOnce(createHomeBanners())
+      .mockResolvedValueOnce(createHomeBanners());
     mockGetLatestProductsWithImages.mockResolvedValueOnce(initialProducts).mockImplementationOnce(
       () =>
         new Promise(resolve => {
@@ -228,6 +307,7 @@ describe('useHomeData', () => {
     await waitFor(() => {
       expect(result.current.categories).toEqual(initialCategories);
       expect(result.current.products).toEqual(initialProducts);
+      expect(result.current.banners.home_banner_top?.title).toBe('Top Banner');
       expect(result.current.isLoadingCategories).toBe(false);
       expect(result.current.isLoadingProducts).toBe(false);
     });
@@ -238,8 +318,10 @@ describe('useHomeData', () => {
 
     expect(result.current.categories).toEqual(initialCategories);
     expect(result.current.products).toEqual(initialProducts);
+    expect(result.current.banners.home_banner_top?.title).toBe('Top Banner');
     expect(result.current.isLoadingCategories).toBe(false);
     expect(result.current.isLoadingProducts).toBe(false);
+    expect(result.current.isLoadingBanners).toBe(false);
     expect(result.current.isRefreshing).toBe(false);
 
     await act(async () => {
@@ -255,6 +337,7 @@ describe('useHomeData', () => {
 
   it('returns empty arrays when services return empty results', async () => {
     mockGetCategories.mockResolvedValue([]);
+    mockGetHomeBannersByPlacement.mockResolvedValue(createEmptyHomeBanners());
     mockGetLatestProductsWithImages.mockResolvedValue([]);
 
     const { result } = renderHook(() => useHomeData());
@@ -266,6 +349,29 @@ describe('useHomeData', () => {
 
     expect(result.current.categories).toEqual([]);
     expect(result.current.products).toEqual([]);
+    expect(result.current.banners).toEqual(createEmptyHomeBanners());
+    expect(result.current.error).toBeNull();
+  });
+
+  it('keeps core home content visible when banner fetch fails', async () => {
+    const categories = [createCategory(1)];
+    const products = [createProduct(1)];
+
+    mockGetCategories.mockResolvedValue(categories);
+    mockGetLatestProductsWithImages.mockResolvedValue(products);
+    mockGetHomeBannersByPlacement.mockRejectedValue(new Error('Banner fetch failed'));
+
+    const { result } = renderHook(() => useHomeData());
+
+    await waitFor(() => {
+      expect(result.current.isLoadingBanners).toBe(false);
+      expect(result.current.isLoadingProducts).toBe(false);
+      expect(result.current.isLoadingCategories).toBe(false);
+    });
+
+    expect(result.current.categories).toEqual(categories);
+    expect(result.current.products).toEqual(products);
+    expect(result.current.bannerError).toBe('Banner fetch failed');
     expect(result.current.error).toBeNull();
   });
 });

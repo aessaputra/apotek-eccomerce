@@ -1,5 +1,7 @@
 import { supabase } from './supabase.service';
 import type { Database } from '@/types/supabase';
+import { classifyError, isRetryableError, translateErrorMessage } from '@/utils/error';
+import { withRetry } from '@/utils/retry';
 
 export type Order = Database['public']['Tables']['orders']['Row'];
 export const ORDERS_PAGE_SIZE = 20;
@@ -8,9 +10,11 @@ export const ORDERS_CACHE_TTL_MS = 5 * 60 * 1000;
 const ORDER_LIST_SELECT = `
   id,
   created_at,
+  expired_at,
   midtrans_order_id,
   gross_amount,
   total_amount,
+  courier_code,
   courier_service,
   payment_status,
   status,
@@ -23,7 +27,11 @@ const ORDER_LIST_SELECT = `
     products (
       id,
       name,
-      slug
+      slug,
+      product_images (
+        url,
+        sort_order
+      )
     )
   )
 `;
@@ -54,6 +62,7 @@ const ORDER_DETAIL_SELECT = `
     receiver_name,
     phone_number,
     street_address,
+    address_note,
     city,
     province,
     postal_code
@@ -64,6 +73,10 @@ export interface OrderListProduct {
   id: string;
   name: string;
   slug: string;
+  product_images?: {
+    url: string;
+    sort_order: number;
+  }[];
 }
 
 export interface OrderListOrderItem {
@@ -78,9 +91,11 @@ export interface OrderListOrderItem {
 export interface OrderListItem {
   id: string;
   created_at: string;
+  expired_at: string | null;
   midtrans_order_id: string | null;
   gross_amount: number | null;
   total_amount: number;
+  courier_code: string | null;
   courier_service: string | null;
   payment_status: string;
   status: string;
@@ -115,6 +130,7 @@ export type OrderWithItems = Order & {
     receiver_name: string;
     phone_number: string;
     street_address: string;
+    address_note: string | null;
     city: string;
     province: string | null;
     postal_code: string;
@@ -141,16 +157,118 @@ export interface OrderListMetrics {
   hasMore: boolean;
 }
 
+export interface OrderTabCounts {
+  unpaid: number;
+  packing: number;
+  shipped: number;
+  completed: number;
+}
+
+export type OrderStatusVariant = 'success' | 'warning' | 'danger' | 'primary' | 'neutral';
+
+export interface OrderStatusDisplay {
+  label: string;
+  variant: OrderStatusVariant;
+}
+
+export const UNPAID_ORDER_STATUSES = ['pending'] as const;
+export const UNPAID_PAYMENT_STATUSES = ['pending'] as const;
+export const PACKING_ORDER_STATUSES = ['processing', 'awaiting_shipment'] as const;
+export const SHIPPED_ORDER_STATUSES = ['shipped', 'in_transit'] as const;
+export const COMPLETED_ORDER_STATUSES = ['delivered'] as const;
+
 export interface GetUserOrdersParams {
   offset?: number;
   limit?: number;
   signal?: AbortSignal;
+  paymentStatus?: 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'authorize';
+  paymentStatuses?: ('pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'authorize')[];
+  orderStatus?: string;
+  orderStatuses?: string[];
 }
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
+const FAILED_PAYMENT_STATES = ['deny', 'expire', 'cancel'];
+const SUCCESS_PAYMENT_STATES = ['settlement'];
+const REFUND_STATES = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
+
+interface ErrorLike {
+  message?: unknown;
+  details?: unknown;
+  hint?: unknown;
+  code?: unknown;
+  name?: unknown;
+  error?: unknown;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as ErrorLike).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+
+  return '';
+}
 
 function isAbortError(error: unknown): error is Error {
-  return error instanceof Error && error.name === 'AbortError';
+  if (error instanceof Error) {
+    return error.name === 'AbortError';
+  }
+
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const { name, code } = error as ErrorLike;
+  return (
+    (typeof name === 'string' && name === 'AbortError') ||
+    (typeof code === 'string' && code === 'ABORT_ERR')
+  );
+}
+
+function withAbortSignal<T>(query: T, signal?: AbortSignal): T {
+  if (!signal) {
+    return query;
+  }
+
+  if (
+    typeof query === 'object' &&
+    query !== null &&
+    'abortSignal' in query &&
+    typeof (query as { abortSignal?: unknown }).abortSignal === 'function'
+  ) {
+    return (query as { abortSignal: (value: AbortSignal) => T }).abortSignal(signal);
+  }
+
+  return query;
+}
+
+function getNestedErrorMessage(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return '';
+  }
+
+  const record = value as ErrorLike;
+  const nestedError = getNestedErrorMessage(record.error);
+  if (nestedError) {
+    return nestedError;
+  }
+
+  return getErrorMessage(value);
 }
 
 function getPayloadBytes(value: unknown): number {
@@ -167,21 +285,94 @@ function logSupabaseError(context: string, error: unknown): void {
   }
 
   if (error instanceof Error) {
-    console.error(`[order.service] ${context}:`, {
+    console.warn(`[order.service] ${context}:`, {
       message: error.message,
       name: error.name,
       stack: error.stack?.split('\n').slice(0, 3).join('\n'),
     });
   } else {
-    console.error(`[order.service] ${context}:`, error);
+    const message = getNestedErrorMessage(error);
+
+    if (error && typeof error === 'object') {
+      const { code, details, hint, name } = error as ErrorLike;
+
+      console.warn(`[order.service] ${context}:`, {
+        message: message || DATABASE_ERROR_MESSAGE,
+        name: typeof name === 'string' ? name : 'UnknownError',
+        code: typeof code === 'string' ? code : undefined,
+        details: typeof details === 'string' ? details : undefined,
+        hint: typeof hint === 'string' ? hint : undefined,
+      });
+      return;
+    }
+
+    console.warn(`[order.service] ${context}:`, message || String(error));
   }
 }
 
-function toUserError(error: unknown, fallback: string): Error {
-  if (error instanceof Error) {
+function toAbortError(error: unknown): Error {
+  if (error instanceof Error && error.name === 'AbortError') {
     return error;
   }
-  return new Error(fallback);
+
+  const message = getNestedErrorMessage(error).trim();
+  const abortError = new Error(message || 'The operation was aborted.');
+  abortError.name = 'AbortError';
+  return abortError;
+}
+
+function normalizeSupabaseError(error: unknown, fallback: string): Error {
+  if (isAbortError(error)) {
+    return toAbortError(error);
+  }
+
+  const classifiedError = classifyError(error);
+  const translatedMessage = translateErrorMessage(classifiedError).trim();
+  if (translatedMessage) {
+    return new Error(translatedMessage);
+  }
+
+  const nestedMessage = getNestedErrorMessage(error).trim();
+  return new Error(nestedMessage || fallback);
+}
+
+async function countOrdersByFilters(
+  userId: string,
+  params: Pick<
+    GetUserOrdersParams,
+    'paymentStatus' | 'paymentStatuses' | 'orderStatus' | 'orderStatuses'
+  >,
+): Promise<number> {
+  let query = supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (params.paymentStatuses && params.paymentStatuses.length > 0) {
+    query = query.in(
+      'payment_status',
+      params.paymentStatuses as Database['public']['Enums']['payment_status'][],
+    );
+  } else if (params.paymentStatus) {
+    query = query.eq(
+      'payment_status',
+      params.paymentStatus as Database['public']['Enums']['payment_status'],
+    );
+  }
+
+  if (params.orderStatuses && params.orderStatuses.length > 0) {
+    query = query.in('status', params.orderStatuses);
+  } else if (params.orderStatus) {
+    query = query.eq('status', params.orderStatus);
+  }
+
+  const { count, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
 }
 
 /**
@@ -191,34 +382,111 @@ export async function getOrdersOptimized(
   userId: string,
   params: GetUserOrdersParams = {},
 ): Promise<OrderListResult> {
-  const offset = params.offset ?? 0;
-  const limit = params.limit ?? ORDERS_PAGE_SIZE;
-  const requestedLimit = Math.max(limit, 1);
+  const offset = Math.max(params.offset ?? 0, 0);
+  const pageSize = Math.max(params.limit ?? ORDERS_PAGE_SIZE, 1);
+  const fetchLimit = pageSize + 1;
   const startedAt = Date.now();
 
+  if (__DEV__) {
+    console.log('[order.service] getOrdersOptimized start', {
+      userId,
+      offset,
+      pageSize,
+      fetchLimit,
+      paymentStatus: params.paymentStatus ?? null,
+      paymentStatuses: params.paymentStatuses ?? null,
+      orderStatus: params.orderStatus ?? null,
+      orderStatuses: params.orderStatuses ?? null,
+      hasSignal: Boolean(params.signal),
+      select: ORDER_LIST_SELECT,
+    });
+  }
+
   try {
-    let query = supabase
-      .from('orders')
-      .select(ORDER_LIST_SELECT)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + requestedLimit);
+    const data = await withRetry(
+      async () => {
+        let query = supabase
+          .from('orders')
+          .select(ORDER_LIST_SELECT)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + fetchLimit - 1);
 
-    if (params.signal) {
-      query = query.abortSignal(params.signal);
-    }
+        if (params.paymentStatuses && params.paymentStatuses.length > 0) {
+          query = query.in(
+            'payment_status',
+            params.paymentStatuses as Database['public']['Enums']['payment_status'][],
+          );
+        } else if (params.paymentStatus) {
+          query = query.eq(
+            'payment_status',
+            params.paymentStatus as Database['public']['Enums']['payment_status'],
+          );
+        }
 
-    const { data, error } = await query;
+        if (params.orderStatuses && params.orderStatuses.length > 0) {
+          query = query.in('status', params.orderStatuses);
+        } else if (params.orderStatus) {
+          query = query.eq('status', params.orderStatus);
+        }
 
-    if (error) {
-      logSupabaseError('getOrdersOptimized query failed', error);
-      return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE), metrics: null };
-    }
+        if (__DEV__) {
+          console.log('[order.service] executing orders query', {
+            userId,
+            offset,
+            fetchLimit,
+            paymentStatus: params.paymentStatus ?? null,
+            paymentStatuses: params.paymentStatuses ?? null,
+            orderStatus: params.orderStatus ?? null,
+            orderStatuses: params.orderStatuses ?? null,
+          });
+        }
+
+        const queryWithSignal = withAbortSignal(query, params.signal);
+
+        const { data: rows, error } = await queryWithSignal;
+
+        if (__DEV__) {
+          console.log('[order.service] orders query completed', {
+            userId,
+            offset,
+            rowCount: rows?.length ?? 0,
+            hasError: Boolean(error),
+            errorMessage: error?.message ?? null,
+            errorCode: error?.code ?? null,
+            errorDetails: error?.details ?? null,
+            errorHint: error?.hint ?? null,
+          });
+        }
+
+        if (error) {
+          throw error;
+        }
+
+        return rows;
+      },
+      {
+        maxRetries: 2,
+        baseDelay: 250,
+        maxDelay: 1000,
+        shouldRetry: error => !isAbortError(error) && isRetryableError(classifyError(error)),
+      },
+    );
 
     const rows = (data ?? []) as unknown as OrderListItem[];
-    const hasMore = rows.length > requestedLimit;
-    const normalizedData = hasMore ? rows.slice(0, requestedLimit) : rows;
+    const hasMore = rows.length > pageSize;
+    const normalizedData = hasMore ? rows.slice(0, pageSize) : rows;
     const fetchedAt = Date.now();
+
+    if (__DEV__) {
+      console.log('[order.service] getOrdersOptimized success', {
+        userId,
+        offset,
+        returnedCount: normalizedData.length,
+        hasMore,
+        durationMs: fetchedAt - startedAt,
+      });
+    }
 
     return {
       data: normalizedData,
@@ -228,16 +496,58 @@ export async function getOrdersOptimized(
         payloadBytes: getPayloadBytes(normalizedData),
         fetchedAt,
         offset,
-        limit: requestedLimit,
+        limit: pageSize,
         hasMore,
       },
     };
   } catch (error) {
+    if (__DEV__) {
+      console.log('[order.service] getOrdersOptimized caught error', {
+        userId,
+        offset,
+        paymentStatus: params.paymentStatus ?? null,
+        error,
+      });
+    }
+
     logSupabaseError('getOrdersOptimized unexpected error', error);
     return {
       data: null,
-      error: isAbortError(error) ? error : toUserError(error, DATABASE_ERROR_MESSAGE),
+      error: isAbortError(error)
+        ? toAbortError(error)
+        : normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE),
       metrics: null,
+    };
+  }
+}
+
+export async function getOrderTabCounts(
+  userId: string,
+): Promise<{ data: OrderTabCounts | null; error: Error | null }> {
+  try {
+    const [unpaid, packing, shipped, completed] = await Promise.all([
+      countOrdersByFilters(userId, {
+        orderStatuses: [...UNPAID_ORDER_STATUSES],
+        paymentStatuses: [...UNPAID_PAYMENT_STATUSES],
+      }),
+      countOrdersByFilters(userId, { orderStatuses: [...PACKING_ORDER_STATUSES] }),
+      countOrdersByFilters(userId, { orderStatuses: [...SHIPPED_ORDER_STATUSES] }),
+      countOrdersByFilters(userId, { orderStatuses: [...COMPLETED_ORDER_STATUSES] }),
+    ]);
+
+    return {
+      data: {
+        unpaid,
+        packing,
+        shipped,
+        completed,
+      },
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: normalizeSupabaseError(error, 'Gagal memuat jumlah pesanan.'),
     };
   }
 }
@@ -262,13 +572,13 @@ export async function getOrderById(orderId: string): Promise<OrderDetailResult> 
 
     if (error) {
       logSupabaseError('getOrderById query failed', error);
-      return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
+      return { data: null, error: normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE) };
     }
 
     return { data: data as unknown as OrderWithItems, error: null };
   } catch (error) {
     logSupabaseError('getOrderById unexpected error', error);
-    return { data: null, error: toUserError(error, DATABASE_ERROR_MESSAGE) };
+    return { data: null, error: normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE) };
   }
 }
 
@@ -299,13 +609,214 @@ export function getPaymentStatusLabel(status: string): string {
 export function getOrderStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     draft: 'Draft',
-    pending: 'Menunggu Konfirmasi',
+    pending: 'Menunggu Pembayaran',
+    paid: 'Diproses',
     processing: 'Diproses',
-    awaiting_shipment: 'Menunggu Pengiriman',
-    shipped: 'Dikirim',
-    delivered: 'Terkirim',
+    awaiting_shipment: 'Siap Dikirim',
+    shipped: 'Diserahkan ke Kurir',
+    in_transit: 'Dalam Perjalanan',
+    delivered: 'Selesai',
     cancelled: 'Dibatalkan',
   };
 
   return labels[status] || status;
+}
+
+export function getOrderStatusDisplay(status: string): OrderStatusDisplay {
+  const displays: Record<string, OrderStatusDisplay> = {
+    draft: { label: 'Draft', variant: 'neutral' },
+    pending: { label: 'Menunggu Pembayaran', variant: 'warning' },
+    paid: { label: 'Diproses', variant: 'primary' },
+    processing: { label: 'Diproses', variant: 'primary' },
+    awaiting_shipment: { label: 'Siap Dikirim', variant: 'primary' },
+    shipped: { label: 'Diserahkan ke Kurir', variant: 'primary' },
+    in_transit: { label: 'Dalam Perjalanan', variant: 'primary' },
+    delivered: { label: 'Selesai', variant: 'success' },
+    cancelled: { label: 'Dibatalkan', variant: 'danger' },
+  };
+
+  return (
+    displays[status] || {
+      label: getOrderStatusLabel(status),
+      variant: 'neutral',
+    }
+  );
+}
+
+export function isBackendExpired(expiredAt: string | null | undefined): boolean {
+  if (!expiredAt) return false;
+  return new Date(expiredAt) < new Date();
+}
+
+export function getOrderPrimaryStatusDisplay(
+  orderStatus: string,
+  paymentStatus: string,
+  expiredAt?: string | null,
+): OrderStatusDisplay {
+  if (paymentStatus === 'pending') {
+    const isExpired = isBackendExpired(expiredAt);
+
+    if (isExpired) {
+      return { label: 'Pembayaran Kadaluarsa', variant: 'danger' };
+    }
+
+    return { label: 'Menunggu Pembayaran', variant: 'warning' };
+  }
+
+  if (orderStatus === 'cancelled') {
+    return getOrderStatusDisplay(orderStatus);
+  }
+
+  if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {
+    return { label: getPaymentStatusLabel(paymentStatus), variant: 'danger' };
+  }
+
+  if (REFUND_STATES.includes(paymentStatus)) {
+    return { label: getPaymentStatusLabel(paymentStatus), variant: 'warning' };
+  }
+
+  return getOrderStatusDisplay(orderStatus);
+}
+
+export function getOrderSecondaryStatusDisplay(
+  orderStatus: string,
+  paymentStatus: string,
+): string | null {
+  if (paymentStatus === 'pending' && orderStatus === 'pending') {
+    return null;
+  }
+
+  if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {
+    return null;
+  }
+
+  if (SUCCESS_PAYMENT_STATES.includes(paymentStatus)) {
+    return getPaymentStatusLabel(paymentStatus);
+  }
+
+  return null;
+}
+
+export interface PastPurchaseProduct {
+  id: string;
+  name: string;
+  price: number;
+  slug: string;
+  imageUrl: string | null;
+}
+
+const PAST_PURCHASE_LIMIT = 10;
+
+const PAST_PURCHASE_SELECT = `
+  product_id,
+  created_at,
+  products (
+    id,
+    name,
+    price,
+    slug,
+    is_active,
+    stock,
+    product_images (
+      url,
+      sort_order
+    )
+  ),
+  orders!inner (
+    status,
+    payment_status,
+    user_id
+  )
+`;
+
+interface PastPurchaseRow {
+  product_id: string | null;
+  created_at: string;
+  products: {
+    id: string;
+    name: string;
+    price: number;
+    slug: string;
+    is_active: boolean | null;
+    stock: number;
+    product_images: { url: string; sort_order: number }[] | null;
+  } | null;
+  orders: {
+    status: string;
+    payment_status: string;
+    user_id: string | null;
+  };
+}
+
+export async function getPastPurchasedProducts(
+  userId: string,
+): Promise<{ data: PastPurchaseProduct[]; error: Error | null }> {
+  const normalizedUserId = userId.trim();
+
+  if (!normalizedUserId) {
+    return { data: [], error: new Error('User ID is required.') };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select(PAST_PURCHASE_SELECT)
+      .eq('orders.user_id', normalizedUserId)
+      .eq('orders.status', 'delivered')
+      .eq('orders.payment_status', 'settlement')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      logSupabaseError('getPastPurchasedProducts query failed', error);
+      return {
+        data: [],
+        error: normalizeSupabaseError(error, 'Gagal memuat produk yang pernah dibeli.'),
+      };
+    }
+
+    const rows = (data ?? []) as unknown as PastPurchaseRow[];
+    const seen = new Set<string>();
+    const products: PastPurchaseProduct[] = [];
+
+    for (const row of rows) {
+      if (!row.product_id || !row.products) {
+        continue;
+      }
+
+      if (seen.has(row.product_id)) {
+        continue;
+      }
+
+      if (!row.products.is_active || row.products.stock <= 0) {
+        continue;
+      }
+
+      seen.add(row.product_id);
+
+      const sortedImages = [...(row.products.product_images ?? [])].sort(
+        (a, b) => a.sort_order - b.sort_order,
+      );
+
+      products.push({
+        id: row.products.id,
+        name: row.products.name,
+        price: row.products.price,
+        slug: row.products.slug,
+        imageUrl: sortedImages[0]?.url ?? null,
+      });
+
+      if (products.length >= PAST_PURCHASE_LIMIT) {
+        break;
+      }
+    }
+
+    return { data: products, error: null };
+  } catch (error) {
+    logSupabaseError('getPastPurchasedProducts unexpected error', error);
+    return {
+      data: [],
+      error: normalizeSupabaseError(error, 'Gagal memuat produk yang pernah dibeli.'),
+    };
+  }
 }

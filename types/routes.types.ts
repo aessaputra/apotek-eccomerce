@@ -10,9 +10,12 @@ export type AuthRoutes = {
 export type HomeRoutes = {
   home: undefined;
   'home/index': undefined;
-  'home/details': undefined;
-  'home/product-details': { id: string; name?: string };
   'home/category-product-list': { categoryId: string; categoryName?: string };
+  'home/all-products': undefined;
+};
+
+export type ProductDetailsRoutes = {
+  'product-details': { id: string; name?: string };
 };
 
 // Cart routes
@@ -27,6 +30,8 @@ export type OrdersRoutes = {
   orders: undefined;
   'orders/index': undefined;
   'orders/success': { orderId?: string };
+  'orders/order-detail/[orderId]': { orderId: string };
+  'orders/track-shipment/[orderId]': { orderId: string };
 };
 
 // Profile routes
@@ -35,9 +40,21 @@ export type ProfileRoutes = {
   'profile/index': undefined;
   'profile/addresses': undefined;
   'profile/address-form': { id?: string };
+  'profile/address-search': { query?: string; latitude?: string; longitude?: string };
+  'profile/area-picker': { selectedAreaId?: string };
+  'profile/address-map': {
+    latitude?: string;
+    longitude?: string;
+    streetAddress?: string;
+    areaName?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+  };
   'profile/edit-profile': undefined;
   'profile/details': undefined;
   'profile/support': undefined;
+  'profile/order-detail/[orderId]': { orderId: string };
 };
 
 // Google auth callback
@@ -47,6 +64,7 @@ export type GoogleAuthRoutes = {
 
 export type AppRoutes = AuthRoutes &
   HomeRoutes &
+  ProductDetailsRoutes &
   CartRoutes &
   OrdersRoutes &
   ProfileRoutes &
@@ -56,16 +74,27 @@ export type ProfileStackParams = {
   index: undefined;
   addresses: undefined;
   'address-form': { id?: string };
+  'address-search': { query?: string; latitude?: string; longitude?: string };
+  'area-picker': { selectedAreaId?: string };
+  'address-map': {
+    latitude?: string;
+    longitude?: string;
+    streetAddress?: string;
+    areaName?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+  };
   'edit-profile': undefined;
   details: undefined;
   support: undefined;
+  'order-detail/[orderId]': { orderId: string };
 };
 
 export type HomeStackParams = {
   index: undefined;
-  details: undefined;
-  'product-details': { id: string; name?: string };
   'category-product-list': { categoryId: string; categoryName?: string };
+  'all-products': undefined;
 };
 
 export type CartStackParams = {
@@ -76,6 +105,8 @@ export type CartStackParams = {
 export type OrdersStackParams = {
   index: undefined;
   success: { orderId?: string };
+  'order-detail/[orderId]': { orderId: string };
+  'track-shipment/[orderId]': { orderId: string };
 };
 
 export type AuthStackParams = {

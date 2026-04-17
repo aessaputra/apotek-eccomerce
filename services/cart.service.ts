@@ -3,6 +3,7 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Tables } from '@/types/supabase';
 import { CART_PAGE_SIZE } from '@/constants/cart.constants';
 import { runDedupedRequest } from '@/utils/requestDeduplication';
+import { buildCartSnapshot } from '@/utils/cart';
 import type {
   CartRealtimeChange,
   CartRealtimeConnectionState,
@@ -75,27 +76,7 @@ type CartSnapshotRow = Pick<CartItemRow, 'quantity'> & {
 type CartRealtimeRecord = Partial<Pick<CartItemRow, 'id' | 'cart_id' | 'product_id' | 'quantity'>>;
 
 function toCartSnapshot(rows: CartSnapshotRow[]): CartSnapshot {
-  return rows.reduce(
-    (snapshot, row) => {
-      if (!row.product) {
-        return snapshot;
-      }
-
-      const quantity = row.quantity;
-      const weight = row.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS;
-
-      snapshot.itemCount += quantity;
-      snapshot.estimatedWeightGrams += quantity * weight;
-      snapshot.packageValue += quantity * row.product.price;
-
-      return snapshot;
-    },
-    {
-      itemCount: 0,
-      estimatedWeightGrams: 0,
-      packageValue: 0,
-    } as CartSnapshot,
-  );
+  return buildCartSnapshot(rows, DEFAULT_ITEM_WEIGHT_GRAMS);
 }
 
 function isAbortError(error: unknown): error is Error {
@@ -141,20 +122,15 @@ function toCartRealtimeItem(
 
   const { id, cart_id, product_id, quantity } = record;
 
-  if (
-    typeof id !== 'string' ||
-    typeof cart_id !== 'string' ||
-    typeof product_id !== 'string' ||
-    typeof quantity !== 'number'
-  ) {
+  if (typeof id !== 'string') {
     return null;
   }
 
   return {
     id,
-    cart_id,
-    product_id,
-    quantity,
+    cart_id: typeof cart_id === 'string' ? cart_id : '',
+    product_id: typeof product_id === 'string' ? product_id : '',
+    quantity: typeof quantity === 'number' ? quantity : 0,
   };
 }
 
@@ -442,7 +418,8 @@ export async function getCartWithItems(
   let productsQuery = supabase
     .from('products')
     .select('id, name, price, stock, weight, slug, is_active')
-    .in('id', productIds);
+    .in('id', productIds)
+    .eq('is_active', true);
   productsQuery = withAbortSignal(productsQuery, signal);
 
   const { data: products, error: productsError } = await productsQuery;
@@ -507,21 +484,7 @@ export async function getCartWithItems(
     });
   }
 
-  let itemCount = 0;
-  let estimatedWeightGrams = 0;
-  let packageValue = 0;
-
-  for (const item of itemsWithProducts) {
-    itemCount += item.quantity;
-    estimatedWeightGrams += item.quantity * (item.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS);
-    packageValue += item.quantity * item.product.price;
-  }
-
-  const snapshot: CartSnapshot = {
-    itemCount,
-    estimatedWeightGrams,
-    packageValue,
-  };
+  const snapshot = buildCartSnapshot(itemsWithProducts, DEFAULT_ITEM_WEIGHT_GRAMS);
 
   return {
     data: {
@@ -633,6 +596,7 @@ export function subscribeToCartChanges(
   onConnectionStateChange?: (state: CartRealtimeConnectionState) => void,
 ): () => void {
   const normalizedCartId = cartId.trim();
+  const channelName = `cart:${normalizedCartId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
 
   if (!normalizedCartId) {
     onConnectionStateChange?.('disconnected');
@@ -642,7 +606,7 @@ export function subscribeToCartChanges(
   onConnectionStateChange?.('connecting');
 
   const channel = supabase
-    .channel(`cart:${normalizedCartId}`)
+    .channel(channelName)
     .on(
       'postgres_changes',
       {

@@ -62,7 +62,7 @@ describe('Tab Configuration Integration', () => {
   });
 
   test('shouldShowTabBar hides tab bar for hidden screens', () => {
-    const hiddenScreens = ['edit-profile', 'address-form', 'product-details'];
+    const hiddenScreens = ['edit-profile', 'address-form', 'address-map', 'product-details'];
     hiddenScreens.forEach(screen => {
       expect(shouldShowTabBar('profile', ['profile', screen])).toBe(false);
     });

@@ -226,7 +226,7 @@ function ProductErrorState({
 
 export default function ProductDetails() {
   const router = useRouter();
-  const params = useLocalSearchParams<RouteParams<'home/product-details'>>();
+  const params = useLocalSearchParams<RouteParams<'product-details'>>();
   const media = useMedia();
   const theme = useTheme();
   const { user } = useAppSlice();

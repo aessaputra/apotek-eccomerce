@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { TextInput as RNTextInput } from 'react-native';
 import type { Address } from '@/types/address';
+import { parseCoordinate } from '@/utils/coordinates';
 import {
   type AddressFormValues,
   type AddressFormErrors,
@@ -22,11 +23,14 @@ export interface UseAddressFormReturn {
   errors: AddressFormErrors;
   // General error message
   generalError: string | null;
+  // Map confirmation state - true if user has confirmed location on map
+  mapConfirmed: boolean;
   // Refs for focus management
   refs: {
     receiverNameRef: React.RefObject<RNTextInput | null>;
     phoneNumberRef: React.RefObject<RNTextInput | null>;
     streetAddressRef: React.RefObject<RNTextInput | null>;
+    addressNoteRef: React.RefObject<RNTextInput | null>;
     cityRef: React.RefObject<RNTextInput | null>;
     postalCodeRef: React.RefObject<RNTextInput | null>;
     provinceRef: React.RefObject<RNTextInput | null>;
@@ -36,7 +40,6 @@ export interface UseAddressFormReturn {
   setFieldValue: <K extends keyof AddressFormValues>(field: K, value: AddressFormValues[K]) => void;
   setArea: (area: {
     id: string;
-    subdistrictId: string;
     name: string;
     city: string;
     province: string;
@@ -48,6 +51,9 @@ export interface UseAddressFormReturn {
   resetForm: () => void;
   populateFromAddress: (address: Address) => void;
   clearFieldError: (field: keyof AddressFormErrors) => void;
+  // Map confirmation actions
+  setMapConfirmed: (confirmed: boolean) => void;
+  resetMapConfirmation: () => void;
 }
 
 /**
@@ -64,10 +70,14 @@ export function useAddressForm(): UseAddressFormReturn {
   // General error message
   const [generalError, setGeneralError] = useState<string | null>(null);
 
+  // Map confirmation state - tracks if user has confirmed location on map
+  const [mapConfirmed, setMapConfirmedState] = useState(false);
+
   // Refs for focus management
   const receiverNameRef = useRef<RNTextInput | null>(null);
   const phoneNumberRef = useRef<RNTextInput | null>(null);
   const streetAddressRef = useRef<RNTextInput | null>(null);
+  const addressNoteRef = useRef<RNTextInput | null>(null);
   const cityRef = useRef<RNTextInput | null>(null);
   const postalCodeRef = useRef<RNTextInput | null>(null);
   const provinceRef = useRef<RNTextInput | null>(null);
@@ -96,7 +106,6 @@ export function useAddressForm(): UseAddressFormReturn {
     setValues(prev => ({
       ...prev,
       areaId: '',
-      subdistrictId: '',
       areaName: '',
     }));
     // Clear area error since user is now manually entering data
@@ -107,18 +116,10 @@ export function useAddressForm(): UseAddressFormReturn {
    * Set area from area picker selection
    */
   const setArea = useCallback(
-    (area: {
-      id: string;
-      subdistrictId: string;
-      name: string;
-      city: string;
-      province: string;
-      postalCode: string;
-    }) => {
+    (area: { id: string; name: string; city: string; province: string; postalCode: string }) => {
       setValues(prev => ({
         ...prev,
         areaId: area.id,
-        subdistrictId: area.subdistrictId,
         areaName: area.name,
         city: area.city,
         province: area.province,
@@ -193,45 +194,52 @@ export function useAddressForm(): UseAddressFormReturn {
     setGeneralError(null);
   }, []);
 
-  /**
-   * Populate form from existing address data
-   */
   const populateFromAddress = useCallback((address: Address) => {
-    const parseCoord = (v: number | string | null | undefined): number | null => {
-      if (typeof v === 'number' && Number.isFinite(v)) return v;
-      if (typeof v === 'string') {
-        const n = Number.parseFloat(v);
-        return Number.isFinite(n) ? n : null;
-      }
-      return null;
-    };
-
     setValues({
       receiverName: address.receiver_name,
       phoneNumber: address.phone_number,
       streetAddress: address.street_address,
-      areaId: address.area_id || address.subdistrict_id || '',
-      subdistrictId: address.subdistrict_id || '',
+      addressNote: address.address_note || '',
+      areaId: address.area_id || '',
       areaName: address.area_name || '',
       city: address.city,
       postalCode: address.postal_code,
       province: address.province || '',
       isDefault: address.is_default ?? false,
-      latitude: parseCoord(address.latitude),
-      longitude: parseCoord(address.longitude),
+      latitude: parseCoordinate(address.latitude),
+      longitude: parseCoordinate(address.longitude),
     });
     setErrors(initialFormErrors);
     setGeneralError(null);
+    const hasSavedCoords =
+      parseCoordinate(address.latitude) !== null && parseCoordinate(address.longitude) !== null;
+    setMapConfirmedState(hasSavedCoords);
+  }, []);
+
+  /**
+   * Set map confirmation state
+   */
+  const setMapConfirmed = useCallback((confirmed: boolean) => {
+    setMapConfirmedState(confirmed);
+  }, []);
+
+  /**
+   * Reset map confirmation - called when address fields change or coordinates change
+   */
+  const resetMapConfirmation = useCallback(() => {
+    setMapConfirmedState(false);
   }, []);
 
   return {
     values,
     errors,
     generalError,
+    mapConfirmed,
     refs: {
       receiverNameRef,
       phoneNumberRef,
       streetAddressRef,
+      addressNoteRef,
       cityRef,
       postalCodeRef,
       provinceRef,
@@ -245,5 +253,7 @@ export function useAddressForm(): UseAddressFormReturn {
     resetForm,
     populateFromAddress,
     clearFieldError,
+    setMapConfirmed,
+    resetMapConfirmation,
   };
 }

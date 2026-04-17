@@ -24,6 +24,23 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...config.ios,
       bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekecommerce',
+      infoPlist: {
+        // Allow HTTP connections for Tailscale development (100.x.x.x range)
+        NSAppTransportSecurity: {
+          NSExceptionDomains: {
+            '100.64.0.0': {
+              NSIncludesSubdomains: true,
+              NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
+              NSTemporaryExceptionMinimumTLSVersion: 'TLSv1.2',
+            },
+            '100.100.100.100': {
+              NSIncludesSubdomains: true,
+              NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
+            },
+          },
+          NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
+        },
+      },
     },
     android: {
       ...config.android,
@@ -54,6 +71,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       apiUrl: process.env.API_URL ?? '',
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '',
+      googleApiKey: process.env.EXPO_PUBLIC_GOOGLE_API_KEY ?? '',
       originLatitude: process.env.EXPO_PUBLIC_ORIGIN_LATITUDE
         ? Number(process.env.EXPO_PUBLIC_ORIGIN_LATITUDE)
         : -6.2146,

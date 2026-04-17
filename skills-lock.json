@@ -11,10 +11,45 @@
       "sourceType": "github",
       "computedHash": "d38d7eef32534d75370b72be089faee9f58e84a33b7273d601e42eb308017dfb"
     },
+    "checkout-payments": {
+      "source": "santiagoxor/pintureria-digital",
+      "sourceType": "github",
+      "computedHash": "6a70d32b4e4553c8559c2493cc6e4a685dae0534855bec37f1b6b3f4d0125e55"
+    },
+    "clean-code": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "14ba8e7d8477723eca6d48a79a1924337f4a1f5f1c7ab9b0a7acc073268ecd5a"
+    },
+    "code-smell-detector": {
+      "source": "rysweet/amplihack",
+      "sourceType": "github",
+      "computedHash": "c225f62ccfc0dc6c70f0eea5ce18602329b04338fec18bea380c524f8bb09a69"
+    },
     "context7-auto-research": {
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
       "computedHash": "556f3bd3b59be46990bab40f922eb6ebfb711979a11836a6f78c78d658e82a41"
+    },
+    "copy-editing": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "computedHash": "f1a31dc20a44b62d9a8b0e2c976e4cfaf12dd87e1c8a4ee8344bbf5aa8a73f63"
+    },
+    "copywriting": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "computedHash": "2e83eda2221e97166172a0798e9b0379e34080595e107e2fc0cf580e9b3bbf7b"
+    },
+    "create-agentsmd": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "bfbdbb76b17cca970d1d624e36ce72b6847860d740581c8865da796c1fef8552"
+    },
+    "create-specification": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "45b9ef98b0fb82ba0e1aee65dfb464fa1f8494a14a557b9788d73aae87e9e618"
     },
     "expo-deployment": {
       "source": "expo/skills",
@@ -25,6 +60,11 @@
       "source": "vercel-labs/skills",
       "sourceType": "github",
       "computedHash": "d31e234f0c90694a670222cdd1dafa853e051d7066beda389f1097c22dadd461"
+    },
+    "google-maps-api": {
+      "source": "tivojn/google-maps-api-skill",
+      "sourceType": "github",
+      "computedHash": "5e052e505bfac4945d2f19f32125242233d29428233c8c71f6ce08a827d8b681"
     },
     "native-data-fetching": {
       "source": "expo/skills",
@@ -46,10 +86,25 @@
       "sourceType": "github",
       "computedHash": "6d4eb6b0bda3479324f508314a737ed7cac0c4ed60538bd7bf892b1977a3e09e"
     },
+    "supabase": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "cb675a889c60172febe84740e7c22b600c8241c390deaff3d368c408f10dffdf"
+    },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "computedHash": "9c87c315aed143ee3b34bec8117100f5035e0df09e6b23e1ecc772cff434c9ad"
+    },
+    "testing-strategy": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "computedHash": "2fe64e97a596e862cd946bb8cddbbf4e9f1e1f21ca817f586111a25af474d0f8"
+    },
+    "vercel-react-native-skills": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "2e9088a7333666d8c2833b8ff58bd51b955501c42b4c7244f72b4cbf22dafcc4"
     },
     "webhook-integration": {
       "source": "dodopayments/skills",

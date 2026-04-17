@@ -8,8 +8,8 @@ describe('AddressForm Save Payload', () => {
       receiverName: 'John Doe',
       phoneNumber: '081234567890',
       streetAddress: 'Jl. Sudirman No. 1',
+      addressNote: 'Blok A2',
       areaId: 'AREA-123',
-      subdistrictId: 'SUB-456',
       areaName: 'Kemang, Jakarta Selatan',
       city: 'Jakarta Selatan',
       postalCode: '12345',
@@ -21,8 +21,8 @@ describe('AddressForm Save Payload', () => {
       receiver_name: values.receiverName.trim(),
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
+      address_note: values.addressNote.trim() || null,
       area_id: values.areaId,
-      subdistrict_id: values.subdistrictId || values.areaId || null,
       area_name: values.areaName || null,
       city: values.city.trim(),
       postal_code: values.postalCode.trim(),
@@ -31,18 +31,17 @@ describe('AddressForm Save Payload', () => {
     };
 
     expect(payload.area_id).toBe('AREA-123');
-    expect(payload.subdistrict_id).toBe('SUB-456');
     expect(payload.area_name).toBe('Kemang, Jakarta Selatan');
+    expect(payload.address_note).toBe('Blok A2');
   });
 
-  test('save payload falls back subdistrict_id to area_id for legacy addresses', () => {
-    // Legacy address: has area_id but missing subdistrict_id (old migration)
+  test('save payload keeps area_id as the persisted shipping area identifier', () => {
     const values = {
       receiverName: 'Legacy User',
       phoneNumber: '081111111111',
       streetAddress: 'Jl. Legacy No. 1',
+      addressNote: '',
       areaId: 'AREA-LEGACY-123',
-      subdistrictId: '', // Empty - legacy address
       areaName: '',
       city: 'Jakarta Barat',
       postalCode: '11510',
@@ -54,8 +53,8 @@ describe('AddressForm Save Payload', () => {
       receiver_name: values.receiverName.trim(),
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
+      address_note: values.addressNote.trim() || null,
       area_id: values.areaId,
-      subdistrict_id: values.subdistrictId || values.areaId || null,
       area_name: values.areaName || null,
       city: values.city.trim(),
       postal_code: values.postalCode.trim(),
@@ -63,9 +62,8 @@ describe('AddressForm Save Payload', () => {
       is_default: values.isDefault,
     };
 
-    // Critical: subdistrict_id should fall back to area_id
     expect(payload.area_id).toBe('AREA-LEGACY-123');
-    expect(payload.subdistrict_id).toBe('AREA-LEGACY-123');
+    expect(payload.address_note).toBeNull();
   });
 
   test('save payload trims user-editable string fields', () => {
@@ -73,8 +71,8 @@ describe('AddressForm Save Payload', () => {
       receiverName: '  John Doe  ',
       phoneNumber: '  081234567890  ',
       streetAddress: '  Jl. Sudirman No. 1  ',
+      addressNote: '  Blok A2 dekat satpam  ',
       areaId: 'AREA-123',
-      subdistrictId: 'SUB-456',
       areaName: 'Kemang',
       city: '  Jakarta Selatan  ',
       postalCode: '  12345  ',
@@ -86,8 +84,8 @@ describe('AddressForm Save Payload', () => {
       receiver_name: values.receiverName.trim(),
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
+      address_note: values.addressNote.trim() || null,
       area_id: values.areaId,
-      subdistrict_id: values.subdistrictId || values.areaId || null,
       area_name: values.areaName || null,
       city: values.city.trim(),
       postal_code: values.postalCode.trim(),
@@ -98,6 +96,7 @@ describe('AddressForm Save Payload', () => {
     expect(payload.receiver_name).toBe('John Doe');
     expect(payload.phone_number).toBe('081234567890');
     expect(payload.street_address).toBe('Jl. Sudirman No. 1');
+    expect(payload.address_note).toBe('Blok A2 dekat satpam');
     expect(payload.area_name).toBe('Kemang');
     expect(payload.city).toBe('Jakarta Selatan');
     expect(payload.postal_code).toBe('12345');
@@ -109,8 +108,8 @@ describe('AddressForm Save Payload', () => {
       receiverName: 'John Doe',
       phoneNumber: '081234567890',
       streetAddress: 'Jl. Sudirman No. 1',
+      addressNote: '',
       areaId: 'AREA-123',
-      subdistrictId: 'SUB-456',
       areaName: 'Kemang, Jakarta Selatan',
       city: 'Jakarta Selatan',
       postalCode: '12345',
@@ -124,8 +123,8 @@ describe('AddressForm Save Payload', () => {
       receiver_name: values.receiverName.trim(),
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
+      address_note: values.addressNote.trim() || null,
       area_id: values.areaId,
-      subdistrict_id: values.subdistrictId || values.areaId || null,
       area_name: values.areaName || null,
       city: values.city.trim(),
       postal_code: values.postalCode.trim(),
@@ -144,8 +143,8 @@ describe('AddressForm Save Payload', () => {
       receiverName: 'John Doe',
       phoneNumber: '081234567890',
       streetAddress: 'Jl. Sudirman No. 1',
+      addressNote: '',
       areaId: 'AREA-123',
-      subdistrictId: 'SUB-456',
       areaName: 'Kemang, Jakarta Selatan',
       city: 'Jakarta Selatan',
       postalCode: '12345',
@@ -159,8 +158,8 @@ describe('AddressForm Save Payload', () => {
       receiver_name: values.receiverName.trim(),
       phone_number: values.phoneNumber.trim(),
       street_address: values.streetAddress.trim(),
+      address_note: values.addressNote.trim() || null,
       area_id: values.areaId,
-      subdistrict_id: values.subdistrictId || values.areaId || null,
       area_name: values.areaName || null,
       city: values.city.trim(),
       postal_code: values.postalCode.trim(),

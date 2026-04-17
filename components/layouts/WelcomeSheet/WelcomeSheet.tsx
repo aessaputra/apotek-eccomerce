@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sheet, Text, XStack, YStack, styled, useTheme } from 'tamagui';
+import { ScrollView, Sheet, Text, XStack, YStack, styled, useTheme } from 'tamagui';
 import GradientButton from '@/components/elements/GradientButton';
 import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 import { windowWidth } from '@/utils/deviceInfo';
@@ -118,7 +118,7 @@ function WelcomeSheet({ open, onOpenChange }: WelcomeSheetProps) {
         borderTopLeftRadius="$6"
         borderTopRightRadius="$6"
         pointerEvents="box-none">
-        <Sheet.ScrollView
+        <ScrollView
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
           nestedScrollEnabled>
@@ -169,7 +169,7 @@ function WelcomeSheet({ open, onOpenChange }: WelcomeSheetProps) {
               />
             </ButtonContainer>
           </ContentStack>
-        </Sheet.ScrollView>
+        </ScrollView>
       </Sheet.Frame>
     </Sheet>
   );

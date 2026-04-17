@@ -7,6 +7,7 @@ describe('<StickyBottomBar />', () => {
     render(<StickyBottomBar grandTotal={100000} onConfirm={() => {}} />);
 
     expect(screen.getByText('Konfirmasi')).toBeTruthy();
+    expect(screen.getByText('Rp 100.000')).toBeTruthy();
   });
 
   test('renders correctly in dark theme', async () => {
