@@ -174,6 +174,30 @@ export function translateErrorMessage(error: AppError): string {
   }
 }
 
+export function createTypedError(type: ErrorType, message: string): AppError {
+  const draft: AppError = {
+    type,
+    message,
+    retryable: false,
+  };
+
+  return {
+    ...draft,
+    retryable: isRetryableError(draft),
+  };
+}
+
+export function withFallbackMessage(error: AppError, fallback: string): AppError {
+  if (error.message?.trim()) {
+    return error;
+  }
+
+  return {
+    ...error,
+    message: fallback,
+  };
+}
+
 export function isRetryableError(error: AppError): boolean {
   return (
     error.type === ErrorType.NETWORK ||

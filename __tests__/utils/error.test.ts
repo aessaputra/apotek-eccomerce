@@ -1,5 +1,12 @@
 import { describe, expect, test } from '@jest/globals';
-import { ErrorType, classifyError, isRetryableError, translateErrorMessage } from '@/utils/error';
+import {
+  ErrorType,
+  classifyError,
+  createTypedError,
+  isRetryableError,
+  translateErrorMessage,
+  withFallbackMessage,
+} from '@/utils/error';
 
 describe('error utils', () => {
   test('classifyError identifies NETWORK', () => {
@@ -154,5 +161,32 @@ describe('error utils', () => {
 
     expect(result.type).toBe(ErrorType.AUTH);
     expect(result.originalError?.message).toBe('Forbidden');
+  });
+
+  test('createTypedError derives retryability from error type', () => {
+    expect(createTypedError(ErrorType.SERVER, 'Server error')).toEqual({
+      type: ErrorType.SERVER,
+      message: 'Server error',
+      retryable: true,
+    });
+
+    expect(createTypedError(ErrorType.VALIDATION, 'Validation error')).toEqual({
+      type: ErrorType.VALIDATION,
+      message: 'Validation error',
+      retryable: false,
+    });
+  });
+
+  test('withFallbackMessage preserves non-empty messages and fills blank ones', () => {
+    expect(
+      withFallbackMessage(
+        { type: ErrorType.UNKNOWN, message: 'Masih ada pesan', retryable: true },
+        'Fallback',
+      ),
+    ).toEqual({ type: ErrorType.UNKNOWN, message: 'Masih ada pesan', retryable: true });
+
+    expect(
+      withFallbackMessage({ type: ErrorType.UNKNOWN, message: '  ', retryable: true }, 'Fallback'),
+    ).toEqual({ type: ErrorType.UNKNOWN, message: 'Fallback', retryable: true });
   });
 });

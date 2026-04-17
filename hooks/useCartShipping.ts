@@ -1,33 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getShippingRatesForAddress } from '@/services/shipping.service';
-import { ErrorType, classifyError, isRetryableError, type AppError } from '@/utils/error';
+import {
+  ErrorType,
+  classifyError,
+  createTypedError,
+  withFallbackMessage,
+  type AppError,
+} from '@/utils/error';
 import type { Address } from '@/types/address';
 import type { CartSnapshot } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
-
-function createTypedError(type: ErrorType, message: string): AppError {
-  const draft: AppError = {
-    type,
-    message,
-    retryable: false,
-  };
-
-  return {
-    ...draft,
-    retryable: isRetryableError(draft),
-  };
-}
-
-function withFallbackMessage(error: AppError, fallback: string): AppError {
-  if (error.message?.trim()) {
-    return error;
-  }
-
-  return {
-    ...error,
-    message: fallback,
-  };
-}
 
 function stringifyCoordinate(value: number | null | undefined): string {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : 'null';
