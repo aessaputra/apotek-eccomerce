@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigation, useRouter } from 'expo-router';
 import { FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
 import { StickyBottomBar } from '@/components/elements/StickyBottomBar/StickyBottomBar';
 import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartState';
 import { useAppSlice } from '@/slices';
+import { useOfflineActionMessage } from '@/scenes/cart/useOfflineActionMessage';
 import { useCartAddress } from '@/hooks/useCartAddress';
 import { useCartCheckout } from '@/hooks/useCartCheckout';
 import { useCartPaginated } from '@/hooks/useCartPaginated';
@@ -18,33 +19,16 @@ import { useCartShipping } from '@/hooks/useCartShipping';
 import { removeCartItem } from '@/services/cart.service';
 import { useCartQuantity } from '@/hooks/useCartQuantity';
 import { formatAddress } from '@/utils/address';
-import { ErrorType, translateErrorMessage, type AppError } from '@/utils/error';
+import { translateErrorMessage, type AppError } from '@/utils/error';
 import type { CartItemWithProduct } from '@/types/cart';
 import type { TypedHref } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { getRecoverySuggestion } from '@/scenes/cart/cart.errors';
 import { CartCheckoutDetails } from '@/scenes/cart/CartCheckoutDetails';
 import { CartInitialLoadingOverlay, CartStatusBanners } from '@/scenes/cart/CartFeedback';
 import { AddressSelectionSheet, ShippingOptionsSheet } from '@/scenes/cart/CartSheets';
-
-function getRecoverySuggestion(error: AppError): string | null {
-  switch (error.type) {
-    case ErrorType.NETWORK:
-    case ErrorType.TIMEOUT:
-      return 'Periksa koneksi internet Anda, lalu tekan tombol muat ulang.';
-    case ErrorType.AUTH:
-      return 'Login ulang diperlukan agar proses checkout bisa dilanjutkan.';
-    case ErrorType.SERVER:
-      return 'Coba lagi dalam beberapa menit. Jika masalah berlanjut, hubungi dukungan.';
-    case ErrorType.VALIDATION:
-      return 'Periksa alamat, kurir, dan jumlah produk sebelum mencoba lagi.';
-    case ErrorType.ABORT:
-      return 'Ulangi proses yang dibatalkan jika masih diperlukan.';
-    case ErrorType.UNKNOWN:
-    default:
-      return error.retryable ? 'Silakan coba lagi beberapa saat lagi.' : null;
-  }
-}
+import { useCartHeaderVisibility } from '@/scenes/cart/useCartHeaderVisibility';
 
 export default function Cart() {
   const navigation = useNavigation();
@@ -54,10 +38,9 @@ export default function Cart() {
   const { user } = useAppSlice();
   const { isOffline } = useNetworkStatus();
   const subtleColor = getThemeColor(theme, 'colorPress');
-  const [offlineActionMessage, setOfflineActionMessage] = useState<string | null>(null);
+  const { offlineActionMessage, showOfflineActionMessage } = useOfflineActionMessage();
   const [cartActionError, setCartActionError] = useState<string | null>(null);
   const [addressError, setAddressError] = useState<AppError | null>(null);
-  const offlineMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     items: serverItems,
     snapshot: serverSnapshot,
@@ -83,9 +66,12 @@ export default function Cart() {
     [insets.bottom],
   );
 
-  const onOfflineAction = useCallback((message: string) => {
-    setOfflineActionMessage(message);
-  }, []);
+  const onOfflineAction = useCallback(
+    (message: string) => {
+      showOfflineActionMessage(message);
+    },
+    [showOfflineActionMessage],
+  );
 
   const {
     selectedAddress,
@@ -142,7 +128,7 @@ export default function Cart() {
   const handleQuantityChange = useCallback(
     (cartItemId: string, newQuantity: number) => {
       if (isOffline) {
-        setOfflineActionMessage('Perubahan jumlah produk tidak tersedia offline.');
+        showOfflineActionMessage('Perubahan jumlah produk tidak tersedia offline.');
         return;
       }
 
@@ -150,13 +136,13 @@ export default function Cart() {
 
       updateQuantity(cartItemId, newQuantity);
     },
-    [isOffline, updateQuantity],
+    [isOffline, showOfflineActionMessage, updateQuantity],
   );
 
   const handleRemoveItem = useCallback(
     async (cartItemId: string) => {
       if (isOffline) {
-        setOfflineActionMessage('Hapus produk tidak tersedia offline.');
+        showOfflineActionMessage('Hapus produk tidak tersedia offline.');
         return;
       }
 
@@ -171,7 +157,7 @@ export default function Cart() {
 
       await refresh({ silent: true });
     },
-    [isOffline, refresh],
+    [isOffline, refresh, showOfflineActionMessage],
   );
 
   const {
@@ -233,29 +219,6 @@ export default function Cart() {
     return getRecoverySuggestion(shippingError);
   }, [shippingError]);
 
-  useEffect(() => {
-    if (offlineMessageTimerRef.current) {
-      clearTimeout(offlineMessageTimerRef.current);
-      offlineMessageTimerRef.current = null;
-    }
-
-    if (!offlineActionMessage) {
-      return;
-    }
-
-    offlineMessageTimerRef.current = setTimeout(() => {
-      setOfflineActionMessage(null);
-      offlineMessageTimerRef.current = null;
-    }, 3000);
-
-    return () => {
-      if (offlineMessageTimerRef.current) {
-        clearTimeout(offlineMessageTimerRef.current);
-        offlineMessageTimerRef.current = null;
-      }
-    };
-  }, [offlineActionMessage]);
-
   const handleWrappedStartCheckout = useCallback(async () => {
     setShippingError(null);
     await handleStartCheckout();
@@ -263,12 +226,12 @@ export default function Cart() {
 
   const handleCartRefresh = useCallback(() => {
     if (isOffline) {
-      setOfflineActionMessage('Muat ulang keranjang tidak tersedia offline.');
+      showOfflineActionMessage('Muat ulang keranjang tidak tersedia offline.');
       return;
     }
 
     void refresh();
-  }, [isOffline, refresh]);
+  }, [isOffline, refresh, showOfflineActionMessage]);
 
   const renderCartItem = useCallback(
     ({ item }: { item: CartItemWithProduct }) => (
@@ -283,17 +246,7 @@ export default function Cart() {
 
   const showInitialLoadingOverlay = isLoading && items.length === 0;
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: !showInitialLoadingOverlay,
-    });
-
-    return () => {
-      navigation.setOptions({
-        headerShown: true,
-      });
-    };
-  }, [navigation, showInitialLoadingOverlay]);
+  useCartHeaderVisibility(navigation, showInitialLoadingOverlay);
 
   if (!user) {
     return (
