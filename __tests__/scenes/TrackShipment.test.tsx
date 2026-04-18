@@ -89,6 +89,48 @@ describe('<TrackShipment />', () => {
     expect(screen.getByText('DRIVER')).not.toBeNull();
     expect(screen.getByText('Budi')).not.toBeNull();
     expect(screen.getByText('Paket sedang diantar ke alamat tujuan')).not.toBeNull();
+    expect(screen.getAllByText('Sedang Dikirim').length).toBeGreaterThan(0);
+  });
+
+  test('renders in_transit tracking with a distinct dalam perjalanan label', () => {
+    mockUseOrderDetail.mockReturnValue({
+      order: {
+        ...mockOrder,
+        status: 'in_transit',
+      },
+      status: 'success',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(),
+    });
+    mockUseOrderTracking.mockReturnValue({
+      tracking: {
+        id: 'tracking-2',
+        waybill_id: 'JNE12345',
+        status: 'in_transit',
+        courier: {
+          company: 'jne',
+        },
+        history: [
+          {
+            note: 'Paket sedang dalam perjalanan ke kota tujuan',
+            status: 'in_transit',
+            updated_at: '2026-04-14T10:00:00+07:00',
+          },
+        ],
+        link: 'https://tracking.example/JNE12345',
+      },
+      status: 'success',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(),
+    });
+
+    render(<TrackShipment />);
+
+    expect(screen.getAllByText('Dalam Perjalanan').length).toBeGreaterThan(0);
   });
 
   test('renders waiting state when waybill is unavailable', () => {

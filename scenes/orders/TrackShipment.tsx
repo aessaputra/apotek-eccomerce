@@ -24,7 +24,7 @@ function formatTrackingStatusLabel(status: string): string {
     dropping_off: 'Sedang Dikirim',
     droppingOff: 'Sedang Dikirim',
     delivering: 'Sedang Dikirim',
-    in_transit: 'Sedang Dikirim',
+    in_transit: 'Dalam Perjalanan',
     on_hold: 'Tertahan',
     onHold: 'Tertahan',
     delivered: 'Terkirim',

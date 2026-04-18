@@ -264,7 +264,7 @@ export interface OrderStatusDisplay {
 
 export const UNPAID_ORDER_STATUSES = ['pending'] as const;
 export const UNPAID_PAYMENT_STATUSES = ['pending', 'authorize'] as const;
-export const PACKING_ORDER_STATUSES = ['processing', 'awaiting_shipment'] as const;
+export const PACKING_ORDER_STATUSES = ['paid', 'processing', 'awaiting_shipment'] as const;
 export const SHIPPED_ORDER_STATUSES = ['shipped', 'in_transit'] as const;
 export const COMPLETED_ORDER_STATUSES = ['delivered'] as const;
 
@@ -280,7 +280,7 @@ export interface GetUserOrdersParams {
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
 const FAILED_PAYMENT_STATES = ['deny', 'expire', 'cancel'];
-const SUCCESS_PAYMENT_STATES = ['settlement'];
+const SUCCESS_PAYMENT_STATES = ['settlement', 'capture'];
 const REFUND_STATES = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
 
 function normalizeOrderListItemRow(
