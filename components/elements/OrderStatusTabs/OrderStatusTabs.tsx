@@ -33,6 +33,7 @@ interface OrderStatusTabsProps {
 const TabsContainer = styled(XStack, {
   backgroundColor: '$background',
   paddingVertical: '$3',
+  paddingHorizontal: '$4',
   gap: '$2',
 });
 
@@ -135,7 +136,7 @@ export function OrderStatusTabs({ activeTab, counts, onTabChange }: OrderStatusT
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
           flexGrow: 1,
-          justifyContent: 'space-around',
+          justifyContent: 'space-between',
         }}>
         {TABS.map(tab => {
           const isActive = activeTab === tab.key;

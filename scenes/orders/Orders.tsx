@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { OrderStatusTabs } from '@/components/elements/OrderStatusTabs';
@@ -7,6 +9,7 @@ import { OrdersHeroCard } from '@/components/elements/OrdersHeroCard';
 import { BuyAgainCarousel } from '@/components/elements/BuyAgainCarousel';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { CheckCircleIcon } from '@/components/icons';
+import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useAppSlice } from '@/slices';
 import {
   getOrderTabCounts,
@@ -25,10 +28,12 @@ const EMPTY_COUNTS: OrderTabCounts = {
 
 export default function Orders() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, dispatch, completedOrdersTabViewedByUser, markCompletedOrdersTabViewed } =
     useAppSlice();
   const [counts, setCounts] = useState<OrderTabCounts>(EMPTY_COUNTS);
   const [pastProducts, setPastProducts] = useState<PastPurchaseProduct[]>([]);
+  const [isLoadingPastProducts, setIsLoadingPastProducts] = useState(Boolean(user?.id));
   const [cartSuccessProductName, setCartSuccessProductName] = useState<string | null>(null);
   const latestRequestIdRef = useRef(0);
   const hasViewedCompletedOrdersTab = user?.id
@@ -40,20 +45,24 @@ export default function Orders() {
       latestRequestIdRef.current += 1;
       setCounts(EMPTY_COUNTS);
       setPastProducts([]);
+      setIsLoadingPastProducts(false);
       return;
     }
 
     const requestId = latestRequestIdRef.current + 1;
     latestRequestIdRef.current = requestId;
+    setIsLoadingPastProducts(true);
 
     const [countsResult, productsResult] = await Promise.all([
       getOrderTabCounts(user.id),
-      getPastPurchasedProducts(user.id),
+      getPastPurchasedProducts(user.id, 2),
     ]);
 
     if (latestRequestIdRef.current !== requestId) {
       return;
     }
+
+    setIsLoadingPastProducts(false);
 
     if (!countsResult.error && countsResult.data) {
       setCounts(countsResult.data);
@@ -67,10 +76,6 @@ export default function Orders() {
       console.warn('[Orders] Failed to load past products:', productsResult.error.message);
     }
   }, [user?.id]);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -136,15 +141,30 @@ export default function Orders() {
     }
   }, []);
 
+  const scrollContentBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 16;
+  const visiblePastProducts = useMemo(() => pastProducts, [pastProducts]);
+
   return (
-    <YStack flex={1} backgroundColor="$background" paddingTop="$4">
-      <OrdersHeroCard />
-      <OrderStatusTabs counts={displayCounts} onTabChange={handleTabChange} />
-      <BuyAgainCarousel
-        products={pastProducts.slice(0, 2)}
-        onProductPress={handleProductPress}
-        onAddToCart={handleAddToCart}
-      />
+    <YStack flex={1} backgroundColor="$background">
+      <ScrollView
+        testID="orders-scroll-view"
+        contentContainerStyle={{
+          paddingTop: 16,
+          paddingBottom: scrollContentBottomPadding,
+          flexGrow: 1,
+        }}
+        showsVerticalScrollIndicator={false}>
+        <YStack gap="$4">
+          <OrdersHeroCard />
+          <OrderStatusTabs counts={displayCounts} onTabChange={handleTabChange} />
+          <BuyAgainCarousel
+            products={visiblePastProducts}
+            isLoading={isLoadingPastProducts}
+            onProductPress={handleProductPress}
+            onAddToCart={handleAddToCart}
+          />
+        </YStack>
+      </ScrollView>
 
       <AppAlertDialog
         open={cartSuccessProductName !== null}

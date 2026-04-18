@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { BackHandler, Linking } from 'react-native';
+import { BackHandler, Linking, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -30,6 +30,7 @@ export {
 export default function Payment() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const androidBottomInset = Platform.OS === 'android' ? insets.bottom : 0;
   const { user, dispatch, markCartCleared } = useAppSlice();
   const { removePersistData } = useDataPersist();
   const { paymentUrl, orderId } = useLocalSearchParams<RouteParams<'cart/payment'>>();
@@ -238,7 +239,11 @@ export default function Payment() {
           </TamaguiButton>
         </YStack>
       ) : (
-        <YStack flex={1} position="relative">
+        <YStack
+          testID="payment-webview-container"
+          flex={1}
+          position="relative"
+          paddingBottom={androidBottomInset}>
           <WebView
             source={{ uri: resolvedPaymentUrl }}
             style={{ flex: 1 }}
@@ -275,15 +280,15 @@ export default function Payment() {
         <AppAlertDialog
           open={confirmCloseDialogOpen}
           onOpenChange={setConfirmCloseDialogOpen}
-          title="Batalkan Pembayaran?"
-          description="Pembayaran Anda belum selesai. Yakin ingin keluar?"
-          confirmLabel="Batalkan & Keluar"
+          title="Tutup Halaman Pembayaran?"
+          description="Pembayaran belum selesai. Anda bisa melanjutkan lagi dari halaman Pesanan."
+          confirmLabel="Tutup & Lanjutkan Nanti"
           cancelLabel="Lanjutkan Bayar"
           cancelColor="$primary"
           cancelTextColor="$onPrimary"
           confirmColor="$background"
-          confirmTextColor="$danger"
-          confirmBorderColor="$danger"
+          confirmTextColor="$color"
+          confirmBorderColor="$borderColor"
           onConfirm={() => {
             void finalizePaymentFlow('pending');
           }}

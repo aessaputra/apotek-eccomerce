@@ -21,12 +21,13 @@ const SectionTitle = styled(Text, {
 
 interface BuyAgainCarouselProps {
   products: PastPurchaseProduct[];
+  isLoading?: boolean;
   onProductPress: (product: PastPurchaseProduct) => void;
   onAddToCart: (product: PastPurchaseProduct) => void;
 }
 
 export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
-  ({ products, onProductPress, onAddToCart }) => {
+  ({ products, isLoading = false, onProductPress, onAddToCart }) => {
     const media = useMedia();
     const { width: screenWidth } = useWindowDimensions();
 
@@ -39,12 +40,40 @@ export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
       ? DESKTOP_CARD_WIDTH
       : Math.max(140, Math.floor((screenWidth - HORIZONTAL_PADDING - CARD_GAP - PEEK_OFFSET) / 2));
 
-    if (products.length === 0) {
+    if (!isLoading && products.length === 0) {
       return null;
     }
 
+    const loadingCards = Array.from({ length: 2 }, (_, index) => (
+      <YStack
+        key={`buy-again-loading-${index}`}
+        width={cardWidth}
+        padding="$3"
+        backgroundColor="$surface"
+        borderWidth={1}
+        borderColor="$surfaceBorder"
+        borderRadius="$5"
+        gap="$2">
+        <YStack
+          width="100%"
+          height={120}
+          backgroundColor="$surfaceBorder"
+          borderRadius="$3"
+          opacity={0.5}
+        />
+        <YStack gap="$2">
+          <YStack height={16} width="80%" backgroundColor="$surfaceBorder" borderRadius="$2" />
+          <YStack height={16} width="55%" backgroundColor="$surfaceBorder" borderRadius="$2" />
+        </YStack>
+        <XStack alignItems="center" justifyContent="space-between" gap="$2">
+          <YStack height={14} width="35%" backgroundColor="$surfaceBorder" borderRadius="$2" />
+          <YStack width={36} height={36} backgroundColor="$surfaceBorder" borderRadius="$8" />
+        </XStack>
+      </YStack>
+    ));
+
     return (
-      <YStack paddingTop="$4" animation="lazy" enterStyle={{ opacity: 0, y: 8 }}>
+      <YStack paddingTop="$4">
         <SectionHeader>
           <RotateCcw size={18} color="$primary" />
           <SectionTitle>Beli Lagi</SectionTitle>
@@ -57,15 +86,17 @@ export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
             paddingHorizontal: 16,
             gap: CARD_GAP,
           }}>
-          {products.map(product => (
-            <BuyAgainCard
-              key={product.id}
-              product={product}
-              width={cardWidth}
-              onPress={onProductPress}
-              onAddToCart={onAddToCart}
-            />
-          ))}
+          {isLoading
+            ? loadingCards
+            : products.map(product => (
+                <BuyAgainCard
+                  key={product.id}
+                  product={product}
+                  width={cardWidth}
+                  onPress={onProductPress}
+                  onAddToCart={onAddToCart}
+                />
+              ))}
         </ScrollView>
       </YStack>
     );

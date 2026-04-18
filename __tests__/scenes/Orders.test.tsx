@@ -1,7 +1,9 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { act, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import Orders from '@/scenes/orders/Orders';
 import type { PastPurchaseProduct } from '@/services';
+import { TAB_BAR_HEIGHT } from '@/constants/ui';
 
 const mockPush = jest.fn();
 const mockGetOrderTabCounts = jest.fn();
@@ -10,6 +12,7 @@ const mockAddProductToCart = jest.fn();
 const mockOrderStatusTabs = jest.fn();
 const mockBuyAgainCarousel = jest.fn();
 const mockUseAppSlice = jest.fn();
+const mockSafeAreaInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 
 jest.mock('expo-router', () => ({
   __esModule: true,
@@ -17,7 +20,11 @@ jest.mock('expo-router', () => ({
     push: mockPush,
   }),
   useFocusEffect: (callback: () => void) => {
-    callback();
+    const React = jest.requireActual('react');
+
+    React.useEffect(() => {
+      callback();
+    }, [callback]);
   },
 }));
 
@@ -43,6 +50,15 @@ jest.mock('@/components/elements/BuyAgainCarousel', () => ({
   BuyAgainCarousel: (props: unknown) => mockBuyAgainCarousel(props),
 }));
 
+jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual('react-native-safe-area-context');
+
+  return {
+    ...actual,
+    useSafeAreaInsets: () => mockSafeAreaInsets,
+  };
+});
+
 describe('<Orders />', () => {
   beforeEach(() => {
     mockPush.mockReset();
@@ -52,6 +68,10 @@ describe('<Orders />', () => {
     mockOrderStatusTabs.mockClear();
     mockBuyAgainCarousel.mockClear();
     mockUseAppSlice.mockReset();
+    mockSafeAreaInsets.top = 0;
+    mockSafeAreaInsets.right = 0;
+    mockSafeAreaInsets.bottom = 0;
+    mockSafeAreaInsets.left = 0;
 
     mockGetOrderTabCounts.mockResolvedValue({
       data: {
@@ -68,6 +88,12 @@ describe('<Orders />', () => {
     });
     mockAddProductToCart.mockResolvedValue({ error: null });
   });
+
+  const getFlattenedContentContainerStyle = () => {
+    const scrollView = screen.getByTestId('orders-scroll-view');
+
+    return StyleSheet.flatten(scrollView.props.contentContainerStyle);
+  };
 
   test('keeps only the completed badge hidden after the completed tab was viewed', async () => {
     mockUseAppSlice.mockReturnValue({
@@ -236,6 +262,123 @@ describe('<Orders />', () => {
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/product-details',
       params: { id: 'product-1', name: 'Vitamin C' },
+    });
+  });
+
+  test('adds bottom spacing so Pesanan content clears the tab bar', async () => {
+    mockSafeAreaInsets.bottom = 24;
+
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+      dispatch: jest.fn(),
+      completedOrdersTabViewedByUser: {},
+      markCompletedOrdersTabViewed: jest.fn((userId: string) => ({
+        type: 'app/markCompletedOrdersTabViewed',
+        payload: userId,
+      })),
+    });
+
+    render(<Orders />);
+
+    await waitFor(() => {
+      expect(mockOrderStatusTabs).toHaveBeenCalled();
+    });
+
+    expect(getFlattenedContentContainerStyle()).toEqual(
+      expect.objectContaining({
+        paddingTop: 16,
+        paddingBottom: TAB_BAR_HEIGHT + 24 + 16,
+        flexGrow: 1,
+      }),
+    );
+  });
+
+  test('renders Pesanan content inside the vertical scroll container', async () => {
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+      dispatch: jest.fn(),
+      completedOrdersTabViewedByUser: {},
+      markCompletedOrdersTabViewed: jest.fn((userId: string) => ({
+        type: 'app/markCompletedOrdersTabViewed',
+        payload: userId,
+      })),
+    });
+
+    render(<Orders />);
+
+    await waitFor(() => {
+      expect(mockOrderStatusTabs).toHaveBeenCalled();
+    });
+
+    const scrollView = screen.getByTestId('orders-scroll-view');
+
+    expect(scrollView).toBeTruthy();
+  });
+
+  test('loads Pantau Pesanan and Beli Lagi data once on initial entry', async () => {
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+      dispatch: jest.fn(),
+      completedOrdersTabViewedByUser: {},
+      markCompletedOrdersTabViewed: jest.fn((userId: string) => ({
+        type: 'app/markCompletedOrdersTabViewed',
+        payload: userId,
+      })),
+    });
+
+    render(<Orders />);
+
+    await waitFor(() => {
+      expect(mockGetOrderTabCounts).toHaveBeenCalledTimes(1);
+      expect(mockGetPastPurchasedProducts).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockGetOrderTabCounts).toHaveBeenCalledWith('user-1');
+    expect(mockGetPastPurchasedProducts).toHaveBeenCalledWith('user-1', 2);
+  });
+
+  test('shows Beli Lagi loading state before past products finish loading', async () => {
+    let resolvePastProducts:
+      | ((value: { data: PastPurchaseProduct[]; error: null }) => void)
+      | null = null;
+
+    mockGetPastPurchasedProducts.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolvePastProducts = resolve;
+        }),
+    );
+
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+      dispatch: jest.fn(),
+      completedOrdersTabViewedByUser: {},
+      markCompletedOrdersTabViewed: jest.fn((userId: string) => ({
+        type: 'app/markCompletedOrdersTabViewed',
+        payload: userId,
+      })),
+    });
+
+    render(<Orders />);
+
+    await waitFor(() => {
+      const lastCall = mockBuyAgainCarousel.mock.calls.at(-1)?.[0] as
+        | { isLoading?: boolean }
+        | undefined;
+
+      expect(lastCall?.isLoading).toBe(true);
+    });
+
+    await act(async () => {
+      resolvePastProducts?.({ data: [], error: null });
+    });
+
+    await waitFor(() => {
+      const lastCall = mockBuyAgainCarousel.mock.calls.at(-1)?.[0] as
+        | { isLoading?: boolean }
+        | undefined;
+
+      expect(lastCall?.isLoading).toBe(false);
     });
   });
 });

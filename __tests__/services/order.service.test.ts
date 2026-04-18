@@ -97,7 +97,7 @@ describe('order.service lifecycle helpers', () => {
 
   test('exports lifecycle buckets aligned with backend changelog', () => {
     expect(UNPAID_ORDER_STATUSES).toEqual(['pending']);
-    expect(UNPAID_PAYMENT_STATUSES).toEqual(['pending']);
+    expect(UNPAID_PAYMENT_STATUSES).toEqual(['pending', 'authorize']);
     expect(PACKING_ORDER_STATUSES).toEqual(['processing', 'awaiting_shipment']);
     expect(SHIPPED_ORDER_STATUSES).toEqual(['shipped', 'in_transit']);
     expect(COMPLETED_ORDER_STATUSES).toEqual(['delivered']);

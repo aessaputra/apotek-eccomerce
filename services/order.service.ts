@@ -1,11 +1,14 @@
 import { supabase } from './supabase.service';
-import type { Database } from '@/types/supabase';
+import type { Database, ViewTables } from '@/types/supabase';
 import { classifyError, isRetryableError, translateErrorMessage } from '@/utils/error';
 import { withRetry } from '@/utils/retry';
 
-export type Order = Database['public']['Tables']['orders']['Row'];
+type OrderReadRecord = ViewTables<'order_read_model'>;
+
+export type Order = OrderReadRecord;
 export const ORDERS_PAGE_SIZE = 20;
 export const ORDERS_CACHE_TTL_MS = 5 * 60 * 1000;
+const ORDER_READ_RESOURCE = 'order_read_model';
 
 const ORDER_LIST_SELECT = `
   id,
@@ -17,27 +20,15 @@ const ORDER_LIST_SELECT = `
   courier_code,
   courier_service,
   payment_status,
-  status,
-  order_items (
-    id,
-    order_id,
-    product_id,
-    quantity,
-    price_at_purchase,
-    products (
-      id,
-      name,
-      slug,
-      product_images (
-        url,
-        sort_order
-      )
-    )
-  )
+  status
 `;
 
-const ORDER_DETAIL_SELECT = `
-  *,
+const ORDER_DETAIL_READ_SELECT = `
+  *
+`;
+
+const ORDER_RELATIONS_SELECT = `
+  id,
   order_items (
     id,
     order_id,
@@ -66,6 +57,23 @@ const ORDER_DETAIL_SELECT = `
     city,
     province,
     postal_code
+  )
+`;
+
+const ORDER_ITEMS_LIST_SELECT = `
+  id,
+  order_id,
+  product_id,
+  quantity,
+  price_at_purchase,
+  products (
+    id,
+    name,
+    slug,
+    product_images (
+      url,
+      sort_order
+    )
   )
 `;
 
@@ -102,7 +110,88 @@ export interface OrderListItem {
   order_items: OrderListOrderItem[];
 }
 
-export type OrderWithItems = Order & {
+type OrderRelationRow = {
+  id: string;
+  order_items:
+    | {
+        id: string;
+        order_id: string;
+        product_id: string | null;
+        quantity: number;
+        price_at_purchase: number;
+        products?: {
+          id: string;
+          name: string;
+          price: number;
+          slug: string;
+          weight: number;
+          product_images?:
+            | {
+                url: string;
+                sort_order: number;
+              }[]
+            | null;
+        } | null;
+      }[]
+    | null;
+  profiles?: {
+    full_name: string | null;
+    phone_number: string | null;
+  } | null;
+  addresses?: {
+    id: string;
+    receiver_name: string;
+    phone_number: string;
+    street_address: string;
+    address_note: string | null;
+    city: string;
+    province: string | null;
+    postal_code: string;
+  } | null;
+};
+
+type OrderListReadRow = Pick<
+  OrderReadRecord,
+  | 'id'
+  | 'created_at'
+  | 'expired_at'
+  | 'midtrans_order_id'
+  | 'gross_amount'
+  | 'total_amount'
+  | 'courier_code'
+  | 'courier_service'
+  | 'payment_status'
+  | 'status'
+>;
+
+type PastPurchaseOrderReadRow = {
+  id: string | null;
+};
+
+type PastPurchaseOrderItemRow = {
+  order_id: string;
+  product_id: string | null;
+  created_at: string;
+  products: {
+    id: string;
+    name: string;
+    price: number;
+    slug: string;
+    is_active: boolean | null;
+    stock: number;
+    product_images: { url: string; sort_order: number }[] | null;
+  } | null;
+};
+
+export type OrderWithItems = Omit<
+  OrderReadRecord,
+  'id' | 'created_at' | 'status' | 'total_amount' | 'payment_status'
+> & {
+  id: string;
+  created_at: string;
+  status: string;
+  total_amount: number;
+  payment_status: string;
   order_items: {
     id: string;
     order_id: string;
@@ -115,10 +204,12 @@ export type OrderWithItems = Order & {
       price: number;
       slug: string;
       weight: number;
-      product_images?: {
-        url: string;
-        sort_order: number;
-      }[];
+      product_images?:
+        | {
+            url: string;
+            sort_order: number;
+          }[]
+        | null;
     } | null;
   }[];
   profiles?: {
@@ -172,7 +263,7 @@ export interface OrderStatusDisplay {
 }
 
 export const UNPAID_ORDER_STATUSES = ['pending'] as const;
-export const UNPAID_PAYMENT_STATUSES = ['pending'] as const;
+export const UNPAID_PAYMENT_STATUSES = ['pending', 'authorize'] as const;
 export const PACKING_ORDER_STATUSES = ['processing', 'awaiting_shipment'] as const;
 export const SHIPPED_ORDER_STATUSES = ['shipped', 'in_transit'] as const;
 export const COMPLETED_ORDER_STATUSES = ['delivered'] as const;
@@ -191,6 +282,88 @@ const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
 const FAILED_PAYMENT_STATES = ['deny', 'expire', 'cancel'];
 const SUCCESS_PAYMENT_STATES = ['settlement'];
 const REFUND_STATES = ['refund', 'partial_refund', 'chargeback', 'partial_chargeback'];
+
+function normalizeOrderListItemRow(
+  row: OrderListReadRow,
+  orderItems: OrderListOrderItem[],
+): OrderListItem | null {
+  if (!row.id || !row.created_at || !row.status || row.total_amount == null) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    created_at: row.created_at,
+    expired_at: row.expired_at ?? null,
+    midtrans_order_id: row.midtrans_order_id ?? null,
+    gross_amount: row.gross_amount ?? null,
+    total_amount: row.total_amount,
+    courier_code: row.courier_code ?? null,
+    courier_service: row.courier_service ?? null,
+    payment_status: row.payment_status ?? 'pending',
+    status: row.status,
+    order_items: orderItems,
+  };
+}
+
+function normalizeOrderDetailRow(
+  row: OrderReadRecord,
+  relations: OrderRelationRow | null,
+): OrderWithItems | null {
+  if (!row.id || !row.created_at || !row.status || row.total_amount == null) {
+    return null;
+  }
+
+  return {
+    ...row,
+    id: row.id,
+    created_at: row.created_at,
+    status: row.status,
+    total_amount: row.total_amount,
+    payment_status: row.payment_status ?? 'pending',
+    order_items: relations?.order_items ?? [],
+    profiles: relations?.profiles ?? null,
+    addresses: relations?.addresses ?? null,
+  };
+}
+
+function groupListItemsByOrderId(rows: OrderListOrderItem[]): Map<string, OrderListOrderItem[]> {
+  const grouped = new Map<string, OrderListOrderItem[]>();
+
+  for (const row of rows) {
+    const existing = grouped.get(row.order_id) ?? [];
+    existing.push(row);
+    grouped.set(row.order_id, existing);
+  }
+
+  return grouped;
+}
+
+async function getListOrderItems(
+  orderIds: string[],
+  signal?: AbortSignal,
+): Promise<Map<string, OrderListOrderItem[]>> {
+  if (orderIds.length === 0) {
+    return new Map();
+  }
+
+  let query = supabase
+    .from('order_items')
+    .select(ORDER_ITEMS_LIST_SELECT)
+    .in('order_id', orderIds)
+    .order('created_at', { ascending: true });
+
+  query = withAbortSignal(query, signal);
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data ?? []) as unknown as OrderListOrderItem[];
+  return groupListItemsByOrderId(rows);
+}
 
 interface ErrorLike {
   message?: unknown;
@@ -344,7 +517,7 @@ async function countOrdersByFilters(
   >,
 ): Promise<number> {
   let query = supabase
-    .from('orders')
+    .from(ORDER_READ_RESOURCE)
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId);
 
@@ -406,7 +579,7 @@ export async function getOrdersOptimized(
     const data = await withRetry(
       async () => {
         let query = supabase
-          .from('orders')
+          .from(ORDER_READ_RESOURCE)
           .select(ORDER_LIST_SELECT)
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
@@ -473,9 +646,16 @@ export async function getOrdersOptimized(
       },
     );
 
-    const rows = (data ?? []) as unknown as OrderListItem[];
+    const rows = (data ?? []) as unknown as OrderListReadRow[];
     const hasMore = rows.length > pageSize;
-    const normalizedData = hasMore ? rows.slice(0, pageSize) : rows;
+    const visibleRows = hasMore ? rows.slice(0, pageSize) : rows;
+    const itemsByOrderId = await getListOrderItems(
+      visibleRows.map(row => row.id).filter((value): value is string => Boolean(value)),
+      params.signal,
+    );
+    const normalizedData = visibleRows
+      .map(row => normalizeOrderListItemRow(row, itemsByOrderId.get(row.id ?? '') ?? []))
+      .filter((row): row is OrderListItem => row !== null);
     const fetchedAt = Date.now();
 
     if (__DEV__) {
@@ -564,18 +744,41 @@ export async function getUserOrders(
  */
 export async function getOrderById(orderId: string): Promise<OrderDetailResult> {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(ORDER_DETAIL_SELECT)
-      .eq('id', orderId)
-      .single();
+    const [readResult, relationResult] = await Promise.all([
+      supabase
+        .from(ORDER_READ_RESOURCE)
+        .select(ORDER_DETAIL_READ_SELECT)
+        .eq('id', orderId)
+        .maybeSingle(),
+      supabase.from('orders').select(ORDER_RELATIONS_SELECT).eq('id', orderId).maybeSingle(),
+    ]);
 
-    if (error) {
-      logSupabaseError('getOrderById query failed', error);
-      return { data: null, error: normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE) };
+    if (readResult.error) {
+      logSupabaseError('getOrderById read-model query failed', readResult.error);
+      return {
+        data: null,
+        error: normalizeSupabaseError(readResult.error, DATABASE_ERROR_MESSAGE),
+      };
     }
 
-    return { data: data as unknown as OrderWithItems, error: null };
+    if (relationResult.error) {
+      logSupabaseError('getOrderById relations query failed', relationResult.error);
+      return {
+        data: null,
+        error: normalizeSupabaseError(relationResult.error, DATABASE_ERROR_MESSAGE),
+      };
+    }
+
+    if (!readResult.data) {
+      return { data: null, error: null };
+    }
+
+    const normalizedData = normalizeOrderDetailRow(
+      readResult.data as OrderReadRecord,
+      (relationResult.data as OrderRelationRow | null) ?? null,
+    );
+
+    return { data: normalizedData, error: null };
   } catch (error) {
     logSupabaseError('getOrderById unexpected error', error);
     return { data: null, error: normalizeSupabaseError(error, DATABASE_ERROR_MESSAGE) };
@@ -686,6 +889,10 @@ export function getOrderSecondaryStatusDisplay(
     return null;
   }
 
+  if (paymentStatus === 'authorize') {
+    return getPaymentStatusLabel(paymentStatus);
+  }
+
   if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {
     return null;
   }
@@ -706,8 +913,11 @@ export interface PastPurchaseProduct {
 }
 
 const PAST_PURCHASE_LIMIT = 10;
+const PAST_PURCHASE_ORDER_FETCH_MULTIPLIER = 5;
+const PAST_PURCHASE_ITEM_FETCH_MULTIPLIER = 10;
 
 const PAST_PURCHASE_SELECT = `
+  order_id,
   product_id,
   created_at,
   products (
@@ -721,51 +931,60 @@ const PAST_PURCHASE_SELECT = `
       url,
       sort_order
     )
-  ),
-  orders!inner (
-    status,
-    payment_status,
-    user_id
   )
 `;
 
-interface PastPurchaseRow {
-  product_id: string | null;
-  created_at: string;
-  products: {
-    id: string;
-    name: string;
-    price: number;
-    slug: string;
-    is_active: boolean | null;
-    stock: number;
-    product_images: { url: string; sort_order: number }[] | null;
-  } | null;
-  orders: {
-    status: string;
-    payment_status: string;
-    user_id: string | null;
-  };
-}
-
 export async function getPastPurchasedProducts(
   userId: string,
+  limit = PAST_PURCHASE_LIMIT,
 ): Promise<{ data: PastPurchaseProduct[]; error: Error | null }> {
   const normalizedUserId = userId.trim();
+  const normalizedLimit = Math.max(1, Math.floor(limit));
+  const orderFetchLimit = Math.max(
+    normalizedLimit,
+    normalizedLimit * PAST_PURCHASE_ORDER_FETCH_MULTIPLIER,
+  );
+  const itemFetchLimit = Math.max(
+    normalizedLimit,
+    normalizedLimit * PAST_PURCHASE_ITEM_FETCH_MULTIPLIER,
+  );
 
   if (!normalizedUserId) {
     return { data: [], error: new Error('User ID is required.') };
   }
 
   try {
+    const { data: orderRows, error: orderError } = await supabase
+      .from(ORDER_READ_RESOURCE)
+      .select('id')
+      .eq('user_id', normalizedUserId)
+      .eq('status', 'delivered')
+      .eq('payment_status', 'settlement')
+      .order('created_at', { ascending: false })
+      .limit(orderFetchLimit);
+
+    if (orderError) {
+      logSupabaseError('getPastPurchasedProducts order ids query failed', orderError);
+      return {
+        data: [],
+        error: normalizeSupabaseError(orderError, 'Gagal memuat produk yang pernah dibeli.'),
+      };
+    }
+
+    const orderIds = ((orderRows ?? []) as PastPurchaseOrderReadRow[])
+      .map(row => row.id)
+      .filter((value): value is string => Boolean(value));
+
+    if (orderIds.length === 0) {
+      return { data: [], error: null };
+    }
+
     const { data, error } = await supabase
       .from('order_items')
       .select(PAST_PURCHASE_SELECT)
-      .eq('orders.user_id', normalizedUserId)
-      .eq('orders.status', 'delivered')
-      .eq('orders.payment_status', 'settlement')
+      .in('order_id', orderIds)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(itemFetchLimit);
 
     if (error) {
       logSupabaseError('getPastPurchasedProducts query failed', error);
@@ -775,7 +994,7 @@ export async function getPastPurchasedProducts(
       };
     }
 
-    const rows = (data ?? []) as unknown as PastPurchaseRow[];
+    const rows = (data ?? []) as unknown as PastPurchaseOrderItemRow[];
     const seen = new Set<string>();
     const products: PastPurchaseProduct[] = [];
 
@@ -806,7 +1025,7 @@ export async function getPastPurchasedProducts(
         imageUrl: sortedImages[0]?.url ?? null,
       });
 
-      if (products.length >= PAST_PURCHASE_LIMIT) {
+      if (products.length >= normalizedLimit) {
         break;
       }
     }

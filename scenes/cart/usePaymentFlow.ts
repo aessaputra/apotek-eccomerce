@@ -89,7 +89,7 @@ export function usePaymentFlow({
       if (!error && PAYMENT_SUCCESS_STATUSES.includes(paymentStatus)) {
         invalidateOrderCaches(dispatch, userId);
         dispatch(markCartCleared(Date.now()));
-        router.replace(`/orders/success?orderId=${resolvedOrderId}`);
+        router.replace(`/order-success?orderId=${resolvedOrderId}`);
         return;
       }
 
