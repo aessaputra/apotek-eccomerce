@@ -3,6 +3,7 @@ import {
   cancelUserOrder,
   createCheckoutOrder,
   getOrderPaymentStatus,
+  pollOrderPaymentStatus,
 } from '@/services/checkout.service';
 
 const mockGetSession = jest.fn<() => Promise<unknown>>();
@@ -155,6 +156,33 @@ describe('checkout.service', () => {
         payment_status: 'cancel',
         order_status: 'cancelled',
         applied: true,
+      },
+      error: null,
+    });
+  });
+
+  test('treats capture as a terminal payment status while polling', async () => {
+    mockInvoke.mockResolvedValue({ data: { confirmed: true }, error: null });
+    mockSingle.mockResolvedValue({
+      data: {
+        payment_status: 'capture',
+        status: 'processing',
+      },
+      error: null,
+    });
+
+    const result = await pollOrderPaymentStatus('order-1', 3, 0);
+
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'confirm-midtrans-payment',
+      expect.objectContaining({
+        body: { order_id: 'order-1' },
+      }),
+    );
+    expect(result).toEqual({
+      data: {
+        payment_status: 'capture',
+        status: 'processing',
       },
       error: null,
     });
