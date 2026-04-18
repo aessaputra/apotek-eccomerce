@@ -2,15 +2,14 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
 import type { CartItemWithProduct } from '@/types/cart';
 import type { User } from '@/types';
+import type { Address } from '@/types/address';
+import type { ShippingOption } from '@/types/shipping';
 
 const mockPush = jest.fn();
 const mockSetOptions = jest.fn();
 const mockRemoveCartItem =
   jest.fn<(...args: unknown[]) => Promise<{ data: boolean; error: null }>>();
 const mockGetAddresses = jest.fn<(...args: unknown[]) => Promise<{ data: never[]; error: null }>>();
-const mockCreateCheckoutOrder =
-  jest.fn<(...args: unknown[]) => Promise<{ data: null; error: null }>>();
-
 let mockUser: Pick<User, 'id'> | undefined;
 let mockNetworkState: {
   status: 'checking' | 'online' | 'offline';
@@ -52,7 +51,16 @@ const mockCartQuantityHookState = {
   updateQuantity: jest.fn(),
 };
 
-const mockCartAddressHookState = {
+const mockCartAddressHookState: {
+  selectedAddress: Address | null;
+  selectedAddressId: string | null;
+  loadingSelectedAddress: boolean;
+  availableAddresses: Address[];
+  loadingAddresses: boolean;
+  addressSheetOpen: boolean;
+  setAddressSheetOpen: jest.Mock;
+  handleSelectAddress: jest.Mock<() => Promise<void>>;
+} = {
   selectedAddress: null,
   selectedAddressId: null as string | null,
   loadingSelectedAddress: false,
@@ -63,7 +71,19 @@ const mockCartAddressHookState = {
   handleSelectAddress: jest.fn(async () => undefined),
 };
 
-const mockCartShippingHookState = {
+const mockCartShippingHookState: {
+  shippingOptions: ShippingOption[];
+  selectedShippingOption: ShippingOption | null;
+  loadingRates: boolean;
+  shippingError: string | null;
+  setShippingError: jest.Mock;
+  selectedShippingKey: string | null;
+  shippingSheetOpen: boolean;
+  setShippingSheetOpen: jest.Mock;
+  handleCalculateShipping: jest.Mock<() => Promise<void>>;
+  handleSelectShippingKey: jest.Mock<(key: string) => void>;
+  quoteDestination: { areaId: string | null; postalCode: number | null };
+} = {
   shippingOptions: [],
   selectedShippingOption: null,
   loadingRates: false,
@@ -74,15 +94,7 @@ const mockCartShippingHookState = {
   setShippingSheetOpen: jest.fn(),
   handleCalculateShipping: jest.fn(async () => undefined),
   handleSelectShippingKey: jest.fn((_: string) => undefined),
-  quoteDestination: null,
-};
-
-const mockCartCheckoutHookState = {
-  startingCheckout: false,
-  activeOrderId: null as string | null,
-  paymentError: null,
-  clearCheckoutSession: jest.fn(async () => undefined),
-  resetPaymentError: jest.fn(() => undefined),
+  quoteDestination: { areaId: null as string | null, postalCode: null as number | null },
 };
 
 jest.mock('expo-router', () => ({
@@ -146,23 +158,6 @@ jest.mock('@/hooks/useCartShipping', () => ({
   }),
 }));
 
-jest.mock('@/hooks/useCartCheckout', () => ({
-  useCartCheckout: ({
-    isOffline,
-    onOfflineAction,
-  }: {
-    isOffline: boolean;
-    onOfflineAction: (message: string) => void;
-  }) => ({
-    ...mockCartCheckoutHookState,
-    handleStartCheckout: async () => {
-      if (isOffline) {
-        onOfflineAction('Checkout tidak tersedia offline');
-      }
-    },
-  }),
-}));
-
 jest.mock('@/hooks/useDataPersist', () => ({
   DataPersistKeys: { CHECKOUT_SESSION: 'CHECKOUT_SESSION' },
   useDataPersist: () => ({
@@ -185,11 +180,6 @@ jest.mock('@/services/cart.service', () => ({
 
 jest.mock('@/services/shipping.service', () => ({
   getShippingRatesForAddress: jest.fn(async () => ({ data: { options: [] }, error: null })),
-}));
-
-jest.mock('@/services/checkout.service', () => ({
-  createCheckoutOrder: (...args: unknown[]) => mockCreateCheckoutOrder(...args),
-  createSnapToken: jest.fn(async () => ({ data: null, error: null })),
 }));
 
 jest.mock('@/components/elements/CartItemRow/CartItemRow', () => ({
@@ -295,6 +285,38 @@ jest.mock('@/components/icons', () => ({
 
 const Cart = require('@/scenes/cart/Cart').default as React.ComponentType;
 
+const selectedAddress: Address = {
+  id: 'address-1',
+  profile_id: 'profile-1',
+  receiver_name: 'User',
+  phone_number: '08123456789',
+  street_address: 'Jl. Test 1',
+  address_note: null,
+  city: 'Jakarta',
+  city_id: 'CITY-1',
+  province: 'DKI Jakarta',
+  province_id: 'PROV-1',
+  area_id: 'AREA-1',
+  area_name: 'Jakarta Selatan',
+  postal_code: '12345',
+  is_default: true,
+  country_code: 'ID',
+  latitude: -6.2,
+  longitude: 106.8,
+  created_at: new Date(Date.UTC(2026, 0, 1)).toISOString(),
+};
+
+const shippingOption: ShippingOption = {
+  courier_name: 'JNE',
+  courier_code: 'jne',
+  service_name: 'REG',
+  service_code: 'reg',
+  shipping_type: 'parcel',
+  price: 15000,
+  currency: 'IDR',
+  estimated_delivery: '2-3 hari',
+};
+
 function createItem(index: number): CartItemWithProduct {
   return {
     id: `cart-item-${index}`,
@@ -321,11 +343,9 @@ describe('<Cart />', () => {
     mockSetOptions.mockClear();
     mockRemoveCartItem.mockReset();
     mockGetAddresses.mockReset();
-    mockCreateCheckoutOrder.mockReset();
 
     mockRemoveCartItem.mockResolvedValue({ data: true, error: null });
     mockGetAddresses.mockResolvedValue({ data: [], error: null });
-    mockCreateCheckoutOrder.mockResolvedValue({ data: null, error: null });
 
     mockUser = { id: 'user-1' };
     mockNetworkState = {
@@ -348,12 +368,15 @@ describe('<Cart />', () => {
     mockCartQuantityHookState.updateQuantity.mockClear();
     mockCartAddressHookState.setAddressSheetOpen.mockClear();
     mockCartAddressHookState.handleSelectAddress.mockClear();
+    mockCartAddressHookState.selectedAddress = null;
+    mockCartAddressHookState.selectedAddressId = null;
     mockCartShippingHookState.setShippingError.mockClear();
     mockCartShippingHookState.setShippingSheetOpen.mockClear();
     mockCartShippingHookState.handleCalculateShipping.mockClear();
     mockCartShippingHookState.handleSelectShippingKey.mockClear();
-    mockCartCheckoutHookState.clearCheckoutSession.mockClear();
-    mockCartCheckoutHookState.resetPaymentError.mockClear();
+    mockCartShippingHookState.selectedShippingOption = null;
+    mockCartShippingHookState.selectedShippingKey = null;
+    mockCartShippingHookState.quoteDestination = { areaId: null, postalCode: null };
   });
 
   it('renders cart items when user is logged in', () => {
@@ -384,6 +407,38 @@ describe('<Cart />', () => {
     fireEvent.press(screen.getByLabelText('browse-products'));
 
     expect(mockPush).toHaveBeenCalledWith('/home');
+  });
+
+  it('opens the review scene when checkout data is complete', () => {
+    mockCartAddressHookState.selectedAddress = selectedAddress;
+    mockCartAddressHookState.selectedAddressId = selectedAddress.id;
+    mockCartShippingHookState.selectedShippingOption = shippingOption;
+    mockCartShippingHookState.selectedShippingKey = 'jne-reg';
+    mockCartShippingHookState.quoteDestination = {
+      areaId: 'AREA-1',
+      postalCode: 12345,
+    };
+
+    render(<Cart />);
+
+    fireEvent.press(screen.getByLabelText('sticky-confirm'));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/cart/review',
+      params: {
+        addressPayload: JSON.stringify(selectedAddress),
+        addressText: 'Jl. Test 1, Jakarta, DKI Jakarta, 12345',
+        shippingOptionPayload: JSON.stringify(shippingOption),
+        selectedShippingKey: 'jne-reg',
+        snapshotPayload: JSON.stringify(mockCartHookState.snapshot),
+        itemSummariesPayload: JSON.stringify([
+          { name: 'Produk 1', quantity: 1 },
+          { name: 'Produk 2', quantity: 1 },
+        ]),
+        quoteAreaId: 'AREA-1',
+        quotePostalCode: '12345',
+      },
+    });
   });
 
   it('shows a full-screen spinner during the initial cart load', () => {

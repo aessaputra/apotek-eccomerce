@@ -275,7 +275,10 @@ describe('useCartPaginated', () => {
         error: null,
       });
 
-    const { result, rerender } = renderHook(({ userId }) => useCartPaginated({ userId }), {
+    const { result, rerender } = renderHook<
+      ReturnType<typeof useCartPaginated>,
+      { userId: string }
+    >(({ userId }) => useCartPaginated({ userId }), {
       initialProps: { userId: 'user-1' },
     });
 

@@ -3,33 +3,7 @@ import { describe, expect, jest, test } from '@jest/globals';
 import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
 import { CartCheckoutDetails } from '@/scenes/cart/CartCheckoutDetails';
 import type { Address } from '@/types/address';
-import type { CartSnapshot } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
-
-jest.mock('@/components/elements/CartSummary/CartSummary', () => ({
-  CartSummary: ({
-    subtotal,
-    shippingCost,
-    shippingName,
-    itemCount,
-  }: {
-    subtotal: number;
-    shippingCost?: number;
-    shippingName?: string;
-    itemCount: number;
-  }) => {
-    const { Text, View } = jest.requireActual('react-native') as typeof import('react-native');
-
-    return (
-      <View>
-        <Text>{`Summary subtotal ${subtotal}`}</Text>
-        <Text>{`Summary shipping ${shippingCost ?? 0}`}</Text>
-        <Text>{`Summary courier ${shippingName ?? 'none'}`}</Text>
-        <Text>{`Summary items ${itemCount}`}</Text>
-      </View>
-    );
-  },
-}));
 
 jest.mock('@/components/icons', () => ({
   ChevronRightIcon: () => null,
@@ -57,12 +31,6 @@ const baseAddress: Address = {
   created_at: new Date(Date.UTC(2026, 0, 1)).toISOString(),
 };
 
-const snapshot: CartSnapshot = {
-  itemCount: 2,
-  estimatedWeightGrams: 400,
-  packageValue: 50000,
-};
-
 const shippingOption: ShippingOption = {
   courier_name: 'JNE',
   courier_code: 'jne',
@@ -85,12 +53,6 @@ function createProps() {
     selectedShippingOption: shippingOption,
     isOffline: false,
     onOpenShippingSheet: jest.fn(),
-    snapshot,
-    activeOrderId: null,
-    paymentError: null,
-    startingCheckout: false,
-    onCancelPendingCheckout: jest.fn(),
-    onContinuePendingCheckout: jest.fn(),
     shippingOptionsCount: 1,
     shippingErrorMessage: null,
     shippingRecoverySuggestion: null,
@@ -99,7 +61,7 @@ function createProps() {
 }
 
 describe('<CartCheckoutDetails />', () => {
-  test('renders selected address, shipping option, and order summary', () => {
+  test('renders selected address and shipping option', () => {
     render(<CartCheckoutDetails {...createProps()} />);
 
     expect(screen.getByText('User')).toBeTruthy();
@@ -108,8 +70,7 @@ describe('<CartCheckoutDetails />', () => {
     expect(screen.getByText('JNE - REG')).toBeTruthy();
     expect(screen.getByText('Estimasi: 2-3 hari')).toBeTruthy();
     expect(screen.getByText('Rp 15.000')).toBeTruthy();
-    expect(screen.getByText('Summary subtotal 50000')).toBeTruthy();
-    expect(screen.getByText('Summary shipping 15000')).toBeTruthy();
+    expect(screen.queryByText('Ringkasan Pesanan')).toBeNull();
   });
 
   test('renders empty address state and shipping retry error state', () => {
@@ -136,26 +97,12 @@ describe('<CartCheckoutDetails />', () => {
     expect(props.onRetryShipping).toHaveBeenCalledTimes(1);
   });
 
-  test('renders pending checkout banner and offline messaging', () => {
+  test('renders offline messaging on shipping card without pending checkout banner', () => {
     const props = createProps();
 
-    render(
-      <CartCheckoutDetails
-        {...props}
-        isOffline
-        activeOrderId="order-1"
-        paymentError="Pembayaran sebelumnya gagal diverifikasi"
-      />,
-    );
+    render(<CartCheckoutDetails {...props} isOffline />);
 
-    expect(screen.getByText('Pembayaran Tertunda')).toBeTruthy();
-    expect(screen.getByText('Pembayaran sebelumnya gagal diverifikasi')).toBeTruthy();
     expect(screen.getByText('Tidak tersedia offline')).toBeTruthy();
-
-    fireEvent.press(screen.getByLabelText('Batalkan checkout tertunda'));
-    expect(props.onCancelPendingCheckout).toHaveBeenCalledTimes(1);
-
-    const continueButton = screen.getByLabelText('Lanjutkan pembayaran');
-    expect(continueButton).toBeTruthy();
+    expect(screen.queryByText('Pembayaran Tertunda')).toBeNull();
   });
 });

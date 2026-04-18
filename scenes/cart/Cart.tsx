@@ -13,14 +13,13 @@ import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartSt
 import { useAppSlice } from '@/slices';
 import { useOfflineActionMessage } from '@/scenes/cart/useOfflineActionMessage';
 import { useCartAddress } from '@/hooks/useCartAddress';
-import { useCartCheckout } from '@/hooks/useCartCheckout';
 import { useCartPaginated } from '@/hooks/useCartPaginated';
 import { useCartShipping } from '@/hooks/useCartShipping';
 import { removeCartItem } from '@/services/cart.service';
 import { useCartQuantity } from '@/hooks/useCartQuantity';
 import { formatAddress } from '@/utils/address';
 import { translateErrorMessage, type AppError } from '@/utils/error';
-import type { CartItemWithProduct } from '@/types/cart';
+import type { CartItemWithProduct, ItemSummary } from '@/types/cart';
 import type { TypedHref } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -160,27 +159,6 @@ export default function Cart() {
     [isOffline, refresh, showOfflineActionMessage],
   );
 
-  const {
-    startingCheckout,
-    activeOrderId,
-    paymentError,
-    handleStartCheckout,
-    clearCheckoutSession,
-    resetPaymentError,
-  } = useCartCheckout({
-    userId: user?.id,
-    selectedAddress,
-    selectedAddressId,
-    loadingSelectedAddress,
-    selectedShippingOption,
-    selectedShippingKey,
-    quoteDestination,
-    snapshot,
-    isOffline,
-    onOfflineAction,
-    onError: setShippingError,
-  });
-
   useEffect(() => {
     if (selectedAddressId || selectedAddress) {
       setAddressError(null);
@@ -219,10 +197,48 @@ export default function Cart() {
     return getRecoverySuggestion(shippingError);
   }, [shippingError]);
 
-  const handleWrappedStartCheckout = useCallback(async () => {
+  const handleReviewCheckout = useCallback(() => {
+    if (!selectedAddress || !selectedShippingOption) {
+      return;
+    }
+
     setShippingError(null);
-    await handleStartCheckout();
-  }, [handleStartCheckout, setShippingError]);
+
+    const itemSummaries: ItemSummary[] = items.map(item => ({
+      name: item.product.name,
+      quantity: item.quantity,
+    }));
+
+    const reviewHref: TypedHref = {
+      pathname: '/cart/review',
+      params: {
+        addressPayload: JSON.stringify(selectedAddress),
+        addressText: selectedAddressFullText,
+        shippingOptionPayload: JSON.stringify(selectedShippingOption),
+        selectedShippingKey: selectedShippingKey ?? undefined,
+        snapshotPayload: JSON.stringify(snapshot),
+        itemSummariesPayload: JSON.stringify(itemSummaries),
+        quoteAreaId: quoteDestination.areaId ?? undefined,
+        quotePostalCode:
+          typeof quoteDestination.postalCode === 'number'
+            ? String(quoteDestination.postalCode)
+            : undefined,
+      },
+    };
+
+    router.push(reviewHref);
+  }, [
+    items,
+    quoteDestination.areaId,
+    quoteDestination.postalCode,
+    router,
+    selectedAddress,
+    selectedAddressFullText,
+    selectedShippingKey,
+    selectedShippingOption,
+    setShippingError,
+    snapshot,
+  ]);
 
   const handleCartRefresh = useCallback(() => {
     if (isOffline) {
@@ -311,17 +327,6 @@ export default function Cart() {
                     selectedShippingOption={selectedShippingOption}
                     isOffline={isOffline}
                     onOpenShippingSheet={handleOpenShippingSheet}
-                    snapshot={snapshot}
-                    activeOrderId={activeOrderId}
-                    paymentError={paymentError}
-                    startingCheckout={startingCheckout}
-                    onCancelPendingCheckout={() => {
-                      void clearCheckoutSession();
-                    }}
-                    onContinuePendingCheckout={() => {
-                      resetPaymentError();
-                      void handleWrappedStartCheckout();
-                    }}
                     shippingOptionsCount={shippingOptions.length}
                     shippingErrorMessage={shippingErrorMessage}
                     shippingRecoverySuggestion={shippingRecoverySuggestion}
@@ -372,10 +377,9 @@ export default function Cart() {
                 ) : null}
                 <StickyBottomBar
                   grandTotal={snapshot.packageValue + (selectedShippingOption?.price ?? 0)}
-                  isLoading={startingCheckout}
-                  disabled={(!selectedShippingOption && !activeOrderId) || isOffline}
-                  onConfirm={handleWrappedStartCheckout}
-                  confirmText={activeOrderId ? 'Lanjutkan Pembayaran' : 'Konfirmasi'}
+                  disabled={!selectedShippingOption || isOffline}
+                  onConfirm={handleReviewCheckout}
+                  confirmText="Konfirmasi"
                 />
               </>
             ) : null}

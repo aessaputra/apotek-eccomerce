@@ -1,8 +1,6 @@
 import { Button as TamaguiButton, Card, Separator, Spinner, Text, XStack, YStack } from 'tamagui';
-import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
 import { ChevronRightIcon, MapPinIcon } from '@/components/icons';
 import type { Address } from '@/types/address';
-import type { CartSnapshot } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
 import { formatRupiah } from '@/scenes/cart/cart.constants';
 
@@ -41,12 +39,6 @@ interface CartCheckoutDetailsProps {
   selectedShippingOption: ShippingOption | null;
   isOffline: boolean;
   onOpenShippingSheet: () => void;
-  snapshot: CartSnapshot;
-  activeOrderId: string | null;
-  paymentError: string | null;
-  startingCheckout: boolean;
-  onCancelPendingCheckout: () => void;
-  onContinuePendingCheckout: () => void;
   shippingOptionsCount: number;
   shippingErrorMessage: string | null;
   shippingRecoverySuggestion: string | null;
@@ -63,12 +55,6 @@ export function CartCheckoutDetails({
   selectedShippingOption,
   isOffline,
   onOpenShippingSheet,
-  snapshot,
-  activeOrderId,
-  paymentError,
-  startingCheckout,
-  onCancelPendingCheckout,
-  onContinuePendingCheckout,
   shippingOptionsCount,
   shippingErrorMessage,
   shippingRecoverySuggestion,
@@ -197,66 +183,6 @@ export function CartCheckoutDetails({
           </XStack>
         ) : null}
       </Card>
-
-      <Card bordered size="$4" backgroundColor="$surface" borderColor="$surfaceBorder">
-        <Card.Header padded>
-          <Text fontSize="$4" fontWeight="600" color="$color">
-            Ringkasan Pesanan
-          </Text>
-        </Card.Header>
-        <Separator />
-        <CartSummary
-          subtotal={snapshot.packageValue}
-          shippingCost={selectedShippingOption?.price}
-          shippingName={selectedShippingOption?.courier_name}
-          itemCount={snapshot.itemCount}
-          isLoadingShipping={loadingRates}
-        />
-      </Card>
-
-      {activeOrderId ? (
-        <Card
-          borderRadius="$4"
-          borderWidth={1}
-          borderColor="$warning"
-          padding="$3"
-          backgroundColor="$warningSoft">
-          <YStack gap="$2.5">
-            <Text color="$warning" fontWeight="700">
-              Pembayaran Tertunda
-            </Text>
-            <Text color="$colorSubtle" fontSize="$2">
-              {paymentError ??
-                'Order sudah dibuat. Lanjutkan pembayaran untuk menggunakan order yang sama tanpa membuat order baru. Pilihan kurir tidak wajib dipilih ulang saat melanjutkan pembayaran.'}
-            </Text>
-            <XStack justifyContent="flex-end" gap="$2">
-              <TamaguiButton
-                size="$2"
-                borderRadius="$3"
-                backgroundColor="transparent"
-                borderWidth={1}
-                borderColor="$surfaceBorder"
-                color="$color"
-                onPress={onCancelPendingCheckout}
-                aria-label="Batalkan checkout tertunda">
-                Batalkan
-              </TamaguiButton>
-              <TamaguiButton
-                size="$2"
-                borderRadius="$3"
-                backgroundColor="$primary"
-                color="$onPrimary"
-                disabled={isOffline || startingCheckout}
-                opacity={isOffline || startingCheckout ? 0.7 : 1}
-                onPress={onContinuePendingCheckout}
-                aria-label="Lanjutkan pembayaran">
-                {startingCheckout ? 'Memproses...' : 'Lanjutkan Pembayaran'}
-              </TamaguiButton>
-            </XStack>
-          </YStack>
-        </Card>
-      ) : null}
-
       {shippingErrorMessage && shippingOptionsCount === 0 && !loadingRates ? (
         <XStack justifyContent="flex-end" marginTop="$-2">
           <TamaguiButton
