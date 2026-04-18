@@ -117,6 +117,15 @@ export interface GetCartItemsParams {
 }
 
 /**
+ * Lightweight item summary for route params.
+ * Carries only what the Review scene needs to display product names.
+ */
+export interface ItemSummary {
+  name: string;
+  quantity: number;
+}
+
+/**
  * Cart with items and totals
  */
 export interface CartWithItems {

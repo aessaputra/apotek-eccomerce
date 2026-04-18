@@ -22,14 +22,27 @@ export type ProductDetailsRoutes = {
 export type CartRoutes = {
   cart: undefined;
   'cart/index': undefined;
+  'cart/review': {
+    addressPayload?: string;
+    addressText?: string;
+    shippingOptionPayload?: string;
+    selectedShippingKey?: string;
+    snapshotPayload?: string;
+    itemSummariesPayload?: string;
+    quoteAreaId?: string;
+    quotePostalCode?: string;
+  };
   'cart/payment': { paymentUrl?: string; orderId?: string };
+};
+
+export type FlowRoutes = {
+  'order-success': { orderId?: string };
 };
 
 // Orders routes
 export type OrdersRoutes = {
   orders: undefined;
   'orders/index': undefined;
-  'orders/success': { orderId?: string };
   'orders/order-detail/[orderId]': { orderId: string };
   'orders/track-shipment/[orderId]': { orderId: string };
 };
@@ -66,6 +79,7 @@ export type AppRoutes = AuthRoutes &
   HomeRoutes &
   ProductDetailsRoutes &
   CartRoutes &
+  FlowRoutes &
   OrdersRoutes &
   ProfileRoutes &
   GoogleAuthRoutes;
@@ -99,12 +113,21 @@ export type HomeStackParams = {
 
 export type CartStackParams = {
   index: undefined;
+  review: {
+    addressPayload?: string;
+    addressText?: string;
+    shippingOptionPayload?: string;
+    selectedShippingKey?: string;
+    snapshotPayload?: string;
+    itemSummariesPayload?: string;
+    quoteAreaId?: string;
+    quotePostalCode?: string;
+  };
   payment: { paymentUrl?: string; orderId?: string };
 };
 
 export type OrdersStackParams = {
   index: undefined;
-  success: { orderId?: string };
   'order-detail/[orderId]': { orderId: string };
   'track-shipment/[orderId]': { orderId: string };
 };

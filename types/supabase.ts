@@ -204,97 +204,34 @@ export type Database = {
       };
       orders: {
         Row: {
-          biteship_order_id: string | null;
-          checkout_idempotency_key: string | null;
-          courier_code: string | null;
-          courier_service: string | null;
           created_at: string;
-          destination_area_id: string | null;
-          destination_postal_code: number | null;
-          destination_city_id: string | null;
           id: string;
-          midtrans_order_id: string | null;
-          midtrans_transaction_id: string | null;
-          origin_area_id: string | null;
-          origin_city_id: string | null;
-          expired_at: string | null;
-          gross_amount: number | null;
-          paid_at: string | null;
-          payment_status: Database['public']['Enums']['payment_status'];
-          payment_type: Database['public']['Enums']['payment_type'] | null;
           shipping_address_id: string | null;
           shipping_cost: number | null;
-          shipping_etd: string | null;
-          snap_redirect_url: string | null;
-          snap_token: string | null;
-          snap_token_created_at: string | null;
           status: string;
           total_amount: number;
           updated_at: string | null;
           user_id: string | null;
-          waybill_number: string | null;
         };
         Insert: {
-          biteship_order_id?: string | null;
-          checkout_idempotency_key?: string | null;
-          courier_code?: string | null;
-          courier_service?: string | null;
           created_at?: string;
-          destination_area_id?: string | null;
-          destination_postal_code?: number | null;
-          destination_city_id?: string | null;
-          expired_at?: string | null;
-          gross_amount?: number | null;
           id?: string;
-          midtrans_order_id?: string | null;
-          midtrans_transaction_id?: string | null;
-          origin_area_id?: string | null;
-          origin_city_id?: string | null;
-          paid_at?: string | null;
-          payment_status?: Database['public']['Enums']['payment_status'];
-          payment_type?: Database['public']['Enums']['payment_type'] | null;
           shipping_address_id?: string | null;
           shipping_cost?: number | null;
-          shipping_etd?: string | null;
-          snap_redirect_url?: string | null;
-          snap_token?: string | null;
-          snap_token_created_at?: string | null;
           status?: string;
           total_amount: number;
           updated_at?: string | null;
           user_id?: string | null;
-          waybill_number?: string | null;
         };
         Update: {
-          biteship_order_id?: string | null;
-          checkout_idempotency_key?: string | null;
-          courier_code?: string | null;
-          courier_service?: string | null;
           created_at?: string;
-          destination_area_id?: string | null;
-          destination_postal_code?: number | null;
-          destination_city_id?: string | null;
-          expired_at?: string | null;
-          gross_amount?: number | null;
           id?: string;
-          midtrans_order_id?: string | null;
-          midtrans_transaction_id?: string | null;
-          origin_area_id?: string | null;
-          origin_city_id?: string | null;
-          paid_at?: string | null;
-          payment_status?: Database['public']['Enums']['payment_status'];
-          payment_type?: Database['public']['Enums']['payment_type'] | null;
           shipping_address_id?: string | null;
           shipping_cost?: number | null;
-          shipping_etd?: string | null;
-          snap_redirect_url?: string | null;
-          snap_token?: string | null;
-          snap_token_created_at?: string | null;
           status?: string;
           total_amount?: number;
           updated_at?: string | null;
           user_id?: string | null;
-          waybill_number?: string | null;
         };
       };
       payments: {
@@ -318,7 +255,7 @@ export type Database = {
           issuer: string | null;
           masked_card: string | null;
           merchant_id: string | null;
-          midtrans_order_id: string;
+          midtrans_order_id: string | null;
           midtrans_transaction_id: string | null;
           order_id: string;
           paid_at: string | null;
@@ -358,7 +295,7 @@ export type Database = {
           issuer?: string | null;
           masked_card?: string | null;
           merchant_id?: string | null;
-          midtrans_order_id: string;
+          midtrans_order_id?: string | null;
           midtrans_transaction_id?: string | null;
           order_id: string;
           paid_at?: string | null;
@@ -398,7 +335,7 @@ export type Database = {
           issuer?: string | null;
           masked_card?: string | null;
           merchant_id?: string | null;
-          midtrans_order_id?: string;
+          midtrans_order_id?: string | null;
           midtrans_transaction_id?: string | null;
           order_id?: string;
           paid_at?: string | null;
@@ -536,7 +473,44 @@ export type Database = {
         };
       };
     };
-    Views: { [_ in never]: never };
+    Views: {
+      order_read_model: {
+        Row: {
+          biteship_order_id: string | null;
+          biteship_tracking_id: string | null;
+          checkout_idempotency_key: string | null;
+          courier_code: string | null;
+          courier_service: string | null;
+          created_at: string | null;
+          destination_area_id: string | null;
+          destination_postal_code: number | null;
+          expired_at: string | null;
+          gross_amount: number | null;
+          id: string | null;
+          midtrans_order_id: string | null;
+          midtrans_transaction_id: string | null;
+          origin_area_id: string | null;
+          paid_at: string | null;
+          payment_status: Database['public']['Enums']['payment_status'] | null;
+          payment_type: Database['public']['Enums']['payment_type'] | null;
+          shipping_address_id: string | null;
+          shipping_cost: number | null;
+          shipping_etd: string | null;
+          snap_redirect_url: string | null;
+          snap_token: string | null;
+          snap_token_created_at: string | null;
+          status: string | null;
+          total_amount: number | null;
+          updated_at: string | null;
+          user_id: string | null;
+          waybill_number: string | null;
+          waybill_overridden_at: string | null;
+          waybill_overridden_by: string | null;
+          waybill_override_reason: string | null;
+          waybill_source: string | null;
+        };
+      };
+    };
     Functions: {
       apply_midtrans_webhook_transition: {
         Args: {
@@ -593,6 +567,8 @@ export type Database = {
 
 export type Tables<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Row'];
+export type ViewTables<T extends keyof Database['public']['Views']> =
+  Database['public']['Views'][T]['Row'];
 export type TablesInsert<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Insert'];
 export type TablesUpdate<T extends keyof Database['public']['Tables']> =
