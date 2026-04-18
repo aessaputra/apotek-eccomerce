@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { fireEvent, waitFor } from '@testing-library/react-native';
 import { render, screen } from '@/test-utils/renderWithTheme';
 import OrderDetail from '@/scenes/orders/OrderDetail';
 
 const mockPush = jest.fn();
 const mockUseOrderDetail = jest.fn();
 const mockBottomActionBar = jest.fn();
+const mockCancelUserOrder = jest.fn();
 
 jest.mock('expo-router', () => ({
   __esModule: true,
@@ -20,6 +22,10 @@ jest.mock('@/hooks/useOrderDetail', () => ({
 
 jest.mock('@/hooks', () => ({
   useOrderDetail: (...args: unknown[]) => mockUseOrderDetail(...args),
+}));
+
+jest.mock('@/services/checkout.service', () => ({
+  cancelUserOrder: (...args: unknown[]) => mockCancelUserOrder(...args),
 }));
 
 jest.mock('@/components/elements/PaymentCountdownTimer', () => ({
@@ -41,7 +47,7 @@ jest.mock('@/components/elements/Image', () => ({
 
 const mockOrder = {
   id: 'test-order-id',
-  created_at: '2024-01-15T10:30:00Z',
+  created_at: '2026-12-15T10:30:00Z',
   status: 'processing',
   payment_status: 'settlement',
   gross_amount: 150000,
@@ -78,6 +84,8 @@ describe('<OrderDetail />', () => {
     mockPush.mockClear();
     mockUseOrderDetail.mockReset();
     mockBottomActionBar.mockReset();
+    mockCancelUserOrder.mockReset();
+    mockCancelUserOrder.mockResolvedValue({ data: { cancelled: true }, error: null });
   });
 
   test('renders loading state', () => {
@@ -192,6 +200,7 @@ describe('<OrderDetail />', () => {
     mockUseOrderDetail.mockReturnValue({
       order: {
         ...mockOrder,
+        status: 'pending',
         payment_status: 'pending',
         snap_redirect_url: 'https://payment.url',
       },
@@ -218,6 +227,7 @@ describe('<OrderDetail />', () => {
     mockUseOrderDetail.mockReturnValue({
       order: {
         ...mockOrder,
+        status: 'pending',
         payment_status: 'pending',
         snap_redirect_url: 'https://payment.url',
         expired_at: '2020-01-01T00:00:00Z',
@@ -237,6 +247,33 @@ describe('<OrderDetail />', () => {
         disabled: true,
       }),
     );
+  });
+
+  test('opens cancel confirmation and cancels actionable unpaid order', async () => {
+    const mockRefresh = jest.fn();
+    mockUseOrderDetail.mockReturnValue({
+      order: {
+        ...mockOrder,
+        status: 'pending',
+        payment_status: 'pending',
+        snap_redirect_url: 'https://payment.url',
+      },
+      status: 'success',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+      refresh: mockRefresh,
+    });
+
+    render(<OrderDetail />);
+
+    fireEvent.press(screen.getByText('Batalkan Pesanan'));
+    fireEvent.press(screen.getByText('Ya, Batalkan Pesanan'));
+
+    await waitFor(() => {
+      expect(mockCancelUserOrder).toHaveBeenCalledWith('test-order-id');
+      expect(mockRefresh).toHaveBeenCalled();
+    });
   });
 
   test('renders order without shipping info', () => {

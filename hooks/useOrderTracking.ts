@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type TrackingResult, getPublicOrderTracking } from '@/services';
+import { getPublicOrderTracking } from '@/services';
+import type { TrackingResult } from '@/types/shipping';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 
 export type OrderTrackingStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'error';

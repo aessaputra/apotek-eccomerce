@@ -49,13 +49,6 @@ function OrdersStackLayout() {
         }}
       />
       <Stack.Screen
-        name="success"
-        options={{
-          title: 'Pembayaran Berhasil',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
         name="order-detail/[orderId]"
         options={{
           title: 'Detail Pesanan',

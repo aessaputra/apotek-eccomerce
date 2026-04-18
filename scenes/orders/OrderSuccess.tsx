@@ -122,7 +122,7 @@ function getHeroContent(
 }
 
 export default function OrderSuccess() {
-  const { orderId } = useLocalSearchParams<RouteParams<'orders/success'>>();
+  const { orderId } = useLocalSearchParams<RouteParams<'order-success'>>();
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();

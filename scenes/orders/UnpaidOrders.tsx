@@ -1,14 +1,16 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import { Spinner, Text, YStack, Button, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { WalletIcon, AlertCircleIcon, ShoppingBagIcon } from '@/components/icons';
 import { UnpaidOrderCard } from '@/components/elements/UnpaidOrderCard';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { useUnpaidOrdersPaginated } from '@/hooks/useUnpaidOrdersPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 import { getThemeColor } from '@/utils/theme';
 import type { OrderListItem } from '@/services';
+import { cancelUserOrder } from '@/services/checkout.service';
 
 const EmptyState = React.memo(function EmptyState() {
   const router = useRouter();
@@ -74,11 +76,13 @@ const ErrorState = React.memo(function ErrorState({
 interface OrderListItemComponentProps {
   order: OrderListItem;
   onPress: (order: OrderListItem) => void;
+  onCancel: (order: OrderListItem) => void;
 }
 
 const OrderListItemComponent = React.memo(function OrderListItemComponent({
   order,
   onPress,
+  onCancel,
 }: OrderListItemComponentProps) {
   const handlePress = useCallback(() => {
     onPress(order);
@@ -86,7 +90,7 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 
   return (
     <YStack paddingHorizontal="$4" paddingVertical="$2">
-      <UnpaidOrderCard order={order} onPress={handlePress} />
+      <UnpaidOrderCard order={order} onPress={handlePress} onCancel={onCancel} />
     </YStack>
   );
 });
@@ -95,6 +99,9 @@ export function UnpaidOrders() {
   const router = useRouter();
   const theme = useTheme();
   const { user } = useAppSlice();
+  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<OrderListItem | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const {
     orders: unpaidOrders,
     error,
@@ -132,11 +139,45 @@ export function UnpaidOrders() {
     refresh();
   }, [refresh]);
 
+  const handleOpenCancelDialog = useCallback((order: OrderListItem) => {
+    setActionError(null);
+    setSelectedOrderForCancel(order);
+  }, []);
+
+  const handleCancelOrder = useCallback(async () => {
+    if (!selectedOrderForCancel?.id || isCancelling) {
+      return;
+    }
+
+    setIsCancelling(true);
+    setActionError(null);
+    const { data, error: cancelError } = await cancelUserOrder(selectedOrderForCancel.id);
+    setIsCancelling(false);
+
+    if (cancelError) {
+      setActionError(cancelError.message);
+      return;
+    }
+
+    if (!data?.cancelled || data.payment_status !== 'cancel') {
+      setActionError('Pesanan belum bisa dibatalkan. Muat ulang daftar pesanan lalu coba lagi.');
+      void refresh();
+      return;
+    }
+
+    setSelectedOrderForCancel(null);
+    void refresh();
+  }, [isCancelling, refresh, selectedOrderForCancel?.id]);
+
   const renderItem = useCallback(
     ({ item }: { item: OrderListItem }) => (
-      <OrderListItemComponent order={item} onPress={handleOrderPress} />
+      <OrderListItemComponent
+        order={item}
+        onPress={handleOrderPress}
+        onCancel={handleOpenCancelDialog}
+      />
     ),
-    [handleOrderPress],
+    [handleOpenCancelDialog, handleOrderPress],
   );
 
   const keyExtractor = useCallback((item: OrderListItem) => item.id, []);
@@ -168,6 +209,18 @@ export function UnpaidOrders() {
 
   return (
     <YStack flex={1} backgroundColor="$background">
+      {actionError ? (
+        <YStack
+          backgroundColor="$dangerSoft"
+          margin="$4"
+          marginBottom="$0"
+          padding="$3"
+          borderRadius="$3">
+          <Text fontSize="$3" color="$danger">
+            {actionError}
+          </Text>
+        </YStack>
+      ) : null}
       <FlatList
         data={unpaidOrders}
         renderItem={renderItem}
@@ -189,6 +242,27 @@ export function UnpaidOrders() {
           ) : null
         }
         contentContainerStyle={{ paddingVertical: 8 }}
+      />
+
+      <AppAlertDialog
+        open={selectedOrderForCancel !== null}
+        onOpenChange={open => {
+          if (!open && !isCancelling) {
+            setSelectedOrderForCancel(null);
+          }
+        }}
+        title="Batalkan Pesanan?"
+        description="Pesanan akan dibatalkan dan transaksi pembayaran akan ditutup bila masih bisa dibatalkan oleh Midtrans."
+        confirmLabel={isCancelling ? 'Membatalkan...' : 'Ya, Batalkan Pesanan'}
+        cancelLabel="Kembali"
+        confirmColor="$background"
+        confirmTextColor="$danger"
+        confirmBorderColor="$danger"
+        cancelColor="$primary"
+        cancelTextColor="$onPrimary"
+        onConfirm={() => {
+          void handleCancelOrder();
+        }}
       />
     </YStack>
   );

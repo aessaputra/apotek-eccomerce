@@ -18,8 +18,11 @@ import { useOrderDetail } from '@/hooks';
 import { PaymentCountdownTimer } from '@/components/elements/PaymentCountdownTimer';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import Image from '@/components/elements/Image';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
+import AppButton from '@/components/elements/Button';
 import { formatCourierServiceName } from '@/constants/courier.constants';
 import { formatRupiah } from '@/scenes/cart/cart.constants';
+import { cancelUserOrder } from '@/services/checkout.service';
 
 const SecondaryStatusText = styled(Text, {
   fontSize: '$2',
@@ -49,6 +52,9 @@ export default function OrderDetail() {
   const router = useRouter();
   const { order, status, isLoading, isRefreshing, error, refresh } = useOrderDetail(orderId);
   const [isPaymentExpired, setIsPaymentExpired] = useState(false);
+  const [confirmCancelDialogOpen, setConfirmCancelDialogOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const refreshTintColor = getThemeColor(theme, 'primary');
   const shouldShowTracking = shouldShowTrackingSection(order?.status ?? '');
 
@@ -66,6 +72,36 @@ export default function OrderDetail() {
       params: { orderId: order.id },
     });
   }, [order?.id, router]);
+
+  const handleCancelOrder = useCallback(async () => {
+    if (!order?.id || isCancelling) {
+      return;
+    }
+
+    setIsCancelling(true);
+    setActionFeedback(null);
+
+    const { data, error: cancelError } = await cancelUserOrder(order.id);
+
+    setIsCancelling(false);
+    setConfirmCancelDialogOpen(false);
+
+    if (cancelError) {
+      setActionFeedback(cancelError.message);
+      return;
+    }
+
+    if (!data?.cancelled || data.payment_status !== 'cancel') {
+      setActionFeedback(
+        'Pesanan belum bisa dibatalkan. Silakan cek status pesanan lalu coba lagi.',
+      );
+      refresh();
+      return;
+    }
+
+    setActionFeedback('Pesanan berhasil dibatalkan.');
+    refresh();
+  }, [isCancelling, order?.id, refresh]);
 
   if (!orderId) {
     return (
@@ -191,6 +227,8 @@ export default function OrderDetail() {
   const paymentUrl = order.snap_redirect_url?.trim() || '';
   const isBackendPaymentExpired = isBackendExpired(order.expired_at);
   const isOrderExpired = isBackendPaymentExpired || isPaymentExpired;
+  const isActionableUnpaidOrder =
+    order.status === 'pending' && ['pending', 'authorize'].includes(order.payment_status);
   const canResumePayment = !isOrderExpired && !!paymentUrl;
   const primaryStatusDisplay = getOrderPrimaryStatusDisplay(
     order.status,
@@ -201,16 +239,18 @@ export default function OrderDetail() {
 
   return (
     <YStack flex={1} backgroundColor="$background">
-      {error && (
+      {(error || actionFeedback) && (
         <YStack backgroundColor="$dangerSoft" padding="$3" margin="$4" borderRadius="$3" gap="$2">
           <XStack alignItems="center" gap="$2">
             <AlertCircleIcon size={16} color="$danger" />
             <Text fontSize="$3" color="$danger" flex={1}>
-              {error}
+              {actionFeedback ?? error}
             </Text>
-            <Button size="$2" backgroundColor="transparent" color="$danger" onPress={refresh}>
-              Coba Lagi
-            </Button>
+            {error ? (
+              <Button size="$2" backgroundColor="transparent" color="$danger" onPress={refresh}>
+                Coba Lagi
+              </Button>
+            ) : null}
           </XStack>
         </YStack>
       )}
@@ -437,10 +477,36 @@ export default function OrderDetail() {
               </XStack>
             </YStack>
           </OrderSectionCard>
+
+          {isActionableUnpaidOrder && !isOrderExpired ? (
+            <OrderSectionCard>
+              <YStack padding="$4" gap="$3">
+                <Text fontSize="$4" fontWeight="600" color="$color">
+                  Kelola Pembayaran
+                </Text>
+                <Text fontSize="$3" color="$colorSubtle">
+                  Jika belum ingin melanjutkan pembayaran, Anda dapat membatalkan pesanan ini.
+                </Text>
+                <AppButton
+                  backgroundColor="$background"
+                  borderWidth={1}
+                  borderColor="$danger"
+                  borderRadius="$4"
+                  minHeight={44}
+                  onPress={() => setConfirmCancelDialogOpen(true)}
+                  disabled={isCancelling}
+                  aria-label="Batalkan Pesanan">
+                  <Text color="$danger" fontWeight="700">
+                    {isCancelling ? 'Membatalkan...' : 'Batalkan Pesanan'}
+                  </Text>
+                </AppButton>
+              </YStack>
+            </OrderSectionCard>
+          ) : null}
         </YStack>
       </ScrollView>
 
-      {order.payment_status === 'pending' && (
+      {isActionableUnpaidOrder && order.payment_status === 'pending' && (
         <BottomActionBar
           buttonTitle={isOrderExpired ? 'Pembayaran Kadaluarsa' : 'Bayar Sekarang'}
           onPress={() => {
@@ -468,6 +534,23 @@ export default function OrderDetail() {
           aria-describedby="Tombol untuk membuka layar tracking pengiriman"
         />
       )}
+
+      <AppAlertDialog
+        open={confirmCancelDialogOpen}
+        onOpenChange={setConfirmCancelDialogOpen}
+        title="Batalkan Pesanan?"
+        description="Pesanan akan dibatalkan dan transaksi pembayaran akan ditutup jika masih bisa dibatalkan oleh Midtrans."
+        confirmLabel="Ya, Batalkan Pesanan"
+        cancelLabel="Kembali"
+        confirmColor="$background"
+        confirmTextColor="$danger"
+        confirmBorderColor="$danger"
+        cancelColor="$primary"
+        cancelTextColor="$onPrimary"
+        onConfirm={() => {
+          void handleCancelOrder();
+        }}
+      />
     </YStack>
   );
 }

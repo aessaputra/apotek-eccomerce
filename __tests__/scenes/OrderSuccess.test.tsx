@@ -17,7 +17,6 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({
     orderId: 'ORDER-123',
   }),
-  useFocusEffect: (callback: () => void) => callback(),
 }));
 
 describe('<OrderSuccess />', () => {
