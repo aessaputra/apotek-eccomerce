@@ -8,7 +8,8 @@ const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 const mockRefreshIfNeeded = jest.fn();
 const mockLoadMore = jest.fn();
-const mockCancelUserOrder = jest.fn();
+const mockCancelUserOrder =
+  jest.fn<(orderId: string) => Promise<{ data: { cancelled: boolean }; error: null }>>();
 
 const mockOrders: OrderListItem[] = [
   {
@@ -103,7 +104,7 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('@/services/checkout.service', () => ({
-  cancelUserOrder: (...args: unknown[]) => mockCancelUserOrder(...args),
+  cancelUserOrder: (orderId: string) => mockCancelUserOrder(orderId),
 }));
 
 describe('UnpaidOrders', () => {

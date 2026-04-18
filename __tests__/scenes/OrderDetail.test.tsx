@@ -6,7 +6,8 @@ import OrderDetail from '@/scenes/orders/OrderDetail';
 const mockPush = jest.fn();
 const mockUseOrderDetail = jest.fn();
 const mockBottomActionBar = jest.fn();
-const mockCancelUserOrder = jest.fn();
+const mockCancelUserOrder =
+  jest.fn<(orderId: string) => Promise<{ data: { cancelled: boolean }; error: null }>>();
 
 jest.mock('expo-router', () => ({
   __esModule: true,
@@ -25,7 +26,7 @@ jest.mock('@/hooks', () => ({
 }));
 
 jest.mock('@/services/checkout.service', () => ({
-  cancelUserOrder: (...args: unknown[]) => mockCancelUserOrder(...args),
+  cancelUserOrder: (orderId: string) => mockCancelUserOrder(orderId),
 }));
 
 jest.mock('@/components/elements/PaymentCountdownTimer', () => ({
