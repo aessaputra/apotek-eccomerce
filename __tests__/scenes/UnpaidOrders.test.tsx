@@ -1,5 +1,5 @@
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
-import { fireEvent } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '@testing-library/react-native';
 import { render, screen } from '@/test-utils/renderWithTheme';
 import UnpaidOrders from '@/scenes/orders/UnpaidOrders';
 import type { OrderListItem } from '@/services/order.service';
@@ -8,11 +8,12 @@ const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 const mockRefreshIfNeeded = jest.fn();
 const mockLoadMore = jest.fn();
+const mockCancelUserOrder = jest.fn();
 
 const mockOrders: OrderListItem[] = [
   {
     id: 'order-1',
-    created_at: '2026-01-01T00:00:00Z',
+    created_at: '2026-12-01T00:00:00Z',
     expired_at: null,
     midtrans_order_id: 'MID-001',
     gross_amount: 50000,
@@ -38,7 +39,7 @@ const mockOrders: OrderListItem[] = [
   },
   {
     id: 'order-2',
-    created_at: '2026-01-02T00:00:00Z',
+    created_at: '2026-12-02T00:00:00Z',
     expired_at: null,
     midtrans_order_id: 'MID-002',
     gross_amount: 100000,
@@ -101,6 +102,10 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
+jest.mock('@/services/checkout.service', () => ({
+  cancelUserOrder: (...args: unknown[]) => mockCancelUserOrder(...args),
+}));
+
 describe('UnpaidOrders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -113,6 +118,7 @@ describe('UnpaidOrders', () => {
     hookState.isFetchingMore = false;
     hookState.isRevalidating = false;
     hookState.isUsingCachedData = true;
+    mockCancelUserOrder.mockResolvedValue({ data: { cancelled: true }, error: null });
   });
 
   test('renders order list', () => {
@@ -161,5 +167,17 @@ describe('UnpaidOrders', () => {
     render(<UnpaidOrders />);
 
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
+  });
+
+  test('cancels order from unpaid list after confirmation', async () => {
+    render(<UnpaidOrders />);
+
+    fireEvent.press(screen.getAllByLabelText(/Batalkan pesanan/i)[0]);
+    fireEvent.press(screen.getByText('Ya, Batalkan Pesanan'));
+
+    await waitFor(() => {
+      expect(mockCancelUserOrder).toHaveBeenCalledWith('order-1');
+      expect(mockRefresh).toHaveBeenCalled();
+    });
   });
 });

@@ -80,6 +80,7 @@ function Router() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="product-details" />
         <Stack.Screen name="cart" />
+        <Stack.Screen name="order-success" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="google-auth" />
         <Stack.Screen name="+not-found" />

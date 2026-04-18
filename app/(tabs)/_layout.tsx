@@ -29,7 +29,7 @@ export default function TabsLayout() {
   const segments = useSegments();
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const currentGroup = segments[1] as string | undefined;
+  const currentGroup = segments.slice(1)[0] as string | undefined;
   const visibleSegments = segments.slice(1);
 
   /** Android-only bottom inset to avoid 3-button navigation overlap. */

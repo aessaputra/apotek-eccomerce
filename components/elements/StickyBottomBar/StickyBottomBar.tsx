@@ -10,6 +10,9 @@ export interface StickyBottomBarProps {
   disabled?: boolean;
   onConfirm: () => void;
   confirmText?: string;
+  /** When true, hide the total display and stretch the CTA button full-width.
+   *  Used on review screens where the total is already shown in-scene. */
+  hideTotal?: boolean;
 }
 
 export const StickyBottomBar = ({
@@ -18,6 +21,7 @@ export const StickyBottomBar = ({
   disabled = false,
   onConfirm,
   confirmText = 'Konfirmasi',
+  hideTotal = false,
 }: StickyBottomBarProps) => {
   const insets = useSafeAreaInsets();
 
@@ -35,17 +39,20 @@ export const StickyBottomBar = ({
       borderTopColor="$surfaceBorder"
       alignItems="center"
       gap="$3">
-      <YStack flex={1}>
-        <Text fontSize="$2" color="$colorSubtle">
-          Total
-        </Text>
-        <Text fontSize="$6" fontWeight="800" color="$color">
-          {formatPrice(grandTotal)}
-        </Text>
-      </YStack>
+      {hideTotal ? null : (
+        <YStack flex={1}>
+          <Text fontSize="$2" color="$colorSubtle">
+            Total
+          </Text>
+          <Text fontSize="$6" fontWeight="800" color="$color">
+            {formatPrice(grandTotal)}
+          </Text>
+        </YStack>
+      )}
 
       <Button
-        flex={1}
+        flex={hideTotal ? undefined : 1}
+        width={hideTotal ? '100%' : undefined}
         size="$5"
         backgroundColor="$primary"
         color="$onPrimary"

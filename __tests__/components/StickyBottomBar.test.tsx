@@ -33,4 +33,19 @@ describe('<StickyBottomBar />', () => {
 
     expect(screen.getByText('Bayar')).toBeTruthy();
   });
+
+  test('hides total when hideTotal is true', async () => {
+    render(<StickyBottomBar grandTotal={100000} hideTotal onConfirm={() => {}} />);
+
+    expect(screen.queryByText('Total')).toBeNull();
+    expect(screen.queryByText('Rp 100.000')).toBeNull();
+    expect(screen.getByText('Konfirmasi')).toBeTruthy();
+  });
+
+  test('shows total by default when hideTotal is not passed', async () => {
+    render(<StickyBottomBar grandTotal={75000} onConfirm={() => {}} />);
+
+    expect(screen.getByText('Total')).toBeTruthy();
+    expect(screen.getByText('Rp 75.000')).toBeTruthy();
+  });
 });
