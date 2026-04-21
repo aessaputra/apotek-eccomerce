@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
+  getCategories,
+  getAllProductsOptimized,
   getHomeBannersByPlacement,
+  getLatestProductsWithImages,
   normalizeHomeBannerRecord,
   resolveHomeBannerMediaUrl,
 } from '@/services/home.service';
@@ -23,6 +26,19 @@ jest.mock('@/utils/supabase', () => ({
     },
   },
 }));
+
+jest.mock('@/utils/error', () => ({
+  classifyError: jest.fn(),
+  isRetryableError: jest.fn(() => false),
+}));
+
+jest.mock('@/utils/retry', () => ({
+  withRetry: jest.fn(),
+}));
+
+const { withRetry } = jest.requireMock('@/utils/retry') as {
+  withRetry: jest.Mock;
+};
 
 function createBannerRow(partial: Partial<HomeBannerRow> = {}): HomeBannerRow {
   return {
@@ -53,6 +69,7 @@ describe('home.service home banners', () => {
     mockIn.mockReset();
     mockOrder.mockReset();
     mockGetPublicUrl.mockReset();
+    withRetry.mockReset();
 
     mockSelect.mockReturnValue({ eq: mockEq });
     mockEq.mockReturnValue({ in: mockIn });
@@ -129,5 +146,48 @@ describe('home.service home banners', () => {
     expect(mockFrom).toHaveBeenCalledWith('home_banners');
     expect(banners.home_banner_top?.cta?.route).toBe('home/all-products');
     expect(banners.home_banner_bottom?.placementKey).toBe('home_banner_bottom');
+  });
+
+  it('throws when categories query fails instead of silently returning empty data', async () => {
+    const order = jest.fn(async () => ({ data: null, error: new Error('categories failed') }));
+    const select = jest.fn(() => ({ order }));
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'categories') {
+        return { select };
+      }
+
+      return { select: mockSelect };
+    });
+
+    await expect(getCategories()).rejects.toThrow('categories failed');
+  });
+
+  it('throws when latest products query fails instead of pretending the home feed is empty', async () => {
+    const productLimit = jest.fn(async () => ({ data: null, error: new Error('products failed') }));
+    const productOrder = jest.fn(() => ({ limit: productLimit }));
+    const productGt = jest.fn(() => ({ order: productOrder }));
+    const productEq = jest.fn(() => ({ gt: productGt }));
+    const productSelect = jest.fn(() => ({ eq: productEq }));
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'products') {
+        return { select: productSelect };
+      }
+
+      return { select: mockSelect };
+    });
+
+    await expect(getLatestProductsWithImages(10)).rejects.toThrow('products failed');
+  });
+
+  it('suppresses warning logs for aborted optimized product requests', async () => {
+    withRetry.mockRejectedValueOnce({ name: 'UnknownError', message: 'Aborted' });
+
+    const result = await getAllProductsOptimized();
+
+    expect(result.data).toBeNull();
+    expect(result.error?.name).toBe('AbortError');
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 });

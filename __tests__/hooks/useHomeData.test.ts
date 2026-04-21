@@ -374,4 +374,35 @@ describe('useHomeData', () => {
     expect(result.current.bannerError).toBe('Banner fetch failed');
     expect(result.current.error).toBeNull();
   });
+
+  it('keeps previous core content visible while surfacing refresh failures', async () => {
+    const categories = [createCategory(1)];
+    const products = [createProduct(1)];
+
+    mockGetCategories
+      .mockResolvedValueOnce(categories)
+      .mockRejectedValueOnce(new Error('refresh failed'));
+    mockGetLatestProductsWithImages
+      .mockResolvedValueOnce(products)
+      .mockRejectedValueOnce(new Error('refresh failed'));
+    mockGetHomeBannersByPlacement
+      .mockResolvedValueOnce(createHomeBanners())
+      .mockResolvedValueOnce(createHomeBanners());
+
+    const { result } = renderHook(() => useHomeData());
+
+    await waitFor(() => {
+      expect(result.current.categories).toEqual(categories);
+      expect(result.current.products).toEqual(products);
+      expect(result.current.error).toBeNull();
+    });
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.categories).toEqual(categories);
+    expect(result.current.products).toEqual(products);
+    expect(result.current.error).toBe('refresh failed');
+  });
 });

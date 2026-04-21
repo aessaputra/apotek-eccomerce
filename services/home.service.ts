@@ -86,12 +86,46 @@ export interface ProductDetailsData extends ProductWithImages {
 
 export type { HomeBannersByPlacement, HomeBannerItem, HomeBannerPlacement };
 
-interface CartMutationResult {
-  error: Error | null;
-}
-
 function isAbortError(error: unknown): error is Error {
-  return error instanceof Error && error.name === 'AbortError';
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') {
+      return true;
+    }
+
+    const message = error.message.trim().toLowerCase();
+    return message.includes('aborted') || message.includes('abort');
+  }
+
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeRecord = error as {
+    name?: unknown;
+    code?: unknown;
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (
+    (typeof maybeRecord.name === 'string' && maybeRecord.name === 'AbortError') ||
+    (typeof maybeRecord.code === 'string' && maybeRecord.code === 'ABORT_ERR')
+  ) {
+    return true;
+  }
+
+  const message =
+    typeof maybeRecord.message === 'string'
+      ? maybeRecord.message
+      : typeof maybeRecord.error === 'object' &&
+          maybeRecord.error !== null &&
+          'message' in maybeRecord.error &&
+          typeof (maybeRecord.error as { message?: unknown }).message === 'string'
+        ? ((maybeRecord.error as { message?: string }).message ?? '')
+        : '';
+
+  const normalizedMessage = message.trim().toLowerCase();
+  return normalizedMessage.includes('aborted') || normalizedMessage.includes('abort');
 }
 
 function getPayloadBytes(value: unknown): number {
@@ -104,6 +138,24 @@ function toUserError(error: unknown, fallback: string): Error {
   }
 
   return new Error(fallback);
+}
+
+function toAbortError(error: unknown): Error {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return error;
+  }
+
+  const message =
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+      ? ((error as { message?: string }).message ?? '')
+      : '';
+
+  const abortError = new Error(message || 'The operation was aborted.');
+  abortError.name = 'AbortError';
+  return abortError;
 }
 
 function logHomeServiceError(context: string, error: unknown): void {
@@ -308,14 +360,13 @@ export async function getCategories(): Promise<CategoryRow[]> {
       .order('name', { ascending: true });
 
     if (error) {
-      if (__DEV__) console.warn('[HomeService] getCategories error:', error.message);
-      return [];
+      throw error;
     }
 
     return data || [];
   } catch (error) {
-    if (__DEV__) console.warn('[HomeService] getCategories error:', error);
-    return [];
+    logHomeServiceError('getCategories error', error);
+    throw toUserError(error, 'Failed to load categories. Please try again.');
   }
 }
 
@@ -334,14 +385,13 @@ export async function getLatestProducts(limit: number = 10): Promise<ProductRow[
       .limit(limit);
 
     if (error) {
-      if (__DEV__) console.warn('[HomeService] getLatestProducts error:', error.message);
-      return [];
+      throw error;
     }
 
     return data || [];
   } catch (error) {
-    if (__DEV__) console.warn('[HomeService] getLatestProducts error:', error);
-    return [];
+    logHomeServiceError('getLatestProducts error', error);
+    throw toUserError(error, 'Failed to load latest products. Please try again.');
   }
 }
 
@@ -425,7 +475,7 @@ export async function getProductsOptimized(
     return {
       data: null,
       error: isAbortError(error)
-        ? error
+        ? toAbortError(error)
         : toUserError(error, 'Failed to load products. Please try again.'),
       metrics: null,
     };
@@ -496,7 +546,7 @@ export async function getAllProductsOptimized(
     return {
       data: null,
       error: isAbortError(error)
-        ? error
+        ? toAbortError(error)
         : toUserError(error, 'Failed to load products. Please try again.'),
       metrics: null,
     };
@@ -563,8 +613,8 @@ export async function getLatestProductsWithImages(
 
     return productsWithImages;
   } catch (error) {
-    if (__DEV__) console.warn('[HomeService] getLatestProductsWithImages error:', error);
-    return [];
+    logHomeServiceError('getLatestProductsWithImages error', error);
+    throw toUserError(error, 'Failed to load latest products. Please try again.');
   }
 }
 
@@ -675,85 +725,6 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
   } catch (error) {
     if (__DEV__) console.warn('[HomeService] getProductDetailsById error:', error);
     return null;
-  }
-}
-
-export async function addProductToCart(
-  userId: string,
-  productId: string,
-  quantityToAdd: number = 1,
-): Promise<CartMutationResult> {
-  const normalizedUserId = userId.trim();
-  const normalizedProductId = productId.trim();
-
-  if (!normalizedUserId || !normalizedProductId || quantityToAdd <= 0) {
-    return { error: new Error('Invalid cart mutation payload.') };
-  }
-
-  try {
-    const { data: existingCarts, error: existingCartsError } = await supabase
-      .from('carts')
-      .select('id')
-      .eq('user_id', normalizedUserId)
-      .limit(1);
-
-    if (existingCartsError) {
-      return { error: existingCartsError as unknown as Error };
-    }
-
-    let cartId = existingCarts?.[0]?.id ?? null;
-
-    if (!cartId) {
-      const { data: insertedCart, error: insertedCartError } = await supabase
-        .from('carts')
-        .insert({ user_id: normalizedUserId })
-        .select('id')
-        .single();
-
-      if (insertedCartError) {
-        return { error: insertedCartError as unknown as Error };
-      }
-
-      cartId = insertedCart.id;
-    }
-
-    const { data: existingItem, error: existingItemError } = await supabase
-      .from('cart_items')
-      .select('id, quantity')
-      .eq('cart_id', cartId)
-      .eq('product_id', normalizedProductId)
-      .maybeSingle();
-
-    if (existingItemError) {
-      return { error: existingItemError as unknown as Error };
-    }
-
-    if (existingItem) {
-      const { error: updateError } = await supabase
-        .from('cart_items')
-        .update({ quantity: existingItem.quantity + quantityToAdd })
-        .eq('id', existingItem.id);
-
-      if (updateError) {
-        return { error: updateError as unknown as Error };
-      }
-
-      return { error: null };
-    }
-
-    const { error: insertItemError } = await supabase.from('cart_items').insert({
-      cart_id: cartId,
-      product_id: normalizedProductId,
-      quantity: quantityToAdd,
-    });
-
-    if (insertItemError) {
-      return { error: insertItemError as unknown as Error };
-    }
-
-    return { error: null };
-  } catch (error) {
-    return { error: error as Error };
   }
 }
 

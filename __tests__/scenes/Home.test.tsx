@@ -225,4 +225,37 @@ describe('<Home />', () => {
     expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
     expect(screen.queryByText('Product 1 berhasil ditambahkan ke keranjang')).toBeNull();
   });
+
+  it('renders a retryable core error state when home content fails to load', () => {
+    const refresh = jest.fn(async () => {});
+    mockUseHomeData.mockReturnValue({
+      ...createHomeData(),
+      categories: [],
+      products: [],
+      error: 'Failed to load latest products. Please try again.',
+      refresh,
+    });
+
+    render(<Home />);
+
+    expect(screen.getByText('Konten utama belum berhasil dimuat')).toBeTruthy();
+    expect(screen.getByText('Failed to load latest products. Please try again.')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Coba Lagi'));
+
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it('shows a non-blocking banner warning when only banners fail', () => {
+    mockUseHomeData.mockReturnValue({
+      ...createHomeData(),
+      bannerError: 'banner failed',
+    });
+
+    render(<Home />);
+
+    expect(
+      screen.getByText('Banner promo belum berhasil dimuat. Konten utama tetap tersedia.'),
+    ).toBeTruthy();
+  });
 });

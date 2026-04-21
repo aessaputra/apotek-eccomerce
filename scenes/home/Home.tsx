@@ -2,7 +2,18 @@ import { useCallback, useState } from 'react';
 import { RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card, Image, ScrollView, Text, XStack, YStack, styled, useMedia, useTheme } from 'tamagui';
+import {
+  Button as TamaguiButton,
+  Card,
+  Image,
+  ScrollView,
+  Text,
+  XStack,
+  YStack,
+  styled,
+  useMedia,
+  useTheme,
+} from 'tamagui';
 import { CartIcon, CheckCircleIcon, SearchIcon } from '@/components/icons';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import CategoryItem, { CategorySkeleton } from '@/components/elements/CategoryItem';
@@ -74,6 +85,15 @@ const SearchShell = styled(Card, {
   pressStyle: { opacity: 0.92 },
 });
 
+const ErrorCallout = styled(Card, {
+  borderRadius: '$5',
+  borderWidth: 1,
+  borderColor: '$borderColor',
+  backgroundColor: '$surface',
+  padding: '$4',
+  gap: '$2.5',
+});
+
 const SPACE_TOKEN_TO_PX = {
   '$2.5': 10,
   $3: 12,
@@ -102,6 +122,8 @@ export default function Home() {
     isLoadingProducts,
     isRefreshing,
     refresh,
+    bannerError,
+    error,
   } = useHomeData();
 
   const { snapshot: cartSnapshot } = useCartPaginated({ userId: user?.id });
@@ -206,6 +228,9 @@ export default function Home() {
     [router],
   );
 
+  const hasCoreContent = categories.length > 0 || products.length > 0;
+  const showCoreErrorState = Boolean(error) && !hasCoreContent;
+
   return (
     <ScreenRoot>
       <ScrollView
@@ -306,10 +331,39 @@ export default function Home() {
             <HomeBanner banner={banners.home_banner_top} onCTAPress={handleBannerCTAPress} />
           )}
 
+          {showCoreErrorState && (
+            <ErrorCallout>
+              <YStack gap="$1.5">
+                <Text color="$color" fontSize={15} fontWeight="700">
+                  Konten utama belum berhasil dimuat
+                </Text>
+                <Text color="$colorSubtle" fontSize={13}>
+                  {error}
+                </Text>
+              </YStack>
+
+              <XStack>
+                <TamaguiButton size="$3" theme="active" onPress={() => void refresh()}>
+                  Coba Lagi
+                </TamaguiButton>
+              </XStack>
+            </ErrorCallout>
+          )}
+
+          {bannerError && !isLoadingBanners && (
+            <Text fontSize={12} color="$colorSubtle">
+              Banner promo belum berhasil dimuat. Konten utama tetap tersedia.
+            </Text>
+          )}
+
           <YStack gap="$2.5">
             <SectionTitle>Categories</SectionTitle>
             {isLoadingCategories && categories.length === 0 ? (
               <CategorySkeleton isLargeScreen={isLargeScreen} count={categorySkeletonCount} />
+            ) : error && categories.length === 0 ? (
+              <Text fontSize={13} color="$colorSubtle">
+                Gagal memuat kategori. Coba lagi.
+              </Text>
             ) : categories.length === 0 ? (
               <Text fontSize={13} color="$colorSubtle">
                 No categories available
@@ -353,6 +407,10 @@ export default function Home() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <ProductCardSkeleton width={productWidth} count={productSkeletonCount} />
               </ScrollView>
+            ) : error && products.length === 0 ? (
+              <Text fontSize={13} color="$colorSubtle">
+                Gagal memuat produk terbaru. Coba lagi.
+              </Text>
             ) : products.length === 0 ? (
               <Text fontSize={13} color="$colorSubtle">
                 No products available
