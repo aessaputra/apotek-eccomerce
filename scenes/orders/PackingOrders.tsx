@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import { Spinner, Text, YStack, Button, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
@@ -8,7 +8,7 @@ import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 import { getThemeColor } from '@/utils/theme';
-import { PACKING_ORDER_STATUSES, type OrderListItem } from '@/services';
+import { type OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
   const router = useRouter();
@@ -115,7 +115,6 @@ export default function PackingOrders() {
   const router = useRouter();
   const theme = useTheme();
   const { user } = useAppSlice();
-  const packingOrderStatuses = useMemo(() => [...PACKING_ORDER_STATUSES], []);
   const {
     orders: packingOrders,
     error,
@@ -128,7 +127,7 @@ export default function PackingOrders() {
     loadMore,
   } = useOrdersByStatusPaginated({
     userId: user?.id,
-    orderStatuses: packingOrderStatuses,
+    customerOrderBucket: 'packing',
     cacheKey: 'packing',
   });
 

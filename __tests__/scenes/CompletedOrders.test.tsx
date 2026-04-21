@@ -44,12 +44,12 @@ describe('<CompletedOrders />', () => {
     });
   });
 
-  test('queries delivered orders for the completed tab', () => {
+  test('queries the completed customer bucket for the completed tab', () => {
     render(<CompletedOrders />);
 
     expect(mockUseOrdersByStatusPaginated).toHaveBeenCalledWith({
       userId: 'user-1',
-      orderStatuses: ['delivered'],
+      customerOrderBucket: 'completed',
       cacheKey: 'completed',
     });
   });
@@ -57,7 +57,9 @@ describe('<CompletedOrders />', () => {
   test('renders the completed empty state copy', () => {
     render(<CompletedOrders />);
 
-    expect(screen.getByText('Pesanan yang sudah selesai akan muncul di sini.')).not.toBeNull();
+    expect(
+      screen.getByText('Pesanan yang sudah dikonfirmasi selesai akan muncul di sini.'),
+    ).not.toBeNull();
   });
 
   test('navigates shop now CTA to /home', () => {

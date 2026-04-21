@@ -24,7 +24,7 @@ const EmptyState = React.memo(function EmptyState() {
         Belum Ada Riwayat
       </Text>
       <Text fontSize="$4" color="$colorSubtle" textAlign="center">
-        Riwayat pesanan yang kadaluarsa atau dibatalkan akan muncul di sini.
+        Riwayat pesanan yang gagal, kadaluarsa, atau dibatalkan akan muncul di sini.
       </Text>
       <Button
         size="$4"
@@ -161,6 +161,22 @@ export default function OrderHistory() {
 
   return (
     <YStack flex={1} backgroundColor="$background">
+      <YStack paddingHorizontal="$4" paddingTop="$4" paddingBottom="$2">
+        <YStack
+          backgroundColor="$dangerSoft"
+          borderRadius="$4"
+          padding="$3"
+          gap="$1.5"
+          borderWidth={1}
+          borderColor="$danger">
+          <Text fontSize="$4" fontWeight="700" color="$danger">
+            Riwayat Terminal
+          </Text>
+          <Text fontSize="$3" color="$colorSubtle">
+            Pesanan gagal, kadaluarsa, atau dibatalkan disimpan di sini untuk referensi.
+          </Text>
+        </YStack>
+      </YStack>
       <FlatList
         data={historyOrders}
         renderItem={renderItem}

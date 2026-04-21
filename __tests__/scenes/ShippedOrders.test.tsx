@@ -44,12 +44,12 @@ describe('<ShippedOrders />', () => {
     });
   });
 
-  test('queries shipped and in_transit orders for the shipped tab', () => {
+  test('queries the shipped customer bucket for the shipped tab', () => {
     render(<ShippedOrders />);
 
     expect(mockUseOrdersByStatusPaginated).toHaveBeenCalledWith({
       userId: 'user-1',
-      orderStatuses: ['shipped', 'in_transit'],
+      customerOrderBucket: 'shipped',
       cacheKey: 'shipped',
     });
   });
@@ -58,7 +58,9 @@ describe('<ShippedOrders />', () => {
     render(<ShippedOrders />);
 
     expect(
-      screen.getByText('Pesanan yang sudah diserahkan ke kurir akan muncul di sini.'),
+      screen.getByText(
+        'Pesanan yang sedang dikirim atau menunggu konfirmasi penerimaan akan muncul di sini.',
+      ),
     ).not.toBeNull();
   });
 

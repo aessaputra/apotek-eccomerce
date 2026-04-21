@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import { Spinner, Text, YStack, Button, useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
@@ -8,7 +8,7 @@ import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 import { getThemeColor } from '@/utils/theme';
-import { COMPLETED_ORDER_STATUSES, type OrderListItem } from '@/services';
+import { type OrderListItem } from '@/services';
 
 const EmptyState = React.memo(function EmptyState() {
   const router = useRouter();
@@ -24,7 +24,7 @@ const EmptyState = React.memo(function EmptyState() {
         Belum Ada Pesanan
       </Text>
       <Text fontSize="$4" color="$colorSubtle" textAlign="center">
-        Pesanan yang sudah selesai akan muncul di sini.
+        Pesanan yang sudah dikonfirmasi selesai akan muncul di sini.
       </Text>
       <Button
         size="$4"
@@ -95,7 +95,6 @@ export default function CompletedOrders() {
   const router = useRouter();
   const theme = useTheme();
   const { user } = useAppSlice();
-  const completedOrderStatuses = useMemo(() => [...COMPLETED_ORDER_STATUSES], []);
   const {
     orders: completedOrders,
     error,
@@ -108,7 +107,7 @@ export default function CompletedOrders() {
     loadMore,
   } = useOrdersByStatusPaginated({
     userId: user?.id,
-    orderStatuses: completedOrderStatuses,
+    customerOrderBucket: 'completed',
     cacheKey: 'completed',
   });
 

@@ -44,12 +44,12 @@ describe('<PackingOrders />', () => {
     });
   });
 
-  test('queries processing and awaiting_shipment orders for the packing tab', () => {
+  test('queries the packing customer bucket for the packing tab', () => {
     render(<PackingOrders />);
 
     expect(mockUseOrdersByStatusPaginated).toHaveBeenCalledWith({
       userId: 'user-1',
-      orderStatuses: ['processing', 'awaiting_shipment'],
+      customerOrderBucket: 'packing',
       cacheKey: 'packing',
     });
   });

@@ -52,7 +52,41 @@ describe('<OrderHistory />', () => {
     render(<OrderHistory />);
 
     expect(
-      screen.getByText('Riwayat pesanan yang kadaluarsa atau dibatalkan akan muncul di sini.'),
+      screen.getByText(
+        'Riwayat pesanan yang gagal, kadaluarsa, atau dibatalkan akan muncul di sini.',
+      ),
+    ).not.toBeNull();
+  });
+
+  test('shows terminal-history helper copy above the list', () => {
+    mockUseOrderHistoryPaginated.mockReturnValue({
+      orders: [
+        {
+          id: 'order-1',
+          status: 'cancelled',
+          payment_status: 'cancel',
+          gross_amount: 10000,
+          total_amount: 10000,
+          created_at: '2024-01-01T00:00:00Z',
+          order_items: [{ id: 'item-1', products: { name: 'Test Product' } }],
+        },
+      ],
+      error: null,
+      hasMore: false,
+      isInitialLoading: false,
+      isRefreshing: false,
+      isFetchingMore: false,
+      refresh: jest.fn(),
+      loadMore: jest.fn(),
+    });
+
+    render(<OrderHistory />);
+
+    expect(screen.getByText('Riwayat Terminal')).not.toBeNull();
+    expect(
+      screen.getByText(
+        'Pesanan gagal, kadaluarsa, atau dibatalkan disimpan di sini untuk referensi.',
+      ),
     ).not.toBeNull();
   });
 

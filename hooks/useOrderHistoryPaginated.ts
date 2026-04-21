@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getOrdersOptimized, ORDERS_PAGE_SIZE, type OrderListItem } from '@/services';
-import { classifyError } from '@/utils/error';
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError';
-}
+import { HISTORY_PAYMENT_STATUSES, type OrderListItem } from '@/services';
+import { usePaginatedOrderList, type OrderListCacheState } from './usePaginatedOrderList';
 
 export interface UseOrderHistoryPaginatedReturn {
   orders: OrderListItem[];
@@ -13,101 +9,112 @@ export interface UseOrderHistoryPaginatedReturn {
   isInitialLoading: boolean;
   isRefreshing: boolean;
   isFetchingMore: boolean;
+  isRevalidating: boolean;
+  isUsingCachedData: boolean;
   refresh: () => Promise<void>;
+  refreshIfNeeded: () => Promise<void>;
   loadMore: () => Promise<void>;
 }
 
+const EMPTY_CACHE: OrderListCacheState = {
+  items: [],
+  hasMore: true,
+  lastFetchedAt: null,
+  payloadBytes: 0,
+  queryDurationMs: 0,
+  error: null,
+};
+
 export function useOrderHistoryPaginated(userId?: string): UseOrderHistoryPaginatedReturn {
-  const [orders, setOrders] = useState<OrderListItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [isInitialLoading, setIsInitialLoading] = useState(Boolean(userId));
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const [cacheState, setCacheState] = useState<OrderListCacheState>(EMPTY_CACHE);
+  const refreshIfNeededRef = useRef<() => Promise<void>>(async () => undefined);
 
-  const fetchOrders = useCallback(
-    async (offset: number, replace: boolean) => {
-      if (!userId) return;
-
-      abortControllerRef.current?.abort();
-      abortControllerRef.current = new AbortController();
-
-      try {
-        const result = await getOrdersOptimized(userId, {
-          offset,
-          limit: ORDERS_PAGE_SIZE,
-          signal: abortControllerRef.current.signal,
-          paymentStatuses: ['expire', 'cancel'],
-        });
-
-        if (result.error) {
-          throw result.error;
-        }
-
-        const newOrders = result.data ?? [];
-        if (replace) {
-          setOrders(newOrders);
-        } else {
-          setOrders(prev => [...prev, ...newOrders]);
-        }
-        setHasMore(result.metrics?.hasMore ?? false);
-        setError(null);
-      } catch (err) {
-        if (isAbortError(err)) return;
-
-        const classifiedError = classifyError(err);
-        setError(classifiedError.message || 'Gagal memuat riwayat pesanan');
-      }
+  const setStatus = useCallback(
+    (_status: 'loading' | 'refreshing' | 'error', error: string | null) => {
+      setCacheState(prev => ({
+        ...prev,
+        error,
+      }));
     },
-    [userId],
+    [],
   );
 
-  const loadMore = useCallback(async () => {
-    if (!userId || isFetchingMore || !hasMore) return;
+  const upsertPage = useCallback(
+    (payload: {
+      items: OrderListItem[];
+      offset: number;
+      hasMore: boolean;
+      fetchedAt: number;
+      payloadBytes: number;
+      durationMs: number;
+      replace: boolean;
+    }) => {
+      setCacheState(prev => {
+        const items =
+          payload.replace || payload.offset === 0
+            ? payload.items
+            : [...prev.items, ...payload.items];
 
-    setIsFetchingMore(true);
-    await fetchOrders(orders.length, false);
-    setIsFetchingMore(false);
-  }, [fetchOrders, hasMore, isFetchingMore, orders.length, userId]);
+        const mergedById = new Map(items.map(item => [item.id, item]));
+        const sortedItems = Array.from(mergedById.values()).sort(
+          (left, right) =>
+            new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+        );
 
-  const refresh = useCallback(async () => {
-    if (!userId) return;
+        return {
+          items: sortedItems,
+          hasMore: payload.hasMore,
+          lastFetchedAt: payload.fetchedAt,
+          payloadBytes: payload.payloadBytes,
+          queryDurationMs: payload.durationMs,
+          error: null,
+        };
+      });
+    },
+    [],
+  );
 
-    setIsRefreshing(true);
-    await fetchOrders(0, true);
-    setIsRefreshing(false);
-  }, [fetchOrders, userId]);
+  const invalidateCache = useCallback(() => {
+    setCacheState(prev => ({ ...prev, lastFetchedAt: null, error: null }));
+  }, []);
+
+  const resetCache = useCallback(() => {
+    setCacheState(EMPTY_CACHE);
+  }, []);
+
+  const controller = usePaginatedOrderList({
+    userId,
+    cacheState,
+    requestNamespace: 'orderHistory',
+    fetchParams: {
+      paymentStatuses: [...HISTORY_PAYMENT_STATUSES],
+      includeExpiredPendingInHistory: true,
+    },
+    setStatus,
+    upsertPage,
+    invalidateCache,
+    resetCache,
+  });
+
+  useEffect(() => {
+    refreshIfNeededRef.current = controller.refreshIfNeeded;
+  }, [controller.refreshIfNeeded]);
 
   useEffect(() => {
     if (!userId) {
-      setOrders([]);
-      setError(null);
-      setHasMore(true);
       return;
     }
 
-    setIsInitialLoading(true);
-    fetchOrders(0, true).finally(() => {
-      setIsInitialLoading(false);
-    });
-
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, [fetchOrders, userId]);
+    void refreshIfNeededRef.current();
+  }, [userId]);
 
   return useMemo(
     () => ({
-      orders,
-      error,
-      hasMore,
-      isInitialLoading,
-      isRefreshing,
-      isFetchingMore,
-      refresh,
-      loadMore,
+      orders: cacheState.items,
+      ...controller,
     }),
-    [orders, error, hasMore, isInitialLoading, isRefreshing, isFetchingMore, refresh, loadMore],
+    [cacheState.items, controller],
   );
 }
+
+export default useOrderHistoryPaginated;

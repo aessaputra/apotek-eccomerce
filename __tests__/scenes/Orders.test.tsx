@@ -69,15 +69,9 @@ describe('<Orders />', () => {
     mockAddProductToCart.mockResolvedValue({ error: null });
   });
 
-  test('keeps only the completed badge hidden after the completed tab was viewed', async () => {
+  test('passes the fetched counts directly to the order tabs', async () => {
     mockUseAppSlice.mockReturnValue({
       user: { id: 'user-1' },
-      dispatch: jest.fn(),
-      completedOrdersTabViewedByUser: { 'user-1': true },
-      markCompletedOrdersTabViewed: jest.fn((userId: string) => ({
-        type: 'app/markCompletedOrdersTabViewed',
-        payload: userId,
-      })),
     });
 
     render(<Orders />);
@@ -96,23 +90,14 @@ describe('<Orders />', () => {
         unpaid: 2,
         packing: 3,
         shipped: 4,
-        completed: 0,
+        completed: 1,
       });
     });
   });
 
-  test('marks completed tab as viewed before navigating to it', async () => {
-    const dispatch = jest.fn();
-    const markCompletedOrdersTabViewed = jest.fn((userId: string) => ({
-      type: 'app/markCompletedOrdersTabViewed',
-      payload: userId,
-    }));
-
+  test('navigates to the completed tab without mutating local badge state', async () => {
     mockUseAppSlice.mockReturnValue({
       user: { id: 'user-1' },
-      dispatch,
-      completedOrdersTabViewedByUser: {},
-      markCompletedOrdersTabViewed,
     });
 
     render(<Orders />);
@@ -134,11 +119,6 @@ describe('<Orders />', () => {
       orderStatusTabsProps.onTabChange('completed');
     });
 
-    expect(markCompletedOrdersTabViewed).toHaveBeenCalledWith('user-1');
-    expect(dispatch).toHaveBeenCalledWith({
-      type: 'app/markCompletedOrdersTabViewed',
-      payload: 'user-1',
-    });
     expect(mockPush).toHaveBeenCalledWith('/orders/completed');
   });
 
@@ -158,12 +138,6 @@ describe('<Orders />', () => {
 
     mockUseAppSlice.mockReturnValue({
       user: { id: 'user-1' },
-      dispatch: jest.fn(),
-      completedOrdersTabViewedByUser: {},
-      markCompletedOrdersTabViewed: jest.fn((userId: string) => ({
-        type: 'app/markCompletedOrdersTabViewed',
-        payload: userId,
-      })),
     });
 
     render(<Orders />);
@@ -206,12 +180,6 @@ describe('<Orders />', () => {
 
     mockUseAppSlice.mockReturnValue({
       user: { id: 'user-1' },
-      dispatch: jest.fn(),
-      completedOrdersTabViewedByUser: {},
-      markCompletedOrdersTabViewed: jest.fn((userId: string) => ({
-        type: 'app/markCompletedOrdersTabViewed',
-        payload: userId,
-      })),
     });
 
     render(<Orders />);
