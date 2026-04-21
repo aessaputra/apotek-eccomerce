@@ -21,6 +21,10 @@ type CartItemRow = Tables<'cart_items'>;
 type ProductRow = Tables<'products'>;
 type ProductImageRow = Tables<'product_images'>;
 
+export interface CartMutationResult {
+  error: Error | null;
+}
+
 const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 const GET_OR_CREATE_CART_REQUEST_PREFIX = 'cart:get-or-create:';
 const UPDATE_CART_ITEM_REQUEST_PREFIX = 'cart:update-item:';
@@ -179,6 +183,65 @@ export async function getOrCreateCart(
       data: null,
       error: error instanceof Error ? error : new Error('Unable to initialize cart.'),
     };
+  }
+}
+
+export async function addProductToCart(
+  userId: string,
+  productId: string,
+  quantityToAdd: number = 1,
+): Promise<CartMutationResult> {
+  const normalizedUserId = userId.trim();
+  const normalizedProductId = productId.trim();
+
+  if (!normalizedUserId || !normalizedProductId || quantityToAdd <= 0) {
+    return { error: new Error('Invalid cart mutation payload.') };
+  }
+
+  try {
+    const { data: cart, error: cartError } = await getOrCreateCart(normalizedUserId);
+
+    if (cartError || !cart) {
+      return { error: cartError ?? new Error('Unable to initialize cart.') };
+    }
+
+    const { data: existingItem, error: existingItemError } = await supabase
+      .from('cart_items')
+      .select('id, quantity')
+      .eq('cart_id', cart.id)
+      .eq('product_id', normalizedProductId)
+      .maybeSingle();
+
+    if (existingItemError) {
+      return { error: existingItemError as unknown as Error };
+    }
+
+    if (existingItem) {
+      const { error: updateError } = await supabase
+        .from('cart_items')
+        .update({ quantity: existingItem.quantity + quantityToAdd })
+        .eq('id', existingItem.id);
+
+      if (updateError) {
+        return { error: updateError as unknown as Error };
+      }
+
+      return { error: null };
+    }
+
+    const { error: insertItemError } = await supabase.from('cart_items').insert({
+      cart_id: cart.id,
+      product_id: normalizedProductId,
+      quantity: quantityToAdd,
+    });
+
+    if (insertItemError) {
+      return { error: insertItemError as unknown as Error };
+    }
+
+    return { error: null };
+  } catch (error) {
+    return { error: error instanceof Error ? error : new Error('Failed to add product to cart.') };
   }
 }
 

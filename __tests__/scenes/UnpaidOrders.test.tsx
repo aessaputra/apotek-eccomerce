@@ -1,7 +1,7 @@
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
 import { fireEvent } from '@testing-library/react-native';
 import { render, screen } from '@/test-utils/renderWithTheme';
-import UnpaidOrders from '@/scenes/orders/UnpaidOrders';
+import UnpaidOrdersScreen from '@/scenes/orders/UnpaidOrders';
 import type { OrderListItem } from '@/services/order.service';
 
 const mockPush = jest.fn();
@@ -116,7 +116,7 @@ describe('UnpaidOrders', () => {
   });
 
   test('renders order list', () => {
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
     expect(screen.getByText('Paracetamol')).toBeTruthy();
     expect(screen.getByText('Vitamin C')).toBeTruthy();
@@ -126,16 +126,28 @@ describe('UnpaidOrders', () => {
     hookState.orders = [];
     hookState.isUsingCachedData = false;
 
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
     expect(screen.getByText('Belum Ada Pesanan')).toBeTruthy();
+    expect(
+      screen.getByText('Pesanan yang masih bisa dibayar akan muncul di sini. Yuk, mulai belanja!'),
+    ).toBeTruthy();
+  });
+
+  test('shows active unpaid helper copy above the list', () => {
+    render(<UnpaidOrdersScreen />);
+
+    expect(screen.getByText('Masih Bisa Dibayar')).toBeTruthy();
+    expect(
+      screen.getByText('Hanya pesanan yang masih bisa dibayar ditampilkan di sini.'),
+    ).toBeTruthy();
   });
 
   test('navigates shop now CTA to /home from the empty state', () => {
     hookState.orders = [];
     hookState.isUsingCachedData = false;
 
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
     fireEvent.press(screen.getByText('Belanja Sekarang'));
 
@@ -148,7 +160,7 @@ describe('UnpaidOrders', () => {
     hookState.isInitialLoading = true;
     hookState.isUsingCachedData = false;
 
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
     expect(screen.getByText('Memuat pesanan...')).toBeTruthy();
   });
@@ -158,7 +170,7 @@ describe('UnpaidOrders', () => {
     hookState.error = 'Gagal memuat data';
     hookState.isUsingCachedData = false;
 
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
   });

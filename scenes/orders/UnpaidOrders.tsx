@@ -24,7 +24,7 @@ const EmptyState = React.memo(function EmptyState() {
         Belum Ada Pesanan
       </Text>
       <Text fontSize="$4" color="$colorSubtle" textAlign="center">
-        Pesanan yang belum dibayar akan muncul di sini. Yuk, mulai belanja!
+        Pesanan yang masih bisa dibayar akan muncul di sini. Yuk, mulai belanja!
       </Text>
       <Button
         size="$4"
@@ -74,11 +74,13 @@ const ErrorState = React.memo(function ErrorState({
 interface OrderListItemComponentProps {
   order: OrderListItem;
   onPress: (order: OrderListItem) => void;
+  onExpired: () => void;
 }
 
 const OrderListItemComponent = React.memo(function OrderListItemComponent({
   order,
   onPress,
+  onExpired,
 }: OrderListItemComponentProps) {
   const handlePress = useCallback(() => {
     onPress(order);
@@ -86,7 +88,7 @@ const OrderListItemComponent = React.memo(function OrderListItemComponent({
 
   return (
     <YStack paddingHorizontal="$4" paddingVertical="$2">
-      <UnpaidOrderCard order={order} onPress={handlePress} />
+      <UnpaidOrderCard order={order} onPress={handlePress} onExpired={onExpired} />
     </YStack>
   );
 });
@@ -132,11 +134,19 @@ export function UnpaidOrders() {
     refresh();
   }, [refresh]);
 
+  const handleOrderExpired = useCallback(() => {
+    void refresh();
+  }, [refresh]);
+
   const renderItem = useCallback(
     ({ item }: { item: OrderListItem }) => (
-      <OrderListItemComponent order={item} onPress={handleOrderPress} />
+      <OrderListItemComponent
+        order={item}
+        onPress={handleOrderPress}
+        onExpired={handleOrderExpired}
+      />
     ),
-    [handleOrderPress],
+    [handleOrderExpired, handleOrderPress],
   );
 
   const keyExtractor = useCallback((item: OrderListItem) => item.id, []);
@@ -168,6 +178,22 @@ export function UnpaidOrders() {
 
   return (
     <YStack flex={1} backgroundColor="$background">
+      <YStack paddingHorizontal="$4" paddingTop="$4" paddingBottom="$2">
+        <YStack
+          backgroundColor="$warningSoft"
+          borderRadius="$4"
+          padding="$3"
+          gap="$1.5"
+          borderWidth={1}
+          borderColor="$warning">
+          <Text fontSize="$4" fontWeight="700" color="$warning">
+            Masih Bisa Dibayar
+          </Text>
+          <Text fontSize="$3" color="$colorSubtle">
+            Hanya pesanan yang masih bisa dibayar ditampilkan di sini.
+          </Text>
+        </YStack>
+      </YStack>
       <FlatList
         data={unpaidOrders}
         renderItem={renderItem}

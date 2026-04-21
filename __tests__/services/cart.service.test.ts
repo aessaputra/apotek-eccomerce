@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { clearDedupedRequests } from '@/utils/requestDeduplication';
 import {
+  addProductToCart,
   getCartItemsOptimized,
   getCartSnapshot,
   getOrCreateCart,
@@ -317,5 +318,74 @@ describe('cart.service snapshot behavior', () => {
       quantity: 3,
     });
     expect(updateQuery.select).toHaveBeenCalledWith('id, quantity, product_id, cart_id');
+  });
+
+  it('adds a product through the shared cart service instead of home-specific cart logic', async () => {
+    const cartsQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      limit: jest.fn(async () => ({ data: [{ id: 'cart-1', user_id: 'user-1' }], error: null })),
+    };
+    const cartItemsQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn(async () => ({ data: null, error: null })),
+      insert: jest.fn(async () => ({ error: null })),
+    };
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'carts') {
+        return cartsQuery;
+      }
+
+      if (table === 'cart_items') {
+        return cartItemsQuery;
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const result = await addProductToCart('user-1', 'product-1', 2);
+
+    expect(result.error).toBeNull();
+    expect(cartItemsQuery.insert).toHaveBeenCalledWith({
+      cart_id: 'cart-1',
+      product_id: 'product-1',
+      quantity: 2,
+    });
+  });
+
+  it('increments an existing cart item quantity when the product is already in the cart', async () => {
+    const cartsQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      limit: jest.fn(async () => ({ data: [{ id: 'cart-1', user_id: 'user-1' }], error: null })),
+    };
+    const cartItemsQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn(async () => ({ data: { id: 'item-1', quantity: 2 }, error: null })),
+      update: jest.fn().mockReturnThis(),
+    };
+    const updateEq = jest.fn(async () => ({ error: null }));
+    cartItemsQuery.update.mockReturnValue({ eq: updateEq });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'carts') {
+        return cartsQuery;
+      }
+
+      if (table === 'cart_items') {
+        return cartItemsQuery;
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const result = await addProductToCart('user-1', 'product-1', 3);
+
+    expect(result.error).toBeNull();
+    expect(cartItemsQuery.update).toHaveBeenCalledWith({ quantity: 5 });
+    expect(updateEq).toHaveBeenCalledWith('id', 'item-1');
   });
 });

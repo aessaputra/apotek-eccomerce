@@ -233,6 +233,34 @@ describe('<Payment />', () => {
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'INVALIDATE_UNPAID', payload: 'user-1' });
   });
 
+  test('keeps authorize responses in processing flow instead of treating them as success', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      paymentUrl: 'https://snap.midtrans.com/v1/token',
+      orderId: 'order-1',
+    });
+    mockPollOrderPaymentStatus.mockResolvedValue({
+      data: { payment_status: 'authorize' },
+      error: null,
+    });
+
+    render(<Payment />);
+
+    await act(async () => {
+      fireEvent(screen.getByTestId('payment-webview'), 'onNavigationStateChange', {
+        url: 'https://snap.midtrans.com/finish?transaction_status=authorize',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Pembayaran sedang diproses')).toBeTruthy();
+      expect(
+        screen.getByText('Pembayaran sedang diproses. Cek status di halaman Pesanan.'),
+      ).toBeTruthy();
+    });
+
+    expect(mockReplace).not.toHaveBeenCalledWith('/orders/success?orderId=order-1');
+  });
+
   test('allows trusted Midtrans simulator URLs to render inside the webview', () => {
     mockUseLocalSearchParams.mockReturnValue({
       paymentUrl: 'https://simulator.sandbox.midtrans.com/v2/vtweb/test',

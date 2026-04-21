@@ -2,7 +2,8 @@ import { supabase } from '@/utils/supabase';
 import * as Crypto from 'expo-crypto';
 import type { ShippingOption } from '@/types/shipping';
 import type { CheckoutTokenResponse } from '@/types/payment';
-import type { Database, Tables, TablesInsert } from '@/types/supabase';
+import type { Database, Tables } from '@/types/supabase';
+import { getOrCreateCart } from './cart.service';
 
 interface CheckoutOrderParams {
   user_id: string;
@@ -121,37 +122,6 @@ function generateCheckoutIdempotencyKey(): string {
   return Crypto.randomUUID();
 }
 
-async function getOrCreateCartId(
-  userId: string,
-): Promise<{ data: string | null; error: Error | null }> {
-  const { data: cartRows, error: cartError } = await supabase
-    .from('carts')
-    .select('id')
-    .eq('user_id', userId)
-    .limit(1);
-
-  if (cartError) {
-    return { data: null, error: cartError as unknown as Error };
-  }
-
-  const existingCartId = cartRows?.[0]?.id;
-  if (existingCartId) {
-    return { data: existingCartId, error: null };
-  }
-
-  const { data: insertedCart, error: insertCartError } = await supabase
-    .from('carts')
-    .insert({ user_id: userId })
-    .select('id')
-    .single();
-
-  if (insertCartError) {
-    return { data: null, error: insertCartError as unknown as Error };
-  }
-
-  return { data: insertedCart.id, error: null };
-}
-
 async function getCartLines(cartId: string): Promise<{ data: CartLine[]; error: Error | null }> {
   const { data: cartItems, error: cartItemsError } = await supabase
     .from('cart_items')
@@ -173,56 +143,15 @@ export async function createCheckoutOrder(
   const idempotencyKey =
     params.checkout_idempotency_key?.trim() || generateCheckoutIdempotencyKey();
 
-  const { data: cartId, error: cartIdError } = await getOrCreateCartId(params.user_id);
-  if (cartIdError || !cartId) {
+  const { data: cart, error: cartError } = await getOrCreateCart(params.user_id);
+  if (cartError || !cart) {
     return {
       data: null,
-      error: toUserError(cartIdError, 'Gagal menyiapkan keranjang checkout. Silakan coba lagi.'),
+      error: toUserError(cartError, 'Gagal menyiapkan keranjang checkout. Silakan coba lagi.'),
     };
   }
 
-  const { data: existingOrder, error: existingOrderError } = await supabase
-    .from('orders')
-    .select('id, total_amount')
-    .eq('checkout_idempotency_key', idempotencyKey)
-    .eq('user_id', params.user_id)
-    .limit(1)
-    .maybeSingle();
-
-  if (existingOrderError) {
-    return {
-      data: null,
-      error: toUserError(existingOrderError, DATABASE_ERROR_MESSAGE),
-    };
-  }
-
-  if (existingOrder) {
-    const { data: existingItems, error: existingItemsError } = await supabase
-      .from('order_items')
-      .select('quantity')
-      .eq('order_id', existingOrder.id);
-
-    if (existingItemsError) {
-      return {
-        data: null,
-        error: toUserError(existingItemsError, DATABASE_ERROR_MESSAGE),
-      };
-    }
-
-    const existingItemCount = (existingItems ?? []).reduce((sum, item) => sum + item.quantity, 0);
-
-    return {
-      data: {
-        order_id: existingOrder.id,
-        total_amount: existingOrder.total_amount,
-        item_count: existingItemCount,
-        checkout_idempotency_key: idempotencyKey,
-      },
-      error: null,
-    };
-  }
-
-  const { data: cartLines, error: cartLinesError } = await getCartLines(cartId);
+  const { data: cartLines, error: cartLinesError } = await getCartLines(cart.id);
   if (cartLinesError) {
     return { data: null, error: cartLinesError };
   }
@@ -231,6 +160,15 @@ export async function createCheckoutOrder(
     return {
       data: null,
       error: new Error('Keranjang kosong. Tambahkan produk sebelum melanjutkan pembayaran.'),
+    };
+  }
+
+  if (!params.destination_area_id && typeof params.destination_postal_code !== 'number') {
+    return {
+      data: null,
+      error: new Error(
+        'Alamat tujuan belum lengkap. Pilih alamat dengan area pengiriman atau kode pos yang valid.',
+      ),
     };
   }
 
@@ -253,10 +191,6 @@ export async function createCheckoutOrder(
     ).map(product => [product.id, product]),
   );
 
-  let totalAmount = 0;
-  let itemCount = 0;
-  const orderItems: TablesInsert<'order_items'>[] = [];
-
   for (const line of cartLines) {
     const product = productMap.get(line.product_id);
     if (!product || product.is_active === false) {
@@ -272,101 +206,57 @@ export async function createCheckoutOrder(
         error: new Error(`Stok produk ${product.name} tidak mencukupi.`),
       };
     }
-
-    totalAmount += product.price * line.quantity;
-    itemCount += line.quantity;
-
-    orderItems.push({
-      product_id: product.id,
-      quantity: line.quantity,
-      price_at_purchase: product.price,
-      order_id: '',
-    });
   }
 
   const { shipping_option: shippingOption } = params;
-  const orderPayload: TablesInsert<'orders'> = {
-    user_id: params.user_id,
-    shipping_address_id: params.shipping_address_id,
-    total_amount: totalAmount,
-    status: 'pending',
-    payment_status: 'pending',
-    expired_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    shipping_cost: shippingOption.price,
-    shipping_etd: shippingOption.estimated_delivery,
-    courier_code: shippingOption.courier_code,
-    courier_service: shippingOption.service_code,
-    origin_area_id: null,
-    destination_area_id: params.destination_area_id ?? null,
-    destination_postal_code: params.destination_postal_code ?? null,
-    checkout_idempotency_key: idempotencyKey,
-  };
+  const accessToken = await getValidAccessToken();
+  if (!accessToken) {
+    return {
+      data: null,
+      error: new Error(AUTH_SESSION_ERROR_MESSAGE),
+    };
+  }
 
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert(orderPayload)
-    .select('id')
-    .single();
+  const { data: order, error: orderError } = await supabase.functions.invoke(
+    'create-checkout-order',
+    {
+      body: {
+        shipping_address_id: params.shipping_address_id,
+        destination_area_id: params.destination_area_id ?? null,
+        destination_postal_code: params.destination_postal_code ?? null,
+        shipping_option: {
+          courier_code: shippingOption.courier_code,
+          service_code: shippingOption.service_code,
+          price: shippingOption.price,
+          estimated_delivery: shippingOption.estimated_delivery,
+        },
+        checkout_idempotency_key: idempotencyKey,
+      },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
 
   if (orderError) {
-    if ((orderError as { code?: string }).code === '23505') {
-      const { data: duplicateOrder, error: duplicateOrderError } = await supabase
-        .from('orders')
-        .select('id, total_amount')
-        .eq('checkout_idempotency_key', idempotencyKey)
-        .eq('user_id', params.user_id)
-        .limit(1)
-        .single();
-
-      if (duplicateOrderError) {
-        return { data: null, error: toUserError(duplicateOrderError, DATABASE_ERROR_MESSAGE) };
-      }
-
-      const { data: duplicateItems, error: duplicateItemsError } = await supabase
-        .from('order_items')
-        .select('quantity')
-        .eq('order_id', duplicateOrder.id);
-
-      if (duplicateItemsError) {
-        return { data: null, error: toUserError(duplicateItemsError, DATABASE_ERROR_MESSAGE) };
-      }
-
-      const duplicateItemCount = (duplicateItems ?? []).reduce(
-        (sum, item) => sum + item.quantity,
-        0,
-      );
-
-      return {
-        data: {
-          order_id: duplicateOrder.id,
-          total_amount: duplicateOrder.total_amount,
-          item_count: duplicateItemCount,
-          checkout_idempotency_key: idempotencyKey,
-        },
-        error: null,
-      };
-    }
-
     return { data: null, error: toUserError(orderError, DATABASE_ERROR_MESSAGE) };
   }
 
-  const orderId = order.id;
+  const aggregate = (order ?? null) as CheckoutOrderResult | null;
 
-  const orderItemsPayload = orderItems.map(item => ({ ...item, order_id: orderId }));
-  const { error: orderItemsError } = await supabase.from('order_items').insert(orderItemsPayload);
-
-  if (orderItemsError) {
-    await supabase.from('orders').delete().eq('id', orderId);
-
-    return { data: null, error: toUserError(orderItemsError, DATABASE_ERROR_MESSAGE) };
+  if (!aggregate) {
+    return {
+      data: null,
+      error: new Error('Gagal membuat pesanan checkout. Silakan coba lagi.'),
+    };
   }
 
   return {
     data: {
-      order_id: orderId,
-      total_amount: totalAmount,
-      item_count: itemCount,
-      checkout_idempotency_key: idempotencyKey,
+      order_id: aggregate.order_id,
+      total_amount: aggregate.total_amount,
+      item_count: aggregate.item_count,
+      checkout_idempotency_key: aggregate.checkout_idempotency_key,
     },
     error: null,
   };
@@ -443,8 +333,8 @@ export async function getOrderPaymentStatus(
 ): Promise<{ data: PaymentStatusSnapshot | null; error: Error | null }> {
   try {
     const { data, error } = await supabase
-      .from('orders')
-      .select('payment_status, status')
+      .from('order_read_model')
+      .select('status, payment_status')
       .eq('id', orderId)
       .single();
 
@@ -453,7 +343,10 @@ export async function getOrderPaymentStatus(
     }
 
     return {
-      data: data as PaymentStatusSnapshot,
+      data: {
+        payment_status: data.payment_status ?? 'pending',
+        status: data.status ?? 'pending',
+      },
       error: null,
     };
   } catch (error) {
@@ -508,8 +401,12 @@ export async function pollOrderPaymentStatus(
     if (confirmAttempts.has(index)) {
       const { error: confirmError } = await confirmMidtransPayment(orderId);
 
-      if (confirmError) {
-        return { data: null, error: confirmError };
+      if (__DEV__ && confirmError) {
+        console.warn('[checkout.service] confirmMidtransPayment transient error during polling:', {
+          orderId,
+          attempt: index,
+          message: confirmError.message,
+        });
       }
     }
 
@@ -520,7 +417,7 @@ export async function pollOrderPaymentStatus(
     }
 
     const paymentStatus = data?.payment_status ?? '';
-    const terminalStates = ['settlement', 'authorize', 'cancel', 'deny', 'expire', 'failure'];
+    const terminalStates = ['settlement', 'cancel', 'deny', 'expire', 'failure'];
     if (terminalStates.includes(paymentStatus)) {
       return { data, error: null };
     }

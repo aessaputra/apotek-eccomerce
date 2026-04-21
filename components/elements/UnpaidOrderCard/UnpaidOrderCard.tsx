@@ -12,6 +12,7 @@ import { formatOrderNumber } from '@/utils/orderNumber';
 export interface UnpaidOrderCardProps {
   order: OrderListItem;
   onPress?: () => void;
+  onExpired?: () => void;
 }
 
 function getProductImageUrl(order: OrderListItem): string | null {
@@ -33,6 +34,7 @@ function getProductDisplayInfo(order: OrderListItem): { name: string; itemCount:
 export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
   order,
   onPress,
+  onExpired,
 }: UnpaidOrderCardProps) {
   const imageUrl = useMemo(() => getProductImageUrl(order), [order]);
   const productInfo = useMemo(() => getProductDisplayInfo(order), [order]);
@@ -46,7 +48,8 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
 
   const handleTimerExpired = useCallback(() => {
     setIsTimerExpired(true);
-  }, []);
+    onExpired?.();
+  }, [onExpired]);
 
   return (
     <Card
@@ -61,7 +64,11 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
         {backendExpired ? (
           <StatusBadge variant="danger">Pembayaran Kadaluarsa</StatusBadge>
         ) : (
-          <PaymentCountdownTimer createdAt={order.created_at} onExpired={handleTimerExpired} />
+          <PaymentCountdownTimer
+            createdAt={order.created_at}
+            expiresAt={order.expired_at}
+            onExpired={handleTimerExpired}
+          />
         )}
 
         <XStack gap="$3" alignItems="center">

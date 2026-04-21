@@ -4,6 +4,7 @@ import { ClockIcon } from '@/components/icons';
 
 export interface PaymentCountdownTimerProps {
   createdAt: string;
+  expiresAt?: string | null;
   expiryHours?: number;
   onExpired?: () => void;
   variant?: 'default' | 'compact';
@@ -19,9 +20,28 @@ interface TimeLeft {
   isExpired: boolean;
 }
 
-function calculateTimeLeft(createdAt: string, expiryHours: number): TimeLeft {
+function resolveDeadline(
+  createdAt: string,
+  expiryHours: number,
+  expiresAt?: string | null,
+): number {
+  if (expiresAt) {
+    const explicitDeadline = new Date(expiresAt).getTime();
+    if (!Number.isNaN(explicitDeadline)) {
+      return explicitDeadline;
+    }
+  }
+
   const created = new Date(createdAt).getTime();
-  const deadline = created + expiryHours * 60 * 60 * 1000;
+  return created + expiryHours * 60 * 60 * 1000;
+}
+
+function calculateTimeLeft(
+  createdAt: string,
+  expiryHours: number,
+  expiresAt?: string | null,
+): TimeLeft {
+  const deadline = resolveDeadline(createdAt, expiryHours, expiresAt);
   const now = Date.now();
   const totalMs = deadline - now;
 
@@ -62,22 +82,23 @@ function getUrgencyColors(urgency: UrgencyLevel) {
 
 export const PaymentCountdownTimer = React.memo(function PaymentCountdownTimer({
   createdAt,
+  expiresAt,
   expiryHours = 24,
   onExpired,
   variant = 'default',
 }: PaymentCountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(() =>
-    calculateTimeLeft(createdAt, expiryHours),
+    calculateTimeLeft(createdAt, expiryHours, expiresAt),
   );
 
   const updateTimer = useCallback(() => {
-    const newTimeLeft = calculateTimeLeft(createdAt, expiryHours);
+    const newTimeLeft = calculateTimeLeft(createdAt, expiryHours, expiresAt);
     setTimeLeft(newTimeLeft);
 
     if (newTimeLeft.isExpired && onExpired) {
       onExpired();
     }
-  }, [createdAt, expiryHours, onExpired]);
+  }, [createdAt, expiryHours, expiresAt, onExpired]);
 
   useEffect(() => {
     updateTimer();
