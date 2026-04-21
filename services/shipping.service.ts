@@ -11,6 +11,8 @@ import type {
   TrackingResult,
 } from '@/types/shipping';
 
+export type { TrackingResult } from '@/types/shipping';
+
 interface BiteshipProxyResponse<T> {
   data?: T;
   pricing?: T;

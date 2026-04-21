@@ -47,7 +47,8 @@ export default function OrderDetail() {
     typeof orderIdParam === 'string' && orderIdParam.trim() ? orderIdParam : undefined;
   const theme = useTheme();
   const router = useRouter();
-  const { order, status, isLoading, isRefreshing, error, refresh } = useOrderDetail(orderId);
+  const { order, status, isLoading, isRefreshing, isConfirming, error, refresh, confirmReceived } =
+    useOrderDetail(orderId);
   const [isPaymentExpired, setIsPaymentExpired] = useState(false);
   const refreshTintColor = getThemeColor(theme, 'primary');
   const shouldShowTracking = shouldShowTrackingSection(order?.status ?? '');
@@ -66,6 +67,10 @@ export default function OrderDetail() {
       params: { orderId: order.id },
     });
   }, [order?.id, router]);
+
+  const handleConfirmReceived = useCallback(() => {
+    void confirmReceived();
+  }, [confirmReceived]);
 
   if (!orderId) {
     return (
@@ -192,10 +197,12 @@ export default function OrderDetail() {
   const isBackendPaymentExpired = isBackendExpired(order.expired_at);
   const isOrderExpired = isBackendPaymentExpired || isPaymentExpired;
   const canResumePayment = !isOrderExpired && !!paymentUrl;
+  const isAwaitingCustomerConfirmation = order.customer_completion_stage === 'awaiting_customer';
   const primaryStatusDisplay = getOrderPrimaryStatusDisplay(
     order.status,
     order.payment_status,
     order.expired_at,
+    order.customer_completion_stage,
   );
   const secondaryStatusDisplay = getOrderSecondaryStatusDisplay(order.status, order.payment_status);
 
@@ -223,7 +230,12 @@ export default function OrderDetail() {
           />
         }
         contentContainerStyle={{
-          paddingBottom: order.payment_status === 'pending' || shouldShowTracking ? 100 : 24,
+          paddingBottom:
+            order.payment_status === 'pending' ||
+            shouldShowTracking ||
+            isAwaitingCustomerConfirmation
+              ? 100
+              : 24,
         }}>
         <YStack paddingVertical="$4" gap="$3">
           <OrderSectionCard>
@@ -241,6 +253,7 @@ export default function OrderDetail() {
                   {order.payment_status === 'pending' && !isBackendPaymentExpired && (
                     <PaymentCountdownTimer
                       createdAt={order.created_at}
+                      expiresAt={order.expired_at}
                       onExpired={handlePaymentExpired}
                       variant="compact"
                     />
@@ -468,6 +481,19 @@ export default function OrderDetail() {
           aria-describedby="Tombol untuk membuka layar tracking pengiriman"
         />
       )}
+
+      {order.payment_status !== 'pending' &&
+        !shouldShowTracking &&
+        isAwaitingCustomerConfirmation && (
+          <BottomActionBar
+            buttonTitle="Pesanan Diterima"
+            onPress={handleConfirmReceived}
+            isLoading={isConfirming}
+            disabled={isConfirming}
+            aria-label="Konfirmasi pesanan diterima"
+            aria-describedby="Tombol untuk mengonfirmasi bahwa pesanan sudah diterima"
+          />
+        )}
     </YStack>
   );
 }

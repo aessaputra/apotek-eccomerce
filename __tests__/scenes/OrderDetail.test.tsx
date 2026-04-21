@@ -43,6 +43,12 @@ const mockOrder = {
   id: 'test-order-id',
   created_at: '2024-01-15T10:30:00Z',
   status: 'processing',
+  delivered_at: null,
+  complaint_window_expires_at: null,
+  customer_completed_at: null,
+  customer_completion_source: null,
+  customer_completion_stage: 'not_applicable',
+  customer_order_bucket: 'packing',
   payment_status: 'settlement',
   gross_amount: 150000,
   total_amount: 150000,
@@ -330,6 +336,34 @@ describe('<OrderDetail />', () => {
     expect(mockBottomActionBar).toHaveBeenCalledWith(
       expect.objectContaining({
         buttonTitle: 'Lacak Pengiriman',
+        disabled: false,
+      }),
+    );
+  });
+
+  test('renders confirm received bottom action for delivered orders awaiting confirmation', () => {
+    const confirmReceived = jest.fn();
+
+    mockUseOrderDetail.mockReturnValue({
+      order: {
+        ...mockOrder,
+        status: 'delivered',
+        customer_completion_stage: 'awaiting_customer',
+      },
+      status: 'success',
+      isLoading: false,
+      isRefreshing: false,
+      isConfirming: false,
+      error: null,
+      confirmReceived,
+      refresh: jest.fn(),
+    });
+
+    render(<OrderDetail />);
+
+    expect(mockBottomActionBar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buttonTitle: 'Pesanan Diterima',
         disabled: false,
       }),
     );

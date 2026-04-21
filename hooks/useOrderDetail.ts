@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { useFocusEffect } from 'expo-router';
-import { getOrderById, type OrderWithItems } from '@/services/order.service';
+import { confirmOrderReceived, getOrderById, type OrderWithItems } from '@/services/order.service';
+import { appActions } from '@/slices/app.slice';
+import type { Dispatch } from '@/utils/store';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 
 export type OrderDetailStatus =
@@ -20,15 +23,19 @@ export interface UseOrderDetailState {
 export interface UseOrderDetailReturn extends UseOrderDetailState {
   isLoading: boolean;
   isRefreshing: boolean;
+  isConfirming: boolean;
+  confirmReceived: () => Promise<boolean>;
   refresh: () => Promise<void>;
 }
 
 export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
+  const dispatch = useDispatch<Dispatch>();
   const [state, setState] = useState<UseOrderDetailState>({
     order: null,
     status: orderId ? 'loading' : 'idle',
     error: null,
   });
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const activeRequestIdRef = useRef(0);
   const isMountedRef = useRef(true);
@@ -164,10 +171,57 @@ export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
   const isLoading = state.status === 'loading';
   const isRefreshing = state.status === 'refreshing';
 
+  const confirmReceived = useCallback(async (): Promise<boolean> => {
+    if (!orderId || isConfirming) {
+      return false;
+    }
+
+    setIsConfirming(true);
+
+    try {
+      const { error } = await confirmOrderReceived(orderId);
+
+      if (error) {
+        const classifiedError = classifyError(error);
+        const errorMessage = translateErrorMessage(classifiedError);
+
+        setState(prev => ({
+          ...prev,
+          error: errorMessage,
+        }));
+
+        return false;
+      }
+
+      const userId = state.order?.user_id;
+      if (userId) {
+        dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey: 'shipped', userId }));
+        dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey: 'completed', userId }));
+      }
+
+      await fetchOrder('refresh');
+      return true;
+    } catch (err) {
+      const classifiedError = classifyError(err);
+      const errorMessage = translateErrorMessage(classifiedError);
+
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
+      }));
+
+      return false;
+    } finally {
+      setIsConfirming(false);
+    }
+  }, [dispatch, fetchOrder, isConfirming, orderId, state.order?.user_id]);
+
   return {
     ...state,
     isLoading,
     isRefreshing,
+    isConfirming,
+    confirmReceived,
     refresh: () => fetchOrder('refresh'),
   };
 }
