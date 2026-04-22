@@ -63,8 +63,11 @@ describe('useCartQuantity', () => {
       deferred.promise as ReturnType<typeof updateCartItemQuantity>,
     );
 
-    const { result, rerender } = renderHook(
-      ({ quantity }) =>
+    const { result, rerender } = renderHook<
+      ReturnType<typeof useCartQuantity>,
+      { quantity: number }
+    >(
+      ({ quantity }: { quantity: number }) =>
         useCartQuantity({
           items: [createItem(quantity)],
           snapshot: createSnapshot(quantity),

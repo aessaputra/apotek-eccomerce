@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigation, useRouter } from 'expo-router';
-import { FlatList } from 'react-native';
+import { useRouter } from 'expo-router';
+import { FlatList, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AnimatePresence, Text, XStack, YStack, useTheme } from 'tamagui';
+import { Text, XStack, YStack, useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 import { CartIcon } from '@/components/icons';
 import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
@@ -26,12 +26,25 @@ import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { getRecoverySuggestion } from '@/scenes/cart/cart.errors';
 import { CartCheckoutDetails } from '@/scenes/cart/CartCheckoutDetails';
-import { CartInitialLoadingOverlay, CartStatusBanners } from '@/scenes/cart/CartFeedback';
+import { CartStatusBanners } from '@/scenes/cart/CartFeedback';
 import { AddressSelectionSheet, ShippingOptionsSheet } from '@/scenes/cart/CartSheets';
-import { useCartHeaderVisibility } from '@/scenes/cart/useCartHeaderVisibility';
+import { CartLoadingSkeleton } from '@/components/elements/CartLoadingSkeleton/CartLoadingSkeleton';
+
+function getCartFeedbackMessages({
+  shippingError,
+  addressError,
+}: {
+  shippingError: AppError | null;
+  addressError: AppError | null;
+}) {
+  return {
+    shippingErrorMessage: shippingError ? translateErrorMessage(shippingError) : null,
+    addressErrorMessage: addressError ? translateErrorMessage(addressError) : null,
+    shippingRecoverySuggestion: shippingError ? getRecoverySuggestion(shippingError) : null,
+  };
+}
 
 export default function Cart() {
-  const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -62,8 +75,9 @@ export default function Cart() {
       padding: 16,
       gap: 12,
       paddingBottom: BOTTOM_BAR_HEIGHT + insets.bottom + 16,
+      flexGrow: items.length === 0 ? 1 : 0,
     }),
-    [insets.bottom],
+    [insets.bottom, items.length],
   );
 
   const onOfflineAction = useCallback(
@@ -195,29 +209,10 @@ export default function Cart() {
     return formatAddress(selectedAddress);
   }, [selectedAddress]);
 
-  const shippingErrorMessage = useMemo(() => {
-    if (!shippingError) {
-      return null;
-    }
-
-    return translateErrorMessage(shippingError);
-  }, [shippingError]);
-
-  const addressErrorMessage = useMemo(() => {
-    if (!addressError) {
-      return null;
-    }
-
-    return translateErrorMessage(addressError);
-  }, [addressError]);
-
-  const shippingRecoverySuggestion = useMemo(() => {
-    if (!shippingError) {
-      return null;
-    }
-
-    return getRecoverySuggestion(shippingError);
-  }, [shippingError]);
+  const { shippingErrorMessage, addressErrorMessage, shippingRecoverySuggestion } = useMemo(
+    () => getCartFeedbackMessages({ shippingError, addressError }),
+    [addressError, shippingError],
+  );
 
   const handleWrappedStartCheckout = useCallback(async () => {
     setShippingError(null);
@@ -245,8 +240,118 @@ export default function Cart() {
   );
 
   const showInitialLoadingOverlay = isLoading && items.length === 0;
+  const shouldShowEmptyCartState = items.length === 0 && !error && !isOffline;
+  const hasCartItems = items.length > 0;
+  const shouldShowCheckoutBar = !isLoading && hasCartItems;
+  const checkoutDisabled = (!selectedShippingOption && !activeOrderId) || isOffline;
 
-  useCartHeaderVisibility(navigation, showInitialLoadingOverlay);
+  const handleDismissCartActionError = useCallback(() => {
+    setCartActionError(null);
+  }, []);
+
+  const handleBrowseProducts = useCallback(() => {
+    router.push('/home');
+  }, [router]);
+
+  const handleCancelPendingCheckout = useCallback(() => {
+    void clearCheckoutSession();
+  }, [clearCheckoutSession]);
+
+  const handleContinuePendingCheckout = useCallback(() => {
+    resetPaymentError();
+    void handleWrappedStartCheckout();
+  }, [handleWrappedStartCheckout, resetPaymentError]);
+
+  const handleRetryShipping = useCallback(() => {
+    void handleCalculateShipping();
+  }, [handleCalculateShipping]);
+
+  const listHeaderComponent = useMemo(
+    () => (
+      <CartStatusBanners
+        isOffline={isOffline}
+        hasCachedData={items.length > 0}
+        offlineActionMessage={offlineActionMessage}
+        fetchError={error}
+        onRetryFetch={handleCartRefresh}
+        cartActionError={cartActionError}
+        onDismissCartActionError={handleDismissCartActionError}
+      />
+    ),
+    [
+      cartActionError,
+      error,
+      handleCartRefresh,
+      handleDismissCartActionError,
+      isOffline,
+      items.length,
+      offlineActionMessage,
+    ],
+  );
+
+  const listEmptyComponent = useMemo(() => {
+    if (!shouldShowEmptyCartState) {
+      return null;
+    }
+
+    return (
+      <YStack marginTop="$1">
+        <EmptyCartState onBrowse={handleBrowseProducts} />
+      </YStack>
+    );
+  }, [handleBrowseProducts, shouldShowEmptyCartState]);
+
+  const listFooterComponent = useMemo(() => {
+    if (items.length === 0 || isLoading) {
+      return null;
+    }
+
+    return (
+      <CartCheckoutDetails
+        loadingSelectedAddress={loadingSelectedAddress}
+        selectedAddress={selectedAddress}
+        selectedAddressFullText={selectedAddressFullText}
+        onOpenAddressSheet={handleOpenAddressSheet}
+        addressErrorMessage={addressErrorMessage}
+        loadingRates={loadingRates}
+        selectedShippingOption={selectedShippingOption}
+        isOffline={isOffline}
+        onOpenShippingSheet={handleOpenShippingSheet}
+        snapshot={snapshot}
+        activeOrderId={activeOrderId}
+        paymentError={paymentError}
+        startingCheckout={startingCheckout}
+        onCancelPendingCheckout={handleCancelPendingCheckout}
+        onContinuePendingCheckout={handleContinuePendingCheckout}
+        shippingOptionsCount={shippingOptions.length}
+        shippingErrorMessage={shippingErrorMessage}
+        shippingRecoverySuggestion={shippingRecoverySuggestion}
+        onRetryShipping={handleRetryShipping}
+      />
+    );
+  }, [
+    activeOrderId,
+    addressErrorMessage,
+    handleCancelPendingCheckout,
+    handleContinuePendingCheckout,
+    handleOpenAddressSheet,
+    handleOpenShippingSheet,
+    handleRetryShipping,
+    isLoading,
+    isOffline,
+    items.length,
+    loadingRates,
+    loadingSelectedAddress,
+    paymentError,
+    selectedAddress,
+    selectedAddressFullText,
+    selectedShippingOption,
+    shippingErrorMessage,
+    shippingOptions.length,
+    shippingRecoverySuggestion,
+    snapshot,
+    startingCheckout,
+  ]);
 
   if (!user) {
     return (
@@ -265,123 +370,76 @@ export default function Cart() {
   }
 
   return (
-    <YStack flex={1} backgroundColor="$background" position="relative">
-      <AnimatePresence initial={false}>
-        {showInitialLoadingOverlay ? (
-          <CartInitialLoadingOverlay />
-        ) : (
-          <YStack
-            key="cart-content"
-            flex={1}
-            animation="quick"
-            enterStyle={{ opacity: 0 }}
-            exitStyle={{ opacity: 0 }}
-            opacity={1}>
-            <FlatList
-              data={items}
-              renderItem={renderCartItem}
-              keyExtractor={item => item.id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={listContentContainerStyle}
-              ListHeaderComponent={
-                <CartStatusBanners
-                  isOffline={isOffline}
-                  hasCachedData={items.length > 0}
-                  offlineActionMessage={offlineActionMessage}
-                  fetchError={error}
-                  onRetryFetch={handleCartRefresh}
-                  cartActionError={cartActionError}
-                  onDismissCartActionError={() => setCartActionError(null)}
-                />
-              }
-              ListEmptyComponent={
-                <YStack marginTop="$1">
-                  <EmptyCartState onBrowse={() => router.push('/home')} />
-                </YStack>
-              }
-              ListFooterComponent={
-                items.length > 0 && !isLoading ? (
-                  <CartCheckoutDetails
-                    loadingSelectedAddress={loadingSelectedAddress}
-                    selectedAddress={selectedAddress}
-                    selectedAddressFullText={selectedAddressFullText}
-                    onOpenAddressSheet={handleOpenAddressSheet}
-                    addressErrorMessage={addressErrorMessage}
-                    loadingRates={loadingRates}
-                    selectedShippingOption={selectedShippingOption}
-                    isOffline={isOffline}
-                    onOpenShippingSheet={handleOpenShippingSheet}
-                    snapshot={snapshot}
-                    activeOrderId={activeOrderId}
-                    paymentError={paymentError}
-                    startingCheckout={startingCheckout}
-                    onCancelPendingCheckout={() => {
-                      void clearCheckoutSession();
-                    }}
-                    onContinuePendingCheckout={() => {
-                      resetPaymentError();
-                      void handleWrappedStartCheckout();
-                    }}
-                    shippingOptionsCount={shippingOptions.length}
-                    shippingErrorMessage={shippingErrorMessage}
-                    shippingRecoverySuggestion={shippingRecoverySuggestion}
-                    onRetryShipping={() => {
-                      void handleCalculateShipping();
-                    }}
-                  />
-                ) : null
-              }
-              refreshing={isOffline ? false : isRefreshing}
-              onRefresh={isOffline ? undefined : handleCartRefresh}
-            />
+    <YStack flex={1} backgroundColor="$background">
+      {showInitialLoadingOverlay ? (
+        <CartLoadingSkeleton />
+      ) : (
+        <YStack flex={1}>
+          <FlatList
+            data={items}
+            renderItem={renderCartItem}
+            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            updateCellsBatchingPeriod={50}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
+            contentContainerStyle={listContentContainerStyle}
+            ListHeaderComponent={listHeaderComponent}
+            ListEmptyComponent={listEmptyComponent}
+            ListFooterComponent={listFooterComponent}
+            refreshing={isOffline ? false : isRefreshing}
+            onRefresh={isOffline ? undefined : handleCartRefresh}
+          />
 
-            <ShippingOptionsSheet
-              open={shippingSheetOpen}
-              onOpenChange={setShippingSheetOpen}
-              shippingOptions={shippingOptions}
-              selectedShippingKey={selectedShippingKey}
-              onSelectShippingKey={handleSelectShippingKey}
-              onConfirm={() => setShippingSheetOpen(false)}
-              isOffline={isOffline}
-            />
+          <ShippingOptionsSheet
+            open={shippingSheetOpen}
+            onOpenChange={setShippingSheetOpen}
+            shippingOptions={shippingOptions}
+            selectedShippingKey={selectedShippingKey}
+            onSelectShippingKey={handleSelectShippingKey}
+            onConfirm={() => setShippingSheetOpen(false)}
+            isOffline={isOffline}
+          />
 
-            <AddressSelectionSheet
-              open={addressSheetOpen}
-              onOpenChange={setAddressSheetOpen}
-              loadingAddresses={loadingAddresses}
-              availableAddresses={availableAddresses}
-              selectedAddressId={selectedAddressId}
-              onSelectAddress={handleSelectAddress}
-              onEditAddress={handleEditAddress}
-            />
+          <AddressSelectionSheet
+            open={addressSheetOpen}
+            onOpenChange={setAddressSheetOpen}
+            loadingAddresses={loadingAddresses}
+            availableAddresses={availableAddresses}
+            selectedAddressId={selectedAddressId}
+            onSelectAddress={handleSelectAddress}
+            onEditAddress={handleEditAddress}
+          />
 
-            {!isLoading && items.length > 0 ? (
-              <>
-                {isOffline ? (
-                  <XStack
-                    position="absolute"
-                    left={16}
-                    right={16}
-                    bottom={BOTTOM_BAR_HEIGHT + insets.bottom + 8}
-                    justifyContent="center"
-                    pointerEvents="none">
-                    <Text fontSize="$2" color="$warning" fontWeight="600">
-                      Checkout tidak tersedia offline
-                    </Text>
-                  </XStack>
-                ) : null}
-                <StickyBottomBar
-                  grandTotal={snapshot.packageValue + (selectedShippingOption?.price ?? 0)}
-                  isLoading={startingCheckout}
-                  disabled={(!selectedShippingOption && !activeOrderId) || isOffline}
-                  onConfirm={handleWrappedStartCheckout}
-                  confirmText={activeOrderId ? 'Lanjutkan Pembayaran' : 'Konfirmasi'}
-                />
-              </>
-            ) : null}
-          </YStack>
-        )}
-      </AnimatePresence>
+          {shouldShowCheckoutBar ? (
+            <>
+              {isOffline ? (
+                <XStack
+                  position="absolute"
+                  left={16}
+                  right={16}
+                  bottom={BOTTOM_BAR_HEIGHT + insets.bottom + 8}
+                  justifyContent="center"
+                  pointerEvents="none">
+                  <Text fontSize="$2" color="$warning" fontWeight="600">
+                    Checkout tidak tersedia offline
+                  </Text>
+                </XStack>
+              ) : null}
+              <StickyBottomBar
+                grandTotal={snapshot.packageValue + (selectedShippingOption?.price ?? 0)}
+                isLoading={startingCheckout}
+                disabled={checkoutDisabled}
+                onConfirm={handleWrappedStartCheckout}
+                confirmText={activeOrderId ? 'Lanjutkan Pembayaran' : 'Konfirmasi'}
+              />
+            </>
+          ) : null}
+        </YStack>
+      )}
     </YStack>
   );
 }

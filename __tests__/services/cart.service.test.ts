@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { clearDedupedRequests } from '@/utils/requestDeduplication';
 import {
   addProductToCart,
+  getCartItemWithProduct,
   getCartItemsOptimized,
   getCartSnapshot,
+  getCartWithItems,
   getOrCreateCart,
   updateCartItemQuantity,
 } from '@/services/cart.service';
@@ -13,7 +15,7 @@ interface QueryResponse {
   error?: Error | null;
 }
 
-function createRow(index: number, quantity: number, price: number, weight: number) {
+function createRow(index: number, quantity: number, price: number, weight: number | null) {
   return {
     id: `cart-item-${index}`,
     cart_id: 'cart-1',
@@ -107,7 +109,7 @@ describe('cart.service snapshot behavior', () => {
 
   it('concurrent getOrCreateCart calls - aborting first caller does not fail second caller', async () => {
     const deferredLookup = createDeferred<{
-      data: Array<{ id: string; user_id: string }>;
+      data: { id: string; user_id: string }[];
       error: null;
     }>();
 
@@ -320,6 +322,126 @@ describe('cart.service snapshot behavior', () => {
     expect(updateQuery.select).toHaveBeenCalledWith('id, quantity, product_id, cart_id');
   });
 
+  it('loads cart items through a single joined cart_items query', async () => {
+    const cartsQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      limit: jest.fn(async () => ({ data: [{ id: 'cart-1', user_id: 'user-1' }], error: null })),
+    };
+    const joinedItemsQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      abortSignal: jest.fn().mockReturnThis(),
+      order: jest.fn(async () => ({ data: [createRow(1, 2, 10000, 200)], error: null })),
+    };
+
+    mockFrom.mockImplementation((table: unknown) => {
+      if (table === 'carts') {
+        return cartsQuery;
+      }
+
+      if (table === 'cart_items') {
+        return joinedItemsQuery;
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const result = await getCartWithItems('user-1');
+
+    expect(result.error).toBeNull();
+    expect(result.data).toEqual({
+      cartId: 'cart-1',
+      items: [
+        {
+          id: 'cart-item-1',
+          cart_id: 'cart-1',
+          product_id: 'product-1',
+          quantity: 2,
+          created_at: expect.any(String),
+          product: {
+            id: 'product-1',
+            name: 'Produk 1',
+            price: 10000,
+            stock: 10,
+            weight: 200,
+            slug: 'produk-1',
+            is_active: true,
+          },
+          images: [{ id: 'image-1', url: 'https://cdn.example.com/1.jpg', sort_order: 0 }],
+        },
+      ],
+      snapshot: {
+        itemCount: 2,
+        estimatedWeightGrams: 400,
+        packageValue: 20000,
+      },
+    });
+    expect(joinedItemsQuery.select).toHaveBeenCalledTimes(1);
+    expect(mockFrom).toHaveBeenCalledTimes(2);
+  });
+
+  it('loads one cart item with joined product and image data', async () => {
+    const joinedItemQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      abortSignal: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn(async () => ({ data: createRow(1, 2, 10000, 200), error: null })),
+    };
+
+    mockFrom.mockImplementation((table: unknown) => {
+      if (table === 'cart_items') {
+        return joinedItemQuery;
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const result = await getCartItemWithProduct('cart-item-1');
+
+    expect(result.error).toBeNull();
+    expect(result.data).toEqual({
+      id: 'cart-item-1',
+      cart_id: 'cart-1',
+      product_id: 'product-1',
+      quantity: 2,
+      created_at: expect.any(String),
+      product: {
+        id: 'product-1',
+        name: 'Produk 1',
+        price: 10000,
+        stock: 10,
+        weight: 200,
+        slug: 'produk-1',
+        is_active: true,
+      },
+      images: [{ id: 'image-1', url: 'https://cdn.example.com/1.jpg', sort_order: 0 }],
+    });
+    expect(joinedItemQuery.select).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the shared default item weight when product weight is missing', async () => {
+    const joinedItemQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      abortSignal: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn(async () => ({ data: createRow(1, 2, 10000, null), error: null })),
+    };
+
+    mockFrom.mockImplementation((table: unknown) => {
+      if (table === 'cart_items') {
+        return joinedItemQuery;
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const result = await getCartItemWithProduct('cart-item-1');
+
+    expect(result.error).toBeNull();
+    expect(result.data?.product.weight).toBe(200);
+  });
+
   it('adds a product through the shared cart service instead of home-specific cart logic', async () => {
     const cartsQuery = {
       select: jest.fn().mockReturnThis(),
@@ -333,7 +455,7 @@ describe('cart.service snapshot behavior', () => {
       insert: jest.fn(async () => ({ error: null })),
     };
 
-    mockFrom.mockImplementation((table: string) => {
+    mockFrom.mockImplementation((table: unknown) => {
       if (table === 'carts') {
         return cartsQuery;
       }
@@ -370,7 +492,7 @@ describe('cart.service snapshot behavior', () => {
     const updateEq = jest.fn(async () => ({ error: null }));
     cartItemsQuery.update.mockReturnValue({ eq: updateEq });
 
-    mockFrom.mockImplementation((table: string) => {
+    mockFrom.mockImplementation((table: unknown) => {
       if (table === 'carts') {
         return cartsQuery;
       }

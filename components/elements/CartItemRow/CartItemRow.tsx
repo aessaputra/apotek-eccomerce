@@ -59,11 +59,33 @@ function DeleteAction({
   );
 }
 
+function areCartItemRowPropsEqual(prevProps: CartItemRowProps, nextProps: CartItemRowProps) {
+  if (
+    prevProps.onQuantityChange !== nextProps.onQuantityChange ||
+    prevProps.onRemove !== nextProps.onRemove ||
+    prevProps.isUpdating !== nextProps.isUpdating
+  ) {
+    return false;
+  }
+
+  const previousItem = prevProps.item;
+  const nextItem = nextProps.item;
+
+  return (
+    previousItem.id === nextItem.id &&
+    previousItem.quantity === nextItem.quantity &&
+    previousItem.product.name === nextItem.product.name &&
+    previousItem.product.price === nextItem.product.price &&
+    previousItem.product.stock === nextItem.product.stock &&
+    previousItem.product.weight === nextItem.product.weight &&
+    previousItem.images[0]?.url === nextItem.images[0]?.url
+  );
+}
+
 export const CartItemRow = memo(function CartItemRow({
   item,
   onQuantityChange,
   onRemove,
-  isUpdating = false,
 }: CartItemRowProps) {
   const imageUrl = item.images?.[0]?.url;
   const unitPrice = item.product.price;
@@ -86,13 +108,25 @@ export const CartItemRow = memo(function CartItemRow({
     setShowDeleteDialog(true);
   }, []);
 
+  const dangerColor = getThemeColor(theme, 'danger');
+  const onDangerColor = getThemeColor(theme, 'onDanger');
+
+  const renderRightActions = useCallback(
+    (progress: SharedValue<number>) => (
+      <DeleteAction
+        progress={progress}
+        onDelete={handleSwipeDelete}
+        backgroundColor={dangerColor}
+        iconColor={onDangerColor}
+      />
+    ),
+    [dangerColor, handleSwipeDelete, onDangerColor],
+  );
+
   const handleConfirmDelete = useCallback(() => {
     onRemove(item.id);
     setShowDeleteDialog(false);
   }, [item.id, onRemove]);
-
-  const dangerColor = getThemeColor(theme, 'danger');
-  const onDangerColor = getThemeColor(theme, 'onDanger');
 
   return (
     <>
@@ -101,14 +135,7 @@ export const CartItemRow = memo(function CartItemRow({
         overshootFriction={8}
         rightThreshold={40}
         overshootRight={false}
-        renderRightActions={progress => (
-          <DeleteAction
-            progress={progress}
-            onDelete={handleSwipeDelete}
-            backgroundColor={dangerColor}
-            iconColor={onDangerColor}
-          />
-        )}
+        renderRightActions={renderRightActions}
         containerStyle={{
           backgroundColor: dangerColor,
           borderRadius: 12, // matches $3
@@ -183,6 +210,6 @@ export const CartItemRow = memo(function CartItemRow({
       />
     </>
   );
-});
+}, areCartItemRowPropsEqual);
 
 export default CartItemRow;

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
+import { fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
+import Cart from '@/scenes/cart/Cart';
 import type { CartItemWithProduct } from '@/types/cart';
 import type { User } from '@/types';
 
 const mockPush = jest.fn();
-const mockSetOptions = jest.fn();
 const mockRemoveCartItem =
   jest.fn<(...args: unknown[]) => Promise<{ data: boolean; error: null }>>();
 const mockGetAddresses = jest.fn<(...args: unknown[]) => Promise<{ data: never[]; error: null }>>();
@@ -88,7 +88,6 @@ const mockCartCheckoutHookState = {
 jest.mock('expo-router', () => ({
   __esModule: true,
   useRouter: () => ({ push: mockPush }),
-  useNavigation: () => ({ setOptions: mockSetOptions }),
   useFocusEffect: (callback: () => void | (() => void)) => {
     setTimeout(() => {
       callback();
@@ -293,8 +292,6 @@ jest.mock('@/components/icons', () => ({
   },
 }));
 
-const Cart = require('@/scenes/cart/Cart').default as React.ComponentType;
-
 function createItem(index: number): CartItemWithProduct {
   return {
     id: `cart-item-${index}`,
@@ -318,7 +315,6 @@ function createItem(index: number): CartItemWithProduct {
 describe('<Cart />', () => {
   beforeEach(() => {
     mockPush.mockClear();
-    mockSetOptions.mockClear();
     mockRemoveCartItem.mockReset();
     mockGetAddresses.mockReset();
     mockCreateCheckoutOrder.mockReset();
@@ -373,6 +369,42 @@ describe('<Cart />', () => {
     expect(screen.getByText('Gagal sinkronisasi keranjang')).not.toBeNull();
   });
 
+  it('does not show the empty-cart state when fetch fails with no cart items', () => {
+    mockCartHookState.items = [];
+    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartHookState.error = 'Gagal sinkronisasi keranjang';
+    mockCartQuantityHookState.items = [];
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+
+    render(<Cart />);
+
+    expect(screen.getByText('Gagal memuat keranjang.')).not.toBeNull();
+    expect(screen.getByText('Gagal sinkronisasi keranjang')).not.toBeNull();
+    expect(screen.queryByText('Empty Cart State')).toBeNull();
+  });
+
+  it('does not show the empty-cart state while offline with no cached cart data', () => {
+    mockCartHookState.items = [];
+    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartQuantityHookState.items = [];
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+    mockNetworkState = {
+      status: 'offline',
+      isOnline: false,
+      isOffline: true,
+      type: 'unknown',
+      isExpensive: false,
+    };
+
+    render(<Cart />);
+
+    expect(screen.getByText('Koneksi internet terputus')).not.toBeNull();
+    expect(
+      screen.getByText('Koneksi internet terputus. Data keranjang tidak tersedia.'),
+    ).not.toBeNull();
+    expect(screen.queryByText('Empty Cart State')).toBeNull();
+  });
+
   it('routes empty-cart browse action directly to /home', () => {
     mockCartHookState.items = [];
     mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
@@ -386,7 +418,7 @@ describe('<Cart />', () => {
     expect(mockPush).toHaveBeenCalledWith('/home');
   });
 
-  it('shows a full-screen spinner during the initial cart load', () => {
+  it('shows the skeleton during the initial cart load', () => {
     mockCartHookState.items = [];
     mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
     mockCartHookState.isLoading = true;
@@ -395,43 +427,8 @@ describe('<Cart />', () => {
 
     render(<Cart />);
 
-    expect(screen.getByLabelText('Memuat keranjang')).not.toBeNull();
+    expect(screen.getByText('Cart Loading Skeleton')).not.toBeNull();
     expect(screen.queryByText('Empty Cart State')).toBeNull();
-    expect(screen.queryByText('Cart Loading Skeleton')).toBeNull();
-  });
-
-  it('hides the navigation header during the first cart load', () => {
-    mockCartHookState.items = [];
-    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
-    mockCartHookState.isLoading = true;
-    mockCartQuantityHookState.items = [];
-    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
-
-    render(<Cart />);
-
-    expect(mockSetOptions).toHaveBeenCalledWith({ headerShown: false });
-  });
-
-  it('shows the navigation header again after the initial load completes', () => {
-    mockCartHookState.items = [];
-    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
-    mockCartHookState.isLoading = true;
-    mockCartQuantityHookState.items = [];
-    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
-
-    const view = render(<Cart />);
-
-    mockCartHookState.items = [createItem(1)];
-    mockCartHookState.snapshot = { itemCount: 1, estimatedWeightGrams: 100, packageValue: 10001 };
-    mockCartHookState.isLoading = false;
-    mockCartQuantityHookState.items = mockCartHookState.items;
-    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
-
-    view.rerender(<Cart />);
-
-    expect(screen.getByText('Produk 1')).not.toBeNull();
-    expect(mockSetOptions).toHaveBeenNthCalledWith(1, { headerShown: false });
-    expect(mockSetOptions).toHaveBeenLastCalledWith({ headerShown: true });
   });
 
   it('does not show realtime synchronization text while the cart reconnects', () => {
@@ -443,7 +440,7 @@ describe('<Cart />', () => {
     expect(screen.queryByText('Menyambungkan sinkronisasi keranjang...')).toBeNull();
   });
 
-  it('keeps the overlay hidden while refreshing an existing cart', () => {
+  it('does not show the skeleton while refreshing an existing cart', () => {
     mockCartHookState.items = [createItem(1)];
     mockCartHookState.snapshot = { itemCount: 1, estimatedWeightGrams: 100, packageValue: 10001 };
     mockCartHookState.isLoading = true;
@@ -452,8 +449,26 @@ describe('<Cart />', () => {
 
     render(<Cart />);
 
-    expect(screen.queryByLabelText('Memuat keranjang')).toBeNull();
+    expect(screen.queryByText('Cart Loading Skeleton')).toBeNull();
     expect(screen.getByText('Produk 1')).not.toBeNull();
-    expect(mockSetOptions).toHaveBeenCalledWith({ headerShown: true });
+  });
+
+  it('silently refreshes the cart after successfully removing an item', async () => {
+    mockCartHookState.items = [createItem(1)];
+    mockCartHookState.snapshot = { itemCount: 1, estimatedWeightGrams: 100, packageValue: 10001 };
+    mockCartQuantityHookState.items = mockCartHookState.items;
+    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+
+    render(<Cart />);
+
+    fireEvent.press(screen.getByLabelText('remove cart-item-1'));
+
+    await waitFor(() => {
+      expect(mockRemoveCartItem).toHaveBeenCalledWith('cart-item-1');
+    });
+
+    await waitFor(() => {
+      expect(mockCartHookState.refresh).toHaveBeenCalledWith({ silent: true });
+    });
   });
 });

@@ -1,12 +1,7 @@
 import React from 'react';
 import { describe, expect, jest, test } from '@jest/globals';
 import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
-import {
-  CartInitialLoadingOverlay,
-  CartStatusBanners,
-  ErrorBanner,
-  OfflineBanner,
-} from '@/scenes/cart/CartFeedback';
+import { CartStatusBanners, ErrorBanner, OfflineBanner } from '@/scenes/cart/CartFeedback';
 
 describe('<CartFeedback />', () => {
   test('renders warning banner with retry affordance and fallback title', () => {
@@ -31,12 +26,6 @@ describe('<CartFeedback />', () => {
     expect(
       screen.getByText('Koneksi internet terputus. Data keranjang tidak tersedia.'),
     ).toBeTruthy();
-  });
-
-  test('renders loading overlay with accessible label', () => {
-    render(<CartInitialLoadingOverlay />);
-
-    expect(screen.getByLabelText('Memuat keranjang')).toBeTruthy();
   });
 
   test('composes offline, fetch, and cart action banners together', () => {

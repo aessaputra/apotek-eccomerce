@@ -1,9 +1,9 @@
 import { supabase } from '@/utils/supabase';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Tables } from '@/types/supabase';
-import { CART_PAGE_SIZE } from '@/constants/cart.constants';
+import { CART_PAGE_SIZE, DEFAULT_CART_ITEM_WEIGHT_GRAMS } from '@/constants/cart.constants';
 import { runDedupedRequest } from '@/utils/requestDeduplication';
-import { buildCartSnapshot } from '@/utils/cart';
+import { buildCartSnapshot, EMPTY_CART_SNAPSHOT } from '@/utils/cart';
 import type {
   CartRealtimeChange,
   CartRealtimeConnectionState,
@@ -24,8 +24,6 @@ type ProductImageRow = Tables<'product_images'>;
 export interface CartMutationResult {
   error: Error | null;
 }
-
-const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 const GET_OR_CREATE_CART_REQUEST_PREFIX = 'cart:get-or-create:';
 const UPDATE_CART_ITEM_REQUEST_PREFIX = 'cart:update-item:';
 
@@ -79,8 +77,35 @@ type CartSnapshotRow = Pick<CartItemRow, 'quantity'> & {
 
 type CartRealtimeRecord = Partial<Pick<CartItemRow, 'id' | 'cart_id' | 'product_id' | 'quantity'>>;
 
+interface NormalizedAddToCartInput {
+  userId: string;
+  productId: string;
+  quantityToAdd: number;
+}
+
+interface NormalizedCartListParams {
+  offset: number;
+  limit: number;
+  includeFullSnapshot: boolean;
+}
+
+interface CartItemPageResult {
+  rows: CartItemOptimizedRow[];
+  normalizedRows: CartItemOptimizedRow[];
+  hasMore: boolean;
+}
+
+interface CartPageSnapshotResult {
+  snapshot: CartSnapshot;
+  fullSnapshotPayloadBytes: number;
+}
+
 function toCartSnapshot(rows: CartSnapshotRow[]): CartSnapshot {
-  return buildCartSnapshot(rows, DEFAULT_ITEM_WEIGHT_GRAMS);
+  return buildCartSnapshot(rows, DEFAULT_CART_ITEM_WEIGHT_GRAMS);
+}
+
+function createEmptyCartSnapshot(): CartSnapshot {
+  return { ...EMPTY_CART_SNAPSHOT };
 }
 
 function isAbortError(error: unknown): error is Error {
@@ -115,6 +140,327 @@ function withAbortSignal<T>(query: T, signal?: AbortSignal): T {
 
 function getUpdateCartItemRequestKey(cartItemId: string): string {
   return `${UPDATE_CART_ITEM_REQUEST_PREFIX}${cartItemId}`;
+}
+
+function normalizeAddToCartInput(
+  userId: string,
+  productId: string,
+  quantityToAdd: number,
+): { data: NormalizedAddToCartInput | null; error: Error | null } {
+  const normalizedUserId = userId.trim();
+  const normalizedProductId = productId.trim();
+
+  if (!normalizedUserId || !normalizedProductId || quantityToAdd <= 0) {
+    return { data: null, error: new Error('Invalid cart mutation payload.') };
+  }
+
+  return {
+    data: {
+      userId: normalizedUserId,
+      productId: normalizedProductId,
+      quantityToAdd,
+    },
+    error: null,
+  };
+}
+
+function normalizeCartListParams(params: GetCartItemsParams): NormalizedCartListParams {
+  return {
+    offset: Math.max(params.offset ?? 0, 0),
+    limit: Math.max(params.limit ?? CART_PAGE_SIZE, 1),
+    includeFullSnapshot: params.includeFullSnapshot ?? false,
+  };
+}
+
+function toSortedCartImages(images: Pick<ProductImageRow, 'id' | 'url' | 'sort_order'>[] | null) {
+  return [...(images ?? [])]
+    .sort((imageA, imageB) => imageA.sort_order - imageB.sort_order)
+    .map(image => ({
+      id: image.id,
+      url: image.url,
+      sort_order: image.sort_order,
+    }));
+}
+
+function toCartItemWithProduct(row: CartItemOptimizedRow): CartItemWithProduct | null {
+  if (!row.product) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    cart_id: row.cart_id,
+    product_id: row.product_id,
+    quantity: row.quantity,
+    created_at: row.created_at,
+    product: {
+      id: row.product.id,
+      name: row.product.name,
+      price: row.product.price,
+      stock: row.product.stock,
+      weight: row.product.weight || DEFAULT_CART_ITEM_WEIGHT_GRAMS,
+      slug: row.product.slug,
+      is_active: row.product.is_active ?? false,
+    },
+    images: toSortedCartImages(row.product.product_images),
+  };
+}
+
+function toCartWithItems(
+  rows: CartItemOptimizedRow[],
+  cartId: string,
+): { cartId: string; items: CartItemWithProduct[]; snapshot: CartSnapshot } {
+  const items = rows.reduce((acc: CartItemWithProduct[], row) => {
+    const item = toCartItemWithProduct(row);
+
+    if (item) {
+      acc.push(item);
+    }
+
+    return acc;
+  }, []);
+
+  return {
+    cartId,
+    items,
+    snapshot:
+      items.length === 0
+        ? createEmptyCartSnapshot()
+        : buildCartSnapshot(items, DEFAULT_CART_ITEM_WEIGHT_GRAMS),
+  };
+}
+
+function toCartListItem(item: CartItemWithProduct): CartListItem {
+  return {
+    id: item.id,
+    product_id: item.product_id,
+    quantity: item.quantity,
+    created_at: item.created_at,
+    product: item.product,
+    images: item.images.map(image => ({
+      id: image.id,
+      url: image.url,
+    })),
+  };
+}
+
+function toCartListItems(rows: CartItemOptimizedRow[]): CartListItem[] {
+  return rows.reduce((items: CartListItem[], row) => {
+    const item = toCartItemWithProduct(row);
+
+    if (item) {
+      items.push(toCartListItem(item));
+    }
+
+    return items;
+  }, []);
+}
+
+async function fetchCartItemPage(
+  cartId: string,
+  offset: number,
+  limit: number,
+  signal?: AbortSignal,
+): Promise<{ data: CartItemPageResult | null; error: Error | null }> {
+  const requestedLimit = limit + 1;
+
+  let query = supabase
+    .from('cart_items')
+    .select(CART_ITEMS_SELECT)
+    .eq('cart_id', cartId)
+    .eq('product.is_active', true)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + requestedLimit - 1);
+
+  query = withAbortSignal(query, signal);
+
+  const { data, error } = await query;
+
+  if (error) {
+    return { data: null, error: error as unknown as Error };
+  }
+
+  const rows = ((data ?? []) as unknown as CartItemOptimizedRow[]) ?? [];
+  const hasMore = rows.length > limit;
+
+  return {
+    data: {
+      rows,
+      normalizedRows: hasMore ? rows.slice(0, limit) : rows,
+      hasMore,
+    },
+    error: null,
+  };
+}
+
+async function resolveCartPageSnapshot(
+  cartId: string,
+  normalizedRows: CartItemOptimizedRow[],
+  includeFullSnapshot: boolean,
+  signal?: AbortSignal,
+): Promise<{ data: CartPageSnapshotResult | null; error: Error | null }> {
+  if (!includeFullSnapshot) {
+    return {
+      data: {
+        snapshot: toCartSnapshot(normalizedRows),
+        fullSnapshotPayloadBytes: 0,
+      },
+      error: null,
+    };
+  }
+
+  const { snapshot, error, payloadBytes } = await getCartSnapshot(cartId, signal);
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return {
+    data: {
+      snapshot,
+      fullSnapshotPayloadBytes: payloadBytes,
+    },
+    error: null,
+  };
+}
+
+function buildCartListMetrics(
+  rows: CartItemOptimizedRow[],
+  fullSnapshotPayloadBytes: number,
+  startedAt: number,
+  offset: number,
+  limit: number,
+  hasMore: boolean,
+) {
+  const fetchedAt = Date.now();
+
+  return {
+    durationMs: fetchedAt - startedAt,
+    payloadBytes: JSON.stringify(rows).length + fullSnapshotPayloadBytes,
+    fetchedAt,
+    offset,
+    limit,
+    hasMore,
+  };
+}
+
+async function getExistingCartItem(
+  cartId: string,
+  productId: string,
+): Promise<{ data: { id: string; quantity: number } | null; error: Error | null }> {
+  const { data, error } = await supabase
+    .from('cart_items')
+    .select('id, quantity')
+    .eq('cart_id', cartId)
+    .eq('product_id', productId)
+    .maybeSingle();
+
+  if (error) {
+    return { data: null, error: error as unknown as Error };
+  }
+
+  return {
+    data: data ? { id: data.id, quantity: data.quantity } : null,
+    error: null,
+  };
+}
+
+async function incrementExistingCartItemQuantity(
+  cartItemId: string,
+  nextQuantity: number,
+): Promise<CartMutationResult> {
+  const { error } = await supabase
+    .from('cart_items')
+    .update({ quantity: nextQuantity })
+    .eq('id', cartItemId);
+
+  return {
+    error: error ? (error as unknown as Error) : null,
+  };
+}
+
+async function insertCartItem(
+  cartId: string,
+  productId: string,
+  quantity: number,
+): Promise<CartMutationResult> {
+  const { error } = await supabase.from('cart_items').insert({
+    cart_id: cartId,
+    product_id: productId,
+    quantity,
+  });
+
+  return {
+    error: error ? (error as unknown as Error) : null,
+  };
+}
+
+async function getCartItemRows(
+  cartId: string,
+  signal?: AbortSignal,
+): Promise<{ data: CartItemOptimizedRow[] | null; error: Error | null }> {
+  try {
+    let query = supabase
+      .from('cart_items')
+      .select(CART_ITEMS_SELECT)
+      .eq('cart_id', cartId)
+      .eq('product.is_active', true)
+      .order('created_at', { ascending: false });
+
+    query = withAbortSignal(query, signal);
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { data: null, error: error as unknown as Error };
+    }
+
+    return {
+      data: ((data ?? []) as unknown as CartItemOptimizedRow[]) ?? [],
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: isAbortError(error) ? error : new Error('Failed to load cart items.'),
+    };
+  }
+}
+
+async function getCartItemRow(
+  cartItemId: string,
+  signal?: AbortSignal,
+): Promise<{ data: CartItemOptimizedRow | null; error: Error | null }> {
+  try {
+    let query = supabase
+      .from('cart_items')
+      .select(CART_ITEMS_SELECT)
+      .eq('id', cartItemId)
+      .eq('product.is_active', true)
+      .maybeSingle();
+
+    query = withAbortSignal(query, signal);
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { data: null, error: error as unknown as Error };
+    }
+
+    if (!data) {
+      return { data: null, error: new Error('Cart item not found.') };
+    }
+
+    return {
+      data: data as unknown as CartItemOptimizedRow,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: isAbortError(error) ? error : new Error('Failed to load cart item.'),
+    };
+  }
 }
 
 function toCartRealtimeItem(
@@ -191,55 +537,40 @@ export async function addProductToCart(
   productId: string,
   quantityToAdd: number = 1,
 ): Promise<CartMutationResult> {
-  const normalizedUserId = userId.trim();
-  const normalizedProductId = productId.trim();
+  const { data: normalizedInput, error: inputError } = normalizeAddToCartInput(
+    userId,
+    productId,
+    quantityToAdd,
+  );
 
-  if (!normalizedUserId || !normalizedProductId || quantityToAdd <= 0) {
-    return { error: new Error('Invalid cart mutation payload.') };
+  if (inputError || !normalizedInput) {
+    return { error: inputError ?? new Error('Invalid cart mutation payload.') };
   }
 
   try {
-    const { data: cart, error: cartError } = await getOrCreateCart(normalizedUserId);
+    const { data: cart, error: cartError } = await getOrCreateCart(normalizedInput.userId);
 
     if (cartError || !cart) {
       return { error: cartError ?? new Error('Unable to initialize cart.') };
     }
 
-    const { data: existingItem, error: existingItemError } = await supabase
-      .from('cart_items')
-      .select('id, quantity')
-      .eq('cart_id', cart.id)
-      .eq('product_id', normalizedProductId)
-      .maybeSingle();
+    const { data: existingItem, error: existingItemError } = await getExistingCartItem(
+      cart.id,
+      normalizedInput.productId,
+    );
 
     if (existingItemError) {
-      return { error: existingItemError as unknown as Error };
+      return { error: existingItemError };
     }
 
     if (existingItem) {
-      const { error: updateError } = await supabase
-        .from('cart_items')
-        .update({ quantity: existingItem.quantity + quantityToAdd })
-        .eq('id', existingItem.id);
-
-      if (updateError) {
-        return { error: updateError as unknown as Error };
-      }
-
-      return { error: null };
+      return incrementExistingCartItemQuantity(
+        existingItem.id,
+        existingItem.quantity + normalizedInput.quantityToAdd,
+      );
     }
 
-    const { error: insertItemError } = await supabase.from('cart_items').insert({
-      cart_id: cart.id,
-      product_id: normalizedProductId,
-      quantity: quantityToAdd,
-    });
-
-    if (insertItemError) {
-      return { error: insertItemError as unknown as Error };
-    }
-
-    return { error: null };
+    return insertCartItem(cart.id, normalizedInput.productId, normalizedInput.quantityToAdd);
   } catch (error) {
     return { error: error instanceof Error ? error : new Error('Failed to add product to cart.') };
   }
@@ -249,9 +580,7 @@ export async function getCartItemsOptimized(
   cartId: string,
   params: GetCartItemsParams = {},
 ): Promise<CartListResult> {
-  const offset = Math.max(params.offset ?? 0, 0);
-  const limit = Math.max(params.limit ?? CART_PAGE_SIZE, 1);
-  const includeFullSnapshot = params.includeFullSnapshot ?? false;
+  const { offset, limit, includeFullSnapshot } = normalizeCartListParams(params);
 
   if (!cartId) {
     return {
@@ -269,109 +598,52 @@ export async function getCartItemsOptimized(
   }
 
   try {
-    const requestedLimit = limit + 1;
     const startedAt = Date.now();
 
-    let query = supabase
-      .from('cart_items')
-      .select(CART_ITEMS_SELECT)
-      .eq('cart_id', cartId)
-      .eq('product.is_active', true)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + requestedLimit - 1);
-
-    if (params.signal) {
-      query = query.abortSignal(params.signal);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      return { data: null, error: error as unknown as Error, metrics: null };
-    }
-
-    const rows = ((data ?? []) as unknown as CartItemOptimizedRow[]) ?? [];
-    const hasMore = rows.length > limit;
-    const normalizedRows = hasMore ? rows.slice(0, limit) : rows;
-    const pageSnapshot = toCartSnapshot(normalizedRows);
-
-    const transformed = normalizedRows.reduce(
-      (acc: { items: CartListItem[] }, row: CartItemOptimizedRow) => {
-        if (!row.product) {
-          return acc;
-        }
-
-        const sortedImages = [...(row.product.product_images ?? [])].sort(
-          (imageA, imageB) => imageA.sort_order - imageB.sort_order,
-        );
-
-        acc.items.push({
-          id: row.id,
-          product_id: row.product_id,
-          quantity: row.quantity,
-          created_at: row.created_at,
-          product: {
-            id: row.product.id,
-            name: row.product.name,
-            price: row.product.price,
-            stock: row.product.stock,
-            weight: row.product.weight || DEFAULT_ITEM_WEIGHT_GRAMS,
-            slug: row.product.slug,
-            is_active: row.product.is_active ?? false,
-          },
-          images: sortedImages.map(image => ({
-            id: image.id,
-            url: image.url,
-          })),
-        });
-
-        return acc;
-      },
-      {
-        items: [] as CartListItem[],
-      },
+    const { data: pageResult, error: pageError } = await fetchCartItemPage(
+      cartId,
+      offset,
+      limit,
+      params.signal,
     );
 
-    let snapshot = pageSnapshot;
-    let fullSnapshotPayloadBytes = 0;
-
-    if (includeFullSnapshot) {
-      const {
-        snapshot: fullSnapshot,
-        error: fullSnapshotError,
-        payloadBytes: snapshotPayloadBytes,
-      } = await getCartSnapshot(cartId, params.signal);
-
-      if (fullSnapshotError) {
-        return {
-          data: null,
-          error: fullSnapshotError,
-          metrics: null,
-        };
-      }
-
-      snapshot = fullSnapshot;
-      fullSnapshotPayloadBytes = snapshotPayloadBytes;
+    if (pageError || !pageResult) {
+      return {
+        data: null,
+        error: pageError ?? new Error('Failed to load cart items.'),
+        metrics: null,
+      };
     }
 
-    const fetchedAt = Date.now();
-    const durationMs = fetchedAt - startedAt;
-    const payloadBytes = JSON.stringify(rows).length + fullSnapshotPayloadBytes;
+    const { data: snapshotResult, error: snapshotError } = await resolveCartPageSnapshot(
+      cartId,
+      pageResult.normalizedRows,
+      includeFullSnapshot,
+      params.signal,
+    );
+
+    if (snapshotError || !snapshotResult) {
+      return {
+        data: null,
+        error: snapshotError ?? new Error('Failed to load cart snapshot.'),
+        metrics: null,
+      };
+    }
 
     return {
       data: {
-        items: transformed.items,
-        snapshot,
+        items: toCartListItems(pageResult.normalizedRows),
+        snapshot: snapshotResult.snapshot,
       },
       error: null,
-      metrics: {
-        durationMs,
-        payloadBytes,
-        fetchedAt,
+      metrics: buildCartListMetrics(
+        pageResult.rows,
+        snapshotResult.fullSnapshotPayloadBytes,
+        startedAt,
         offset,
         limit,
-        hasMore,
-      },
+        pageResult.hasMore,
+      ),
     };
   } catch (error) {
     return {
@@ -388,11 +660,7 @@ export async function getCartSnapshot(
 ): Promise<{ snapshot: CartSnapshot; payloadBytes: number; error: Error | null }> {
   if (!cartId) {
     return {
-      snapshot: {
-        itemCount: 0,
-        estimatedWeightGrams: 0,
-        packageValue: 0,
-      },
+      snapshot: createEmptyCartSnapshot(),
       payloadBytes: 0,
       error: new Error('Cart ID is required.'),
     };
@@ -411,11 +679,7 @@ export async function getCartSnapshot(
 
     if (error) {
       return {
-        snapshot: {
-          itemCount: 0,
-          estimatedWeightGrams: 0,
-          packageValue: 0,
-        },
+        snapshot: createEmptyCartSnapshot(),
         payloadBytes: 0,
         error: error as unknown as Error,
       };
@@ -430,11 +694,7 @@ export async function getCartSnapshot(
     };
   } catch (error) {
     return {
-      snapshot: {
-        itemCount: 0,
-        estimatedWeightGrams: 0,
-        packageValue: 0,
-      },
+      snapshot: createEmptyCartSnapshot(),
       payloadBytes: 0,
       error: isAbortError(error) ? error : new Error('Failed to load cart snapshot.'),
     };
@@ -456,107 +716,41 @@ export async function getCartWithItems(
     return { data: null, error: cartError ?? new Error('Unable to initialize cart.') };
   }
 
-  let cartItemsQuery = supabase.from('cart_items').select('*').eq('cart_id', cart.id);
-  cartItemsQuery = withAbortSignal(cartItemsQuery, signal);
+  const { data: rows, error } = await getCartItemRows(cart.id, signal);
 
-  const { data: cartItems, error: itemsError } = await cartItemsQuery;
-
-  if (itemsError) {
-    return { data: null, error: itemsError as unknown as Error };
+  if (error || !rows) {
+    return { data: null, error: error ?? new Error('Failed to load cart items.') };
   }
-
-  if (!cartItems || cartItems.length === 0) {
-    return {
-      data: {
-        cartId: cart.id,
-        items: [],
-        snapshot: { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
-      },
-      error: null,
-    };
-  }
-
-  const productIds = cartItems.map(item => item.product_id);
-
-  let productsQuery = supabase
-    .from('products')
-    .select('id, name, price, stock, weight, slug, is_active')
-    .in('id', productIds)
-    .eq('is_active', true);
-  productsQuery = withAbortSignal(productsQuery, signal);
-
-  const { data: products, error: productsError } = await productsQuery;
-
-  if (productsError) {
-    return { data: null, error: productsError as unknown as Error };
-  }
-
-  let imagesQuery = supabase
-    .from('product_images')
-    .select('id, product_id, url, sort_order')
-    .in('product_id', productIds)
-    .order('sort_order', { ascending: true });
-  imagesQuery = withAbortSignal(imagesQuery, signal);
-
-  const { data: images, error: imagesError } = await imagesQuery;
-
-  if (imagesError) {
-    return { data: null, error: imagesError as unknown as Error };
-  }
-
-  const productMap = new Map<string, ProductRow>();
-  for (const product of (products ?? []) as ProductRow[]) {
-    productMap.set(product.id, product);
-  }
-  const imagesByProduct = new Map<string, ProductImageRow[]>();
-
-  for (const image of (images ?? []) as ProductImageRow[]) {
-    const existing = imagesByProduct.get(image.product_id) ?? [];
-    existing.push(image);
-    imagesByProduct.set(image.product_id, existing);
-  }
-
-  const itemsWithProducts: CartItemWithProduct[] = [];
-
-  for (const item of cartItems as CartItemRow[]) {
-    const product = productMap.get(item.product_id);
-    if (!product) continue;
-
-    const productImages = imagesByProduct.get(item.product_id) ?? [];
-
-    itemsWithProducts.push({
-      id: item.id,
-      cart_id: item.cart_id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      created_at: item.created_at,
-      product: {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        stock: product.stock,
-        weight: product.weight,
-        slug: product.slug,
-        is_active: product.is_active ?? false,
-      },
-      images: productImages.map(img => ({
-        id: img.id,
-        url: img.url,
-        sort_order: img.sort_order,
-      })),
-    });
-  }
-
-  const snapshot = buildCartSnapshot(itemsWithProducts, DEFAULT_ITEM_WEIGHT_GRAMS);
 
   return {
-    data: {
-      cartId: cart.id,
-      items: itemsWithProducts,
-      snapshot,
-    },
+    data: toCartWithItems(rows, cart.id),
     error: null,
   };
+}
+
+export async function getCartItemWithProduct(
+  cartItemId: string,
+  signal?: AbortSignal,
+): Promise<{ data: CartItemWithProduct | null; error: Error | null }> {
+  const normalizedCartItemId = cartItemId.trim();
+
+  if (!normalizedCartItemId) {
+    return { data: null, error: new Error('Cart item ID is required.') };
+  }
+
+  const { data: row, error } = await getCartItemRow(normalizedCartItemId, signal);
+
+  if (error || !row) {
+    return { data: null, error: error ?? new Error('Cart item not found.') };
+  }
+
+  const item = toCartItemWithProduct(row);
+
+  if (!item) {
+    return { data: null, error: new Error('Cart item not found.') };
+  }
+
+  return { data: item, error: null };
 }
 
 export async function updateCartItemQuantity(

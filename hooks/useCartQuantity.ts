@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_CART_ITEM_WEIGHT_GRAMS } from '@/constants/cart.constants';
 import { updateCartItemQuantity } from '@/services/cart.service';
 import type { CartItemWithProduct, CartSnapshot } from '@/types/cart';
 import { buildCartSnapshot } from '@/utils/cart';
@@ -21,8 +22,6 @@ interface UseCartQuantityReturn {
   snapshot: CartSnapshot;
   updateQuantity: (cartItemId: string, newQuantity: number) => void;
 }
-
-const DEFAULT_ITEM_WEIGHT_GRAMS = 200;
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
@@ -78,7 +77,7 @@ export function useCartQuantity({
       return snapshot;
     }
 
-    return buildCartSnapshot(optimisticItems, DEFAULT_ITEM_WEIGHT_GRAMS);
+    return buildCartSnapshot(optimisticItems, DEFAULT_CART_ITEM_WEIGHT_GRAMS);
   }, [optimisticItems, optimisticQuantities, snapshot]);
 
   const updateQuantity = useCallback(
