@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RouteParams } from '@/types/routes.types';
 import {
@@ -16,9 +16,16 @@ import {
   useMedia,
   useTheme,
 } from 'tamagui';
-import { AlertCircleIcon, CartIcon, HeartIcon, PillIcon } from '@/components/icons';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import {
-  addProductToCart,
+  AlertCircleIcon,
+  CartIcon,
+  CheckCircleIcon,
+  HeartIcon,
+  PillIcon,
+} from '@/components/icons';
+import { addProductToCart } from '@/services/cart.service';
+import {
   formatPrice,
   getPrimaryImageUrl,
   getProductDetailsById,
@@ -225,7 +232,6 @@ function ProductErrorState({
 }
 
 export default function ProductDetails() {
-  const router = useRouter();
   const params = useLocalSearchParams<RouteParams<'product-details'>>();
   const media = useMedia();
   const theme = useTheme();
@@ -236,6 +242,7 @@ export default function ProductDetails() {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [successDialogMessage, setSuccessDialogMessage] = useState<string | null>(null);
   const [product, setProduct] = useState<ProductDetailsData | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -311,15 +318,20 @@ export default function ProductDetails() {
       return false;
     }
 
-    setActionFeedback(`Produk berhasil ditambahkan ke keranjang (${quantity} item).`);
+    setSuccessDialogMessage(`Produk berhasil ditambahkan ke keranjang (${quantity} item).`);
     setIsSheetOpen(false);
-    router.push('/cart');
     return true;
-  }, [product, quantity, router, user?.id]);
+  }, [product, quantity, user?.id]);
 
   const handleQuantityChange = useCallback((nextQuantity: number) => {
     setQuantity(nextQuantity);
     setActionFeedback(null);
+  }, []);
+
+  const handleSuccessDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setSuccessDialogMessage(null);
+    }
   }, []);
 
   const handleToggleFavorite = useCallback(() => {
@@ -370,9 +382,9 @@ export default function ProductDetails() {
   const formattedTotalPrice = formatPrice(product.price * quantity);
   const isOutOfStock = product.stock <= 0;
   const maxQuantity = Math.max(product.stock, 1);
-  const isSuccessFeedback = actionFeedback?.toLowerCase().includes('berhasil') ?? false;
   const feedbackExtraPadding = actionFeedback ? 22 : 0;
   const contentBottomPadding = bottomBarHeight + feedbackExtraPadding;
+  const successDialogColor = getThemeColor(theme, 'primary');
 
   return (
     <ScreenRoot>
@@ -458,12 +470,7 @@ export default function ProductDetails() {
         style={getBottomBarShadow(getThemeColor(theme, 'shadowColor'))}>
         <BottomActionBarContent>
           {actionFeedback ? (
-            <Text
-              fontSize={13}
-              color={isSuccessFeedback ? '$primary' : '$danger'}
-              textAlign="center"
-              numberOfLines={2}
-              mb="$2">
+            <Text fontSize={13} color="$danger" textAlign="center" numberOfLines={2} mb="$2">
               {actionFeedback}
             </Text>
           ) : null}
@@ -623,7 +630,7 @@ export default function ProductDetails() {
 
               <SheetConfirmButton
                 aria-label="Konfirmasi tambah ke keranjang"
-                aria-describedby="Menambahkan produk ke keranjang lalu membuka halaman keranjang"
+                aria-describedby="Menambahkan produk ke keranjang"
                 onPress={handleConfirmFromSheet}
                 disabled={isAddingToCart || isOutOfStock}>
                 <CartIcon size={22} color={getThemeColor(theme, 'white')} />
@@ -632,6 +639,18 @@ export default function ProductDetails() {
           </YStack>
         </Sheet.Frame>
       </Sheet>
+
+      <AppAlertDialog
+        open={successDialogMessage !== null}
+        onOpenChange={handleSuccessDialogOpenChange}
+        title="Produk berhasil ditambahkan"
+        description={successDialogMessage ?? 'Produk berhasil ditambahkan ke keranjang.'}
+        confirmText="OK"
+        confirmColor={successDialogColor}
+        confirmTextColor="$white"
+        hideTitle
+        icon={<CheckCircleIcon size={48} color={successDialogColor} />}
+      />
     </ScreenRoot>
   );
 }
