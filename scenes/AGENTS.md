@@ -19,16 +19,23 @@ scenes/
 └── category-product-list/ # Category-specific listing
 ```
 
+## CHILD AGENTS
+
+- `orders/AGENTS.md` — order list/detail/status patterns and tracking conventions.
+- `profile/AGENTS.md` — profile/address flows, area-picker helper cluster, and route-param helpers.
+
+Read the closest child file before changing those subdirectories.
+
 ## WHERE TO LOOK
 
 | Task                    | Location           | Notes                                                      |
 | ----------------------- | ------------------ | ---------------------------------------------------------- |
 | Auth screen changes     | `auth/`            | Login/signup/verification UI lives here                    |
 | Cart flow changes       | `cart/`            | Scene-specific sheets, banners, and helpers are co-located |
-| Order flows             | `orders/`          | History/detail/status views                                |
+| Order flows             | `orders/`          | Read `orders/AGENTS.md` for hook-driven list/detail rules  |
 | Home feed updates       | `home/`            | Home screen layout and feed orchestration                  |
 | Product detail flow     | `product-details/` | Detail fetch + add-to-cart interaction                     |
-| Profile/account screens | `profile/`         | Account/address orchestration                              |
+| Profile/account screens | `profile/`         | Read `profile/AGENTS.md` for address and area-picker flows |
 
 ## CONVENTIONS
 

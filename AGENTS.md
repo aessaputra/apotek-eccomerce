@@ -1,12 +1,12 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-04-14
-**Commit:** 233d0df
+**Generated:** 2026-04-23
+**Commit:** a993895
 **Branch:** dev
 
 ## OVERVIEW
 
-Expo SDK 54 pharmacy e-commerce app built with React Native 0.81, React 19, TypeScript strict mode, Expo Router v6, Tamagui, Redux Toolkit, Zustand, and Supabase. It targets iOS, Android, and Web, with EAS-based preview/deploy flows and centralized Jest coverage.
+Expo SDK 54 pharmacy e-commerce app built with React Native 0.81, React 19, TypeScript strict mode, Expo Router v6, Tamagui, Redux Toolkit, Zustand, TanStack Query, and Supabase. It targets iOS, Android, and Web, with EAS preview/deploy flows, dotenvx-managed env wiring, and centralized Jest coverage.
 
 ## STRUCTURE
 
@@ -35,6 +35,9 @@ Expo SDK 54 pharmacy e-commerce app built with React Native 0.81, React 19, Type
 - `services/AGENTS.md` — service-layer rules, Supabase boundaries, typed return patterns.
 - `scenes/AGENTS.md` — screen-level orchestration, route-to-scene boundary, feature screen map.
 - `hooks/AGENTS.md` — hook naming/export/testing patterns and orchestration responsibilities.
+- `__tests__/AGENTS.md` — centralized test layout, mocking rules, and validation expectations.
+- `scenes/profile/AGENTS.md` — address/profile flows, area-picker state machine, and route-param helpers.
+- `scenes/orders/AGENTS.md` — order list/detail flow, status-tab screens, and tracking conventions.
 
 Read the closest child file before editing inside that directory. Root covers global rules only.
 
@@ -53,6 +56,7 @@ Read the closest child file before editing inside that directory. Root covers gl
 | Add types                 | `types/[domain].ts` and `types/routes.types.ts` | Keep route params synchronized with router usage          |
 | Add config/env wiring     | `app.config.ts` + `utils/config.ts`             | dotenvx-managed env flow                                  |
 | Add tests                 | `__tests__/[domain]/`                           | Tests are centralized, not co-located                     |
+| Add test helpers          | `test-utils/renderWithTheme.tsx`                | Tamagui + SafeArea render wrapper for RTL                 |
 | Check CI/deploy           | `.github/workflows/` + `eas.json`               | PR test workflow + preview channel publishing             |
 
 ## ARCHITECTURE PATTERNS
@@ -72,9 +76,18 @@ Read the closest child file before editing inside that directory. Root covers gl
 ### Provider composition
 
 - `providers/Provider.tsx` owns the base provider stack: Gesture Handler → Safe Area → Redux → Tamagui → Navigation theme.
-- `app/_layout.tsx` is the true root composition point; it wires `Provider`, `QueryProvider`, route guards, asset preloading, and splash handling together.
+- `providers/QueryProvider.tsx` owns the single React Query client with long-lived cache defaults; keep query configuration there.
+- `app/_layout.tsx` is the true root composition point; it wires `Provider`, `QueryProvider`, route guards, asset preloading, splash handling, and the root Expo Router stack together.
 - `providers/AuthProvider.tsx` handles session bootstrap, OAuth hash handling, role/banned-user rejection, and auth state listeners.
 - Root auth redirects are enforced in `app/_layout.tsx`; some protected screens also use `withAuthGuard` for defense in depth.
+
+### Cross-cutting infrastructure
+
+- `utils/supabase.ts` is the only place that creates the Supabase client. Its crypto polyfill import must stay first.
+- `app.config.ts` populates Expo `extra`; `utils/config.ts` is the runtime bridge. Add new public env wiring in both places.
+- `utils/store.ts` registers the single Redux slice and enables `redux-logger` only in dev.
+- `utils/theme.ts` and `constants/ui.ts` bridge Tamagui theme values into navigation headers and non-Tamagui consumers.
+- `utils/fonts.ts` and `utils/images.ts` are part of the splash gate in `app/_layout.tsx`; font/image preload changes affect cold-start behavior.
 
 ### State split
 
@@ -93,11 +106,13 @@ Read the closest child file before editing inside that directory. Root covers gl
 - **Path alias:** `@/*` points to the repository root.
 - **File naming:** PascalCase for component files/folders; camelCase for hooks, utils, services, constants.
 - **Component source shape:** `Name/Name.tsx` + `index.ts` inside `components/`.
+- **Scenes hierarchy:** feature directories under `scenes/` may keep tightly coupled helpers beside the screen when the workflow is local to one feature.
 - **Logging:** guard application logs with `if (__DEV__)`.
 - **Tests:** live under `__tests__/`, grouped by domain (`components`, `hooks`, `scenes`, `services`, `utils`, etc.).
+- **Mocking:** use inline `jest.mock()` in tests; do not rely on global `__mocks__/` folders.
 - **Formatting:** Prettier uses single quotes, trailing commas, print width 100, `arrowParens: avoid`.
 - **Linting:** flat ESLint config with Expo + Prettier integration.
-- **Pre-commit:** Husky runs lint-staged and then Jest.
+- **Pre-commit:** Husky runs `lint-staged` and then Jest; staged TS/TSX files are lint-fixed and formatted before tests.
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
@@ -108,6 +123,7 @@ Read the closest child file before editing inside that directory. Root covers gl
 - **NEVER** use `StyleSheet.create()` or NativeWind for core UI; use Tamagui.
 - **NEVER** add the Tamagui babel plugin back into `babel.config.js`; it is intentionally disabled.
 - **NEVER** create `__mocks__/` directories for tests; use inline `jest.mock()`.
+- **NEVER** reorder the crypto polyfill import ahead of the Supabase client setup in `utils/supabase.ts`.
 
 ## UNIQUE STYLES
 
@@ -116,6 +132,7 @@ Read the closest child file before editing inside that directory. Root covers gl
 - Centralized tests instead of source-adjacent tests.
 - Custom `LargeSecureStore` and `cryptoPolyfill` support the React Native Supabase client.
 - `utils/supabase.ts` owns client creation and imports the crypto polyfill first; do not reorder that setup casually.
+- `app/_layout.tsx` keeps a hardcoded `PROTECTED_ROUTE_GROUPS` list; new protected route groups must be added there as well as wrapped with guards.
 
 ## COMMANDS
 
@@ -125,6 +142,9 @@ npm run dev
 npm run dev:ios
 npm run dev:android
 npm run dev:web
+npm run dev:tailscale
+npm run dev:tailscale:android
+npm run dev:tailscale:ios
 npm run dev:doctor
 
 # Quality
@@ -147,6 +167,7 @@ npm run dev:config:public
 
 - Jest uses `jest-expo` with global fake timers and centralized setup in `jest.setup.js`.
 - Use `test-utils/renderWithTheme.tsx` for Tamagui-aware rendering.
+- `.lintstagedrc.json` runs `npm run lint --fix` for staged JS/TS files and `npm run format` for staged TS/TSX files.
 - CI in `.github/workflows/test.yml` runs format check, lint, and Jest on PRs and branch pushes.
 - Preview publishing in `.github/workflows/preview.yml` uses branch-based env selection and EAS Update.
 
