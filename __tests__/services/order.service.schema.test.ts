@@ -206,6 +206,7 @@ describe('order.service schema-aligned reads', () => {
           id: 'item-1',
           order_id: 'order-1',
           product_id: 'product-1',
+          product_sku_at_purchase: 'VIT-C-001',
           quantity: 2,
           price_at_purchase: 25000,
           created_at: '2026-04-18T11:00:01.000Z',
@@ -214,7 +215,7 @@ describe('order.service schema-aligned reads', () => {
       error: null,
     });
     enqueueQuery('products', {
-      data: [{ id: 'product-1', name: 'Vitamin C', slug: 'vitamin-c' }],
+      data: [{ id: 'product-1', name: 'Vitamin C', slug: 'vitamin-c', sku: 'VIT-C-001' }],
       error: null,
     });
     enqueueQuery('product_images', {
@@ -255,18 +256,21 @@ describe('order.service schema-aligned reads', () => {
           id: 'item-1',
           order_id: 'order-1',
           product_id: 'product-1',
+          product_sku_at_purchase: 'VIT-C-001',
           created_at: '2026-04-18T11:00:00.000Z',
         },
         {
           id: 'item-2',
           order_id: 'order-2',
           product_id: 'product-1',
+          product_sku_at_purchase: 'VIT-C-001',
           created_at: '2026-04-17T11:00:00.000Z',
         },
         {
           id: 'item-3',
           order_id: 'order-2',
           product_id: 'product-2',
+          product_sku_at_purchase: 'OBT-HABIS-001',
           created_at: '2026-04-17T10:00:00.000Z',
         },
       ],
@@ -278,6 +282,7 @@ describe('order.service schema-aligned reads', () => {
           id: 'product-1',
           name: 'Vitamin C',
           price: 25000,
+          sku: 'VIT-C-001',
           slug: 'vitamin-c',
           is_active: true,
           stock: 10,
@@ -286,6 +291,7 @@ describe('order.service schema-aligned reads', () => {
           id: 'product-2',
           name: 'Obat Habis',
           price: 15000,
+          sku: 'OBT-HABIS-001',
           slug: 'obat-habis',
           is_active: false,
           stock: 0,

@@ -232,6 +232,7 @@ export type Database = {
           order_id: string;
           price_at_purchase: number;
           product_id: string | null;
+          product_sku_at_purchase: string | null;
           quantity: number;
         };
         Insert: {
@@ -240,6 +241,7 @@ export type Database = {
           order_id: string;
           price_at_purchase: number;
           product_id?: string | null;
+          product_sku_at_purchase?: string | null;
           quantity: number;
         };
         Update: {
@@ -248,6 +250,7 @@ export type Database = {
           order_id?: string;
           price_at_purchase?: number;
           product_id?: string | null;
+          product_sku_at_purchase?: string | null;
           quantity?: number;
         };
         Relationships: [
@@ -571,6 +574,7 @@ export type Database = {
           is_active: boolean | null;
           name: string;
           price: number;
+          sku: string;
           slug: string;
           stock: number;
           updated_at: string;
@@ -584,6 +588,7 @@ export type Database = {
           is_active?: boolean | null;
           name: string;
           price: number;
+          sku: string;
           slug: string;
           stock?: number;
           updated_at?: string;
@@ -597,6 +602,7 @@ export type Database = {
           is_active?: boolean | null;
           name?: string;
           price?: number;
+          sku?: string;
           slug?: string;
           stock?: number;
           updated_at?: string;
