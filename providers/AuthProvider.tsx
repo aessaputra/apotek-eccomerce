@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Platform, AppStateStatus } from 'react-native';
 import { supabase } from '@/utils/supabase';
+import { clearExpoPushToken, syncExpoPushTokenIfPermitted } from '@/services/notification.service';
 import { getCurrentUser } from '@/services/user.service';
 import { signOut as authSignOut, handleOAuthHashTokens } from '@/services/auth.service';
 import { useAppSlice } from '@/slices';
@@ -17,6 +18,9 @@ const INIT_TIMEOUT_MS = 15_000;
 
 export default function AuthProvider({ children }: AuthProviderProps) {
   const { dispatch, setUser, setLoggedIn, setChecked, reset } = useAppSlice();
+  const lastAuthenticatedUserIdRef = useRef<string | null>(null);
+  const authEventGenerationRef = useRef(0);
+  const pendingAuthTimeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
@@ -48,6 +52,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       profile: { role: string | null; is_banned: boolean },
       mounted: boolean,
     ): Promise<boolean> => {
+      lastAuthenticatedUserIdRef.current = user.id;
+
       if (profile.role === 'admin') {
         await authSignOut();
         if (mounted) {
@@ -104,6 +110,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         }
 
         if (result.profile.role === 'admin') {
+          lastAuthenticatedUserIdRef.current = result.user.id;
           await authSignOut();
           if (mounted && !dispatched) {
             dispatched = true;
@@ -142,7 +149,33 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      authEventGenerationRef.current += 1;
+      const authEventGeneration = authEventGenerationRef.current;
+
+      if (pendingAuthTimeoutIdRef.current) {
+        clearTimeout(pendingAuthTimeoutIdRef.current);
+        pendingAuthTimeoutIdRef.current = null;
+      }
+
+      if (event === 'SIGNED_OUT') {
+        const signedOutUserId = lastAuthenticatedUserIdRef.current;
+        lastAuthenticatedUserIdRef.current = null;
+
+        if (mounted) dispatchAuth(undefined, false);
+
+        if (signedOutUserId) {
+          void clearExpoPushToken(signedOutUserId).then(result => {
+            if (__DEV__ && result.error) {
+              console.warn('[AuthProvider] push token clear error:', result.error);
+            }
+          });
+        }
+
+        return;
+      }
+
+      if (!session?.user) {
+        lastAuthenticatedUserIdRef.current = null;
         if (mounted) dispatchAuth(undefined, false);
         return;
       }
@@ -151,20 +184,41 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         // Defer with setTimeout(0) to avoid deadlock: exchangeCodeForSession
         // holds processLock while firing SIGNED_IN. PostgREST queries internally
         // call getSession() which tries to acquire the same lock → deadlock.
-        setTimeout(async () => {
+        pendingAuthTimeoutIdRef.current = setTimeout(async () => {
+          pendingAuthTimeoutIdRef.current = null;
+
+          if (!mounted || authEventGenerationRef.current !== authEventGeneration) {
+            return;
+          }
+
           try {
             const result = await getCurrentUser({
               createIfMissing: event === 'SIGNED_IN' || event === 'INITIAL_SESSION',
               session,
             });
-            if (!mounted) return;
+
+            if (!mounted || authEventGenerationRef.current !== authEventGeneration) return;
 
             if (!result) {
               dispatchAuth(undefined, false);
               return;
             }
 
-            await validateAndDispatch(result.user, result.profile, mounted);
+            if (result.user.id !== session.user.id) {
+              return;
+            }
+
+            const isAllowed = await validateAndDispatch(result.user, result.profile, mounted);
+
+            if (!isAllowed || authEventGenerationRef.current !== authEventGeneration) {
+              return;
+            }
+
+            const tokenSyncResult = await syncExpoPushTokenIfPermitted(result.user.id);
+
+            if (__DEV__ && tokenSyncResult.error) {
+              console.warn('[AuthProvider] push token sync error:', tokenSyncResult.error);
+            }
           } catch (error) {
             if (__DEV__) console.error('[AuthProvider] onAuthStateChange error:', error);
             if (mounted) dispatch(setChecked(true));
@@ -175,6 +229,13 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
     return () => {
       mounted = false;
+      authEventGenerationRef.current += 1;
+
+      if (pendingAuthTimeoutIdRef.current) {
+        clearTimeout(pendingAuthTimeoutIdRef.current);
+        pendingAuthTimeoutIdRef.current = null;
+      }
+
       subscription.unsubscribe();
     };
   }, [dispatch, setChecked, dispatchAuth, validateAndDispatch]);

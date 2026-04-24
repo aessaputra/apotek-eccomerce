@@ -22,6 +22,16 @@ export type ProductDetailsRoutes = {
 export type CartRoutes = {
   cart: undefined;
   'cart/index': undefined;
+  'cart/review': {
+    addressPayload?: string;
+    addressText?: string;
+    shippingOptionPayload?: string;
+    selectedShippingKey?: string;
+    snapshotPayload?: string;
+    itemSummariesPayload?: string;
+    quoteAreaId?: string;
+    quotePostalCode?: string;
+  };
   'cart/payment': { paymentUrl?: string; orderId?: string };
 };
 
@@ -99,6 +109,16 @@ export type HomeStackParams = {
 
 export type CartStackParams = {
   index: undefined;
+  review: {
+    addressPayload?: string;
+    addressText?: string;
+    shippingOptionPayload?: string;
+    selectedShippingKey?: string;
+    snapshotPayload?: string;
+    itemSummariesPayload?: string;
+    quoteAreaId?: string;
+    quotePostalCode?: string;
+  };
   payment: { paymentUrl?: string; orderId?: string };
 };
 

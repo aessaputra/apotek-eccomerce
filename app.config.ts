@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { config as loadEnv } from 'dotenv';
 import { ExpoConfig, ConfigContext } from 'expo/config';
@@ -10,6 +11,9 @@ if (!process.env.EXPO_PROJECT_ID) {
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const expoProjectId = process.env.EXPO_PROJECT_ID;
+  const googleServicesFilePath = path.resolve(process.cwd(), 'google-services.json');
+  const hasGoogleServicesFile = fs.existsSync(googleServicesFilePath);
+
   if (!expoProjectId) {
     throw new Error(
       'EXPO_PROJECT_ID is required. Set it in .env.dev / .env.prod (or .env.*.example for CI).',
@@ -45,6 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...config.android,
       package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekecommerce',
+      ...(hasGoogleServicesFile ? { googleServicesFile: './google-services.json' } : {}),
       // Use 'resize' mode for consistent keyboard handling with KeyboardAvoidingView.
       // This allows the container to resize when keyboard appears, enabling
       // bottom action buttons to stay above keyboard.
@@ -111,6 +116,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             './assets/fonts/Poppins-SemiBold.ttf',
             './assets/fonts/Poppins-SemiBoldItalic.ttf',
           ],
+        },
+      ],
+      [
+        'expo-notifications',
+        {
+          defaultChannel: 'default',
         },
       ],
     ],

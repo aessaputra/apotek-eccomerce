@@ -176,6 +176,55 @@ export type Database = {
           updated_at?: string;
         };
       };
+      notifications: {
+        Row: {
+          body: string;
+          created_at: string;
+          cta_route: string | null;
+          data: Json;
+          id: string;
+          priority: string;
+          read_at: string | null;
+          source_event_key: string | null;
+          title: string;
+          type: string;
+          user_id: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          cta_route?: string | null;
+          data?: Json;
+          id?: string;
+          priority?: string;
+          read_at?: string | null;
+          source_event_key?: string | null;
+          title: string;
+          type: string;
+          user_id: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          cta_route?: string | null;
+          data?: Json;
+          id?: string;
+          priority?: string;
+          read_at?: string | null;
+          source_event_key?: string | null;
+          title?: string;
+          type?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       order_items: {
         Row: {
           created_at: string;
@@ -558,6 +607,8 @@ export type Database = {
         Row: {
           avatar_url: string | null;
           created_at: string;
+          expo_push_token: string | null;
+          expo_push_token_updated_at: string | null;
           full_name: string | null;
           id: string;
           is_banned: boolean;
@@ -568,6 +619,8 @@ export type Database = {
         Insert: {
           avatar_url?: string | null;
           created_at?: string;
+          expo_push_token?: string | null;
+          expo_push_token_updated_at?: string | null;
           full_name?: string | null;
           id: string;
           is_banned?: boolean;
@@ -578,6 +631,8 @@ export type Database = {
         Update: {
           avatar_url?: string | null;
           created_at?: string;
+          expo_push_token?: string | null;
+          expo_push_token_updated_at?: string | null;
           full_name?: string | null;
           id?: string;
           is_banned?: boolean;

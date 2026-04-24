@@ -8,6 +8,7 @@ export interface StickyBottomBarProps {
   grandTotal: number;
   isLoading?: boolean;
   disabled?: boolean;
+  hideTotal?: boolean;
   onConfirm: () => void;
   confirmText?: string;
 }
@@ -16,6 +17,7 @@ export const StickyBottomBar = ({
   grandTotal,
   isLoading = false,
   disabled = false,
+  hideTotal = false,
   onConfirm,
   confirmText = 'Konfirmasi',
 }: StickyBottomBarProps) => {
@@ -35,14 +37,16 @@ export const StickyBottomBar = ({
       borderTopColor="$surfaceBorder"
       alignItems="center"
       gap="$3">
-      <YStack flex={1}>
-        <Text fontSize="$2" color="$colorSubtle">
-          Total
-        </Text>
-        <Text fontSize="$6" fontWeight="800" color="$color">
-          {formatPrice(grandTotal)}
-        </Text>
-      </YStack>
+      {hideTotal ? null : (
+        <YStack flex={1}>
+          <Text fontSize="$2" color="$colorSubtle">
+            Total
+          </Text>
+          <Text fontSize="$6" fontWeight="800" color="$color">
+            {formatPrice(grandTotal)}
+          </Text>
+        </YStack>
+      )}
 
       <Button
         flex={1}

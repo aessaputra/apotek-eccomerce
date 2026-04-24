@@ -20,7 +20,7 @@ import { removeCartItem } from '@/services/cart.service';
 import { useCartQuantity } from '@/hooks/useCartQuantity';
 import { formatAddress } from '@/utils/address';
 import { translateErrorMessage, type AppError } from '@/utils/error';
-import type { CartItemWithProduct } from '@/types/cart';
+import type { CartItemWithProduct, ItemSummary } from '@/types/cart';
 import type { TypedHref } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -209,10 +209,53 @@ export default function Cart() {
     return formatAddress(selectedAddress);
   }, [selectedAddress]);
 
+  const quoteAreaId = quoteDestination?.areaId ?? null;
+  const quotePostalCode = quoteDestination?.postalCode ?? null;
+
   const { shippingErrorMessage, addressErrorMessage, shippingRecoverySuggestion } = useMemo(
     () => getCartFeedbackMessages({ shippingError, addressError }),
     [addressError, shippingError],
   );
+
+  const handleReviewCheckout = useCallback(() => {
+    if (!selectedAddress || !selectedShippingOption) {
+      return;
+    }
+
+    setShippingError(null);
+
+    const itemSummaries: ItemSummary[] = items.map(item => ({
+      name: item.product.name,
+      quantity: item.quantity,
+    }));
+
+    const reviewHref: TypedHref = {
+      pathname: '/cart/review',
+      params: {
+        addressPayload: JSON.stringify(selectedAddress),
+        addressText: selectedAddressFullText,
+        shippingOptionPayload: JSON.stringify(selectedShippingOption),
+        selectedShippingKey: selectedShippingKey ?? undefined,
+        snapshotPayload: JSON.stringify(snapshot),
+        itemSummariesPayload: JSON.stringify(itemSummaries),
+        quoteAreaId: quoteAreaId ?? undefined,
+        quotePostalCode: typeof quotePostalCode === 'number' ? String(quotePostalCode) : undefined,
+      },
+    };
+
+    router.push(reviewHref);
+  }, [
+    items,
+    quoteAreaId,
+    quotePostalCode,
+    router,
+    selectedAddress,
+    selectedAddressFullText,
+    selectedShippingKey,
+    selectedShippingOption,
+    setShippingError,
+    snapshot,
+  ]);
 
   const handleWrappedStartCheckout = useCallback(async () => {
     setShippingError(null);
@@ -433,7 +476,7 @@ export default function Cart() {
                 grandTotal={snapshot.packageValue + (selectedShippingOption?.price ?? 0)}
                 isLoading={startingCheckout}
                 disabled={checkoutDisabled}
-                onConfirm={handleWrappedStartCheckout}
+                onConfirm={activeOrderId ? handleWrappedStartCheckout : handleReviewCheckout}
                 confirmText={activeOrderId ? 'Lanjutkan Pembayaran' : 'Konfirmasi'}
               />
             </>

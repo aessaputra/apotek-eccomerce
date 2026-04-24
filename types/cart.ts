@@ -46,6 +46,11 @@ export interface CartSnapshot {
   packageValue: number;
 }
 
+export interface ItemSummary {
+  name: string;
+  quantity: number;
+}
+
 export interface CartRealtimeItem {
   id: string;
   cart_id: string;

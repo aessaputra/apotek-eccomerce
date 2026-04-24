@@ -17,6 +17,15 @@ function CartStackLayout() {
         }}
       />
       <Stack.Screen
+        name="review"
+        options={{
+          headerShown: true,
+          title: 'Review Pesanan',
+          headerTitleAlign: 'center',
+          ...getStackHeaderOptions(theme),
+        }}
+      />
+      <Stack.Screen
         name="payment"
         options={{
           headerShown: false,
