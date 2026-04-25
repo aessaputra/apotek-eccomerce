@@ -77,4 +77,36 @@ describe('areaPickerSession', () => {
       postalCode: ' 421-83 ',
     });
   });
+
+  test('consumePendingAreaSelection normalizes string and null Biteship postal codes', () => {
+    setPendingAreaSelection({
+      area: {
+        id: 'area-4',
+        name: 'Walantaka',
+        postal_code: '42183',
+      },
+      provinceName: 'Banten',
+      regencyName: 'Kota Serang',
+      districtName: 'Walantaka',
+    });
+
+    expect(consumePendingAreaSelection()).toMatchObject({
+      postalCode: '42183',
+    });
+
+    setPendingAreaSelection({
+      area: {
+        id: 'area-5',
+        name: 'Walantaka',
+        postal_code: null,
+      },
+      provinceName: 'Banten',
+      regencyName: 'Kota Serang',
+      districtName: 'Walantaka',
+    });
+
+    expect(consumePendingAreaSelection()).toMatchObject({
+      postalCode: undefined,
+    });
+  });
 });
