@@ -16,6 +16,7 @@ const mockProduct: ProductWithImages = {
   weight: 250,
   stock: 10,
   is_active: true,
+  sku: 'SKU-TEST-PRODUCT',
   category_id: 'cat1',
   images: [{ url: 'https://example.com/image.jpg', sort_order: 0 }],
   description: 'Test description',
@@ -36,6 +37,7 @@ describe('<ProductCard />', () => {
     );
 
     expect(screen.getByText('Test Product')).toBeTruthy();
+    expect(screen.queryByText('SKU-TEST-PRODUCT')).toBeNull();
   });
 
   test('renders correctly in dark theme', async () => {
