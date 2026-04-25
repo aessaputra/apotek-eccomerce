@@ -10,14 +10,11 @@ import {
   Text,
   XStack,
   YStack,
-  styled,
   useMedia,
   useTheme,
 } from 'tamagui';
 import { CartIcon, CheckCircleIcon, SearchIcon } from '@/components/icons';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
-import CategoryItem, { CategorySkeleton } from '@/components/elements/CategoryItem';
-import ProductCard, { ProductCardSkeleton } from '@/components/elements/ProductCard';
 import HomeBanner, { HomeBannerSkeleton } from '@/components/elements/HomeBanner';
 import { HOME_BANNER_CTA_ROUTE_MAP } from '@/constants/homeBanner.constants';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
@@ -26,73 +23,15 @@ import { useHomeData, useCartPaginated } from '@/hooks';
 import { addProductToCart } from '@/services';
 import type { HomeBannerCTA } from '@/types/homeBanner';
 import { getThemeColor } from '@/utils/theme';
-
-const ScreenRoot = styled(YStack, {
-  flex: 1,
-  backgroundColor: '$background',
-});
-
-const ContentStack = styled(YStack, {
-  width: '100%',
-  maxWidth: 560,
-  alignSelf: 'center',
-  gap: '$4',
-
-  $gtSm: {
-    maxWidth: 720,
-    gap: '$4.5',
-  },
-
-  $gtMd: {
-    maxWidth: 920,
-    gap: '$5',
-  },
-
-  $gtLg: {
-    maxWidth: 1080,
-  },
-});
-
-const SectionTitle = styled(Text, {
-  color: '$color',
-  fontSize: 14,
-  fontWeight: '700',
-});
-
-const SurfaceIconButton = styled(Card, {
-  width: 44,
-  height: 44,
-  borderRadius: '$4',
-  backgroundColor: '$surface',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  alignItems: 'center',
-  justifyContent: 'center',
-  pressStyle: { opacity: 0.9 },
-});
-
-const SearchShell = styled(Card, {
-  alignItems: 'center',
-  flexDirection: 'row',
-  borderRadius: '$10',
-  borderWidth: 1,
-  borderColor: '$surfaceBorder',
-  backgroundColor: '$surface',
-  height: 46,
-  paddingLeft: '$2',
-  paddingRight: '$3',
-  gap: '$2',
-  pressStyle: { opacity: 0.92 },
-});
-
-const ErrorCallout = styled(Card, {
-  borderRadius: '$5',
-  borderWidth: 1,
-  borderColor: '$borderColor',
-  backgroundColor: '$surface',
-  padding: '$4',
-  gap: '$2.5',
-});
+import { HOME_COPY } from './Home.constants';
+import { HomeCategorySection, HomeProductSection } from './Home.sections';
+import {
+  ContentStack,
+  ErrorCallout,
+  ScreenRoot,
+  SearchShell,
+  SurfaceIconButton,
+} from './Home.styles';
 
 const SPACE_TOKEN_TO_PX = {
   '$2.5': 10,
@@ -217,7 +156,12 @@ export default function Home() {
     }
   }, []);
 
-  const userName = user?.full_name || user?.name || user?.email?.split('@')[0] || 'Customer';
+  const handleRetryCoreContent = useCallback(() => {
+    void refresh();
+  }, [refresh]);
+
+  const userName =
+    user?.full_name || user?.name || user?.email?.split('@')[0] || HOME_COPY.defaultUserName;
   const userAvatarUrl = user?.avatar_url;
   const userInitial = userName.charAt(0).toUpperCase();
 
@@ -265,7 +209,7 @@ export default function Home() {
                   {userName}
                 </Text>
                 <Text fontSize={12} color="$colorSubtle" numberOfLines={1}>
-                  Customer
+                  {HOME_COPY.userRole}
                 </Text>
               </YStack>
             </XStack>
@@ -310,7 +254,7 @@ export default function Home() {
               fontWeight="800"
               letterSpacing={-0.8}
               maxWidth={media.gtSm ? 320 : '100%'}>
-              Belanja obat makin mudah
+              {HOME_COPY.heroTitle}
             </Text>
 
             <SearchShell
@@ -319,7 +263,7 @@ export default function Home() {
               aria-label="Search products"
               aria-describedby="Open product discovery details">
               <Text flex={1} color="$searchPlaceholderColor" fontSize={14} fontWeight="500" pl="$1">
-                Search by product name
+                {HOME_COPY.searchPlaceholder}
               </Text>
               <SearchIcon size={16} color={iconColor} />
             </SearchShell>
@@ -335,7 +279,7 @@ export default function Home() {
             <ErrorCallout>
               <YStack gap="$1.5">
                 <Text color="$color" fontSize={15} fontWeight="700">
-                  Konten utama belum berhasil dimuat
+                  {HOME_COPY.coreErrorTitle}
                 </Text>
                 <Text color="$colorSubtle" fontSize={13}>
                   {error}
@@ -343,8 +287,8 @@ export default function Home() {
               </YStack>
 
               <XStack>
-                <TamaguiButton size="$3" theme="active" onPress={() => void refresh()}>
-                  Coba Lagi
+                <TamaguiButton size="$3" theme="brand" onPress={handleRetryCoreContent}>
+                  {HOME_COPY.retryLabel}
                 </TamaguiButton>
               </XStack>
             </ErrorCallout>
@@ -352,89 +296,35 @@ export default function Home() {
 
           {bannerError && !isLoadingBanners && (
             <Text fontSize={12} color="$colorSubtle">
-              Banner promo belum berhasil dimuat. Konten utama tetap tersedia.
+              {HOME_COPY.bannerWarning}
             </Text>
           )}
 
-          <YStack gap="$2.5">
-            <SectionTitle>Categories</SectionTitle>
-            {isLoadingCategories && categories.length === 0 ? (
-              <CategorySkeleton isLargeScreen={isLargeScreen} count={categorySkeletonCount} />
-            ) : error && categories.length === 0 ? (
-              <Text fontSize={13} color="$colorSubtle">
-                Gagal memuat kategori. Coba lagi.
-              </Text>
-            ) : categories.length === 0 ? (
-              <Text fontSize={13} color="$colorSubtle">
-                No categories available
-              </Text>
-            ) : isLargeScreen ? (
-              <XStack flexWrap="wrap" gap={categoryGap} justifyContent="flex-start" width="100%">
-                {categories.map(category => (
-                  <CategoryItem
-                    key={category.id}
-                    category={category}
-                    onPress={() => handleCategoryPress(category.id, category.name)}
-                    size={categorySize}
-                    layout={categoryLayout}
-                  />
-                ))}
-              </XStack>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: categoryPeekOffset }}>
-                <XStack gap={categoryGap}>
-                  {categories.map(category => (
-                    <CategoryItem
-                      key={category.id}
-                      category={category}
-                      onPress={() => handleCategoryPress(category.id, category.name)}
-                      size={categorySize}
-                      layout={categoryLayout}
-                      width={mobileCategoryWidth}
-                    />
-                  ))}
-                </XStack>
-              </ScrollView>
-            )}
-          </YStack>
+          <HomeCategorySection
+            categories={categories}
+            error={error}
+            isLoadingCategories={isLoadingCategories}
+            isLargeScreen={isLargeScreen}
+            categorySkeletonCount={categorySkeletonCount}
+            categoryGap={categoryGap}
+            categorySize={categorySize}
+            categoryLayout={categoryLayout}
+            categoryPeekOffset={categoryPeekOffset}
+            mobileCategoryWidth={mobileCategoryWidth}
+            onCategoryPress={handleCategoryPress}
+          />
 
-          <YStack gap="$2.5">
-            <SectionTitle>Latest Products</SectionTitle>
-            {isLoadingProducts && products.length === 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <ProductCardSkeleton width={productWidth} count={productSkeletonCount} />
-              </ScrollView>
-            ) : error && products.length === 0 ? (
-              <Text fontSize={13} color="$colorSubtle">
-                Gagal memuat produk terbaru. Coba lagi.
-              </Text>
-            ) : products.length === 0 ? (
-              <Text fontSize={13} color="$colorSubtle">
-                No products available
-              </Text>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: productPeekOffset }}>
-                <XStack gap="$2.5">
-                  {products.map(item => (
-                    <ProductCard
-                      key={item.id}
-                      item={item}
-                      width={productWidth}
-                      iconColor={iconColor}
-                      onPress={() => handleProductPress(item.id, item.name)}
-                      onAddToCart={() => handleAddToCart(item.id, item.name)}
-                    />
-                  ))}
-                </XStack>
-              </ScrollView>
-            )}
-          </YStack>
+          <HomeProductSection
+            products={products}
+            error={error}
+            isLoadingProducts={isLoadingProducts}
+            productSkeletonCount={productSkeletonCount}
+            productWidth={productWidth}
+            productPeekOffset={productPeekOffset}
+            iconColor={iconColor}
+            onProductPress={handleProductPress}
+            onAddToCart={handleAddToCart}
+          />
 
           {isLoadingBanners && !banners.home_banner_bottom ? (
             <HomeBannerSkeleton />
@@ -447,8 +337,10 @@ export default function Home() {
       <AppAlertDialog
         open={cartSuccessProductName !== null}
         onOpenChange={handleCartSuccessDialogOpenChange}
-        title="Produk berhasil ditambahkan"
-        description={`${cartSuccessProductName ?? 'Produk'} berhasil ditambahkan ke keranjang`}
+        title={HOME_COPY.addToCartSuccessTitle}
+        description={`${cartSuccessProductName ?? HOME_COPY.addToCartSuccessFallbackProduct} ${
+          HOME_COPY.addToCartSuccessDescriptionSuffix
+        }`}
         confirmText="OK"
         confirmColor={successDialogColor}
         confirmTextColor="$white"

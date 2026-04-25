@@ -3,6 +3,7 @@ import * as ReactNative from 'react-native';
 import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
 import Home from '@/scenes/home/Home';
 import type { UseHomeDataReturn } from '@/hooks';
+import type { ProductWithImages } from '@/services/home.service';
 
 type AddToCartResult = Promise<{ error: Error | null }>;
 
@@ -88,6 +89,25 @@ jest.mock('@/components/elements/ProductCard', () => {
 });
 
 function createHomeData(): UseHomeDataReturn {
+  const product: ProductWithImages = {
+    id: 'product-1',
+    name: 'Product 1',
+    slug: 'product-1',
+    description: null,
+    price: 10000,
+    stock: 10,
+    weight: 100,
+    category_id: 'cat-1',
+    is_active: true,
+    created_at: '',
+    updated_at: '',
+    images: [],
+  };
+  const productWithSku: ProductWithImages & { sku: string } = {
+    ...product,
+    sku: 'SKU-PRODUCT-1',
+  };
+
   return {
     banners: {
       home_banner_top: {
@@ -120,22 +140,7 @@ function createHomeData(): UseHomeDataReturn {
       },
     },
     categories: [{ id: 'cat-1', name: 'Vitamin', slug: 'vitamin', logo_url: null, created_at: '' }],
-    products: [
-      {
-        id: 'product-1',
-        name: 'Product 1',
-        slug: 'product-1',
-        description: null,
-        price: 10000,
-        stock: 10,
-        weight: 100,
-        category_id: 'cat-1',
-        is_active: true,
-        created_at: '',
-        updated_at: '',
-        images: [],
-      },
-    ],
+    products: [productWithSku],
     isLoadingBanners: false,
     isLoadingCategories: false,
     isLoadingProducts: false,
@@ -167,6 +172,42 @@ describe('<Home />', () => {
 
     expect(screen.getByText('Top banner title')).toBeTruthy();
     expect(screen.getByText('Bottom banner title')).toBeTruthy();
+  });
+
+  it('renders localized section titles instead of the previous English labels', () => {
+    render(<Home />);
+
+    expect(screen.getByText('Pelanggan')).toBeTruthy();
+    expect(screen.getByText('Cari nama produk')).toBeTruthy();
+    expect(screen.getByText('Kategori')).toBeTruthy();
+    expect(screen.getByText('Produk Terbaru')).toBeTruthy();
+    expect(screen.queryByText('Categories')).toBeNull();
+    expect(screen.queryByText('Latest Products')).toBeNull();
+    expect(screen.queryByText('Customer')).toBeNull();
+    expect(screen.queryByText('Search by product name')).toBeNull();
+  });
+
+  it('renders localized empty states when categories and products are empty', () => {
+    mockUseHomeData.mockReturnValue({
+      ...createHomeData(),
+      categories: [],
+      products: [],
+    });
+
+    render(<Home />);
+
+    expect(screen.getByText('Kategori')).toBeTruthy();
+    expect(screen.getByText('Produk Terbaru')).toBeTruthy();
+    expect(screen.getByText('Belum ada kategori tersedia')).toBeTruthy();
+    expect(screen.getByText('Belum ada produk tersedia')).toBeTruthy();
+    expect(screen.queryByText('No categories available')).toBeNull();
+    expect(screen.queryByText('No products available')).toBeNull();
+  });
+
+  it('does not render product SKU values in customer-facing product cards', () => {
+    render(<Home />);
+
+    expect(screen.queryByText('SKU-PRODUCT-1')).toBeNull();
   });
 
   it('routes CTA presses through the allowlist route map', () => {
