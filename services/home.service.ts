@@ -27,6 +27,21 @@ export type ProductImageRow = Tables<'product_images'>;
 export const PRODUCTS_PAGE_SIZE = 24;
 export const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000;
 
+export type CustomerProductRow = Pick<
+  ProductRow,
+  | 'id'
+  | 'category_id'
+  | 'created_at'
+  | 'description'
+  | 'is_active'
+  | 'name'
+  | 'price'
+  | 'slug'
+  | 'stock'
+  | 'updated_at'
+  | 'weight'
+>;
+
 const PRODUCT_LIST_SELECT = `
   id,
   name,
@@ -37,6 +52,20 @@ const PRODUCT_LIST_SELECT = `
     url,
     sort_order
   )
+`;
+
+const CUSTOMER_PRODUCT_SELECT = `
+  id,
+  category_id,
+  created_at,
+  description,
+  is_active,
+  name,
+  price,
+  slug,
+  stock,
+  updated_at,
+  weight
 `;
 
 export interface ProductListImage {
@@ -74,7 +103,7 @@ export interface GetProductsOptimizedParams {
   signal?: AbortSignal;
 }
 
-export interface ProductWithImages extends ProductRow {
+export interface ProductWithImages extends CustomerProductRow {
   images: { url: string; sort_order: number }[];
 }
 
@@ -184,6 +213,22 @@ function normalizeProductListRow(
       url: image.url,
       sort_order: image.sort_order,
     })),
+  };
+}
+
+function normalizeCustomerProductRow(product: CustomerProductRow): CustomerProductRow {
+  return {
+    id: product.id,
+    category_id: product.category_id,
+    created_at: product.created_at,
+    description: product.description,
+    is_active: product.is_active,
+    name: product.name,
+    price: product.price,
+    slug: product.slug,
+    stock: product.stock,
+    updated_at: product.updated_at,
+    weight: product.weight,
   };
 }
 
@@ -374,11 +419,11 @@ export async function getCategories(): Promise<CategoryRow[]> {
  * Fetch latest active products
  * Limited to 10 most recent products by default
  */
-export async function getLatestProducts(limit: number = 10): Promise<ProductRow[]> {
+export async function getLatestProducts(limit: number = 10): Promise<CustomerProductRow[]> {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(CUSTOMER_PRODUCT_SELECT)
       .eq('is_active', true)
       .gt('stock', 0)
       .order('created_at', { ascending: false })
@@ -388,7 +433,7 @@ export async function getLatestProducts(limit: number = 10): Promise<ProductRow[
       throw error;
     }
 
-    return data || [];
+    return ((data ?? []) as CustomerProductRow[]).map(normalizeCustomerProductRow);
   } catch (error) {
     logHomeServiceError('getLatestProducts error', error);
     throw toUserError(error, 'Failed to load latest products. Please try again.');
@@ -607,7 +652,17 @@ export async function getLatestProductsWithImages(
 
     // Merge products with their images
     const productsWithImages: ProductWithImages[] = products.map(product => ({
-      ...product,
+      id: product.id,
+      category_id: product.category_id,
+      created_at: product.created_at,
+      description: product.description,
+      is_active: product.is_active,
+      name: product.name,
+      price: product.price,
+      slug: product.slug,
+      stock: product.stock,
+      updated_at: product.updated_at,
+      weight: product.weight,
       images: imagesByProduct[product.id] || [],
     }));
 
@@ -627,7 +682,7 @@ export async function searchProducts(query: string): Promise<ProductWithImages[]
 
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(CUSTOMER_PRODUCT_SELECT)
     .eq('is_active', true)
     .gt('stock', 0)
     .ilike('name', `%${trimmedQuery}%`)
@@ -654,7 +709,17 @@ export async function searchProducts(query: string): Promise<ProductWithImages[]
   );
 
   const productsWithImages: ProductWithImages[] = data.map(product => ({
-    ...product,
+    id: product.id,
+    category_id: product.category_id,
+    created_at: product.created_at,
+    description: product.description,
+    is_active: product.is_active,
+    name: product.name,
+    price: product.price,
+    slug: product.slug,
+    stock: product.stock,
+    updated_at: product.updated_at,
+    weight: product.weight,
     images: imagesByProduct[product.id] || [],
   }));
 
@@ -668,7 +733,7 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
   try {
     const { data: product, error: productError } = await supabase
       .from('products')
-      .select('*')
+      .select(CUSTOMER_PRODUCT_SELECT)
       .eq('id', normalizedId)
       .eq('is_active', true)
       .maybeSingle();
@@ -713,7 +778,17 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
     }
 
     return {
-      ...product,
+      id: product.id,
+      category_id: product.category_id,
+      created_at: product.created_at,
+      description: product.description,
+      is_active: product.is_active,
+      name: product.name,
+      price: product.price,
+      slug: product.slug,
+      stock: product.stock,
+      updated_at: product.updated_at,
+      weight: product.weight,
       images: (imagesResult.data || []).map(image => ({
         url: image.url,
         sort_order: image.sort_order,
