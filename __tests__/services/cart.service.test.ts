@@ -30,6 +30,7 @@ function createRow(index: number, quantity: number, price: number, weight: numbe
       weight,
       slug: `produk-${index}`,
       is_active: true,
+      sku: `SKU-PRODUK-${index}`,
       product_images: [
         { id: `image-${index}`, url: `https://cdn.example.com/${index}.jpg`, sort_order: 0 },
       ],
@@ -378,6 +379,8 @@ describe('cart.service snapshot behavior', () => {
       },
     });
     expect(joinedItemsQuery.select).toHaveBeenCalledTimes(1);
+    expect(joinedItemsQuery.select.mock.calls[0]?.[0] as string).not.toContain('sku');
+    expect(result.data?.items[0]?.product).not.toHaveProperty('sku');
     expect(mockFrom).toHaveBeenCalledTimes(2);
   });
 
@@ -418,6 +421,8 @@ describe('cart.service snapshot behavior', () => {
       images: [{ id: 'image-1', url: 'https://cdn.example.com/1.jpg', sort_order: 0 }],
     });
     expect(joinedItemQuery.select).toHaveBeenCalledTimes(1);
+    expect(joinedItemQuery.select.mock.calls[0]?.[0] as string).not.toContain('sku');
+    expect(result.data?.product).not.toHaveProperty('sku');
   });
 
   it('falls back to the shared default item weight when product weight is missing', async () => {

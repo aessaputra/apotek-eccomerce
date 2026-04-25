@@ -307,7 +307,8 @@ function createItem(index: number): CartItemWithProduct {
       weight: 100,
       slug: `produk-${index}`,
       is_active: true,
-    },
+      sku: `SKU-PRODUK-${index}`,
+    } as CartItemWithProduct['product'] & { sku: string },
     images: [{ id: `img-${index}`, url: `https://example.com/${index}.jpg`, sort_order: 0 }],
   };
 }
@@ -357,6 +358,8 @@ describe('<Cart />', () => {
 
     expect(screen.getByText('Produk 1')).not.toBeNull();
     expect(screen.getByText('Produk 2')).not.toBeNull();
+    expect(screen.queryByText('SKU-PRODUK-1')).toBeNull();
+    expect(screen.queryByText('SKU-PRODUK-2')).toBeNull();
     expect(screen.queryByText('Login Terlebih Dahulu')).toBeNull();
   });
 
