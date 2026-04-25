@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import {
   getOrderTabCounts,
+  getOrderById,
   getOrdersOptimized,
   getPastPurchasedProducts,
 } from '@/services/order.service';
@@ -240,6 +241,80 @@ describe('order.service schema-aligned reads', () => {
         ],
       }),
     ]);
+    expect(result.data?.[0]?.order_items[0]).not.toHaveProperty('product_sku_at_purchase');
+    expect(result.data?.[0]?.order_items[0]?.products).not.toHaveProperty('sku');
+  });
+
+  test('hydrates order detail payloads without exposing purchase SKU fields', async () => {
+    enqueueQuery('order_read_model', {
+      data: {
+        id: 'order-1',
+        created_at: '2026-04-18T11:00:00.000Z',
+        total_amount: 65000,
+        user_id: 'user-1',
+        shipping_address_id: 'address-1',
+        shipping_cost: 15000,
+        updated_at: '2026-04-18T11:00:00.000Z',
+        delivered_at: null,
+        complaint_window_expires_at: null,
+        customer_completed_at: null,
+        customer_completion_source: null,
+        customer_completion_stage: 'not_applicable',
+        customer_order_bucket: 'packing',
+        status: 'processing',
+        payment_status: 'settlement',
+        midtrans_order_id: 'MID-1',
+        gross_amount: 65000,
+        expired_at: null,
+        courier_code: 'jne',
+        courier_service: 'reg',
+        shipping_etd: '2-3 hari',
+        waybill_number: null,
+        snap_redirect_url: null,
+      },
+      error: null,
+    });
+    enqueueQuery('order_items', {
+      data: [
+        {
+          id: 'item-1',
+          order_id: 'order-1',
+          product_id: 'product-1',
+          product_sku_at_purchase: 'VIT-C-001',
+          quantity: 2,
+          price_at_purchase: 25000,
+          created_at: '2026-04-18T11:00:01.000Z',
+        },
+      ],
+      error: null,
+    });
+    enqueueQuery('products', {
+      data: [{ id: 'product-1', name: 'Vitamin C', price: 25000, slug: 'vitamin-c', weight: 120 }],
+      error: null,
+    });
+    enqueueQuery('product_images', {
+      data: [{ product_id: 'product-1', url: 'https://img/1.jpg', sort_order: 0 }],
+      error: null,
+    });
+    enqueueQuery('addresses', {
+      data: {
+        id: 'address-1',
+        receiver_name: 'Jane Doe',
+        phone_number: '08123456789',
+        street_address: 'Jl. Example',
+        address_note: null,
+        city: 'Jakarta',
+        province: 'DKI Jakarta',
+        postal_code: '12345',
+      },
+      error: null,
+    });
+
+    const result = await getOrderById('order-1');
+
+    expect(result.error).toBeNull();
+    expect(result.data?.order_items[0]).not.toHaveProperty('product_sku_at_purchase');
+    expect(result.data?.order_items[0]?.products).not.toHaveProperty('sku');
   });
 
   test('builds buy-again products from completed settled orders only and deduplicates products', async () => {
@@ -318,6 +393,7 @@ describe('order.service schema-aligned reads', () => {
       ],
       error: null,
     });
+    expect(result.data?.[0]).not.toHaveProperty('sku');
 
     expect(queryRecords[0]?.operations).toEqual(
       expect.arrayContaining([
