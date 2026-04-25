@@ -1,5 +1,4 @@
 import { supabase } from '@/utils/supabase';
-import config from '@/utils/config';
 import { parsePostalCode } from '@/utils/postalCode';
 import type { Address } from '@/types/address';
 import type {
@@ -222,9 +221,6 @@ function mapTrackingResult(value: unknown): TrackingResult {
   };
 }
 
-const ORIGIN_LATITUDE = config.originLatitude;
-const ORIGIN_LONGITUDE = config.originLongitude;
-
 function normalizeAreaId(address: Address): string | null {
   return address.area_id || null;
 }
@@ -420,8 +416,6 @@ export async function getShippingRatesForAddress(
           ? {
               destination_latitude: destLat,
               destination_longitude: destLng,
-              origin_latitude: ORIGIN_LATITUDE,
-              origin_longitude: ORIGIN_LONGITUDE,
             }
           : {}),
         ...(params.couriers ? { couriers: params.couriers } : {}),

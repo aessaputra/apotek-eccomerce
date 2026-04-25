@@ -125,6 +125,25 @@ describe('shipping.service', () => {
     ).toEqual({ Authorization: 'Bearer test-access-token' });
   });
 
+  test('searchBiteshipArea preserves mixed postal code shapes from the proxy', async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        areas: [
+          { id: 'ID-1', name: 'Kemang, Jakarta', postal_code: '42183' },
+          { id: 'ID-2', name: 'Walantaka, Serang', postal_code: null },
+        ],
+      },
+      error: null,
+    });
+
+    const { data, error } = await searchBiteshipArea('Kemang Jakarta');
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(2);
+    expect(data[0].postal_code).toBe('42183');
+    expect(data[1].postal_code).toBeNull();
+  });
+
   test('uses destination_postal_code when selected address has no area id mapping', async () => {
     mockInvoke.mockResolvedValueOnce({
       data: {
@@ -187,7 +206,7 @@ describe('shipping.service', () => {
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
-  test('sends coordinates alongside destination_area_id when address has lat/lng for instant couriers', async () => {
+  test('sends destination coordinates and no origin fields when address has lat/lng for instant couriers', async () => {
     mockInvoke.mockResolvedValueOnce({
       data: {
         pricing: [
@@ -240,8 +259,10 @@ describe('shipping.service', () => {
           destination_area_id?: string;
           destination_latitude?: number;
           destination_longitude?: number;
+          origin_area_id?: string;
           origin_latitude?: number;
           origin_longitude?: number;
+          origin_postal_code?: number;
           couriers?: string;
         };
       };
@@ -250,8 +271,10 @@ describe('shipping.service', () => {
     expect(invokePayload.body?.payload?.destination_area_id).toBe('DEST-AREA-ID');
     expect(invokePayload.body?.payload?.destination_latitude).toBe(-6.2088);
     expect(invokePayload.body?.payload?.destination_longitude).toBe(106.8456);
-    expect(invokePayload.body?.payload?.origin_latitude).toBeDefined();
-    expect(invokePayload.body?.payload?.origin_longitude).toBeDefined();
+    expect(invokePayload.body?.payload?.origin_area_id).toBeUndefined();
+    expect(invokePayload.body?.payload?.origin_latitude).toBeUndefined();
+    expect(invokePayload.body?.payload?.origin_longitude).toBeUndefined();
+    expect(invokePayload.body?.payload?.origin_postal_code).toBeUndefined();
     expect(invokePayload.body?.payload?.couriers).toBe('gojek,grab,lalamove');
   });
 

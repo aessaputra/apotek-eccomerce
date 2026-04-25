@@ -77,12 +77,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '',
       googleApiKey: process.env.EXPO_PUBLIC_GOOGLE_API_KEY ?? '',
-      originLatitude: process.env.EXPO_PUBLIC_ORIGIN_LATITUDE
-        ? Number(process.env.EXPO_PUBLIC_ORIGIN_LATITUDE)
-        : -6.2146,
-      originLongitude: process.env.EXPO_PUBLIC_ORIGIN_LONGITUDE
-        ? Number(process.env.EXPO_PUBLIC_ORIGIN_LONGITUDE)
-        : 106.8451,
     },
     plugins: [
       'expo-dev-client',
