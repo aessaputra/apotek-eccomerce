@@ -5,6 +5,15 @@ import { RotateCcw } from '@tamagui/lucide-icons';
 import { BuyAgainCard } from '@/components/elements/BuyAgainCard';
 import type { PastPurchaseProduct } from '@/services/order.service';
 
+const HORIZONTAL_PADDING = 32;
+const CARD_GAP = 10;
+const PEEK_OFFSET = 6;
+const DESKTOP_CARD_WIDTH = 156;
+const CAROUSEL_CONTENT_CONTAINER_STYLE = {
+  paddingHorizontal: 16,
+  gap: CARD_GAP,
+} as const;
+
 const SectionHeader = styled(XStack, {
   alignItems: 'center',
   gap: '$2',
@@ -30,11 +39,6 @@ export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
     const media = useMedia();
     const { width: screenWidth } = useWindowDimensions();
 
-    const HORIZONTAL_PADDING = 32;
-    const CARD_GAP = 10;
-    const PEEK_OFFSET = 6;
-    const DESKTOP_CARD_WIDTH = 156;
-
     const cardWidth = media.gtSm
       ? DESKTOP_CARD_WIDTH
       : Math.max(140, Math.floor((screenWidth - HORIZONTAL_PADDING - CARD_GAP - PEEK_OFFSET) / 2));
@@ -53,10 +57,7 @@ export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            gap: CARD_GAP,
-          }}>
+          contentContainerStyle={CAROUSEL_CONTENT_CONTAINER_STYLE}>
           {products.map(product => (
             <BuyAgainCard
               key={product.id}

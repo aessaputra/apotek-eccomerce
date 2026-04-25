@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { YStack } from 'tamagui';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { OrderStatusTabs } from '@/components/elements/OrderStatusTabs';
@@ -117,12 +117,14 @@ export default function Orders() {
     }
   }, []);
 
+  const displayProducts = useMemo(() => pastProducts.slice(0, 2), [pastProducts]);
+
   return (
     <YStack flex={1} backgroundColor="$background" paddingTop="$4">
       <OrdersHeroCard />
       <OrderStatusTabs counts={counts} onTabChange={handleTabChange} />
       <BuyAgainCarousel
-        products={pastProducts.slice(0, 2)}
+        products={displayProducts}
         onProductPress={handleProductPress}
         onAddToCart={handleAddToCart}
       />

@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Button, Separator, Spinner, Text, XStack, YStack, styled, useTheme } from 'tamagui';
-import { TruckIcon, PackageIcon, AlertCircleIcon } from '@/components/icons';
+import { Button, Separator, Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
+import { PackageIcon, AlertCircleIcon } from '@/components/icons';
 import OrderSectionCard from '@/components/elements/OrderSectionCard';
 import { StatusBadge } from '@/components/elements/StatusBadge';
 import {
@@ -16,23 +16,15 @@ import { formatOrderDateTime } from '@/utils/orderDate';
 import { formatOrderNumber } from '@/utils/orderNumber';
 import { useOrderDetail } from '@/hooks';
 import { PaymentCountdownTimer } from '@/components/elements/PaymentCountdownTimer';
-import BottomActionBar from '@/components/layouts/BottomActionBar';
-import Image from '@/components/elements/Image';
-import { formatCourierServiceName } from '@/constants/courier.constants';
-import { formatRupiah } from '@/scenes/cart/cart.constants';
+import OrderDetailItemsSection from './OrderDetailItemsSection';
+import OrderDetailAddressSection from './OrderDetailAddressSection';
+import OrderDetailShippingSection from './OrderDetailShippingSection';
+import OrderDetailPaymentSection from './OrderDetailPaymentSection';
+import OrderDetailSummarySection from './OrderDetailSummarySection';
+import OrderDetailActions from './OrderDetailActions';
 
-const SecondaryStatusText = styled(Text, {
-  fontSize: '$2',
-  color: '$colorMuted',
-});
-
-function getProductImageUrl(
-  productImages?: { url: string; sort_order: number }[] | null,
-): string | null {
-  if (!productImages?.length) return null;
-  const sorted = [...productImages].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  return sorted[0]?.url ?? null;
-}
+const DETAIL_CONTENT_WITH_ACTION_STYLE = { paddingBottom: 100 } as const;
+const DETAIL_CONTENT_DEFAULT_STYLE = { paddingBottom: 24 } as const;
 
 function shouldShowTrackingSection(status: string): boolean {
   return status === 'shipped' || status === 'in_transit';
@@ -53,6 +45,13 @@ export default function OrderDetail() {
   const refreshTintColor = getThemeColor(theme, 'primary');
   const shouldShowTracking = shouldShowTrackingSection(order?.status ?? '');
 
+  const refreshControl = useMemo(
+    () => (
+      <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={refreshTintColor} />
+    ),
+    [isRefreshing, refresh, refreshTintColor],
+  );
+
   const handlePaymentExpired = useCallback(() => {
     setIsPaymentExpired(true);
   }, []);
@@ -67,6 +66,20 @@ export default function OrderDetail() {
       params: { orderId: order.id },
     });
   }, [order?.id, router]);
+
+  const handleResumePayment = useCallback(() => {
+    const paymentUrl = order?.snap_redirect_url?.trim() || '';
+    const isOrderExpired = isBackendExpired(order?.expired_at) || isPaymentExpired;
+
+    if (!order?.id || isOrderExpired || !paymentUrl) {
+      return;
+    }
+
+    router.push({
+      pathname: '/cart/payment',
+      params: { orderId: order.id, paymentUrl },
+    });
+  }, [isPaymentExpired, order?.expired_at, order?.id, order?.snap_redirect_url, router]);
 
   const handleConfirmReceived = useCallback(() => {
     void confirmReceived();
@@ -206,6 +219,12 @@ export default function OrderDetail() {
   );
   const secondaryStatusDisplay = getOrderSecondaryStatusDisplay(order.status, order.payment_status);
 
+  const shouldReserveActionSpace =
+    order.payment_status === 'pending' || shouldShowTracking || isAwaitingCustomerConfirmation;
+  const contentContainerStyle = shouldReserveActionSpace
+    ? DETAIL_CONTENT_WITH_ACTION_STYLE
+    : DETAIL_CONTENT_DEFAULT_STYLE;
+
   return (
     <YStack flex={1} backgroundColor="$background">
       {error && (
@@ -221,22 +240,7 @@ export default function OrderDetail() {
           </XStack>
         </YStack>
       )}
-      <ScrollView
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={refresh}
-            tintColor={refreshTintColor}
-          />
-        }
-        contentContainerStyle={{
-          paddingBottom:
-            order.payment_status === 'pending' ||
-            shouldShowTracking ||
-            isAwaitingCustomerConfirmation
-              ? 100
-              : 24,
-        }}>
+      <ScrollView refreshControl={refreshControl} contentContainerStyle={contentContainerStyle}>
         <YStack paddingVertical="$4" gap="$3">
           <OrderSectionCard>
             <YStack padding="$4" gap="$4">
@@ -275,225 +279,40 @@ export default function OrderDetail() {
                 </StatusBadge>
               </XStack>
 
-              {secondaryStatusDisplay && (
-                <XStack justifyContent="space-between" alignItems="center">
-                  <Text fontSize="$3" color="$colorSubtle">
-                    Status Pembayaran
-                  </Text>
-                  <SecondaryStatusText>{secondaryStatusDisplay}</SecondaryStatusText>
-                </XStack>
-              )}
+              <OrderDetailPaymentSection secondaryStatusDisplay={secondaryStatusDisplay} />
             </YStack>
           </OrderSectionCard>
 
-          <OrderSectionCard>
-            <YStack padding="$4" gap="$3">
-              <XStack alignItems="center" gap="$2">
-                <PackageIcon size={20} color="$primary" />
-                <Text fontSize="$4" fontWeight="600" color="$color">
-                  Produk
-                </Text>
-              </XStack>
-
-              <Separator />
-
-              <YStack gap="$4">
-                {order.order_items?.map(item => {
-                  const product = item.products;
-                  const imageUrl = getProductImageUrl(product?.product_images);
-                  const lineTotal = item.price_at_purchase * item.quantity;
-
-                  return (
-                    <XStack key={item.id} gap="$3" alignItems="flex-start">
-                      {imageUrl ? (
-                        <YStack
-                          width={64}
-                          height={64}
-                          borderRadius="$3"
-                          overflow="hidden"
-                          backgroundColor="$surfaceSubtle">
-                          <Image
-                            source={{ uri: imageUrl }}
-                            style={{ width: '100%', height: '100%' }}
-                            contentFit="cover"
-                          />
-                        </YStack>
-                      ) : (
-                        <YStack
-                          width={64}
-                          height={64}
-                          borderRadius="$3"
-                          backgroundColor="$surfaceSubtle"
-                          alignItems="center"
-                          justifyContent="center">
-                          <PackageIcon size={24} color="$colorMuted" />
-                        </YStack>
-                      )}
-
-                      <YStack flex={1} gap="$1">
-                        <Text fontSize="$3" color="$color" fontWeight="500" numberOfLines={2}>
-                          {product?.name ?? 'Produk'}
-                        </Text>
-                        <Text fontSize="$2" color="$colorSubtle">
-                          {formatRupiah(item.price_at_purchase)} × {item.quantity}
-                        </Text>
-                        <Text fontSize="$4" color="$color" fontWeight="600">
-                          {formatRupiah(lineTotal)}
-                        </Text>
-                      </YStack>
-                    </XStack>
-                  );
-                })}
-              </YStack>
-            </YStack>
-          </OrderSectionCard>
-
-          {order.addresses && (
-            <OrderSectionCard>
-              <YStack padding="$4" gap="$3">
-                <XStack alignItems="center" gap="$2">
-                  <TruckIcon size={20} color="$primary" />
-                  <Text fontSize="$4" fontWeight="600" color="$color">
-                    Alamat Pengiriman
-                  </Text>
-                </XStack>
-
-                <Separator />
-
-                <YStack gap="$2">
-                  <Text fontSize="$3" color="$color" fontWeight="600">
-                    {order.addresses.receiver_name}
-                  </Text>
-                  <Text fontSize="$3" color="$color">
-                    {order.addresses.phone_number}
-                  </Text>
-                  <Text fontSize="$3" color="$colorSubtle">
-                    {order.addresses.street_address}
-                  </Text>
-                  {order.addresses.address_note ? (
-                    <Text fontSize="$3" color="$colorSubtle">
-                      {order.addresses.address_note}
-                    </Text>
-                  ) : null}
-                  <Text fontSize="$3" color="$colorSubtle">
-                    {order.addresses.city}, {order.addresses.province} {order.addresses.postal_code}
-                  </Text>
-                </YStack>
-              </YStack>
-            </OrderSectionCard>
-          )}
-
-          {(order.courier_code || order.courier_service) && (
-            <OrderSectionCard>
-              <YStack padding="$4" gap="$3">
-                <XStack alignItems="center" gap="$2">
-                  <TruckIcon size={20} color="$primary" />
-                  <Text fontSize="$4" fontWeight="600" color="$color">
-                    Metode Pengiriman
-                  </Text>
-                </XStack>
-
-                <Separator />
-
-                <YStack gap="$2">
-                  <Text fontSize="$3" color="$color" fontWeight="500">
-                    {formatCourierServiceName(order.courier_code, order.courier_service)}
-                  </Text>
-                  {order.waybill_number && (
-                    <Text fontSize="$3" color="$colorSubtle">
-                      No. Resi: {order.waybill_number}
-                    </Text>
-                  )}
-                  {order.shipping_etd && (
-                    <Text fontSize="$3" color="$colorSubtle">
-                      Estimasi: {order.shipping_etd}
-                    </Text>
-                  )}
-                  {shippingCost > 0 && (
-                    <Text fontSize="$4" color="$primary" fontWeight="600">
-                      {formatRupiah(shippingCost)}
-                    </Text>
-                  )}
-                </YStack>
-              </YStack>
-            </OrderSectionCard>
-          )}
-
-          <OrderSectionCard>
-            <YStack padding="$4" gap="$3">
-              <XStack justifyContent="space-between" alignItems="center">
-                <Text fontSize="$3" color="$colorSubtle">
-                  Subtotal Produk
-                </Text>
-                <Text fontSize="$3" color="$color">
-                  {formatRupiah(subtotal)}
-                </Text>
-              </XStack>
-              {shippingCost > 0 && (
-                <XStack justifyContent="space-between" alignItems="center">
-                  <Text fontSize="$3" color="$colorSubtle">
-                    Ongkir
-                  </Text>
-                  <Text fontSize="$3" color="$color">
-                    {formatRupiah(shippingCost)}
-                  </Text>
-                </XStack>
-              )}
-              <Separator />
-              <XStack justifyContent="space-between" alignItems="center">
-                <Text fontSize="$4" fontWeight="700" color="$color">
-                  Total
-                </Text>
-                <Text fontSize="$6" fontWeight="700" color="$primary">
-                  {formatRupiah(totalAmount)}
-                </Text>
-              </XStack>
-            </YStack>
-          </OrderSectionCard>
+          <OrderDetailItemsSection orderItems={order.order_items} />
+          <OrderDetailAddressSection address={order.addresses} />
+          <OrderDetailShippingSection
+            courierCode={order.courier_code}
+            courierService={order.courier_service}
+            waybillNumber={order.waybill_number}
+            shippingEtd={order.shipping_etd}
+            shippingCost={shippingCost}
+          />
+          <OrderDetailSummarySection
+            subtotal={subtotal}
+            shippingCost={shippingCost}
+            totalAmount={totalAmount}
+          />
         </YStack>
       </ScrollView>
 
-      {order.payment_status === 'pending' && (
-        <BottomActionBar
-          buttonTitle={isOrderExpired ? 'Pembayaran Kadaluarsa' : 'Bayar Sekarang'}
-          onPress={() => {
-            if (canResumePayment) {
-              router.push({
-                pathname: '/cart/payment',
-                params: { orderId: order.id, paymentUrl },
-              });
-            }
-          }}
-          isLoading={isLoading}
-          disabled={!canResumePayment}
-          aria-label="Bayar pesanan"
-          aria-describedby="Tombol untuk melanjutkan pembayaran"
-        />
-      )}
-
-      {order.payment_status !== 'pending' && shouldShowTracking && (
-        <BottomActionBar
-          buttonTitle="Lacak Pengiriman"
-          onPress={handleTrackShipment}
-          isLoading={isLoading}
-          disabled={!order.waybill_number}
-          aria-label="Lacak pengiriman pesanan"
-          aria-describedby="Tombol untuk membuka layar tracking pengiriman"
-        />
-      )}
-
-      {order.payment_status !== 'pending' &&
-        !shouldShowTracking &&
-        isAwaitingCustomerConfirmation && (
-          <BottomActionBar
-            buttonTitle="Pesanan Diterima"
-            onPress={handleConfirmReceived}
-            isLoading={isConfirming}
-            disabled={isConfirming}
-            aria-label="Konfirmasi pesanan diterima"
-            aria-describedby="Tombol untuk mengonfirmasi bahwa pesanan sudah diterima"
-          />
-        )}
+      <OrderDetailActions
+        paymentStatus={order.payment_status}
+        isOrderExpired={isOrderExpired}
+        canResumePayment={canResumePayment}
+        isLoading={isLoading}
+        isConfirming={isConfirming}
+        shouldShowTracking={shouldShowTracking}
+        isAwaitingCustomerConfirmation={isAwaitingCustomerConfirmation}
+        waybillNumber={order.waybill_number}
+        onResumePayment={handleResumePayment}
+        onTrackShipment={handleTrackShipment}
+        onConfirmReceived={handleConfirmReceived}
+      />
     </YStack>
   );
 }

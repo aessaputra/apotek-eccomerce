@@ -12,12 +12,25 @@ interface TabConfig {
   icon: React.ComponentType<IconProps>;
 }
 
+interface OrderStatusTabItemProps {
+  tab: TabConfig;
+  count: number;
+  isActive: boolean;
+  onTabChange: (tab: OrderTab) => void;
+}
+
 const TABS: TabConfig[] = [
   { key: 'unpaid', label: 'Belum Bayar', icon: WalletIcon },
   { key: 'packing', label: 'Dikemas', icon: PackageIcon },
   { key: 'shipped', label: 'Dikirim', icon: TruckIcon },
   { key: 'completed', label: 'Selesai', icon: CheckCircleIcon },
 ];
+
+const TABS_CONTENT_CONTAINER_STYLE = {
+  flexGrow: 1,
+  justifyContent: 'space-around',
+} as const;
+const TAB_PRESS_STYLE = { opacity: 0.7 } as const;
 
 interface OrderStatusTabsProps {
   activeTab?: OrderTab | null;
@@ -127,37 +140,51 @@ const BadgeText = styled(Text, {
   lineHeight: 14,
 });
 
+const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
+  tab,
+  count,
+  isActive,
+  onTabChange,
+}: OrderStatusTabItemProps) {
+  const IconComponent = tab.icon;
+  const handlePress = React.useCallback(() => {
+    onTabChange(tab.key);
+  }, [onTabChange, tab.key]);
+
+  return (
+    <TabButton active={isActive} onPress={handlePress} pressStyle={TAB_PRESS_STYLE}>
+      <TabIcon active={isActive}>
+        <IconComponent size={28} color={isActive ? '$primary' : '$colorSubtle'} />
+      </TabIcon>
+      <TabLabel active={isActive}>{tab.label}</TabLabel>
+      {count > 0 && (
+        <Badge>
+          <BadgeText>{count > 99 ? '99+' : count}</BadgeText>
+        </Badge>
+      )}
+    </TabButton>
+  );
+});
+
 export function OrderStatusTabs({ activeTab, counts, onTabChange }: OrderStatusTabsProps) {
   return (
     <TabsContainer>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: 'space-around',
-        }}>
+        contentContainerStyle={TABS_CONTENT_CONTAINER_STYLE}>
         {TABS.map(tab => {
           const isActive = activeTab === tab.key;
           const count = counts[tab.key] || 0;
-          const IconComponent = tab.icon;
 
           return (
-            <TabButton
+            <OrderStatusTabItem
               key={tab.key}
-              active={isActive}
-              onPress={() => onTabChange(tab.key)}
-              pressStyle={{ opacity: 0.7 }}>
-              <TabIcon active={isActive}>
-                <IconComponent size={28} color={isActive ? '$primary' : '$colorSubtle'} />
-              </TabIcon>
-              <TabLabel active={isActive}>{tab.label}</TabLabel>
-              {count > 0 && (
-                <Badge>
-                  <BadgeText>{count > 99 ? '99+' : count}</BadgeText>
-                </Badge>
-              )}
-            </TabButton>
+              tab={tab}
+              count={count}
+              isActive={isActive}
+              onTabChange={onTabChange}
+            />
           );
         })}
       </ScrollView>

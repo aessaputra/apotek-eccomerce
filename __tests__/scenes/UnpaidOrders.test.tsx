@@ -1,6 +1,6 @@
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
-import { fireEvent } from '@testing-library/react-native';
-import { render, screen } from '@/test-utils/renderWithTheme';
+import { FlatList } from 'react-native';
+import { fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import UnpaidOrdersScreen from '@/scenes/orders/UnpaidOrders';
 import type { OrderListItem } from '@/services/order.service';
 
@@ -12,7 +12,7 @@ const mockLoadMore = jest.fn();
 const mockOrders: OrderListItem[] = [
   {
     id: 'order-1',
-    created_at: '2026-01-01T00:00:00Z',
+    created_at: '2030-01-01T00:00:00Z',
     expired_at: null,
     midtrans_order_id: 'MID-001',
     gross_amount: 50000,
@@ -21,6 +21,8 @@ const mockOrders: OrderListItem[] = [
     courier_service: 'same-day',
     payment_status: 'pending',
     status: 'pending',
+    customer_completion_stage: null,
+    customer_order_bucket: 'unpaid',
     order_items: [
       {
         id: 'item-1',
@@ -38,7 +40,7 @@ const mockOrders: OrderListItem[] = [
   },
   {
     id: 'order-2',
-    created_at: '2026-01-02T00:00:00Z',
+    created_at: '2030-01-02T00:00:00Z',
     expired_at: null,
     midtrans_order_id: 'MID-002',
     gross_amount: 100000,
@@ -47,6 +49,8 @@ const mockOrders: OrderListItem[] = [
     courier_service: null,
     payment_status: 'pending',
     status: 'pending',
+    customer_completion_stage: null,
+    customer_order_bucket: 'unpaid',
     order_items: [
       {
         id: 'item-2',
@@ -173,5 +177,54 @@ describe('UnpaidOrders', () => {
     render(<UnpaidOrdersScreen />);
 
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
+  });
+
+  test('retries from the error state', () => {
+    hookState.orders = [];
+    hookState.error = 'Gagal memuat data';
+    hookState.isUsingCachedData = false;
+
+    render(<UnpaidOrdersScreen />);
+
+    expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
+    expect(screen.getByText('Gagal memuat data')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Coba Lagi'));
+
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  test('routes to the order detail screen when a visible unpaid order is pressed', () => {
+    render(<UnpaidOrdersScreen />);
+
+    fireEvent.press(screen.getByText('Paracetamol'));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/orders/order-detail/[orderId]',
+      params: { orderId: 'order-1' },
+    });
+  });
+
+  test('wires refresh and pagination on the rendered list', () => {
+    hookState.isRefreshing = true;
+    hookState.hasMore = true;
+
+    render(<UnpaidOrdersScreen />);
+
+    const list = screen.UNSAFE_getByType(FlatList);
+    expect(list.props.refreshControl.props.refreshing).toBe(true);
+    list.props.refreshControl.props.onRefresh();
+    list.props.onEndReached();
+
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    expect(mockLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  test('refreshes cached unpaid orders on mount', async () => {
+    render(<UnpaidOrdersScreen />);
+
+    await waitFor(() => {
+      expect(mockRefreshIfNeeded).toHaveBeenCalledTimes(1);
+    });
   });
 });

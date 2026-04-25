@@ -5,10 +5,13 @@ import OrderDetail from '@/scenes/orders/OrderDetail';
 const mockPush = jest.fn();
 const mockUseOrderDetail = jest.fn();
 const mockBottomActionBar = jest.fn();
+const mockUseLocalSearchParams = jest.fn();
+
+let mockRouteParams: { orderId?: string | string[] } = { orderId: 'test-order-id' };
 
 jest.mock('expo-router', () => ({
   __esModule: true,
-  useLocalSearchParams: () => ({ orderId: 'test-order-id' }),
+  useLocalSearchParams: (...args: unknown[]) => mockUseLocalSearchParams(...args),
   useRouter: () => ({
     push: mockPush,
   }),
@@ -79,70 +82,148 @@ const mockOrder = {
   shipping_etd: '2-3 hari',
 };
 
+function setRouteParams(orderId?: string | string[]) {
+  mockRouteParams = { orderId };
+}
+
+function setOrderDetailReturn(overrides: Record<string, unknown> = {}) {
+  const refresh = jest.fn();
+  const confirmReceived = jest.fn();
+
+  mockUseOrderDetail.mockReturnValue({
+    order: mockOrder,
+    status: 'success',
+    isLoading: false,
+    isRefreshing: false,
+    isConfirming: false,
+    error: null,
+    refresh,
+    confirmReceived,
+    ...overrides,
+  });
+
+  return { refresh, confirmReceived };
+}
+
+function renderOrderDetail() {
+  return render(<OrderDetail />);
+}
+
 describe('<OrderDetail />', () => {
   beforeEach(() => {
     mockPush.mockClear();
     mockUseOrderDetail.mockReset();
     mockBottomActionBar.mockReset();
+    mockUseLocalSearchParams.mockImplementation(() => mockRouteParams);
+    setRouteParams('test-order-id');
   });
 
   test('renders loading state', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: null,
       status: 'loading',
       isLoading: true,
       isRefreshing: false,
       error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.getByText('Memuat detail pesanan...')).not.toBeNull();
   });
 
-  test('renders not-found state when order ID is missing', () => {
-    mockUseOrderDetail.mockReturnValue({
+  test('handles normal string route param without throwing', () => {
+    setRouteParams('test-order-id');
+    setOrderDetailReturn({
       order: null,
       status: 'not-found',
       isLoading: false,
       isRefreshing: false,
       error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    expect(() => renderOrderDetail()).not.toThrow();
+    expect(mockUseOrderDetail).toHaveBeenCalledWith('test-order-id');
+  });
+
+  test('handles array route param without throwing', () => {
+    setRouteParams(['test-order-id', 'ignored']);
+    setOrderDetailReturn({
+      order: null,
+      status: 'not-found',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+    });
+
+    expect(() => renderOrderDetail()).not.toThrow();
+    expect(mockUseOrderDetail).toHaveBeenCalledWith('test-order-id');
+  });
+
+  test('handles undefined route param without throwing', () => {
+    setRouteParams(undefined);
+    setOrderDetailReturn({
+      order: null,
+      status: 'not-found',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+    });
+
+    expect(() => renderOrderDetail()).not.toThrow();
+    expect(mockUseOrderDetail).toHaveBeenCalledWith(undefined);
+    expect(screen.getByText('Pesanan Tidak Ditemukan')).not.toBeNull();
+  });
+
+  test('handles invalid string route param without throwing', () => {
+    setRouteParams('   ');
+    setOrderDetailReturn({
+      order: null,
+      status: 'not-found',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+    });
+
+    expect(() => renderOrderDetail()).not.toThrow();
+    expect(mockUseOrderDetail).toHaveBeenCalledWith(undefined);
+    expect(screen.getByText('Pesanan Tidak Ditemukan')).not.toBeNull();
+  });
+
+  test('renders not-found state when order ID is missing', () => {
+    setRouteParams(undefined);
+    setOrderDetailReturn({
+      order: null,
+      status: 'not-found',
+      isLoading: false,
+      isRefreshing: false,
+      error: null,
+    });
+
+    renderOrderDetail();
 
     expect(screen.getByText('Pesanan Tidak Ditemukan')).not.toBeNull();
   });
 
   test('renders error state', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: null,
       status: 'error',
       isLoading: false,
       isRefreshing: false,
       error: 'Network error',
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.getByText('Gagal Memuat Pesanan')).not.toBeNull();
     expect(screen.getByText('Network error')).not.toBeNull();
   });
 
   test('renders order details with successful payment status', () => {
-    mockUseOrderDetail.mockReturnValue({
-      order: mockOrder,
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
-    });
+    setOrderDetailReturn();
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.getByText('NOMOR PESANAN')).not.toBeNull();
     expect(screen.getByText('APT-TEST-ORD')).not.toBeNull();
@@ -154,8 +235,27 @@ describe('<OrderDetail />', () => {
     expect(screen.getByText('Total')).not.toBeNull();
   });
 
+  test('falls back when product details are missing', () => {
+    setOrderDetailReturn({
+      order: {
+        ...mockOrder,
+        order_items: [
+          {
+            ...mockOrder.order_items[0],
+            products: null,
+          },
+        ],
+      },
+    });
+
+    renderOrderDetail();
+
+    expect(screen.getAllByText('Produk')).toHaveLength(2);
+    expect(screen.queryByText('Test Product')).toBeNull();
+  });
+
   test('hides address note when no supplementary detail was saved', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         addresses: {
@@ -163,175 +263,146 @@ describe('<OrderDetail />', () => {
           address_note: null,
         },
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.queryByText('Blok B dekat pos satpam')).toBeNull();
   });
 
   test('renders payment status label for settled payment', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         payment_status: 'settlement',
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.getByText('Status Pembayaran')).not.toBeNull();
     expect(screen.getByText('Pembayaran Berhasil')).not.toBeNull();
   });
 
-  test('renders order with pending payment status', () => {
-    mockUseOrderDetail.mockReturnValue({
+  test('renders pending payment CTA and routes to payment when payment can resume', () => {
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         payment_status: 'pending',
         snap_redirect_url: 'https://payment.url',
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
-    expect(screen.getByText('NOMOR PESANAN')).not.toBeNull();
-    expect(screen.getByText('Status')).not.toBeNull();
     expect(mockBottomActionBar).toHaveBeenCalledWith(
       expect.objectContaining({
         buttonTitle: 'Bayar Sekarang',
         disabled: false,
       }),
     );
+
+    const actionProps = mockBottomActionBar.mock.calls[
+      mockBottomActionBar.mock.calls.length - 1
+    ][0] as {
+      onPress: () => void;
+    };
+
+    actionProps.onPress();
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/cart/payment',
+      params: { orderId: 'test-order-id', paymentUrl: 'https://payment.url' },
+    });
   });
 
-  test('disables payment CTA when pending order is already expired', () => {
-    mockUseOrderDetail.mockReturnValue({
+  test('disables pending payment CTA when payment cannot resume', () => {
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         payment_status: 'pending',
-        snap_redirect_url: 'https://payment.url',
-        expired_at: '2020-01-01T00:00:00Z',
+        snap_redirect_url: null,
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(mockBottomActionBar).toHaveBeenCalledWith(
       expect.objectContaining({
-        buttonTitle: 'Pembayaran Kadaluarsa',
+        buttonTitle: 'Bayar Sekarang',
         disabled: true,
       }),
     );
+
+    const actionProps = mockBottomActionBar.mock.calls[
+      mockBottomActionBar.mock.calls.length - 1
+    ][0] as {
+      onPress: () => void;
+    };
+
+    actionProps.onPress();
+
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   test('renders order without shipping info', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         courier_code: null,
         courier_service: null,
         shipping_etd: null,
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.getByText('NOMOR PESANAN')).not.toBeNull();
     expect(screen.queryByText('Metode Pengiriman')).toBeNull();
   });
 
   test('renders order without address', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         addresses: null,
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.getByText('NOMOR PESANAN')).not.toBeNull();
     expect(screen.queryByText('Alamat Pengiriman')).toBeNull();
   });
 
   test('displays product information correctly', () => {
-    mockUseOrderDetail.mockReturnValue({
-      order: mockOrder,
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
-    });
+    setOrderDetailReturn();
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.getByText('Test Product')).not.toBeNull();
     expect(screen.getByText(/Rp 70.000/)).not.toBeNull();
   });
 
   test('displays shipping cost when present', () => {
-    mockUseOrderDetail.mockReturnValue({
-      order: mockOrder,
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
-    });
+    setOrderDetailReturn();
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(screen.getByText('Ongkir')).not.toBeNull();
     expect(screen.getByText('Metode Pengiriman')).not.toBeNull();
   });
 
   test('renders tracking bottom action for shipped orders', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         status: 'shipped',
         waybill_number: 'JNE12345',
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(mockBottomActionBar).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -344,22 +415,16 @@ describe('<OrderDetail />', () => {
   test('renders confirm received bottom action for delivered orders awaiting confirmation', () => {
     const confirmReceived = jest.fn();
 
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         status: 'delivered',
         customer_completion_stage: 'awaiting_customer',
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      isConfirming: false,
-      error: null,
       confirmReceived,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(mockBottomActionBar).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -367,23 +432,49 @@ describe('<OrderDetail />', () => {
         disabled: false,
       }),
     );
+
+    const actionProps = mockBottomActionBar.mock.calls[
+      mockBottomActionBar.mock.calls.length - 1
+    ][0] as {
+      onPress: () => void;
+    };
+
+    actionProps.onPress();
+
+    expect(confirmReceived).toHaveBeenCalledTimes(1);
+  });
+
+  test('marks confirm received CTA as loading while confirmation is in progress', () => {
+    setOrderDetailReturn({
+      order: {
+        ...mockOrder,
+        status: 'delivered',
+        customer_completion_stage: 'awaiting_customer',
+      },
+      isConfirming: true,
+    });
+
+    renderOrderDetail();
+
+    expect(mockBottomActionBar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buttonTitle: 'Pesanan Diterima',
+        disabled: true,
+        isLoading: true,
+      }),
+    );
   });
 
   test('disables tracking bottom action when shipped order has no waybill', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         status: 'shipped',
         waybill_number: null,
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
     expect(mockBottomActionBar).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -394,22 +485,22 @@ describe('<OrderDetail />', () => {
   });
 
   test('navigates to tracking screen from bottom action', () => {
-    mockUseOrderDetail.mockReturnValue({
+    setOrderDetailReturn({
       order: {
         ...mockOrder,
         status: 'in_transit',
         waybill_number: 'JNE12345',
       },
-      status: 'success',
-      isLoading: false,
-      isRefreshing: false,
-      error: null,
-      refresh: jest.fn(),
     });
 
-    render(<OrderDetail />);
+    renderOrderDetail();
 
-    const actionProps = mockBottomActionBar.mock.calls.at(-1)?.[0] as { onPress: () => void };
+    const actionProps = mockBottomActionBar.mock.calls[
+      mockBottomActionBar.mock.calls.length - 1
+    ][0] as {
+      onPress: () => void;
+    };
+
     actionProps.onPress();
 
     expect(mockPush).toHaveBeenCalledWith({

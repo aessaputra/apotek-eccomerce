@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@/test-utils/renderWithTheme';
+import { act, fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import Orders from '@/scenes/orders/Orders';
 import type { PastPurchaseProduct } from '@/services';
 
@@ -10,6 +10,46 @@ const mockAddProductToCart = jest.fn();
 const mockOrderStatusTabs = jest.fn();
 const mockBuyAgainCarousel = jest.fn();
 const mockUseAppSlice = jest.fn();
+
+type OrderStatusTabsProps = {
+  counts: { unpaid: number; packing: number; shipped: number; completed: number };
+  onTabChange: (tab: 'unpaid' | 'packing' | 'shipped' | 'completed') => void;
+};
+
+type BuyAgainCarouselProps = {
+  products: PastPurchaseProduct[];
+  onProductPress: (product: PastPurchaseProduct) => void;
+  onAddToCart: (product: PastPurchaseProduct) => Promise<void>;
+};
+
+function createPastProduct(overrides: Partial<PastPurchaseProduct> = {}): PastPurchaseProduct {
+  return {
+    id: 'product-1',
+    name: 'Vitamin C',
+    slug: 'vitamin-c',
+    imageUrl: null,
+    price: 25000,
+    ...overrides,
+  };
+}
+
+function getLatestOrderStatusTabsProps() {
+  const props = mockOrderStatusTabs.mock.calls.at(-1)?.[0];
+  if (!props) {
+    throw new Error('OrderStatusTabs was not called');
+  }
+
+  return props as OrderStatusTabsProps;
+}
+
+function getLatestBuyAgainCarouselProps() {
+  const props = mockBuyAgainCarousel.mock.calls.at(-1)?.[0];
+  if (!props) {
+    throw new Error('BuyAgainCarousel was not called');
+  }
+
+  return props as BuyAgainCarouselProps;
+}
 
 jest.mock('expo-router', () => ({
   __esModule: true,
@@ -77,14 +117,7 @@ describe('<Orders />', () => {
     render(<Orders />);
 
     await waitFor(() => {
-      const lastCall = mockOrderStatusTabs.mock.calls.at(-1)?.[0];
-      if (!lastCall) {
-        throw new Error('OrderStatusTabs was not called');
-      }
-
-      const orderStatusTabsProps = lastCall as {
-        counts: { unpaid: number; packing: number; shipped: number; completed: number };
-      };
+      const orderStatusTabsProps = getLatestOrderStatusTabsProps();
 
       expect(orderStatusTabsProps.counts).toEqual({
         unpaid: 2,
@@ -106,14 +139,7 @@ describe('<Orders />', () => {
       expect(mockOrderStatusTabs).toHaveBeenCalled();
     });
 
-    const lastCall = mockOrderStatusTabs.mock.calls.at(-1)?.[0];
-    if (!lastCall) {
-      throw new Error('OrderStatusTabs was not called');
-    }
-
-    const orderStatusTabsProps = lastCall as {
-      onTabChange: (tab: 'unpaid' | 'packing' | 'shipped' | 'completed') => void;
-    };
+    const orderStatusTabsProps = getLatestOrderStatusTabsProps();
 
     act(() => {
       orderStatusTabsProps.onTabChange('completed');
@@ -122,14 +148,31 @@ describe('<Orders />', () => {
     expect(mockPush).toHaveBeenCalledWith('/orders/completed');
   });
 
+  test('passes only the first two past products to the buy again carousel', async () => {
+    const firstProduct = createPastProduct({ id: 'product-1', name: 'Vitamin C' });
+    const secondProduct = createPastProduct({ id: 'product-2', name: 'Paracetamol' });
+    const thirdProduct = createPastProduct({ id: 'product-3', name: 'Obat Batuk' });
+
+    mockGetPastPurchasedProducts.mockResolvedValue({
+      data: [firstProduct, secondProduct, thirdProduct],
+      error: null,
+    });
+
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+    });
+
+    render(<Orders />);
+
+    await waitFor(() => {
+      const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
+
+      expect(buyAgainCarouselProps.products).toEqual([firstProduct, secondProduct]);
+    });
+  });
+
   test('shows a success dialog after buy again adds a product to cart', async () => {
-    const product: PastPurchaseProduct = {
-      id: 'product-1',
-      name: 'Vitamin C',
-      slug: 'vitamin-c',
-      imageUrl: null,
-      price: 25000,
-    };
+    const product = createPastProduct();
 
     mockGetPastPurchasedProducts.mockResolvedValue({
       data: [product],
@@ -146,14 +189,7 @@ describe('<Orders />', () => {
       expect(mockBuyAgainCarousel).toHaveBeenCalled();
     });
 
-    const lastCall = mockBuyAgainCarousel.mock.calls.at(-1)?.[0];
-    if (!lastCall) {
-      throw new Error('BuyAgainCarousel was not called');
-    }
-
-    const buyAgainCarouselProps = lastCall as {
-      onAddToCart: (product: PastPurchaseProduct) => Promise<void>;
-    };
+    const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
 
     await act(async () => {
       await buyAgainCarouselProps.onAddToCart(product);
@@ -162,16 +198,18 @@ describe('<Orders />', () => {
     await waitFor(() => {
       expect(screen.getByText('Vitamin C berhasil ditambahkan ke keranjang')).toBeTruthy();
     });
+
+    expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
+
+    fireEvent.press(screen.getByText('OK'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Vitamin C berhasil ditambahkan ke keranjang')).toBeNull();
+    });
   });
 
   test('navigates buy again product presses to product details with the product id', async () => {
-    const product: PastPurchaseProduct = {
-      id: 'product-1',
-      name: 'Vitamin C',
-      slug: 'vitamin-c',
-      imageUrl: null,
-      price: 25000,
-    };
+    const product = createPastProduct();
 
     mockGetPastPurchasedProducts.mockResolvedValue({
       data: [product],
@@ -188,14 +226,7 @@ describe('<Orders />', () => {
       expect(mockBuyAgainCarousel).toHaveBeenCalled();
     });
 
-    const lastCall = mockBuyAgainCarousel.mock.calls.at(-1)?.[0];
-    if (!lastCall) {
-      throw new Error('BuyAgainCarousel was not called');
-    }
-
-    const buyAgainCarouselProps = lastCall as {
-      onProductPress: (product: PastPurchaseProduct) => void;
-    };
+    const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
 
     act(() => {
       buyAgainCarouselProps.onProductPress(product);

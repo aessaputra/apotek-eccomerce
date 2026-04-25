@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Linking, RefreshControl, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Button, Separator, Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
@@ -10,116 +10,17 @@ import { useOrderDetail, useOrderTracking } from '@/hooks';
 import { formatCourierServiceName } from '@/constants/courier.constants';
 import { formatOrderNumber } from '@/utils/orderNumber';
 import { getThemeColor } from '@/utils/theme';
-import type { OrderStatusVariant } from '@/services';
-import type { TrackingEvent } from '@/types/shipping';
+import {
+  buildTrackingTimeline,
+  formatTrackingDate,
+  formatTrackingStatusLabel,
+  getTrackingHeroCopy,
+  getTrackingStatusVariant,
+  isSafeExternalUrl,
+  type TrackingTimelineItem,
+} from './trackShipmentViewModel';
 
-function formatTrackingStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    confirmed: 'Pesanan Dikonfirmasi',
-    allocated: 'Kurir Dialokasikan',
-    picking_up: 'Kurir Menuju Penjemputan',
-    pickingUp: 'Kurir Menuju Penjemputan',
-    picked: 'Paket Sudah Dijemput',
-    picked_up: 'Paket Sudah Dijemput',
-    dropping_off: 'Sedang Dikirim',
-    droppingOff: 'Sedang Dikirim',
-    delivering: 'Sedang Dikirim',
-    in_transit: 'Sedang Dikirim',
-    on_hold: 'Tertahan',
-    onHold: 'Tertahan',
-    delivered: 'Terkirim',
-    rejected: 'Pengiriman Ditolak',
-    courier_not_found: 'Kurir Belum Ditemukan',
-    courierNotFound: 'Kurir Belum Ditemukan',
-    return_in_transit: 'Dalam Proses Pengembalian',
-    returnInTransit: 'Dalam Proses Pengembalian',
-    returned: 'Dikembalikan',
-    cancelled: 'Dibatalkan',
-    disposed: 'Dibuang',
-  };
-
-  return labels[status] || status.replace(/_/g, ' ');
-}
-
-function getTrackingStatusVariant(status: string): OrderStatusVariant {
-  if (status === 'delivered') return 'success';
-  if (['rejected', 'disposed', 'courier_not_found', 'courierNotFound'].includes(status)) {
-    return 'danger';
-  }
-  if (
-    ['on_hold', 'onHold', 'cancelled', 'returned', 'return_in_transit', 'returnInTransit'].includes(
-      status,
-    )
-  ) {
-    return 'warning';
-  }
-  return 'primary';
-}
-
-function getTrackingHeroCopy(status: string): {
-  title: string;
-  description: string;
-  tone: '$successSoft' | '$warningSoft' | '$dangerSoft' | '$primarySoft';
-} {
-  if (status === 'delivered') {
-    return {
-      title: 'Pesanan Sudah Terkirim',
-      description: 'Kurir telah menyelesaikan pengantaran. Silakan cek detail riwayat di bawah.',
-      tone: '$successSoft',
-    };
-  }
-
-  if (['rejected', 'disposed', 'courier_not_found', 'courierNotFound'].includes(status)) {
-    return {
-      title: 'Pengiriman Perlu Perhatian',
-      description: 'Status pengiriman berubah dan memerlukan pengecekan lebih lanjut.',
-      tone: '$dangerSoft',
-    };
-  }
-
-  if (
-    ['on_hold', 'onHold', 'cancelled', 'returned', 'return_in_transit', 'returnInTransit'].includes(
-      status,
-    )
-  ) {
-    return {
-      title: 'Pengiriman Sedang Tertahan',
-      description:
-        'Ada pembaruan status yang perlu diperhatikan sebelum pesanan melanjutkan perjalanan.',
-      tone: '$warningSoft',
-    };
-  }
-
-  return {
-    title: 'Perjalanan Paket Anda',
-    description: 'Lihat status terbaru, resi, dan riwayat perpindahan paket Anda di satu layar.',
-    tone: '$primarySoft',
-  };
-}
-
-function formatTrackingDate(dateString: string): string {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) {
-    return dateString;
-  }
-
-  return date.toLocaleString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function isSafeExternalUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
+const TRACKING_CONTENT_CONTAINER_STYLE = { paddingVertical: 16, paddingBottom: 24 } as const;
 
 export default function TrackShipment() {
   const params = useLocalSearchParams<{ orderId?: string | string[] }>();
@@ -127,7 +28,7 @@ export default function TrackShipment() {
   const orderId =
     typeof orderIdParam === 'string' && orderIdParam.trim() ? orderIdParam : undefined;
   const theme = useTheme();
-  const refreshTintColor = getThemeColor(theme, 'primary');
+  const primaryColor = getThemeColor(theme, 'primary');
 
   const { order, status, isLoading, isRefreshing, error, refresh } = useOrderDetail(orderId);
   const canFetchTracking = Boolean(order?.waybill_number?.trim());
@@ -155,6 +56,27 @@ export default function TrackShipment() {
 
     void Linking.openURL(tracking.link);
   }, [tracking?.link]);
+
+  const refreshControl = useMemo(
+    () => (
+      <RefreshControl
+        refreshing={isRefreshing || isTrackingRefreshing}
+        onRefresh={handleRefresh}
+        tintColor={primaryColor}
+      />
+    ),
+    [handleRefresh, isRefreshing, isTrackingRefreshing, primaryColor],
+  );
+
+  const trackingTimeline = useMemo(
+    () => buildTrackingTimeline(tracking, order?.updated_at, order?.created_at),
+    [order?.created_at, order?.updated_at, tracking],
+  );
+
+  const heroContent = useMemo(
+    () => getTrackingHeroCopy(tracking?.status ?? order?.status ?? ''),
+    [order?.status, tracking?.status],
+  );
 
   if (!orderId) {
     return (
@@ -230,38 +152,11 @@ export default function TrackShipment() {
     );
   }
 
-  const trackingTimeline =
-    tracking && tracking.history.length > 0
-      ? tracking.history.map((event: TrackingEvent, index: number, history: TrackingEvent[]) => ({
-          ...event,
-          timelineKey: `${event.updated_at}-${event.status}-${event.note}`,
-          showConnector: index < history.length - 1,
-        }))
-      : tracking
-        ? [
-            {
-              note: 'Status pengiriman belum memiliki riwayat detail.',
-              status: tracking.status,
-              updated_at: order.updated_at ?? order.created_at,
-              timelineKey: `fallback-${tracking.id}`,
-              showConnector: false,
-            },
-          ]
-        : [];
-
-  const heroContent = getTrackingHeroCopy(tracking?.status ?? order.status);
-
   return (
     <YStack flex={1} backgroundColor="$background">
       <ScrollView
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing || isTrackingRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={refreshTintColor}
-          />
-        }
-        contentContainerStyle={{ paddingVertical: 16, paddingBottom: 24 }}>
+        refreshControl={refreshControl}
+        contentContainerStyle={TRACKING_CONTENT_CONTAINER_STYLE}>
         <OrderSectionCard>
           <YStack padding="$4" gap="$4">
             <YStack gap="$3">
@@ -381,7 +276,7 @@ export default function TrackShipment() {
                   chromeless
                   alignSelf="flex-start"
                   color="$primary"
-                  iconAfter={<ArrowUpRight size={16} color={getThemeColor(theme, 'primary')} />}
+                  iconAfter={<ArrowUpRight size={16} color={primaryColor} />}
                   onPress={handleOpenTrackingLink}
                   disabled={!isSafeExternalUrl(tracking.link)}>
                   Lihat Tracking Kurir Eksternal
@@ -442,39 +337,37 @@ export default function TrackShipment() {
               <Separator />
 
               <YStack gap="$3">
-                {trackingTimeline.map(
-                  (event: TrackingEvent & { timelineKey: string; showConnector: boolean }) => (
-                    <XStack key={event.timelineKey} gap="$3" alignItems="flex-start">
-                      <YStack width={10} alignItems="center" paddingTop="$1">
+                {trackingTimeline.map((event: TrackingTimelineItem) => (
+                  <XStack key={event.timelineKey} gap="$3" alignItems="flex-start">
+                    <YStack width={10} alignItems="center" paddingTop="$1">
+                      <YStack
+                        width={10}
+                        height={10}
+                        borderRadius="$10"
+                        backgroundColor="$primary"
+                      />
+                      {event.showConnector && (
                         <YStack
-                          width={10}
-                          height={10}
-                          borderRadius="$10"
-                          backgroundColor="$primary"
+                          width={2}
+                          minHeight={32}
+                          backgroundColor="$borderColor"
+                          marginTop="$1"
                         />
-                        {event.showConnector && (
-                          <YStack
-                            width={2}
-                            minHeight={32}
-                            backgroundColor="$borderColor"
-                            marginTop="$1"
-                          />
-                        )}
-                      </YStack>
-                      <YStack flex={1} gap="$1">
-                        <Text fontSize="$3" fontWeight="600" color="$color">
-                          {formatTrackingStatusLabel(event.status)}
-                        </Text>
-                        <Text fontSize="$2" color="$colorSubtle">
-                          {formatTrackingDate(event.updated_at)}
-                        </Text>
-                        <Text fontSize="$3" color="$colorSubtle">
-                          {event.note}
-                        </Text>
-                      </YStack>
-                    </XStack>
-                  ),
-                )}
+                      )}
+                    </YStack>
+                    <YStack flex={1} gap="$1">
+                      <Text fontSize="$3" fontWeight="600" color="$color">
+                        {formatTrackingStatusLabel(event.status)}
+                      </Text>
+                      <Text fontSize="$2" color="$colorSubtle">
+                        {formatTrackingDate(event.updated_at)}
+                      </Text>
+                      <Text fontSize="$3" color="$colorSubtle">
+                        {event.note}
+                      </Text>
+                    </YStack>
+                  </XStack>
+                ))}
               </YStack>
             </YStack>
           </OrderSectionCard>
