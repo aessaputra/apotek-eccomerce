@@ -1,0 +1,35 @@
+2026-04-25T13:18:30+00:00 — F3 Real Manual QA for AreaPicker focused flows
+
+Scope reviewed:
+- Read-only plan: .sisyphus/plans/profile-akun-oracle-fixes.md
+- Inherited implementation evidence: .sisyphus/evidence/oracle-fixes-profile-akun.txt
+- Focused suite mapped: __tests__/scenes/AreaPicker.test.tsx
+- Notepads reviewed: .sisyphus/notepads/profile-akun-oracle-fixes/learnings.md and issues.md
+
+Diagnostics:
+- lsp_diagnostics scenes/profile/useAreaPickerFlow.ts: PASS, no diagnostics found.
+- lsp_diagnostics scenes/profile/AreaPicker.tsx: PASS, no diagnostics found.
+- lsp_diagnostics __tests__/scenes/AreaPicker.test.tsx: PASS, no diagnostics found.
+
+Commands run:
+- npm run test -- --runInBand __tests__/scenes/AreaPicker.test.tsx
+  Exit status: 0
+  Result: PASS, 1 suite passed, 13 tests passed, 0 snapshots. Jest emitted only the existing Node DEP0040 punycode deprecation warning.
+- npm run lint
+  Exit status: 0
+  Result: PASS via expo lint.
+- npm run format:check
+  Exit status: 0
+  Result: PASS, all matched files use Prettier code style.
+
+Focused coverage confirmed from __tests__/scenes/AreaPicker.test.tsx:
+- Postal success + pending write + completion once: PASS via "stores pending selection and preserves back navigation after postal selection"; verifies setPendingAreaSelection payload and onComplete called exactly once before back navigation assertions.
+- Pending write failure non-throwing + exact safe copy: PASS via "shows a safe error when pending postal selection write fails"; handlePostalSelect is awaited without rejection, stageError equals "Gagal menyimpan pilihan area. Silakan coba lagi.", and onComplete is not called.
+- Stale final postal success after latest no-area: PASS via "prevents an older final postal success from completing after the latest no-area result"; stale success does not write pending selection or complete.
+- Stale final postal no-area after latest success: PASS via "prevents an older final postal no-area result from overwriting the latest success"; latest area remains the only pending write and error stays null.
+- Stale final postal reject after latest success: PASS via "prevents an older rejected final postal request from overwriting the latest success"; stale rejected request resolves to undefined and does not overwrite latest success state.
+- Back navigation after postal selection: PASS in the postal success test; stage rolls postal -> district -> city -> province, and root back triggers onComplete exactly once more.
+- Search placeholder native color: PASS via "passes a resolved native placeholder color to the search input"; placeholderTextColor is a string and not "$placeholderColor".
+- Current-location success/failure: not directly represented as handleUseCurrentLocation success/failure tests in this focused AreaPicker suite. Existing direct focused coverage only exercises current-location-related helper behavior in "findDistrictCandidateByPostalCode prefers a district whose postal options contain the current-location postal code"; inherited evidence reports the full suite passed separately.
+
+QA outcome: APPROVE. The required focused AreaPicker Jest/RTL evidence passed, diagnostics are clean on named files, lint and format checks passed, and no app/source/test code was modified by this QA pass.

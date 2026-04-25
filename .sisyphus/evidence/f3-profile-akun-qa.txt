@@ -1,0 +1,70 @@
+F3 Real Manual QA — Profile/Akun
+Date: 2026-04-25
+Verdict: APPROVE
+
+Scope executed
+- Read the read-only plan `.sisyphus/plans/profile-akun-refactor.md`, test rules in `__tests__/AGENTS.md`, profile refactor notepads, relevant focused tests, and prior task evidence.
+- Browser/emulator QA was not launched because this Expo/RN app does not have a ready running web server/emulator in the current environment and the task forbids starting long-lived watch/dev processes.
+- Used the repo's React Native Testing Library/Jest harness as manual-equivalent evidence for user-visible Profile/Akun flows.
+
+Coverage reviewed before execution
+- `__tests__/scenes/Profile.test.tsx`: loading state, populated/fallback user copy, profile menu navigation to edit/address/order-history/support, logout success/failure.
+- `__tests__/scenes/EditProfile.test.tsx`: loading state, validation errors, save success/failure, avatar success/failure, Android keyboard listener cleanup.
+- `__tests__/scenes/Support.test.tsx`: visible support copy.
+- `__tests__/scenes/OrderHistory.test.tsx`: empty/terminal-history copy and CTA navigation to `/home`.
+- `__tests__/scenes/AddressList.test.tsx`: address rows, empty state, add navigation, fetch/delete/default failure alerts, refresh, default ordering.
+- `__tests__/components/AddressForm.test.tsx`: live receiver/address fields, street-address search trigger, saving-disabled behavior, legacy map trigger absence.
+- `__tests__/scenes/AddressFormFlow.test.tsx`: pending address/area/map handoff and Android keyboard listener cleanup.
+- `__tests__/scenes/AddressSearch.test.tsx`: initial nearby loading, GPS fallback, typed query, selection persistence/back navigation, null-selection no-op, invalid coordinates, permission denial.
+- `__tests__/scenes/AreaPicker.test.tsx`, `areaPickerState.test.ts`, `areaPickerCurrentLocation.test.ts`, `addressRouteParams.test.ts`: area-picker stage labels/filtering, stale request protection, current-location fallback/resolution, pending write failure, back navigation, route param parsing.
+- `__tests__/components/AddressForm_DefaultAddressToggle.test.tsx`: visible copy, haptics/toggle behavior, saving-disabled behavior.
+
+Command 1
+`npm run test -- --runInBand __tests__/scenes/Profile.test.tsx __tests__/scenes/EditProfile.test.tsx __tests__/scenes/Support.test.tsx __tests__/scenes/OrderHistory.test.tsx`
+
+Result: PASS
+- Test Suites: 4 passed, 4 total.
+- Tests: 20 passed, 20 total.
+- Covered Profile → Edit Profile, Profile → Addresses route entry, Profile → Support, Profile → OrderHistory entry, EditProfile validation/save/avatar/keyboard flows, Support visible copy, and OrderHistory CTA/copy.
+- Warning observed: existing Node `[DEP0040] punycode` deprecation warning only.
+
+Command 2
+`npm run test -- --runInBand __tests__/scenes/AddressList.test.tsx __tests__/scenes/AddressFormFlow.test.tsx __tests__/scenes/AddressSearch.test.tsx __tests__/scenes/AreaPicker.test.tsx __tests__/components/AddressForm.test.tsx __tests__/components/AddressForm_DefaultAddressToggle.test.tsx`
+
+Result: PASS
+- Test Suites: 6 passed, 6 total.
+- Tests: 42 passed, 42 total.
+- Covered Profile → Addresses, address add/edit form behavior, address search selection/no-op paths, map/pending-selection handoffs, area-picker stale-request/back-navigation/pending-write behavior, default address toggle, delete/default failure alerts.
+- No Jest runtime failures. Command output was long and truncated by the terminal harness after the pass summary and coverage table; visible summary confirms success.
+
+Command 3
+`npm run test -- --runInBand __tests__/scenes/areaPickerState.test.ts __tests__/scenes/areaPickerCurrentLocation.test.ts __tests__/scenes/addressRouteParams.test.ts`
+
+Result: PASS
+- Test Suites: 3 passed, 3 total.
+- Tests: 14 passed, 14 total.
+- Covered area-picker helper/state behavior, current-location manual/resolved fallbacks, and address route parameter parsing.
+- No Jest runtime failures. Command output was long and truncated by the terminal harness after the pass summary and coverage table; visible summary confirms success.
+
+Command 4
+`npm run lint`
+
+Result: PASS
+- `expo lint` completed with exit code 0.
+
+Command 5
+`npm run format:check`
+
+Result: PASS
+- Prettier reported: `All matched files use Prettier code style!`
+
+Runtime/console failure assessment
+- No focused Jest failures were observed across the requested Profile/EditProfile/Support/OrderHistory/AddressList/AddressFormFlow/AddressSearch/AreaPicker/DefaultAddressToggle commands.
+- No lint or format failures were observed.
+- The only recurring warning is the known out-of-scope Node `[DEP0040] punycode` warning noted in inherited wisdom and prior evidence.
+
+Final QA finding
+- The automated RTL/Jest harness provides adequate manual-equivalent coverage for the requested Profile/Akun user-visible flows in this environment.
+- No regression caused by Tasks 1-8 was detected by the executed focused commands.
+
+VERDICT: APPROVE

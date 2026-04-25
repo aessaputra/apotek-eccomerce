@@ -1,0 +1,33 @@
+Task 8: Normalize Tamagui token usage and simple Profile/Akun presentation boundaries
+Date: 2026-04-25
+
+Files changed:
+- scenes/profile/Profile.tsx
+- scenes/profile/Support.tsx
+- scenes/profile/AddressSearch.tsx
+- scenes/profile/OrderHistory.tsx
+- scenes/profile/AddressList.tsx
+- components/AddressForm/DefaultAddressToggle.tsx
+
+Summary:
+- Replaced Tamagui-rendered profile/support/address icon and safe-area color resolution with token props/styled token usage.
+- Preserved raw string color resolution only for native API bridges: TextInput placeholderTextColor, RefreshControl tint/colors, and native shadow style helper.
+- Simplified DefaultAddressToggle by moving the shared surface background token out of duplicated variant branches.
+
+LSP diagnostics on touched files:
+- scenes/profile/Profile.tsx: no errors; existing hint: accessibilityLiveRegion is deprecated.
+- scenes/profile/Support.tsx: no diagnostics.
+- scenes/profile/AddressSearch.tsx: no diagnostics.
+- scenes/profile/OrderHistory.tsx: no diagnostics.
+- scenes/profile/AddressList.tsx: no errors; existing hints: Reanimated Layout is deprecated.
+- components/AddressForm/DefaultAddressToggle.tsx: no errors; existing hint: accessibilityState is deprecated.
+
+Verification commands:
+- npm run test -- --runInBand __tests__/scenes/Profile.test.tsx __tests__/scenes/Support.test.tsx __tests__/scenes/OrderHistory.test.tsx
+  Result: PASS, 3 test suites passed, 11 tests passed. Existing Node [DEP0040] punycode warning emitted.
+- npm run test -- --runInBand __tests__/scenes/AddressSearch.test.tsx __tests__/scenes/AddressList.test.tsx __tests__/scenes/AreaPicker.test.tsx __tests__/components/AddressForm_DefaultAddressToggle.test.tsx
+  Result: PASS, 4 test suites passed, 31 tests passed. Existing Node [DEP0040] punycode warning emitted.
+- npm run lint
+  Result: PASS.
+- npm run format:check
+  Result: PASS, all matched files use Prettier code style.

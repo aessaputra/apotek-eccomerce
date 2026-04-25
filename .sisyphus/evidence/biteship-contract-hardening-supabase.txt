@@ -1,0 +1,294 @@
+# biteship-contract-hardening-supabase.txt
+# Generated/Updated: 2026-04-25
+# Task: 1 - Materialize Supabase Biteship function source baseline and test harness
+
+## Retrieval Method
+
+Tool: Atlas tool-output files (MCP-supplied) + local type reconstruction
+- biteship: `/home/coder/.local/share/opencode/tool-output/tool_dc4fb2d850018ErOWIUj21c0r6`
+- order-manager: `/home/coder/.local/share/opencode/tool-output/tool_dc4fb30d3001DRpSEsWpQT9h94`
+
+## Deployed Function Metadata
+
+### biteship
+- slug: biteship | version: 61 | status: ACTIVE | verify_jwt: false
+- import_map: true | entrypoint: functions/biteship/index.ts
+
+### order-manager  
+- slug: order-manager | version: 39 | status: ACTIVE | verify_jwt: false
+- import_map: false | entrypoint: functions/order-manager/index.ts
+
+## Local Unique Files (16) vs Deployed File-Map Entries (21)
+
+Local tree contains 16 unique files under supabase/functions/:
+- 3 entry-point/config files: biteship/index.ts, biteship/deno.json, order-manager/index.ts
+- 13 _shared helper files under supabase/functions/_shared/
+
+Deployed file-map entries totaled 21 (9 biteship + 12 order-manager) with 6 files
+shared between both functions (cors.ts, supabase.ts, order-status.ts, biteship.ts,
+biteship-order-helpers.ts, biteship-public-tracking.ts), explaining the difference
+between "deployed entries" and "unique local files".
+
+### Local Files Summary (16 unique)
+- supabase/functions/biteship/index.ts (736 lines)
+- supabase/functions/biteship/deno.json (9 lines)
+- supabase/functions/order-manager/index.ts (1038 lines)
+- supabase/functions/_shared/biteship.ts (673 lines)
+- supabase/functions/_shared/biteship-order-helpers.ts (157 lines)
+- supabase/functions/_shared/biteship-public-tracking.ts (50 lines)
+- supabase/functions/_shared/biteship-rates.ts (139 lines)
+- supabase/functions/_shared/cors.ts (17 lines)
+- supabase/functions/_shared/notification-helpers.ts (142 lines)
+- supabase/functions/_shared/order-aggregate.ts (207 lines)
+- supabase/functions/_shared/order-flow-rules.ts (69 lines)
+- supabase/functions/_shared/order-manager-mutation.ts (104 lines)
+- supabase/functions/_shared/order-status.ts (72 lines)
+- supabase/functions/_shared/supabase.ts (10 lines)
+- supabase/functions/_shared/webhook-side-effects.ts (803 lines)
+- supabase/functions/_shared/types.ts (102 lines) — LOCAL ONLY, not from deployed output
+
+## types.ts Resolution (FIXED)
+
+### Issue
+Four files import `./types.ts` which was NOT in deployed function output:
+- biteship.ts: `import type { Order, OrderItem } from "./types.ts"`
+- webhook-side-effects.ts: `import type { BiteshipOrderResponse, Order, OrderItem } from "./types.ts"`
+- order-aggregate.ts: `import type { Order } from "./types.ts"`
+- biteship-order-helpers.ts: `import type { Order, OrderAddress } from "./types.ts"`
+
+### Resolution
+Created `supabase/functions/_shared/types.ts` as a local type-only definition
+to satisfy TypeScript compile-time imports. This is NOT a deployed file -
+`import type` is erased at runtime, so runtime behavior is unaffected.
+
+The types were reconstructed from:
+1. Supabase database schema (types/supabase.ts)
+2. Usage patterns in the consuming files
+3. order-aggregate.ts query selects (which show full Order shape)
+
+### types.ts Contents
+- Order interface (mirrors DB orders + joined data)
+- OrderItem interface (with products nested)
+- OrderAddress interface (for addresses and fetchOrderShippingAddress)
+- BiteshipOrderResponse interface
+- Profiles interface (for nested profiles in Order)
+
+## SQL Verification (EXECUTED - ALL TRUE)
+
+Atlas executed boolean-only SQL verification:
+
+```sql
+select 
+  origin_area_id is not null as has_origin_area_id,
+  origin_postal_code is not null as has_origin_postal_code,
+  origin_latitude is not null as has_origin_latitude,
+  origin_longitude is not null as has_origin_longitude,
+  enabled_couriers like '%gojek%' as has_gojek,
+  enabled_couriers like '%grab%' as has_grab,
+  enabled_couriers like '%lalamove%' as has_lalamove
+from public.settings where id = 1;
+```
+
+### Results (all boolean, no secret values exposed)
+| Field | Value |
+|-------|-------|
+| has_origin_area_id | TRUE |
+| has_origin_postal_code | TRUE |
+| has_origin_latitude | TRUE |
+| has_origin_longitude | TRUE |
+| has_gojek | TRUE |
+| has_grab | TRUE |
+| has_lalamove | TRUE |
+
+Conclusion: All required origin fields are present AND instant-capable 
+couriers (gojek, grab, lalamove) are enabled in Supabase settings.
+
+## Format Check Fix (2026-04-25)
+
+### Issue
+`npm run format:check` initially failed with 13 Supabase files flagged for style
+differences between deployed Edge Function source and project Prettier config.
+
+### Resolution
+Added `supabase/functions` to `.prettierignore` to preserve byte-for-byte deployed
+baseline without reformatting. This maintains Task 1's source-fidelity requirement.
+
+### Verification
+- `npm run format:check` now passes
+- `npm run lint` passed (no issues)
+- Supabase function files remain unformatted, matching deployed source
+
+## Key Helper Functions (from retrieved source)
+
+### biteship-rates.ts
+- `buildRatesRequestPayloads(settings, payload, couriers)` - returns array with AT MOST ONE payload
+  - NOTE: For mixed courier filters, returns single payload using coordinate origin when instant couriers present
+  - Task 3 must SPLIT this into multiple payloads (one per courier group)
+- `getStandardOriginFields(settings)` - prefers origin_area_id, then coords, then postal
+- `shouldUseCoordinateOriginForRates(settings, payload, couriers)` - boolean switch
+- `INSTANT_CAPABLE_COMPANIES` = {gojek, grab, lalamove, borzo, paxel, rara, dash_express}
+
+### biteship.ts  
+- `normalizeStorePostalCode(value)` - validates 5-digit string/number (NOT unsafe coercion)
+- `getRequiredStoreOriginPostalCode(settings)` - throws if missing
+- `buildBiteshipOrderPayload(order, settings)` - uses `Number(originPostalCode)` at line 1335
+- `createBiteshipOrder(order, apiKey)` - API call wrapper
+
+### biteship-order-helpers.ts
+- `buildBiteshipOrderDestinationFields(order)` - uses `Number(order.destination_postal_code)` at line 112
+- `requiresDestinationCoordinate(order)` - checks courier_service === 'instant'
+
+### webhook-side-effects.ts
+- `processWebhookSideEffectTask(adminClient, orderId)` - main processor
+- Calls `createBiteshipOrder` from biteship.ts
+
+## Test Harness Status
+
+- Deno runtime: NOT installed locally (documented blocker)
+- No existing test files under supabase/functions/
+- Implementation tasks (2, 3, 4) must add `deno test` for their respective changes
+
+## Baseline Import Resolution (COMPLETE)
+
+All `./types.ts` imports resolved by local types.ts creation.
+Files now import-resolvable for TypeScript compile-time checking.
+
+No unresolved imports remain under supabase/functions/_shared/.
+
+## Repo-Boundary Correction (2026-04-25)
+
+### Problem
+Earlier Task 1 work mistakenly materialized Supabase Edge Function source under
+`/home/coder/dev/pharma/frontend/supabase/` instead of `/home/coder/dev/pharma/admin-panel/supabase/`.
+
+### Resolution
+- Source corrected: `/home/coder/dev/pharma/admin-panel/supabase/` is the authoritative backend source tree
+- Frontend cleanup: `/home/coder/dev/pharma/frontend/supabase/` DELETED
+- Frontend tests cleanup: `/home/coder/dev/pharma/frontend/__tests__/supabase/` DELETED
+- Frontend config cleanup: `.prettierignore` reverted to remove `supabase/functions` entry
+
+### Admin-Panel Source Verified
+Confirmed existing at correct location:
+```
+admin-panel/supabase/functions/
+├── biteship/           (index.ts 22671 bytes, deno.json)
+├── order-manager/      (index.ts 32789 bytes)
+├── process-webhook-side-effects/  (index.ts 2757 bytes)
+└── _shared/
+    ├── biteship.ts (19086 bytes)
+    ├── biteship-rates.ts (3538 bytes)
+    ├── biteship-order-helpers.ts (4304 bytes)
+    ├── webhook-side-effects.ts (22974 bytes)
+    ├── types.ts (5017 bytes)
+    ├── order-aggregate.ts (6080 bytes)
+    └── __tests__/  (Deno tests: biteship-rates.test.ts, biteship-order.test.ts, etc.)
+```
+
+### Frontend Cleanup Actions
+
+| Action | Path | Status |
+|--------|------|--------|
+| DELETED | /home/coder/dev/pharma/frontend/supabase/ | DONE |
+| DELETED | /home/coder/dev/pharma/frontend/__tests__/supabase/ | DONE |
+| REVERTED | .prettierignore (removed supabase/functions) | DONE |
+
+### Frontend Git Status After Cleanup
+
+```bash
+# No supabase/ untracked - VERIFIED CLEAN
+?? .sisyphus/boulder.json
+?? .sisyphus/evidence/
+?? .sisyphus/notepads/biteship-contract-hardening/
+# ... other unrelated untracked files (profile-akun refactor) ...
+
+ M .prettierignore  # only the reverted supabase/functions entry
+```
+
+### Admin-Panel Git Status (unrelated changes only)
+
+```bash
+ M package.json
+ M pnpm-lock.yaml
+ M skills-lock.json
+ M src/components/map-location-picker/__tests__/index.test.tsx
+ M src/locales/en/common.json
+ M src/locales/id/common.json
+?? .agents/skills/google-maps-api/
+```
+
+Note: Admin-panel Supabase source (`supabase/functions/`) is NOT modified - it was already clean. No backend behavior changed.
+
+### Notepad Updates
+- learnings.md: appending this correction
+- decisions.md: appending admin-panel as sole source-of-truth decision
+- problems.md: appending cleanup confirmation
+
+
+## Task 6 Deployment/Settings Verification (2026-04-25T16:02:22Z)
+
+### Affected Functions
+
+Import tracing in `/home/coder/dev/pharma/admin-panel/supabase/functions` showed these affected runtime functions:
+- `biteship`: imports `_shared/biteship.ts`, `_shared/biteship-rates.ts`, `_shared/biteship-postal-code.ts`, and related Biteship helpers.
+- `process-webhook-side-effects`: imports `_shared/webhook-side-effects.ts`, which imports Biteship order helpers and creates Biteship orders after settlement.
+
+Other functions import `webhook-side-effects.ts`, but Task 6 deploy scope was kept to the requested affected function minimum plus the explicitly evaluated processor function; unrelated functions were not deployed.
+
+### Current Edge Function Settings (Supabase MCP)
+
+- `biteship`: status `ACTIVE`, version `61`, `verify_jwt=false`, import map `true`.
+- `process-webhook-side-effects`: status `ACTIVE`, version `11`, `verify_jwt=false`, import map `false`.
+- Post-deploy-attempt check: versions remain `biteship=61` and `process-webhook-side-effects=11` because deployment was blocked before rollout.
+
+### Boolean-Only SQL Verification
+
+Command/tool: `supabase_execute_sql` with boolean-only query against `public.settings where id = 1`.
+
+Result (no raw postals, coordinates, or secrets exposed):
+
+| Field | Value |
+| --- | --- |
+| has_origin_area_id | TRUE |
+| has_origin_postal_code | TRUE |
+| has_origin_latitude | TRUE |
+| has_origin_longitude | TRUE |
+| has_gojek | TRUE |
+| has_grab | TRUE |
+| has_lalamove | TRUE |
+
+Conclusion: current Supabase settings contain the origin area, origin postal, origin coordinates, and enabled instant couriers needed for standard/instant Biteship contracts.
+
+### Supabase CLI Discovery
+
+- `npx supabase --version` from `/home/coder/dev/pharma/admin-panel` → exit `0`, version `2.95.3`.
+- `npx supabase --workdir "/home/coder/dev/pharma/admin-panel" functions deploy --help` → exit `0`; confirmed `--project-ref`, `--use-api`, and `--no-verify-jwt` flags.
+- Initial parallel `npx supabase --version` hit npm cache rename race (`ENOTEMPTY`) while help succeeded; rerun passed with version `2.95.3`.
+
+### Deployment Attempt
+
+Command:
+
+```bash
+npx supabase --workdir "/home/coder/dev/pharma/admin-panel" functions deploy biteship --project-ref ibmpikevzfuqtfpdpkyy --use-api --no-verify-jwt && npx supabase --workdir "/home/coder/dev/pharma/admin-panel" functions deploy process-webhook-side-effects --project-ref ibmpikevzfuqtfpdpkyy --use-api --no-verify-jwt
+```
+
+Exit status: `1`.
+
+Blocker:
+
+```text
+Access token not provided. Supply an access token by running supabase login or setting the SUPABASE_ACCESS_TOKEN environment variable.
+Try rerunning the command with --debug to troubleshoot the error.
+```
+
+No function deployment completed. Existing `verify_jwt=false` settings were therefore preserved by non-mutation.
+
+### Logs Inspected
+
+Tool: `supabase_get_logs(service="edge-function")`.
+
+Observed recent logs include:
+- `biteship` version `61`: recent `OPTIONS | 200` and `POST | 200` entries.
+- `reconcile-pending-midtrans-payments` version `14`: recurring `POST | 200` entries.
+
+No new `biteship` or `process-webhook-side-effects` deployment/runtime logs were expected after the blocked CLI deploy.

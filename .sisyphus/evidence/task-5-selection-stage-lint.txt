@@ -1,0 +1,9 @@
+Lint / hygiene evidence
+
+- `npm run lint` completed successfully with no reported issues.
+- `npm run format:check` completed successfully.
+- No import/runtime cycle was introduced: `scenes/profile/areaPickerTypes.ts` is dependency-free, and all consumers use type-only imports.
+- The store now depends only on the shared feature-local type module, not on scene runtime logic.
+
+Notes:
+- Remaining `stage: 'province' | 'city' | 'district' | 'postal'` literals in session/store logic are intentional runtime values and were left unchanged.

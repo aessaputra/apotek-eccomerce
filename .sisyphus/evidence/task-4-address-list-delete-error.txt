@@ -1,0 +1,15 @@
+Task 4 delete-error evidence
+
+Covered by __tests__/scenes/AddressList.test.tsx:
+- Test name: keeps the existing delete error alert and skips reload on failure
+- Mocked deleteAddress returns Error('delete failed').
+- Expected visible alert contract is preserved: Alert.alert('Error', 'Gagal menghapus alamat: delete failed').
+- Expected reload behavior is preserved: getAddresses remains at the initial fetch count after failed delete.
+
+Verification command:
+npm run test -- --runInBand __tests__/scenes/AddressList.test.tsx
+
+Result:
+PASS __tests__/scenes/AddressList.test.tsx
+Tests: 9 passed, 9 total
+Test Suites: 1 passed, 1 total
