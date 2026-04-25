@@ -1,6 +1,6 @@
 import { type ComponentType, useCallback, memo, useState } from 'react';
 import { ScrollView, Platform, Dimensions } from 'react-native';
-import { YStack, XStack, Text, useTheme, Card, Spinner, styled } from 'tamagui';
+import { YStack, XStack, Text, Card, Spinner, styled } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -9,7 +9,6 @@ import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { useAppSlice } from '@/slices';
 import { useDataPersist, DataPersistKeys } from '@/hooks';
 import { signOut as authSignOut } from '@/services/auth.service';
-import { getThemeColor } from '@/utils/theme';
 import {
   ChevronRightIcon,
   CircleHelpIcon,
@@ -39,9 +38,6 @@ const MenuItem = memo(function MenuItem({
   'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedBy,
 }: MenuItemProps) {
-  const theme = useTheme();
-  const iconColor = getThemeColor(theme, 'colorPress');
-
   return (
     <Card
       padding="$4"
@@ -60,12 +56,12 @@ const MenuItem = memo(function MenuItem({
       aria-describedby={ariaDescribedBy}>
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap="$3" flex={1}>
-          <Icon size={22} color={iconColor} />
+          <Icon size={22} color="$colorPress" />
           <Text fontSize="$4" color="$color" fontWeight="500">
             {label}
           </Text>
         </XStack>
-        <ChevronRightIcon size={20} color={iconColor} />
+        <ChevronRightIcon size={20} color="$colorPress" />
       </XStack>
     </Card>
   );

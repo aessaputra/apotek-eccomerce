@@ -1,13 +1,14 @@
-import { YStack, Text, useTheme } from 'tamagui';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { getThemeColor } from '@/utils/theme';
+import { YStack, Text, styled } from 'tamagui';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
+
+const SafeAreaView = styled(RNSafeAreaView, {
+  flex: 1,
+  backgroundColor: '$background',
+});
 
 export default function SupportScreen() {
-  const theme = useTheme();
-  const bgColor = getThemeColor(theme, 'background');
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }} edges={['bottom']}>
+    <SafeAreaView edges={['bottom']}>
       <YStack flex={1} padding="$5" gap="$4">
         <Text fontSize="$5" fontWeight="600" color="$color">
           Dukungan

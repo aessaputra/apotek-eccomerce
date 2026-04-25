@@ -106,6 +106,7 @@ export default function OrderHistory() {
     loadMore,
   } = useOrderHistoryPaginated(user?.id);
 
+  // RefreshControl is a native API and requires a resolved color string.
   const refreshTintColor = getThemeColor(theme, 'primary');
 
   const handleOrderPress = useCallback(

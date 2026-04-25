@@ -16,15 +16,14 @@ const StyledCard = styled(Card, {
   bw: 1,
   br: '$5',
   elevation: 1,
+  backgroundColor: '$surface',
 
   variants: {
     isDefault: {
       true: {
-        backgroundColor: '$surface',
         borderColor: '$primary',
       },
       false: {
-        backgroundColor: '$surface',
         borderColor: '$surfaceBorder',
       },
     },

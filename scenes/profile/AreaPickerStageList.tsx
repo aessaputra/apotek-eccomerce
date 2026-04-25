@@ -2,7 +2,7 @@ import { Check } from '@tamagui/lucide-icons';
 import { Card, Spinner, Text, XStack, YStack } from 'tamagui';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
 import type { PostalOption } from './areaPickerHelpers';
-import type { SelectionStage } from './areaPickerState';
+import type { SelectionStage } from './areaPickerTypes';
 
 type AreaPickerStageListProps = {
   stage: SelectionStage;

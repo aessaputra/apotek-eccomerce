@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react';
-import { Alert, Platform, KeyboardAvoidingView, Keyboard } from 'react-native';
+import { Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { YStack, Spinner, styled, ScrollView } from 'tamagui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -20,6 +20,7 @@ import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 import { consumePendingAddressSelection } from '@/utils/addressSearchSession';
 import { consumePendingAreaSelection } from '@/utils/areaPickerSession';
 import { consumePendingMapPickerResult } from '@/utils/mapPickerSession';
+import { useAndroidKeyboardInset } from './useAndroidKeyboardInset';
 import {
   applyMapPickerSelection,
   applyPendingSelections,
@@ -58,7 +59,6 @@ export default function AddressFormScreen() {
   const isEdit = !!id;
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [mapConfirmRequiredDialogOpen, setMapConfirmRequiredDialogOpen] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [areaProximity, setAreaProximity] = useState<{
     latitude: number;
     longitude: number;
@@ -66,23 +66,8 @@ export default function AddressFormScreen() {
   } | null>(null);
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-
-    const showListener = Keyboard.addListener('keyboardDidShow', e => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showListener.remove();
-      hideListener.remove();
-    };
-  }, []);
-
   const keyboardGap = 16;
+  const keyboardHeight = useAndroidKeyboardInset();
   const extraBottomOffset = Platform.OS === 'android' ? keyboardHeight : 0;
   const scrollPaddingBottom =
     BOTTOM_BAR_HEIGHT + insets.bottom + FORM_SCROLL_PADDING.SPACIOUS + keyboardHeight + keyboardGap;

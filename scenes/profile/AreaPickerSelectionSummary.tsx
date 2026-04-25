@@ -1,7 +1,7 @@
 import { Card, Text, XStack, YStack } from 'tamagui';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
 import type { PostalOption } from './areaPickerHelpers';
-import type { SelectionStage } from './areaPickerState';
+import type { SelectionStage } from './areaPickerTypes';
 
 type AreaPickerSelectionSummaryProps = {
   stage: SelectionStage;

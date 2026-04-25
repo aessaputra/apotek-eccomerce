@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { Keyboard, Platform } from 'react-native';
+import type { EmitterSubscription, KeyboardEvent } from 'react-native';
 import { render } from '@/test-utils/renderWithTheme';
 import AddressFormScreen from '@/scenes/profile/AddressForm';
 
@@ -333,6 +335,43 @@ describe('<AddressFormScreen /> address flow', () => {
 
     expect(mockClearArea).not.toHaveBeenCalled();
     expect(mockSetGeneralError).not.toHaveBeenCalled();
+  });
+
+  it('registers and removes Android keyboard show/hide listeners', () => {
+    const originalPlatform = Platform.OS;
+    const removeShow = jest.fn();
+    const removeHide = jest.fn();
+    const keyboardEvent: KeyboardEvent = {
+      duration: 0,
+      easing: 'keyboard',
+      endCoordinates: { height: 240, screenX: 0, screenY: 0, width: 320 },
+      startCoordinates: { height: 0, screenX: 0, screenY: 0, width: 320 },
+    };
+    const addListenerSpy = jest
+      .spyOn(Keyboard, 'addListener')
+      .mockImplementation((eventName, listener) => {
+        if (eventName === 'keyboardDidShow') {
+          listener(keyboardEvent);
+          return { remove: removeShow } as unknown as EmitterSubscription;
+        }
+
+        listener(keyboardEvent);
+        return { remove: removeHide } as unknown as EmitterSubscription;
+      });
+
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
+    const { unmount } = render(<AddressFormScreen />);
+
+    expect(addListenerSpy).toHaveBeenCalledWith('keyboardDidShow', expect.any(Function));
+    expect(addListenerSpy).toHaveBeenCalledWith('keyboardDidHide', expect.any(Function));
+
+    unmount();
+
+    expect(removeShow).toHaveBeenCalled();
+    expect(removeHide).toHaveBeenCalled();
+
+    addListenerSpy.mockRestore();
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform });
   });
 
   it('applies mixed pending sources in area → address → map precedence order', () => {

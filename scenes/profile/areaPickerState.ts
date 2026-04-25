@@ -1,7 +1,6 @@
 import { normalize } from '@/utils/areaNormalization';
 import type { PostalOption } from './areaPickerHelpers';
-
-export type SelectionStage = 'province' | 'city' | 'district' | 'postal';
+import type { SelectionStage } from './areaPickerTypes';
 
 type NamedOption = {
   name: string;
