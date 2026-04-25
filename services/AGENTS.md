@@ -32,6 +32,7 @@ services/
 | Checkout/payment  | `checkout.service.ts`                        | Payment bootstrap and edge-function calls         |
 | Shipping quotes   | `shipping.service.ts`                        | Courier quote integration                         |
 | Address data      | `address.service.ts` + `regional.service.ts` | Saved addresses plus region lookup                |
+| Notifications     | `notification.service.ts`                    | Push token sync, permission state, realtime list  |
 
 ## CONVENTIONS
 
@@ -41,6 +42,9 @@ services/
 - Keep low-level query shaping, normalization, retry behavior, and transport concerns in services.
 - Re-export public service APIs through `services/index.ts` when they are intended for broad use.
 - Service logging should stay behind `if (__DEV__)` guards.
+- `order.service.ts` is the highest-complexity service; preserve its read-model normalization chain and abort-aware retry behavior.
+- `checkout.service.ts` and `shipping.service.ts` call edge functions and require a valid access token with a 60s expiry safety window.
+- `notification.service.ts` owns push-token lifecycle and realtime notification subscriptions; keep Expo runtime guards intact.
 
 ## TESTING
 
@@ -53,3 +57,4 @@ services/
 - **NEVER** call Supabase directly from scenes or components when a service belongs here.
 - **NEVER** skip the barrel export for a widely shared service helper.
 - **NEVER** mix presentation concerns into this directory.
+- **NEVER** hand-edit generated database contracts; update `types/supabase.ts` through Supabase type generation.
