@@ -35,6 +35,37 @@ interface GoogleAuthResult {
   error: GoogleAuthError | null;
 }
 
+const GOOGLE_AUTH_CALLBACK_PATH = 'google-auth';
+const GOOGLE_AUTH_REDIRECT_SCHEME = 'apotek-ecommerce';
+
+const GOOGLE_NATIVE_REDIRECT_CONFIG_ERROR =
+  'Redirect Google OAuth masih mengarah ke localhost. Tambahkan apotek-ecommerce://google-auth ke Supabase Auth Redirect URLs, lalu pastikan Site URL bukan localhost untuk build native.';
+
+function createGoogleNativeRedirectUri() {
+  return makeRedirectUri({
+    scheme: GOOGLE_AUTH_REDIRECT_SCHEME,
+    path: GOOGLE_AUTH_CALLBACK_PATH,
+  });
+}
+
+function isLocalhostCallbackUrl(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
+  } catch {
+    return /^https?:\/\/(localhost|127\.0\.0\.1)(?::|\/)/.test(url);
+  }
+}
+
+function getAuthorizeRedirectTo(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.searchParams.get('redirect_to') ?? parsedUrl.searchParams.get('redirectTo');
+  } catch {
+    return null;
+  }
+}
+
 export async function signInWithPassword(input: SignInInput) {
   return supabase.auth.signInWithPassword({
     email: input.email,
@@ -157,6 +188,16 @@ export async function createSessionFromUrl(url: string) {
       });
     }
 
+    if (Platform.OS !== 'web' && isLocalhostCallbackUrl(url)) {
+      return {
+        data: null,
+        error: {
+          message: GOOGLE_NATIVE_REDIRECT_CONFIG_ERROR,
+          name: 'OAuthRedirectConfigError',
+        } as GoogleAuthError,
+      };
+    }
+
     if (errorCode) {
       return {
         data: null,
@@ -273,9 +314,7 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
 
     const isAndroid = Platform.OS === 'android';
     let linkingPromise: Promise<string> | null = null;
-    const redirectTo = makeRedirectUri({
-      path: 'google-auth',
-    });
+    const redirectTo = createGoogleNativeRedirectUri();
 
     if (__DEV__) {
       console.log('[auth.service] Google native redirectTo:', redirectTo);
@@ -322,6 +361,22 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
       return {
         data: null,
         error: { message: 'OAuth URL tidak tersedia', name: 'AuthError' },
+      };
+    }
+
+    const authorizeRedirectTo = getAuthorizeRedirectTo(data.url);
+
+    if (__DEV__) {
+      console.log('[auth.service] Google authorize redirect_to:', authorizeRedirectTo);
+    }
+
+    if (authorizeRedirectTo && authorizeRedirectTo !== redirectTo) {
+      return {
+        data: null,
+        error: {
+          message: GOOGLE_NATIVE_REDIRECT_CONFIG_ERROR,
+          name: 'OAuthRedirectConfigError',
+        },
       };
     }
 

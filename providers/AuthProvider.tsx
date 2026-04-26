@@ -98,7 +98,14 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
       try {
         const hashResult = await handleOAuthHashTokens();
-        if (hashResult) return;
+        if (hashResult) {
+          if (hashResult.error) {
+            if (__DEV__) console.warn('[AuthProvider] OAuth callback error:', hashResult.error);
+            dispatched = true;
+            dispatchAuth(undefined, false);
+          }
+          return;
+        }
 
         const result = await getCurrentUser({ createIfMissing: true });
         if (!mounted || dispatched) return;
