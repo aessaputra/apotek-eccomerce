@@ -37,6 +37,8 @@ interface GoogleAuthResult {
 
 const GOOGLE_AUTH_CALLBACK_PATH = 'google-auth';
 const GOOGLE_AUTH_REDIRECT_SCHEME = 'apotek-ecommerce';
+const PASSWORD_RECOVERY_CALLBACK_PATH = 'reset-password';
+const PASSWORD_RECOVERY_REDIRECT_SCHEME = 'apotek-ecommerce';
 
 const GOOGLE_NATIVE_REDIRECT_CONFIG_ERROR =
   'Redirect Google OAuth masih mengarah ke localhost. Tambahkan apotek-ecommerce://google-auth ke Supabase Auth Redirect URLs, lalu pastikan Site URL bukan localhost untuk build native.';
@@ -45,6 +47,13 @@ function createGoogleNativeRedirectUri() {
   return makeRedirectUri({
     scheme: GOOGLE_AUTH_REDIRECT_SCHEME,
     path: GOOGLE_AUTH_CALLBACK_PATH,
+  });
+}
+
+export function createPasswordRecoveryRedirectUri() {
+  return makeRedirectUri({
+    scheme: PASSWORD_RECOVERY_REDIRECT_SCHEME,
+    path: PASSWORD_RECOVERY_CALLBACK_PATH,
   });
 }
 
@@ -85,14 +94,52 @@ export async function signOut() {
   return supabase.auth.signOut();
 }
 
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ data: unknown; error: GoogleAuthError | null }> {
+  try {
+    const redirectTo = createPasswordRecoveryRedirectUri();
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return {
+      data: null,
+      error: { message, name: 'PasswordResetRequestError' },
+    };
+  }
+}
+
+export async function updatePassword(
+  password: string,
+): Promise<{ data: unknown; error: GoogleAuthError | null }> {
+  try {
+    const { data, error } = await supabase.auth.updateUser({ password });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return {
+      data: null,
+      error: { message, name: 'UpdatePasswordError' },
+    };
+  }
+}
+
 interface VerifyEmailOtpInput {
   tokenHash: string;
   type: 'email' | 'signup' | 'recovery' | 'invite' | 'email_change';
-}
-
-interface ResendVerificationInput {
-  email: string;
-  type?: 'signup' | 'email_change';
 }
 
 /**

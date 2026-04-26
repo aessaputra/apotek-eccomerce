@@ -170,6 +170,19 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode | string, string> = {
 };
 
 /**
+ * Generic success message for forgot password requests.
+ * Keeps account existence private while confirming the request was accepted.
+ */
+export const AUTH_FORGOT_PASSWORD_GENERIC_SUCCESS_MESSAGE =
+  'Jika email terdaftar, tautan reset password telah dikirim.';
+
+/**
+ * Reset password copy for invalid or expired recovery links.
+ */
+export const AUTH_RESET_PASSWORD_INVALID_LINK_MESSAGE =
+  'Tautan reset password tidak valid atau kedaluwarsa. Silakan minta tautan baru.';
+
+/**
  * Custom error names for Google OAuth and other auth flows
  */
 export enum AuthErrorName {
@@ -360,4 +373,83 @@ export function isEmailNotVerifiedError(error: unknown): boolean {
   }
 
   return false;
+}
+
+function getErrorText(error: unknown): string {
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message;
+  }
+
+  return '';
+}
+
+/**
+ * Check if a forgot-password error should be treated as a private generic success.
+ */
+export function isPrivacySafeForgotPasswordError(error: unknown): boolean {
+  if (!error) return false;
+
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+  ) {
+    if (error.code === AuthErrorCode.USER_NOT_FOUND) {
+      return true;
+    }
+  }
+
+  const message = getErrorText(error).toLowerCase();
+  if (!message) return false;
+
+  return (
+    message.includes('user not found') ||
+    message.includes('account not found') ||
+    message.includes('email not found') ||
+    message.includes('akun tidak ditemukan') ||
+    message.includes('email tidak ditemukan') ||
+    message.includes('user_not_found') ||
+    message.includes('account_not_found') ||
+    message.includes('email_not_found')
+  );
+}
+
+/**
+ * Check if a recovery token failure should show invalid/expired reset-link copy.
+ */
+export function isRecoveryTokenFailureError(error: unknown): boolean {
+  if (!error) return false;
+
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+  ) {
+    return error.code === AuthErrorCode.OTP_EXPIRED || error.code === AuthErrorCode.INVALID_GRANT;
+  }
+
+  const message = getErrorText(error).toLowerCase();
+  if (!message) return false;
+
+  return (
+    message.includes(AuthErrorCode.OTP_EXPIRED) || message.includes(AuthErrorCode.INVALID_GRANT)
+  );
+}
+
+/**
+ * Get the reset password copy for recovery token failures.
+ */
+export function getRecoveryTokenFailureMessage(error: unknown): string | undefined {
+  return isRecoveryTokenFailureError(error) ? AUTH_RESET_PASSWORD_INVALID_LINK_MESSAGE : undefined;
 }
