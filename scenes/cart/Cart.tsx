@@ -118,6 +118,17 @@ export default function Cart() {
     [router, setAddressSheetOpen],
   );
 
+  const handleAddAddress = useCallback(() => {
+    setAddressSheetOpen(false);
+
+    const addressFormHref: TypedHref = {
+      pathname: '/profile/address-form',
+      params: { returnTo: '/cart' },
+    };
+
+    router.push(addressFormHref);
+  }, [router, setAddressSheetOpen]);
+
   const {
     shippingOptions,
     selectedShippingOption,
@@ -355,6 +366,7 @@ export default function Cart() {
         selectedAddress={selectedAddress}
         selectedAddressFullText={selectedAddressFullText}
         onOpenAddressSheet={handleOpenAddressSheet}
+        onAddAddress={handleAddAddress}
         addressErrorMessage={addressErrorMessage}
         loadingRates={loadingRates}
         selectedShippingOption={selectedShippingOption}
@@ -376,6 +388,7 @@ export default function Cart() {
     addressErrorMessage,
     handleCancelPendingCheckout,
     handleContinuePendingCheckout,
+    handleAddAddress,
     handleOpenAddressSheet,
     handleOpenShippingSheet,
     handleRetryShipping,
@@ -453,6 +466,7 @@ export default function Cart() {
             selectedAddressId={selectedAddressId}
             onSelectAddress={handleSelectAddress}
             onEditAddress={handleEditAddress}
+            onAddAddress={handleAddAddress}
           />
 
           {shouldShowCheckoutBar ? (

@@ -10,7 +10,7 @@ import {
   YStack,
 } from 'tamagui';
 import AddressCard from '@/components/elements/AddressCard';
-import { MapPinIcon } from '@/components/icons';
+import EmptyAddressCard from '@/components/elements/EmptyAddressCard';
 import type { Address } from '@/types/address';
 import type { ShippingOption } from '@/types/shipping';
 import { resolveBadgeText } from '@/utils/address';
@@ -200,6 +200,7 @@ interface AddressSelectionSheetProps {
   selectedAddressId: string | null;
   onSelectAddress: (addressId: string) => void;
   onEditAddress: (addressId: string) => void;
+  onAddAddress: () => void;
 }
 
 export function AddressSelectionSheet({
@@ -210,6 +211,7 @@ export function AddressSelectionSheet({
   selectedAddressId,
   onSelectAddress,
   onEditAddress,
+  onAddAddress,
 }: AddressSelectionSheetProps) {
   return (
     <Sheet
@@ -246,21 +248,7 @@ export function AddressSelectionSheet({
             </YStack>
           ) : availableAddresses.length === 0 ? (
             <YStack flex={1} alignItems="center" justifyContent="center" px="$4">
-              <Card
-                borderRadius="$4"
-                borderWidth={1}
-                borderStyle="dashed"
-                borderColor="$surfaceBorder"
-                backgroundColor="$surface"
-                padding="$4"
-                width="100%">
-                <YStack gap="$3" alignItems="center">
-                  <MapPinIcon size={28} color="$primary" />
-                  <Text color="$color" fontWeight="600" textAlign="center">
-                    Belum ada alamat
-                  </Text>
-                </YStack>
-              </Card>
+              <EmptyAddressCard onPress={onAddAddress} />
             </YStack>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>

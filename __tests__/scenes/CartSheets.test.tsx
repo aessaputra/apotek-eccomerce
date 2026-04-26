@@ -104,6 +104,8 @@ describe('<CartSheets />', () => {
   });
 
   test('renders empty address state when no addresses exist', () => {
+    const onAddAddress = jest.fn();
+
     render(
       <AddressSelectionSheet
         open
@@ -113,11 +115,15 @@ describe('<CartSheets />', () => {
         selectedAddressId={null}
         onSelectAddress={jest.fn()}
         onEditAddress={jest.fn()}
+        onAddAddress={onAddAddress}
       />,
     );
 
     expect(screen.getByText('Pilih Alamat')).toBeTruthy();
     expect(screen.getByText('Belum ada alamat')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Tambah alamat pengiriman'));
+    expect(onAddAddress).toHaveBeenCalledTimes(1);
   });
 
   test('renders address list and forwards select and edit callbacks', () => {
@@ -133,6 +139,7 @@ describe('<CartSheets />', () => {
         selectedAddressId="address-1"
         onSelectAddress={onSelectAddress}
         onEditAddress={onEditAddress}
+        onAddAddress={jest.fn()}
       />,
     );
 

@@ -1,5 +1,6 @@
 import { Button as TamaguiButton, Card, Separator, Spinner, Text, XStack, YStack } from 'tamagui';
 import { ChevronRightIcon, MapPinIcon } from '@/components/icons';
+import EmptyAddressCard from '@/components/elements/EmptyAddressCard';
 import type { Address } from '@/types/address';
 import type { ShippingOption } from '@/types/shipping';
 import { formatRupiah } from '@/scenes/cart/cart.constants';
@@ -34,6 +35,7 @@ interface CartCheckoutDetailsProps {
   selectedAddress: Address | null;
   selectedAddressFullText: string;
   onOpenAddressSheet: () => void;
+  onAddAddress: () => void;
   addressErrorMessage: string | null;
   loadingRates: boolean;
   selectedShippingOption: ShippingOption | null;
@@ -55,6 +57,7 @@ export function CartCheckoutDetails({
   selectedAddress,
   selectedAddressFullText,
   onOpenAddressSheet,
+  onAddAddress,
   addressErrorMessage,
   loadingRates,
   selectedShippingOption,
@@ -112,31 +115,7 @@ export function CartCheckoutDetails({
           </XStack>
         </Card>
       ) : (
-        <Card
-          borderRadius="$4"
-          borderWidth={1}
-          borderStyle="dashed"
-          borderColor="$surfaceBorder"
-          backgroundColor="$surface"
-          padding="$4">
-          <YStack gap="$3">
-            <XStack alignItems="center" gap="$2">
-              <MapPinIcon size={18} color="$primary" />
-              <Text color="$color" fontWeight="600">
-                Belum ada alamat
-              </Text>
-            </XStack>
-            <TamaguiButton
-              backgroundColor="$primary"
-              color="$onPrimary"
-              borderRadius="$3"
-              minHeight={44}
-              onPress={onOpenAddressSheet}
-              aria-label="Tambah alamat pengiriman">
-              Tambah Alamat
-            </TamaguiButton>
-          </YStack>
-        </Card>
+        <EmptyAddressCard onPress={onAddAddress} />
       )}
 
       {addressErrorMessage ? <ErrorDetailsCard message={addressErrorMessage} /> : null}
