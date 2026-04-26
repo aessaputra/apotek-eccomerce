@@ -36,6 +36,8 @@ function createOrder(index: number): OrderListItem {
     courier_service: 'reg',
     payment_status: 'expire',
     status: 'pending',
+    customer_completion_stage: null,
+    customer_order_bucket: null,
     order_items: [],
   };
 }

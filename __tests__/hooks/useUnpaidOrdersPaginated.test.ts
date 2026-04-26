@@ -60,6 +60,8 @@ function createOrder(index: number, expiredAt: string | null = null): OrderListI
     courier_service: null,
     payment_status: 'pending',
     status: 'pending',
+    customer_completion_stage: null,
+    customer_order_bucket: null,
     order_items: [],
   };
 }

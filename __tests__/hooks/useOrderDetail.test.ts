@@ -2,10 +2,16 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useOrderDetail } from '@/hooks/useOrderDetail';
 import { appActions } from '@/slices/app.slice';
+import type {
+  ConfirmOrderReceivedResult,
+  OrderDetailResult,
+  OrderWithItems,
+} from '@/services/order.service';
 
 const mockDispatch = jest.fn();
-const mockGetOrderById = jest.fn();
-const mockConfirmOrderReceived = jest.fn();
+const mockGetOrderById = jest.fn<(orderId: string) => Promise<OrderDetailResult>>();
+const mockConfirmOrderReceived =
+  jest.fn<(orderId: string) => Promise<ConfirmOrderReceivedResult>>();
 
 jest.mock('react-redux', () => ({
   useDispatch: () => mockDispatch,
@@ -16,8 +22,8 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('@/services/order.service', () => ({
-  getOrderById: (...args: unknown[]) => mockGetOrderById(...args),
-  confirmOrderReceived: (...args: unknown[]) => mockConfirmOrderReceived(...args),
+  getOrderById: (orderId: string) => mockGetOrderById(orderId),
+  confirmOrderReceived: (orderId: string) => mockConfirmOrderReceived(orderId),
 }));
 
 jest.mock('@/utils/error', () => ({
@@ -26,7 +32,7 @@ jest.mock('@/utils/error', () => ({
     error instanceof Error ? error.message : String(error ?? ''),
 }));
 
-const baseOrder = {
+const baseOrder: OrderWithItems = {
   id: 'order-1',
   user_id: 'user-1',
   total_amount: 100000,
@@ -38,7 +44,6 @@ const baseOrder = {
   delivered_at: '2026-04-21T08:00:00.000Z',
   complaint_window_expires_at: '2026-04-23T08:00:00.000Z',
   customer_completed_at: null,
-  customer_completion_source: null,
   customer_completion_stage: 'awaiting_customer',
   customer_order_bucket: 'shipped',
   expired_at: null,
@@ -66,7 +71,6 @@ describe('useOrderDetail confirmReceived', () => {
       data: {
         ...baseOrder,
         customer_completed_at: '2026-04-21T09:00:00.000Z',
-        customer_completion_source: 'customer',
         customer_completion_stage: 'completed',
         customer_order_bucket: 'completed',
       },

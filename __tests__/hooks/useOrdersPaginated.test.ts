@@ -71,6 +71,8 @@ function createOrder(index: number): OrderListItem {
     courier_service: index % 2 === 0 ? 'same-day' : null,
     payment_status: 'settlement',
     status: 'processing',
+    customer_completion_stage: null,
+    customer_order_bucket: null,
     order_items: [
       {
         id: `order-item-${index}`,

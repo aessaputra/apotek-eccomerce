@@ -29,7 +29,7 @@ jest.mock('@/utils/retry', () => ({
 }));
 
 const { withRetry } = jest.requireMock('@/utils/retry') as {
-  withRetry: jest.Mock;
+  withRetry: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
 };
 
 describe('order.service lifecycle helpers', () => {
