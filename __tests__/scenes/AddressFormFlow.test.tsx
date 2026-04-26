@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Keyboard, Platform } from 'react-native';
 import type { EmitterSubscription, KeyboardEvent } from 'react-native';
-import { render } from '@/test-utils/renderWithTheme';
+import { fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import AddressFormScreen from '@/scenes/profile/AddressForm';
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
+const mockReplace = jest.fn();
+let mockLocalSearchParams: Record<string, string> = {};
 
 const mockConsumePendingAddressSelection = jest.fn<
   () => {
@@ -50,6 +52,9 @@ const mockClearArea = jest.fn();
 const mockSetMapConfirmed = jest.fn();
 const mockResetMapConfirmation = jest.fn();
 const mockSetGeneralError = jest.fn();
+const mockSaveAddress = jest.fn<() => Promise<boolean>>();
+const mockBuildAddressPayload = jest.fn();
+let mockMapConfirmed = false;
 
 const mockValues = {
   receiverName: '',
@@ -68,8 +73,8 @@ const mockValues = {
 
 jest.mock('expo-router', () => ({
   __esModule: true,
-  useRouter: () => ({ push: mockPush, back: mockBack }),
-  useLocalSearchParams: () => ({}),
+  useRouter: () => ({ push: mockPush, back: mockBack, replace: mockReplace }),
+  useLocalSearchParams: () => mockLocalSearchParams,
 }));
 
 jest.mock('@react-navigation/elements', () => ({
@@ -126,7 +131,7 @@ jest.mock('@/hooks/useAddressForm', () => ({
       postalCodeRef: { current: null },
       provinceRef: { current: null },
     },
-    mapConfirmed: false,
+    mapConfirmed: mockMapConfirmed,
     setMapConfirmed: mockSetMapConfirmed,
     resetMapConfirmation: mockResetMapConfirmation,
   }),
@@ -138,13 +143,14 @@ jest.mock('@/hooks/useAddressData', () => ({
     isSaving: false,
     error: null,
     loadAddress: jest.fn(),
-    saveAddress: jest.fn(),
+    saveAddress: mockSaveAddress,
     clearError: jest.fn(),
   }),
 }));
 
 jest.mock('@/services/address.service', () => ({
-  buildAddressPayload: jest.fn(),
+  __esModule: true,
+  buildAddressPayload: (...args: unknown[]) => mockBuildAddressPayload(...args),
 }));
 
 jest.mock('@/components/AddressForm/AddressForm', () => {
@@ -166,9 +172,27 @@ jest.mock('@/components/AddressForm/DefaultAddressToggle', () => {
 });
 
 jest.mock('@/components/elements/AppAlertDialog', () => {
-  const { View } = jest.requireActual('react-native') as typeof import('react-native');
-  function MockAppAlertDialog() {
-    return <View />;
+  const { Pressable, Text, View } = jest.requireActual(
+    'react-native',
+  ) as typeof import('react-native');
+  function MockAppAlertDialog({
+    open,
+    confirmText = 'OK',
+    onConfirm,
+  }: {
+    open: boolean;
+    confirmText?: string;
+    onConfirm?: () => void;
+  }) {
+    if (!open) {
+      return <View />;
+    }
+
+    return (
+      <Pressable accessibilityLabel={confirmText} onPress={onConfirm}>
+        <Text>{confirmText}</Text>
+      </Pressable>
+    );
   }
 
   return MockAppAlertDialog;
@@ -184,9 +208,19 @@ jest.mock('@/components/elements/ErrorMessage', () => {
 });
 
 jest.mock('@/components/layouts/BottomActionBar', () => {
-  const { View } = jest.requireActual('react-native') as typeof import('react-native');
-  function MockBottomActionBar() {
-    return <View />;
+  const { Pressable, Text } = jest.requireActual('react-native') as typeof import('react-native');
+  function MockBottomActionBar({
+    buttonTitle,
+    onPress,
+  }: {
+    buttonTitle: string;
+    onPress: () => void;
+  }) {
+    return (
+      <Pressable accessibilityLabel={buttonTitle} onPress={onPress}>
+        <Text>{buttonTitle}</Text>
+      </Pressable>
+    );
   }
 
   return MockBottomActionBar;
@@ -257,9 +291,13 @@ describe('<AddressFormScreen /> address flow', () => {
     mockValues.isDefault = false;
     mockValues.latitude = null;
     mockValues.longitude = null;
+    mockMapConfirmed = false;
+    mockLocalSearchParams = {};
     mockConsumePendingAddressSelection.mockReturnValue(null);
     mockConsumePendingAreaSelection.mockReturnValue(null);
     mockConsumePendingMapPickerResult.mockReturnValue(null);
+    mockSaveAddress.mockResolvedValue(false);
+    mockBuildAddressPayload.mockReturnValue({ street_address: 'Jl. Test' });
 
     mockSetFieldValue.mockImplementation((...args: unknown[]) => {
       const [field, value] = args as [keyof typeof mockValues, unknown];
@@ -306,6 +344,30 @@ describe('<AddressFormScreen /> address flow', () => {
       },
     });
     expect(mockSetMapConfirmed).toHaveBeenCalledWith(false);
+  });
+
+  it('returns to cart after saving an address opened from cart', async () => {
+    mockLocalSearchParams = { returnTo: '/cart' };
+    mockMapConfirmed = true;
+    mockValues.receiverName = 'User Test';
+    mockValues.phoneNumber = '08123456789';
+    mockValues.streetAddress = 'Jl. Test 1';
+    mockValues.latitude = -6.2;
+    mockValues.longitude = 106.8;
+    mockSaveAddress.mockResolvedValueOnce(true);
+
+    render(<AddressFormScreen />);
+
+    fireEvent.press(screen.getByLabelText('Simpan Alamat'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('OK')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByLabelText('OK'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/cart');
+    expect(mockBack).not.toHaveBeenCalled();
   });
 
   it('preserves selected area when map confirmation did not adjust the pin', async () => {

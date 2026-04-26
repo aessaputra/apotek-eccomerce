@@ -55,7 +55,7 @@ export default function AddressFormScreen() {
   const router = useRouter();
   const headerHeight = useHeaderHeight();
   const { user } = useAppSlice();
-  const { id } = useLocalSearchParams<RouteParams<'profile/address-form'>>();
+  const { id, returnTo } = useLocalSearchParams<RouteParams<'profile/address-form'>>();
   const isEdit = !!id;
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [mapConfirmRequiredDialogOpen, setMapConfirmRequiredDialogOpen] = useState(false);
@@ -266,6 +266,15 @@ export default function AddressFormScreen() {
     clearDataError();
   }, [clearDataError, setGeneralError]);
 
+  const handleSuccessConfirm = useCallback(() => {
+    if (returnTo === '/cart') {
+      router.replace('/cart');
+      return;
+    }
+
+    router.back();
+  }, [returnTo, router]);
+
   const handleSave = useCallback(async () => {
     if (!user?.id) return;
 
@@ -386,7 +395,7 @@ export default function AddressFormScreen() {
         title={isEdit ? 'Alamat Berhasil Diperbarui' : 'Alamat Berhasil Ditambahkan'}
         description="Data alamat telah berhasil disimpan."
         confirmText="OK"
-        onConfirm={() => router.back()}
+        onConfirm={handleSuccessConfirm}
       />
 
       <AppAlertDialog

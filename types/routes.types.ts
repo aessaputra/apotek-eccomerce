@@ -1,5 +1,7 @@
 import type { Href } from 'expo-router';
 
+export type AddressFormReturnTo = '/cart';
+
 // Auth routes
 export type AuthRoutes = {
   '(auth)/login': { resetSuccess?: string; error?: string } | undefined;
@@ -56,7 +58,7 @@ export type ProfileRoutes = {
   profile: undefined;
   'profile/index': undefined;
   'profile/addresses': undefined;
-  'profile/address-form': { id?: string };
+  'profile/address-form': { id?: string; returnTo?: AddressFormReturnTo };
   'profile/address-search': { query?: string; latitude?: string; longitude?: string };
   'profile/area-picker': { selectedAreaId?: string };
   'profile/address-map': {
@@ -90,7 +92,7 @@ export type AppRoutes = AuthRoutes &
 export type ProfileStackParams = {
   index: undefined;
   addresses: undefined;
-  'address-form': { id?: string };
+  'address-form': { id?: string; returnTo?: AddressFormReturnTo };
   'address-search': { query?: string; latitude?: string; longitude?: string };
   'area-picker': { selectedAreaId?: string };
   'address-map': {
