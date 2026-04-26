@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import Cart from '@/scenes/cart/Cart';
+import type { Address } from '@/types/address';
 import type { CartItemWithProduct } from '@/types/cart';
 import type { User } from '@/types';
 
@@ -52,7 +53,16 @@ const mockCartQuantityHookState = {
   updateQuantity: jest.fn(),
 };
 
-const mockCartAddressHookState = {
+const mockCartAddressHookState: {
+  selectedAddress: Address | null;
+  selectedAddressId: string | null;
+  loadingSelectedAddress: boolean;
+  availableAddresses: Address[];
+  loadingAddresses: boolean;
+  addressSheetOpen: boolean;
+  setAddressSheetOpen: jest.Mock;
+  handleSelectAddress: jest.Mock<() => Promise<void>>;
+} = {
   selectedAddress: null,
   selectedAddressId: null as string | null,
   loadingSelectedAddress: false,
@@ -264,9 +274,29 @@ jest.mock('@/components/elements/EmptyCartState/EmptyCartState', () => ({
 
 jest.mock('@/components/elements/AddressCard', () => ({
   __esModule: true,
-  default: () => {
-    const { Text } = jest.requireActual('react-native') as typeof import('react-native');
-    return <Text>Address Card</Text>;
+  default: ({
+    address,
+    onEdit,
+    onPress,
+  }: {
+    address: Address;
+    onEdit?: () => void;
+    onPress?: () => void;
+  }) => {
+    const { Pressable, Text, View } = jest.requireActual(
+      'react-native',
+    ) as typeof import('react-native');
+    return (
+      <View>
+        <Text>Address Card</Text>
+        <Pressable accessibilityLabel={`select-${address.id}`} onPress={onPress}>
+          <Text>Pilih {address.id}</Text>
+        </Pressable>
+        <Pressable accessibilityLabel={`edit-${address.id}`} onPress={onEdit}>
+          <Text>Ubah {address.id}</Text>
+        </Pressable>
+      </View>
+    );
   },
 }));
 
@@ -303,6 +333,29 @@ function createItem(index: number): CartItemWithProduct {
       sku: `SKU-PRODUK-${index}`,
     } as CartItemWithProduct['product'] & { sku: string },
     images: [{ id: `img-${index}`, url: `https://example.com/${index}.jpg`, sort_order: 0 }],
+  };
+}
+
+function createAddress(): Address {
+  return {
+    id: 'address-1',
+    profile_id: 'profile-1',
+    receiver_name: 'User Test',
+    phone_number: '08123456789',
+    street_address: 'Jl. Test 1',
+    address_note: null,
+    city: 'Jakarta',
+    city_id: 'CITY-1',
+    province: 'DKI Jakarta',
+    province_id: 'PROV-1',
+    area_id: 'AREA-1',
+    area_name: 'Jakarta Selatan',
+    postal_code: '12345',
+    is_default: true,
+    country_code: 'ID',
+    latitude: -6.2,
+    longitude: 106.8,
+    created_at: new Date(Date.UTC(2026, 0, 1)).toISOString(),
   };
 }
 
@@ -412,6 +465,22 @@ describe('<Cart />', () => {
     fireEvent.press(screen.getByLabelText('browse-products'));
 
     expect(mockPush).toHaveBeenCalledWith('/home');
+  });
+
+  it('routes edit address from the cart sheet back to cart after save', () => {
+    mockCartAddressHookState.addressSheetOpen = true;
+    mockCartAddressHookState.availableAddresses = [createAddress()];
+    mockCartAddressHookState.selectedAddressId = 'address-1';
+
+    render(<Cart />);
+
+    fireEvent.press(screen.getByLabelText('edit-address-1'));
+
+    expect(mockCartAddressHookState.setAddressSheetOpen).toHaveBeenCalledWith(false);
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/profile/address-form',
+      params: { id: 'address-1', returnTo: '/cart' },
+    });
   });
 
   it('shows the skeleton during the initial cart load', () => {

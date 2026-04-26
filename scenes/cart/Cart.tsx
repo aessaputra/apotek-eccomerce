@@ -110,7 +110,7 @@ export default function Cart() {
 
       const addressFormHref: TypedHref = {
         pathname: '/profile/address-form',
-        params: { id: addressId },
+        params: { id: addressId, returnTo: '/cart' },
       };
 
       router.push(addressFormHref);
