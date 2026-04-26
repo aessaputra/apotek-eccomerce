@@ -96,6 +96,11 @@
       "sourceType": "github",
       "computedHash": "cb675a889c60172febe84740e7c22b600c8241c390deaff3d368c408f10dffdf"
     },
+    "supabase-auth": {
+      "source": "nice-wolf-studio/claude-code-supabase-skills",
+      "sourceType": "github",
+      "computedHash": "8c0e53a0cb9739954966c689ac714608ae8d4d1a1c2c65321eddde1cb12ece71"
+    },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
