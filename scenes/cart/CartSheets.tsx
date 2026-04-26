@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Button as TamaguiButton,
   Card,
@@ -13,6 +14,7 @@ import AddressCard from '@/components/elements/AddressCard';
 import EmptyAddressCard from '@/components/elements/EmptyAddressCard';
 import type { Address } from '@/types/address';
 import type { ShippingOption } from '@/types/shipping';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import { resolveBadgeText } from '@/utils/address';
 import { formatRupiah, SHEET_ANIMATION_CONFIG } from '@/scenes/cart/cart.constants';
 
@@ -23,6 +25,8 @@ const COURIER_CARD_PRESS_STYLE = {
 
 const COURIER_CARD_ANIMATE_ONLY = ['transform', 'opacity'];
 const SHEET_SNAP_POINTS: number[] = [60];
+const SHIPPING_CONFIRM_FOOTER_MIN_BOTTOM_PADDING = 24;
+const SHIPPING_CONFIRM_FOOTER_SAFE_AREA_OFFSET = 16;
 
 interface CourierOptionCardProps {
   option: ShippingOption;
@@ -122,6 +126,12 @@ export function ShippingOptionsSheet({
   onConfirm,
   isOffline,
 }: ShippingOptionsSheetProps) {
+  const insets = useSafeAreaInsets();
+  const footerPaddingBottom = Math.max(
+    insets.bottom + SHIPPING_CONFIRM_FOOTER_SAFE_AREA_OFFSET,
+    SHIPPING_CONFIRM_FOOTER_MIN_BOTTOM_PADDING,
+  );
+
   return (
     <Sheet
       modal
@@ -169,14 +179,20 @@ export function ShippingOptionsSheet({
             </YStack>
           </ScrollView>
 
-          <YStack px="$4" pt="$2" pb="$4">
+          <YStack
+            px="$4"
+            pt="$2"
+            pb={footerPaddingBottom}
+            role="toolbar"
+            aria-label="Area konfirmasi opsi pengiriman">
             <TamaguiButton
               borderRadius="$3"
-              minHeight={44}
+              minHeight={MIN_TOUCH_TARGET}
               backgroundColor="$primary"
               color="$surface"
               disabled={isOffline}
               opacity={isOffline ? 0.6 : 1}
+              aria-label="Konfirmasi opsi pengiriman"
               onPress={onConfirm}>
               Konfirmasi
             </TamaguiButton>
