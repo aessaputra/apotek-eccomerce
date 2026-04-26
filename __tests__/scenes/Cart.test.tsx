@@ -239,13 +239,6 @@ jest.mock('@/components/elements/StickyBottomBar/StickyBottomBar', () => ({
   },
 }));
 
-jest.mock('@/components/elements/CartSummary/CartSummary', () => ({
-  CartSummary: () => {
-    const { Text } = jest.requireActual('react-native') as typeof import('react-native');
-    return <Text>Cart Summary</Text>;
-  },
-}));
-
 jest.mock('@/components/elements/CartLoadingSkeleton/CartLoadingSkeleton', () => ({
   CartLoadingSkeleton: () => {
     const { Text } = jest.requireActual('react-native') as typeof import('react-native');
