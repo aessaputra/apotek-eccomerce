@@ -360,7 +360,6 @@ export default function Cart() {
         selectedShippingOption={selectedShippingOption}
         isOffline={isOffline}
         onOpenShippingSheet={handleOpenShippingSheet}
-        snapshot={snapshot}
         activeOrderId={activeOrderId}
         paymentError={paymentError}
         startingCheckout={startingCheckout}
@@ -392,7 +391,6 @@ export default function Cart() {
     shippingErrorMessage,
     shippingOptions.length,
     shippingRecoverySuggestion,
-    snapshot,
     startingCheckout,
   ]);
 

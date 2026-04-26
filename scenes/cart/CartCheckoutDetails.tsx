@@ -1,8 +1,6 @@
 import { Button as TamaguiButton, Card, Separator, Spinner, Text, XStack, YStack } from 'tamagui';
-import { CartSummary } from '@/components/elements/CartSummary/CartSummary';
 import { ChevronRightIcon, MapPinIcon } from '@/components/icons';
 import type { Address } from '@/types/address';
-import type { CartSnapshot } from '@/types/cart';
 import type { ShippingOption } from '@/types/shipping';
 import { formatRupiah } from '@/scenes/cart/cart.constants';
 
@@ -41,7 +39,6 @@ interface CartCheckoutDetailsProps {
   selectedShippingOption: ShippingOption | null;
   isOffline: boolean;
   onOpenShippingSheet: () => void;
-  snapshot: CartSnapshot;
   activeOrderId: string | null;
   paymentError: string | null;
   startingCheckout: boolean;
@@ -63,7 +60,6 @@ export function CartCheckoutDetails({
   selectedShippingOption,
   isOffline,
   onOpenShippingSheet,
-  snapshot,
   activeOrderId,
   paymentError,
   startingCheckout,
@@ -196,22 +192,6 @@ export function CartCheckoutDetails({
             </Text>
           </XStack>
         ) : null}
-      </Card>
-
-      <Card bordered size="$4" backgroundColor="$surface" borderColor="$surfaceBorder">
-        <Card.Header padded>
-          <Text fontSize="$4" fontWeight="600" color="$color">
-            Ringkasan Pesanan
-          </Text>
-        </Card.Header>
-        <Separator />
-        <CartSummary
-          subtotal={snapshot.packageValue}
-          shippingCost={selectedShippingOption?.price}
-          shippingName={selectedShippingOption?.courier_name}
-          itemCount={snapshot.itemCount}
-          isLoadingShipping={loadingRates}
-        />
       </Card>
 
       {activeOrderId ? (
