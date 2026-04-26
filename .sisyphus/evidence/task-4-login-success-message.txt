@@ -1,0 +1,25 @@
+Task 4 - Login reset-success message evidence
+Date: 2026-04-26
+
+Scenario: Login reset success message is one-time
+
+Test added:
+- __tests__/scenes/Login.test.tsx: `shows and clears the reset success route-param message once`
+
+Assertions covered:
+- Mocked Login route params with the approved `LOGIN_RESET_SUCCESS_MESSAGE` value.
+- Login displays the exact route-param message text.
+- Login clears the route param by calling `router.replace('/(auth)/login')`.
+- Pressing the `Dismiss success` action removes the success message.
+- Displaying/dismissing the success message does not call `signInWithPassword`.
+- Unapproved reset-success route-param text is ignored and not rendered in the trusted Login UI.
+
+Command: npm run test -- --runTestsByPath __tests__/scenes/Login.test.tsx __tests__/scenes/authForm.helpers.test.ts
+Result: PASS
+Relevant output excerpt:
+✓ shows and clears the reset success route-param message once (1085 ms)
+✓ ignores unapproved reset success route-param text (55 ms)
+
+Gotcha resolved:
+- Tamagui `AnimatePresence` keeps exiting content mounted briefly during dismissal, so the test waits for the success message to be absent instead of asserting synchronously after press.
+- Route-param text is now treated as a whitelisted success signal: only the approved reset-success copy is displayed, while arbitrary text is ignored.

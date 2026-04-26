@@ -1,0 +1,36 @@
+Task 6 evidence — auth route wiring
+
+Commands and outputs:
+
+1) `npm run format:check`
+   - Output: `All matched files use Prettier code style!`
+
+2) `npm run lint`
+   - Output: completed successfully with exit code 0.
+
+3) `npx tsc --noEmit`
+   - Output: failed only in pre-existing unrelated files:
+     - `__tests__/components/ProductCard.test.tsx`
+     - `__tests__/hooks/useOrderDetail.test.ts`
+     - `__tests__/hooks/useOrderHistoryPaginated.test.ts`
+     - `__tests__/hooks/useOrdersPaginated.test.ts`
+     - `__tests__/hooks/useUnpaidOrdersPaginated.test.ts`
+     - `__tests__/services/order.service.test.ts`
+     - `app/(tabs)/_layout.tsx`
+     - `scenes/profile/addressFormFlow.ts`
+
+4) `lsp_diagnostics` on:
+   - `app/(auth)/_layout.tsx`
+   - `app/(auth)/forgot-password.tsx`
+   - `app/(auth)/reset-password.tsx`
+   - `scenes/auth/index.ts`
+   - `scenes/auth/ForgotPassword.tsx`
+   - `scenes/auth/ResetPassword.tsx`
+   - `types/routes.types.ts`
+   - Output: `No diagnostics found`
+
+Route wiring result:
+- Public auth routes now include forgot-password and reset-password.
+- Auth stack registry includes both screens.
+- Route wrappers remain one-line re-exports.
+- Route contract types now include serializable params for login, forgot-password, reset-password, and verify-email.

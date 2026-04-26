@@ -1,0 +1,10 @@
+
+> apotek-ecommerce@3.0.0 format:check
+> prettier --check "**/*.{ts,tsx}"
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> apotek-ecommerce@3.0.0 lint
+> expo lint
+

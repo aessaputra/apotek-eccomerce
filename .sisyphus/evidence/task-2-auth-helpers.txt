@@ -1,0 +1,30 @@
+Commands run:
+- lsp_diagnostics on `scenes/auth/authForm.helpers.ts`, `scenes/auth/Login.tsx`, `scenes/auth/SignUp.tsx`, `types/routes.types.ts`, `__tests__/scenes/authForm.helpers.test.ts`
+- `npm run lint`
+- `npm run test -- --runTestsByPath __tests__/scenes/authForm.helpers.test.ts __tests__/scenes/Login.test.tsx __tests__/scenes/SignUp.test.tsx`
+
+Results:
+- All listed LSP diagnostics returned no findings.
+- `npm run lint` completed successfully (`LINT_EXIT=0`).
+- Targeted Jest run passed: 3 suites, 16 tests.
+
+Helper locations:
+- `scenes/auth/authForm.helpers.ts`
+- `types/routes.types.ts`
+- `__tests__/scenes/authForm.helpers.test.ts`
+
+Validation note:
+- No existing validation test file was present under `__tests__/utils/`.
+
+Format-fix retry note:
+- Re-ran `npm run format:check` after Prettier-only formatting changes to the auth files and confirmed it passes.
+
+Task 2 route-contract update note:
+- Added Login message route params for `resetSuccess` and optional `error` as serializable strings only.
+- Verified with `npm run format:check` and `npm run test -- --runTestsByPath __tests__/scenes/authForm.helpers.test.ts __tests__/scenes/Login.test.tsx __tests__/scenes/SignUp.test.tsx`.
+- Targeted Jest passed: 3 suites, 17 tests.
+
+Task 2 test-coverage correction note:
+- Added explicit coverage for `buildLoginMessageRouteParams({ resetSuccess: undefined, error: undefined }) -> {}`.
+- Verified with `npm run format:check` and `npm run test -- --runTestsByPath __tests__/scenes/authForm.helpers.test.ts`.
+- Targeted helper Jest passed: 1 suite, 6 tests.

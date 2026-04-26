@@ -1,83 +1,110 @@
 {
-  "active_plan": "/home/coder/dev/pharma/frontend/.sisyphus/plans/biteship-contract-hardening.md",
-  "started_at": "2026-04-25T13:59:28.020Z",
+  "active_plan": "/home/coder/dev/pharma/frontend/.sisyphus/plans/auth-refactor-forgot-password.md",
+  "started_at": "2026-04-26T07:54:30.390Z",
   "session_ids": [
-    "ses_23bae67abffeuKB8ueeFU14dVd",
-    "ses_23b0ed28dffeIUurtC37l6QVZP",
-    "ses_23b0ec75dffeJGdjguAnAtP7EC",
-    "ses_23b0ec74cffeqyfTg2BYM9dzHg"
+    "ses_2373ffa81ffedMGSOzAw0HLBLW",
+    "ses_237371e3cffe5QvuH7lpcG22S9",
+    "ses_237371d3bffeD6R1JB41VNxxbb",
+    "ses_237371d30ffeD8RcXkZfCq5iSK"
   ],
   "session_origins": {
-    "ses_23bae67abffeuKB8ueeFU14dVd": "direct",
-    "ses_23b0ed28dffeIUurtC37l6QVZP": "appended",
-    "ses_23b0ec75dffeJGdjguAnAtP7EC": "appended",
-    "ses_23b0ec74cffeqyfTg2BYM9dzHg": "appended"
+    "ses_2373ffa81ffedMGSOzAw0HLBLW": "direct",
+    "ses_237371e3cffe5QvuH7lpcG22S9": "appended",
+    "ses_237371d3bffeD6R1JB41VNxxbb": "appended",
+    "ses_237371d30ffeD8RcXkZfCq5iSK": "appended"
   },
-  "plan_name": "biteship-contract-hardening",
+  "plan_name": "auth-refactor-forgot-password",
   "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Materialize Supabase Biteship function source baseline and test harness",
-      "session_id": "ses_23b0c905dffe1hqZCRQU57vJWD",
-      "agent": "librarian",
-      "category": "",
-      "updated_at": "2026-04-25T14:05:08.561Z"
+      "task_title": "Add characterization coverage for current auth behavior",
+      "session_id": "ses_23732f0a1ffeVsEoS0hh5d3AfV",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-26T08:05:26.876Z"
     },
     "todo:2": {
       "task_key": "todo:2",
       "task_label": "2",
-      "task_title": "Replace unsafe backend postal-code coercion with strict parser",
-      "session_id": "ses_23ac7db5cffeAl8pwz8wRhBQRt",
+      "task_title": "Introduce narrow shared auth form contracts and helpers",
+      "session_id": "ses_237198e53ffe4lEHtthb9EPD5L",
       "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-25T15:24:40.856Z"
-    },
-    "todo:3": {
-      "task_key": "todo:3",
-      "task_label": "3",
-      "task_title": "Split Biteship rates payloads by instant vs standard courier contract",
-      "session_id": "ses_23abff5e7ffeCZQ6rEGJaxsdVb",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-25T15:31:20.680Z"
+      "category": "quick",
+      "updated_at": "2026-04-26T08:30:02.547Z"
     },
     "todo:4": {
       "task_key": "todo:4",
       "task_label": "4",
-      "task_title": "Harden Biteship order creation payload mode for instant vs standard shipments",
-      "session_id": "ses_23ab52a25ffe5JKCq4YrStWD2P",
+      "task_title": "Refactor Login scene into clean form orchestration without visual redesign",
+      "session_id": "ses_237048cf6ffeTV9Tqs16Crafi2",
       "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-25T15:43:12.536Z"
-    },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "Align frontend Biteship postal types and service tests without adding origin source",
-      "session_id": "ses_23aae6c16ffeTfJXtVVvxv5025",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-04-25T15:48:22.595Z"
+      "category": "visual-engineering",
+      "updated_at": "2026-04-26T08:58:02.452Z"
     },
     "todo:6": {
       "task_key": "todo:6",
       "task_label": "6",
-      "task_title": "Deploy and verify Supabase Biteship contract hardening",
-      "session_id": "ses_23aa2ef47ffeSYWyMGmuJUz9yk",
+      "task_title": "Wire auth routes, stack registration, and typed params for recovery flow",
+      "session_id": "ses_236f65e3fffeJNbQtPeP12a7gM",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-26T09:08:18.529Z"
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Add recovery-aware auth redirect guard without turning AuthProvider into a workflow engine",
+      "session_id": "ses_236f197c6ffe52UTosWRx6A1Em",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-26T09:13:55.489Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "Build Forgot Password request scene with privacy-preserving UX",
+      "session_id": "ses_236e50429ffekOdq3OQTfQAU8S",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-04-26T09:28:51.520Z"
+    },
+    "todo:9": {
+      "task_key": "todo:9",
+      "task_label": "9",
+      "task_title": "Build Reset Password recovery scene and complete password update flow",
+      "session_id": "ses_236dd90b9ffeceZ4e1PGx5jzcX",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-04-26T09:38:34.901Z"
+    },
+    "todo:11": {
+      "task_key": "todo:11",
+      "task_label": "11",
+      "task_title": "Run integrated auth regression and recovery flow hardening",
+      "session_id": "ses_236d63968ffesLQuL4MBhmEkuU",
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
-      "updated_at": "2026-04-25T16:02:50.019Z"
+      "updated_at": "2026-04-26T09:44:59.593Z"
     },
     "final-wave:f1": {
       "task_key": "final-wave:f1",
       "task_label": "F1",
-      "task_title": "Biteship Contract Compliance Audit — oracle",
-      "session_id": "ses_23a9c23abffekJG9k57AF3KV8R",
+      "task_title": "Plan Compliance Audit — oracle",
+      "session_id": "ses_236d09534ffeuVs7W52mjNuabx",
       "agent": "oracle",
       "category": "",
-      "updated_at": "2026-04-25T16:06:56.845Z"
+      "updated_at": "2026-04-26T09:48:51.864Z"
+    },
+    "final-wave:f2": {
+      "task_key": "final-wave:f2",
+      "task_label": "F2",
+      "task_title": "Code Quality Review — unspecified-high",
+      "session_id": "ses_236c9ff63ffezT6xHB7f9FumQX",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-26T09:55:10.989Z"
     }
   }
 }

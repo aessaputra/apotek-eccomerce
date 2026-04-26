@@ -1,0 +1,1 @@
+Scope note: extracted a narrow auth-only helper module for email trimming, password-policy delegation, auth form status typing, and serializable verify-email route params; wired Login/SignUp to the helper without changing validation constants, copy, or non-auth behavior.
