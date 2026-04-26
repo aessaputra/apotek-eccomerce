@@ -2,8 +2,15 @@ import type { Href } from 'expo-router';
 
 // Auth routes
 export type AuthRoutes = {
-  '(auth)/login': undefined;
+  '(auth)/login': { resetSuccess?: string; error?: string } | undefined;
+  '(auth)/forgot-password': undefined;
+  '(auth)/reset-password': {
+    token_hash?: string;
+    type?: string;
+    error?: string;
+  };
   '(auth)/signup': undefined;
+  '(auth)/verify-email': { email: string };
 };
 
 // Home routes
@@ -130,8 +137,15 @@ export type OrdersStackParams = {
 };
 
 export type AuthStackParams = {
-  login: undefined;
+  login: { resetSuccess?: string; error?: string } | undefined;
+  'forgot-password': undefined;
+  'reset-password': {
+    token_hash?: string;
+    type?: string;
+    error?: string;
+  };
   signup: undefined;
+  'verify-email': { email: string };
 };
 
 export type TypedHref = Href<AppRoutes>;
