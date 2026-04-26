@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { YStack, XStack, Text, Image, useMedia, useTheme, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import OAuthButton from '@/components/elements/OAuthButton';
 import EmailInput from '@/components/elements/EmailInput';
@@ -16,19 +16,29 @@ import {
 } from '@/constants/auth.errors';
 import { images } from '@/utils/images';
 import { validateEmail } from '@/utils/validation';
-import { PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
+import { FORM_SCROLL_PADDING, PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
 import { getThemeColor } from '@/utils/theme';
 
 export default function Login() {
   const media = useMedia();
   const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
+  const scrollContentContainerStyle = useMemo(
+    () => ({
+      flexGrow: 1,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      paddingBottom: insets.bottom + FORM_SCROLL_PADDING.SPACIOUS + FORM_SCROLL_PADDING.COMPACT,
+    }),
+    [insets.bottom],
+  );
 
   /**
    * Handles form submission with validation
@@ -123,7 +133,7 @@ export default function Login() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}
+            contentContainerStyle={scrollContentContainerStyle}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             <YStack
