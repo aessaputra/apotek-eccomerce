@@ -1,4 +1,5 @@
 import React from 'react';
+import { ScrollView } from 'react-native';
 import { act, fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import Orders from '@/scenes/orders/Orders';
 import type { PastPurchaseProduct } from '@/services';
@@ -126,6 +127,26 @@ describe('<Orders />', () => {
         completed: 1,
       });
     });
+  });
+
+  test('renders landing content inside a vertical scroll container', () => {
+    mockGetOrderTabCounts.mockReturnValue(new Promise(() => undefined));
+    mockGetPastPurchasedProducts.mockReturnValue(new Promise(() => undefined));
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+    });
+
+    const { UNSAFE_getByType } = render(<Orders />);
+
+    const scrollView = UNSAFE_getByType(ScrollView);
+
+    expect(scrollView.props.style).toEqual({ flex: 1 });
+    expect(scrollView.props.contentContainerStyle).toEqual({
+      paddingTop: 16,
+      paddingBottom: 24,
+      flexGrow: 1,
+    });
+    expect(scrollView.props.showsVerticalScrollIndicator).toBe(false);
   });
 
   test('navigates to the completed tab without mutating local badge state', async () => {

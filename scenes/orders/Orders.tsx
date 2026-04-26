@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { OrderStatusTabs } from '@/components/elements/OrderStatusTabs';
@@ -22,6 +23,12 @@ const EMPTY_COUNTS: OrderTabCounts = {
   shipped: 0,
   completed: 0,
 };
+
+const ORDERS_CONTENT_CONTAINER_STYLE = {
+  paddingTop: 16,
+  paddingBottom: 24,
+  flexGrow: 1,
+} as const;
 
 export default function Orders() {
   const router = useRouter();
@@ -120,14 +127,19 @@ export default function Orders() {
   const displayProducts = useMemo(() => pastProducts.slice(0, 2), [pastProducts]);
 
   return (
-    <YStack flex={1} backgroundColor="$background" paddingTop="$4">
-      <OrdersHeroCard />
-      <OrderStatusTabs counts={counts} onTabChange={handleTabChange} />
-      <BuyAgainCarousel
-        products={displayProducts}
-        onProductPress={handleProductPress}
-        onAddToCart={handleAddToCart}
-      />
+    <YStack flex={1} backgroundColor="$background">
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={ORDERS_CONTENT_CONTAINER_STYLE}
+        showsVerticalScrollIndicator={false}>
+        <OrdersHeroCard />
+        <OrderStatusTabs counts={counts} onTabChange={handleTabChange} />
+        <BuyAgainCarousel
+          products={displayProducts}
+          onProductPress={handleProductPress}
+          onAddToCart={handleAddToCart}
+        />
+      </ScrollView>
 
       <AppAlertDialog
         open={cartSuccessProductName !== null}
