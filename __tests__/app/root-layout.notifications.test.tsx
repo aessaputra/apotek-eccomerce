@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, waitFor } from '@testing-library/react-native';
+import { act, cleanup, render, waitFor } from '@testing-library/react-native';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import RootLayout from '@/app/_layout';
 
@@ -14,6 +14,7 @@ const mockResponseSubscriptionRemove = jest.fn();
 const mockAddNotificationResponseReceivedListener = jest.fn();
 const mockGetLastNotificationResponseAsync = jest.fn();
 const mockUseAppSlice = jest.fn();
+const mockUseSegments = jest.fn<() => string[]>();
 
 jest.mock('@/tamagui-web.css', () => ({}), { virtual: true });
 
@@ -31,7 +32,7 @@ jest.mock('expo-router', () => {
       navigate: mockNavigate,
       replace: mockReplace,
     }),
-    useSegments: () => [],
+    useSegments: () => mockUseSegments(),
   };
 });
 
@@ -104,6 +105,7 @@ describe('RootLayout notification lifecycle', () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: true }));
+    mockUseSegments.mockImplementation(() => []);
     mockHasNativeNotificationSupport.mockImplementation(() => true);
     mockBootstrapNotificationsAsync.mockImplementation(async () => undefined);
     mockGetExpoNotificationsModuleAsync.mockImplementation(async () => ({
@@ -120,6 +122,7 @@ describe('RootLayout notification lifecycle', () => {
   });
 
   afterEach(() => {
+    cleanup();
     jest.useRealTimers();
   });
 
@@ -230,5 +233,79 @@ describe('RootLayout notification lifecycle', () => {
     view.unmount();
 
     expect(mockResponseSubscriptionRemove).toHaveBeenCalled();
+  });
+});
+
+describe('RootLayout auth redirects', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    mockUseSegments.mockImplementation(() => []);
+    mockHasNativeNotificationSupport.mockImplementation(() => false);
+    mockLoadImages.mockImplementation(async () => undefined);
+    mockLoadFonts.mockImplementation(async () => undefined);
+  });
+
+  afterEach(() => {
+    cleanup();
+    jest.useRealTimers();
+  });
+
+  it('navigates logged-in login route users to /home', async () => {
+    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: true }));
+    mockUseSegments.mockImplementation(() => ['(auth)', 'login']);
+
+    render(<RootLayout />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/home');
+    });
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+  });
+
+  it('does not navigate logged-in reset-password route users to /home', async () => {
+    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: true }));
+    mockUseSegments.mockImplementation(() => ['(auth)', 'reset-password']);
+
+    render(<RootLayout />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+  });
+
+  it('replaces logged-out protected cart users with the login route', async () => {
+    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: false }));
+    mockUseSegments.mockImplementation(() => ['cart']);
+
+    render(<RootLayout />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
+    });
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
   });
 });

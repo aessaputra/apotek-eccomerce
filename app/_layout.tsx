@@ -40,7 +40,9 @@ function Router() {
   const loggedInRef = useRef(loggedIn);
   const pendingNotificationResponseRef = useRef<NotificationResponse | null>(null);
   const lastHandledNotificationResponseIdRef = useRef<string | null>(null);
-  const currentGroup = segments[0] as string | undefined;
+  const routeSegments = Array.from(segments);
+  const currentGroup = routeSegments[0];
+  const currentAuthRoute = routeSegments[1];
   const shouldShowWelcomeSheet = config.env === 'development';
 
   useEffect(() => {
@@ -163,10 +165,11 @@ function Router() {
     if (!checked) return;
 
     const inAuthGroup = currentGroup === '(auth)';
+    const isRecoveryAuthRoute = inAuthGroup && currentAuthRoute === 'reset-password';
     const isCallback = currentGroup === 'google-auth';
 
     if (loggedIn) {
-      if (inAuthGroup || isCallback) {
+      if ((inAuthGroup && !isRecoveryAuthRoute) || isCallback) {
         setTimeout(() => router.navigate('/home'), 0);
       }
     } else {
@@ -176,7 +179,7 @@ function Router() {
         setTimeout(() => router.replace('/(auth)/login'), 0);
       }
     }
-  }, [checked, currentGroup, loggedIn, router]);
+  }, [checked, currentAuthRoute, currentGroup, loggedIn, router]);
 
   const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
 
