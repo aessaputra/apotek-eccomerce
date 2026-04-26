@@ -1,35 +1,25 @@
-import { useMemo, useState } from 'react';
-import { YStack, XStack, Text, Image, useMedia, useTheme, styled } from 'tamagui';
+import { useMemo } from 'react';
+import { AnimatePresence, YStack, XStack, Text, Image, useMedia, useTheme, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import OAuthButton from '@/components/elements/OAuthButton';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
-import { signInWithPassword, signInWithGoogle } from '@/services/auth.service';
-import {
-  getAuthErrorMessage,
-  isCancellationError,
-  isEmailNotVerifiedError,
-} from '@/constants/auth.errors';
+import { CloseIcon } from '@/components/icons';
+import { useLoginForm } from './useLoginForm';
 import { images } from '@/utils/images';
-import { validateEmail } from '@/utils/validation';
 import { FORM_SCROLL_PADDING, PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
 import { getThemeColor } from '@/utils/theme';
 
 export default function Login() {
   const media = useMedia();
   const theme = useTheme();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(false);
+  const loginForm = useLoginForm();
+  const successColor = getThemeColor(theme, 'success');
   const scrollContentContainerStyle = useMemo(
     () => ({
       flexGrow: 1,
@@ -39,86 +29,6 @@ export default function Login() {
     }),
     [insets.bottom],
   );
-
-  /**
-   * Handles form submission with validation
-   * Validates email before calling signInWithPassword service
-   */
-  async function handleSubmit() {
-    setError(null);
-    setEmailError(false);
-    const trimmedEmail = email.trim();
-
-    if (!trimmedEmail || !password) {
-      setError('Email dan password wajib diisi.');
-      return;
-    }
-
-    if (!validateEmail(trimmedEmail)) {
-      setEmailError(true);
-      setError('Format email tidak valid.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error: err } = await signInWithPassword({
-        email: trimmedEmail,
-        password,
-      });
-      if (err) {
-        const errorMessage = getAuthErrorMessage(err);
-        setError(errorMessage);
-
-        if (isEmailNotVerifiedError(err)) {
-          router.push({
-            pathname: '/(auth)/verify-email',
-            params: { email: trimmedEmail },
-          });
-          return;
-        }
-
-        const lowerMessage = err.message?.toLowerCase() ?? '';
-        if (
-          lowerMessage.includes('email') ||
-          lowerMessage.includes('invalid login credentials') ||
-          lowerMessage.includes('user not found')
-        ) {
-          setEmailError(true);
-        }
-        return;
-      }
-    } catch {
-      setError('Terjadi kesalahan saat login. Silakan coba lagi.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleGoogleLogin() {
-    setError(null);
-    setOauthLoading(true);
-    try {
-      const { error: err } = await signInWithGoogle();
-      if (err) {
-        if (isCancellationError(err)) return;
-        const errorMessage = getAuthErrorMessage(err);
-        setError(errorMessage);
-        return;
-      }
-    } catch (thrown: unknown) {
-      if (__DEV__) {
-        console.log('[Login] handleGoogleLogin exception:', thrown);
-      }
-
-      const errorMessage = thrown instanceof Error ? thrown.message : String(thrown ?? '');
-      if (!isCancellationError({ message: errorMessage })) {
-        setError('Terjadi kesalahan saat login dengan Google. Silakan coba lagi.');
-      }
-    } finally {
-      setOauthLoading(false);
-    }
-  }
 
   return (
     <SafeAreaView edges={['top']}>
@@ -193,22 +103,26 @@ export default function Login() {
                 enterStyle={{ opacity: 0, y: 20 }}
                 opacity={1}
                 y={0}>
-                {/* Error Message dengan height collapse animation (best practice) */}
-                <ErrorMessage message={error} onDismiss={() => setError(null)} dismissible={true} />
+                <LoginSuccessMessage
+                  message={loginForm.successMessage}
+                  onDismiss={loginForm.dismissSuccessMessage}
+                  successColor={successColor}
+                />
+                <ErrorMessage
+                  message={loginForm.error}
+                  onDismiss={loginForm.dismissError}
+                  dismissible={true}
+                />
 
                 <YStack gap="$4">
                   {/* Email Input dengan enhanced focus states */}
                   <YStack gap="$1.5">
                     <EmailInput
-                      value={email}
-                      onChangeText={text => {
-                        setEmail(text);
-                        setEmailError(false);
-                        setError(null);
-                      }}
+                      value={loginForm.email}
+                      onChangeText={loginForm.handleEmailChange}
                       placeholder="Email"
-                      error={emailError}
-                      disabled={loading}
+                      error={loginForm.emailError}
+                      disabled={loginForm.loading}
                       keyboardType="email-address"
                       aria-label="Email"
                     />
@@ -217,16 +131,28 @@ export default function Login() {
                   {/* Password Input dengan visibility toggle */}
                   <YStack gap="$1.5">
                     <PasswordInput
-                      value={password}
-                      onChangeText={text => {
-                        setPassword(text);
-                        setError(null);
-                      }}
+                      value={loginForm.password}
+                      onChangeText={loginForm.handlePasswordChange}
                       placeholder="Password"
                       error={false}
-                      disabled={loading}
+                      disabled={loginForm.loading}
                     />
                   </YStack>
+
+                  <XStack justifyContent="flex-end">
+                    <Pressable
+                      onPress={loginForm.handleForgotPasswordPress}
+                      aria-label="Lupa Password?"
+                      role="button">
+                      <Text
+                        fontSize={14}
+                        fontWeight="700"
+                        color="$primary"
+                        textDecorationLine="underline">
+                        Lupa Password?
+                      </Text>
+                    </Pressable>
+                  </XStack>
 
                   {/* Submit Button dengan enhanced styling */}
                   <Button
@@ -241,8 +167,8 @@ export default function Login() {
                       fontWeight: '700',
                       letterSpacing: 0.3,
                     }}
-                    onPress={handleSubmit}
-                    isLoading={loading}
+                    onPress={loginForm.handleSubmit}
+                    isLoading={loginForm.loading}
                     loaderColor="$onPrimary"
                     animation="quick"
                     hoverStyle={{
@@ -304,8 +230,8 @@ export default function Login() {
                 y={0}>
                 <OAuthButton
                   provider="google"
-                  onPress={handleGoogleLogin}
-                  isLoading={oauthLoading}
+                  onPress={loginForm.handleGoogleLogin}
+                  isLoading={loginForm.oauthLoading}
                 />
               </YStack>
             </YStack>
@@ -313,6 +239,55 @@ export default function Login() {
         </KeyboardAvoidingWrapper>
       </YStack>
     </SafeAreaView>
+  );
+}
+
+type LoginSuccessMessageProps = {
+  message: string | null;
+  onDismiss: () => void;
+  successColor: string;
+};
+
+function LoginSuccessMessage({ message, onDismiss, successColor }: LoginSuccessMessageProps) {
+  return (
+    <AnimatePresence>
+      {message && (
+        <YStack
+          key="login-success-message"
+          overflow="hidden"
+          animation="quick"
+          enterStyle={{ opacity: 0, maxHeight: 0, scale: 0.95 }}
+          exitStyle={{ opacity: 0, maxHeight: 0, scale: 0.95 }}
+          opacity={1}
+          maxHeight={200}
+          scale={1}>
+          <XStack
+            alignItems="center"
+            gap="$2"
+            paddingVertical="$3"
+            paddingHorizontal="$4"
+            backgroundColor="$successSoft"
+            borderRadius="$3"
+            borderWidth={1}
+            borderColor="$success">
+            <Text fontSize={18} color="$success" fontWeight="800">
+              ✓
+            </Text>
+            <Text flex={1} fontSize={14} fontWeight="600" color="$success" lineHeight={20}>
+              {message}
+            </Text>
+            <Button
+              onPress={onDismiss}
+              backgroundColor="$colorTransparent"
+              padding={4}
+              aria-label="Dismiss success"
+              role="button">
+              <CloseIcon size={14} color={successColor} />
+            </Button>
+          </XStack>
+        </YStack>
+      )}
+    </AnimatePresence>
   );
 }
 
