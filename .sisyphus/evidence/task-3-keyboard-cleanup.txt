@@ -1,1 +1,0 @@
-2026-04-25: No extra cleanup beyond extracting the shared Android keyboard inset hook.

@@ -49,5 +49,7 @@ app-example
 
 # Agent
 .agent/
+.sisyphus/
+.sisypush/
 #.agents/
 run-gradlew-logs.txt

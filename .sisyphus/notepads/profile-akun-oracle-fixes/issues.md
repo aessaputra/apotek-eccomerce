@@ -1,1 +1,0 @@
-- 2026-04-25: Repository-wide `npx tsc --noEmit` is currently blocked by unrelated existing type errors in ProductCard/order test fixtures and `app/(tabs)/_layout.tsx`; modified AreaPicker files have clean LSP diagnostics.
