@@ -15,6 +15,8 @@ const mockAddNotificationResponseReceivedListener = jest.fn();
 const mockGetLastNotificationResponseAsync = jest.fn();
 const mockUseAppSlice = jest.fn();
 const mockUseSegments = jest.fn<() => string[]>();
+const mockUseLinkingURL = jest.fn<() => string | null>();
+const mockGetInitialURL = jest.fn<() => Promise<string | null>>();
 
 jest.mock('@/tamagui-web.css', () => ({}), { virtual: true });
 
@@ -49,6 +51,11 @@ jest.mock('expo-notifications', () => ({
   addNotificationResponseReceivedListener: (listener: (response: unknown) => void) =>
     mockAddNotificationResponseReceivedListener(listener),
   getLastNotificationResponseAsync: () => mockGetLastNotificationResponseAsync(),
+}));
+
+jest.mock('expo-linking', () => ({
+  getInitialURL: () => mockGetInitialURL(),
+  useLinkingURL: () => mockUseLinkingURL(),
 }));
 
 jest.mock('@/providers', () => ({
@@ -106,6 +113,8 @@ describe('RootLayout notification lifecycle', () => {
     jest.useFakeTimers();
     mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: true }));
     mockUseSegments.mockImplementation(() => []);
+    mockUseLinkingURL.mockImplementation(() => null);
+    mockGetInitialURL.mockImplementation(async () => null);
     mockHasNativeNotificationSupport.mockImplementation(() => true);
     mockBootstrapNotificationsAsync.mockImplementation(async () => undefined);
     mockGetExpoNotificationsModuleAsync.mockImplementation(async () => ({
@@ -137,7 +146,9 @@ describe('RootLayout notification lifecycle', () => {
 
     render(<RootLayout />);
 
-    await Promise.resolve();
+    await waitFor(() => {
+      expect(mockGetLastNotificationResponseAsync).toHaveBeenCalled();
+    });
 
     act(() => {
       jest.runAllTimers();
@@ -179,6 +190,172 @@ describe('RootLayout notification lifecycle', () => {
     });
   });
 
+  it('does not let a stale notification response interrupt logged-in reset-password users', async () => {
+    mockUseSegments.mockImplementation(() => ['(auth)', 'reset-password']);
+    mockGetLastNotificationResponseAsync.mockImplementation(async () =>
+      createNotificationResponse({
+        type: 'order_shipped',
+        cta_route: 'orders/order-detail/[orderId]',
+        data: { orderId: 'order-42', shipmentStage: 'shipped' },
+      }),
+    );
+
+    render(<RootLayout />);
+
+    await Promise.resolve();
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockBootstrapNotificationsAsync).toHaveBeenCalled();
+      expect(mockAddNotificationResponseReceivedListener).toHaveBeenCalled();
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalledWith('/notifications');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+  });
+
+  it('does not let a stale notification response interrupt an active reset-password deep link', async () => {
+    mockUseSegments.mockImplementation(() => ['(tabs)', 'notifications']);
+    mockUseLinkingURL.mockImplementation(
+      () => 'apotek-ecommerce:///reset-password?code=recovery-code',
+    );
+    mockGetLastNotificationResponseAsync.mockImplementation(async () =>
+      createNotificationResponse({
+        type: 'order_shipped',
+        cta_route: 'orders/order-detail/[orderId]',
+        data: { orderId: 'order-42', shipmentStage: 'shipped' },
+      }),
+    );
+
+    render(<RootLayout />);
+
+    await waitFor(() => {
+      expect(mockGetLastNotificationResponseAsync).toHaveBeenCalled();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalledWith('/notifications');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+  });
+
+  it('does not let a stale notification response interrupt logged-in Google OAuth callbacks', async () => {
+    mockUseSegments.mockImplementation(() => ['google-auth']);
+    mockGetLastNotificationResponseAsync.mockImplementation(async () =>
+      createNotificationResponse({
+        type: 'order_shipped',
+        cta_route: 'orders/order-detail/[orderId]',
+        data: { orderId: 'order-42', shipmentStage: 'shipped' },
+      }),
+    );
+
+    render(<RootLayout />);
+
+    await waitFor(() => {
+      expect(mockGetLastNotificationResponseAsync).toHaveBeenCalled();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalledWith('/notifications');
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+  });
+
+  it('does not let a stale notification response interrupt an active Google OAuth deep link', async () => {
+    mockUseSegments.mockImplementation(() => ['(tabs)', 'notifications']);
+    mockUseLinkingURL.mockImplementation(() => 'apotek-ecommerce://google-auth?code=oauth-code');
+    mockGetLastNotificationResponseAsync.mockImplementation(async () =>
+      createNotificationResponse({
+        type: 'order_shipped',
+        cta_route: 'orders/order-detail/[orderId]',
+        data: { orderId: 'order-42', shipmentStage: 'shipped' },
+      }),
+    );
+
+    render(<RootLayout />);
+
+    await waitFor(() => {
+      expect(mockGetLastNotificationResponseAsync).toHaveBeenCalled();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalledWith('/notifications');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+  });
+
+  it('does not process stale notification responses before a cold-start reset link is visible', async () => {
+    mockUseSegments.mockImplementation(() => ['(tabs)', 'notifications']);
+    mockUseLinkingURL.mockImplementation(() => null);
+    mockGetInitialURL.mockImplementation(
+      async () => 'apotek-ecommerce:///reset-password?code=recovery-code',
+    );
+    mockGetLastNotificationResponseAsync.mockImplementation(async () =>
+      createNotificationResponse({
+        type: 'order_shipped',
+        cta_route: 'orders/order-detail/[orderId]',
+        data: { orderId: 'order-42', shipmentStage: 'shipped' },
+      }),
+    );
+
+    render(<RootLayout />);
+
+    await waitFor(() => {
+      expect(mockGetInitialURL).toHaveBeenCalled();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockGetLastNotificationResponseAsync).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalledWith('/notifications');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+  });
+
+  it('does not process stale notification responses before a cold-start Google OAuth link is visible', async () => {
+    mockUseSegments.mockImplementation(() => ['(tabs)', 'notifications']);
+    mockUseLinkingURL.mockImplementation(() => null);
+    mockGetInitialURL.mockImplementation(
+      async () => 'apotek-ecommerce://google-auth?code=oauth-code',
+    );
+    mockGetLastNotificationResponseAsync.mockImplementation(async () =>
+      createNotificationResponse({
+        type: 'order_shipped',
+        cta_route: 'orders/order-detail/[orderId]',
+        data: { orderId: 'order-42', shipmentStage: 'shipped' },
+      }),
+    );
+
+    render(<RootLayout />);
+
+    await waitFor(() => {
+      expect(mockGetInitialURL).toHaveBeenCalled();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockGetLastNotificationResponseAsync).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalledWith('/notifications');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+  });
+
   it('routes live notification tap responses from the listener after bootstrap completes', async () => {
     render(<RootLayout />);
 
@@ -217,6 +394,47 @@ describe('RootLayout notification lifecycle', () => {
     });
   });
 
+  it('routes live notification taps after Google OAuth settles even if the last linking URL is retained', async () => {
+    mockUseSegments.mockImplementation(() => ['(tabs)', 'home']);
+    mockUseLinkingURL.mockImplementation(() => 'apotek-ecommerce://google-auth?code=oauth-code');
+
+    render(<RootLayout />);
+
+    await Promise.resolve();
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockAddNotificationResponseReceivedListener).toHaveBeenCalled();
+    });
+
+    const listener = mockAddNotificationResponseReceivedListener.mock.calls[0]?.[0] as
+      | ((response: ReturnType<typeof createNotificationResponse>) => void)
+      | undefined;
+
+    expect(listener).toBeDefined();
+
+    act(() => {
+      listener?.(
+        createNotificationResponse({
+          type: 'order_completed',
+          cta_route: 'orders/order-detail/[orderId]',
+          data: { orderId: 'order-88' },
+        }),
+      );
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        pathname: '/orders/order-detail/[orderId]',
+        params: { orderId: 'order-88' },
+      });
+    });
+  });
+
   it('removes the notification response listener on cleanup', async () => {
     const view = render(<RootLayout />);
 
@@ -241,6 +459,8 @@ describe('RootLayout auth redirects', () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     mockUseSegments.mockImplementation(() => []);
+    mockUseLinkingURL.mockImplementation(() => null);
+    mockGetInitialURL.mockImplementation(async () => null);
     mockHasNativeNotificationSupport.mockImplementation(() => false);
     mockLoadImages.mockImplementation(async () => undefined);
     mockLoadFonts.mockImplementation(async () => undefined);

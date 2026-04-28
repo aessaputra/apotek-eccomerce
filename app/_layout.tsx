@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 import type { EventSubscription, NotificationResponse } from 'expo-notifications';
+import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -27,23 +28,58 @@ import '@/tamagui-web.css';
 SplashScreen.preventAutoHideAsync();
 
 const PROTECTED_ROUTE_GROUPS = ['(tabs)', 'cart', 'product-details'];
+const NOTIFICATION_BLOCKING_AUTH_CALLBACK_ROUTES = new Set(['google-auth', 'reset-password']);
+const POST_AUTH_NOTIFICATION_ALLOWED_TAB_ROUTES = new Set(['home', 'orders', 'profile']);
+
+function isNotificationBlockingAuthCallbackUrl(url: string | null) {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    const segments = [parsedUrl.hostname, ...parsedUrl.pathname.split('/')]
+      .map(segment => segment.trim())
+      .filter(Boolean);
+
+    return segments.some(segment => NOTIFICATION_BLOCKING_AUTH_CALLBACK_ROUTES.has(segment));
+  } catch {
+    return Array.from(NOTIFICATION_BLOCKING_AUTH_CALLBACK_ROUTES).some(route =>
+      url.includes(route),
+    );
+  }
+}
 
 function Router() {
   const colorScheme = useColorScheme();
   const { checked, loggedIn } = useAppSlice();
   const segments = useSegments();
   const router = useRouter();
+  const linkingUrl = Linking.useLinkingURL();
   const [assetsReady, setAssetsReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
   const assetsReadyRef = useRef(false);
   const checkedRef = useRef(checked);
   const loggedInRef = useRef(loggedIn);
+  const isNotificationBlockingAuthCallbackRouteRef = useRef(false);
   const pendingNotificationResponseRef = useRef<NotificationResponse | null>(null);
   const lastHandledNotificationResponseIdRef = useRef<string | null>(null);
   const routeSegments = Array.from(segments);
   const currentGroup = routeSegments[0];
   const currentAuthRoute = routeSegments[1];
+  const currentTabRoute = routeSegments[1];
   const shouldShowWelcomeSheet = config.env === 'development';
+  const inAuthGroup = currentGroup === '(auth)';
+  const isCallback = currentGroup === 'google-auth';
+  const isRecoveryAuthRoute = inAuthGroup && currentAuthRoute === 'reset-password';
+  const hasSettledPostAuthTabRoute =
+    loggedIn &&
+    currentGroup === '(tabs)' &&
+    (!currentTabRoute || POST_AUTH_NOTIFICATION_ALLOWED_TAB_ROUTES.has(currentTabRoute));
+  const isNotificationBlockingAuthCallbackDeepLink =
+    !hasSettledPostAuthTabRoute && isNotificationBlockingAuthCallbackUrl(linkingUrl);
+  const isNotificationBlockingAuthCallbackFlow =
+    isCallback || isRecoveryAuthRoute || isNotificationBlockingAuthCallbackDeepLink;
 
   useEffect(() => {
     assetsReadyRef.current = assetsReady;
@@ -57,9 +93,22 @@ function Router() {
     loggedInRef.current = loggedIn;
   }, [loggedIn]);
 
+  useEffect(() => {
+    isNotificationBlockingAuthCallbackRouteRef.current = isNotificationBlockingAuthCallbackFlow;
+
+    if (isNotificationBlockingAuthCallbackFlow) {
+      pendingNotificationResponseRef.current = null;
+    }
+  }, [isNotificationBlockingAuthCallbackFlow]);
+
   const navigateFromNotificationResponse = useCallback(
     (response: NotificationResponse | null) => {
       if (!response) {
+        return;
+      }
+
+      if (isNotificationBlockingAuthCallbackRouteRef.current) {
+        pendingNotificationResponseRef.current = null;
         return;
       }
 
@@ -141,6 +190,14 @@ function Router() {
           navigateFromNotificationResponse(response);
         });
 
+        const initialUrl = await Linking.getInitialURL();
+
+        if (isNotificationBlockingAuthCallbackUrl(initialUrl)) {
+          isNotificationBlockingAuthCallbackRouteRef.current = true;
+          pendingNotificationResponseRef.current = null;
+          return;
+        }
+
         const lastNotificationResponse = await Notifications.getLastNotificationResponseAsync();
 
         if (cancelled || !lastNotificationResponse) {
@@ -164,10 +221,6 @@ function Router() {
   useEffect(() => {
     if (!checked) return;
 
-    const inAuthGroup = currentGroup === '(auth)';
-    const isRecoveryAuthRoute = inAuthGroup && currentAuthRoute === 'reset-password';
-    const isCallback = currentGroup === 'google-auth';
-
     if (loggedIn) {
       if ((inAuthGroup && !isRecoveryAuthRoute) || isCallback) {
         setTimeout(() => router.navigate('/home'), 0);
@@ -179,7 +232,16 @@ function Router() {
         setTimeout(() => router.replace('/(auth)/login'), 0);
       }
     }
-  }, [checked, currentAuthRoute, currentGroup, loggedIn, router]);
+  }, [
+    checked,
+    currentAuthRoute,
+    currentGroup,
+    inAuthGroup,
+    isCallback,
+    isRecoveryAuthRoute,
+    loggedIn,
+    router,
+  ]);
 
   const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
 
