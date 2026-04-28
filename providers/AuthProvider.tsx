@@ -3,7 +3,11 @@ import { AppState, Platform, AppStateStatus } from 'react-native';
 import { supabase } from '@/utils/supabase';
 import { clearExpoPushToken, syncExpoPushTokenIfPermitted } from '@/services/notification.service';
 import { getCurrentUser } from '@/services/user.service';
-import { signOut as authSignOut, handleOAuthHashTokens } from '@/services/auth.service';
+import {
+  clearLocalAuthSessionForInvalidRefreshToken,
+  signOut as authSignOut,
+  handleOAuthHashTokens,
+} from '@/services/auth.service';
 import { useAppSlice } from '@/slices';
 import { ADMIN_REJECT_MESSAGE, BANNED_USER_MESSAGE } from '@/constants/auth';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
@@ -134,6 +138,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         }
       } catch (error) {
         if (__DEV__) console.warn('[AuthProvider] init error:', error);
+        await clearLocalAuthSessionForInvalidRefreshToken(error);
         if (mounted && !dispatched) {
           dispatched = true;
           dispatchAuth(undefined, false);

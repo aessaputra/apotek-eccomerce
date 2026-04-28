@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
+  clearLocalAuthSessionForInvalidRefreshToken,
   createPasswordRecoveryRedirectUri,
+  isInvalidRefreshTokenError,
   requestPasswordReset,
   signInWithPassword,
   signOut,
@@ -112,6 +114,73 @@ describe('auth.service', () => {
 
     expect(mockSignOut).toHaveBeenCalledWith();
     expect(result).toBe(supabaseResult);
+  });
+
+  it('forwards local signOut scope to Supabase auth', async () => {
+    const supabaseResult = { error: null };
+    mockSignOut.mockImplementationOnce(async () => supabaseResult);
+
+    const result = await signOut({ scope: 'local' });
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(result).toBe(supabaseResult);
+  });
+
+  it('detects invalid refresh token errors and clears local session', async () => {
+    const refreshTokenError = {
+      name: 'AuthApiError',
+      message: 'Invalid Refresh Token: Refresh Token Not Found',
+    };
+    mockSignOut.mockImplementationOnce(async () => ({ error: null }));
+
+    const cleared = await clearLocalAuthSessionForInvalidRefreshToken(refreshTokenError);
+
+    expect(isInvalidRefreshTokenError(refreshTokenError)).toBe(true);
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(cleared).toBe(true);
+  });
+
+  it('does not clear local session for unrelated auth errors', async () => {
+    const unrelatedError = {
+      name: 'AuthApiError',
+      message: 'Invalid login credentials',
+    };
+
+    const cleared = await clearLocalAuthSessionForInvalidRefreshToken(unrelatedError);
+
+    expect(isInvalidRefreshTokenError(unrelatedError)).toBe(false);
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(cleared).toBe(false);
+  });
+
+  it('returns false when local session cleanup returns an error', async () => {
+    const refreshTokenError = {
+      name: 'AuthApiError',
+      message: 'Refresh Token Not Found',
+    };
+    mockSignOut.mockImplementationOnce(async () => ({
+      error: { message: 'Storage cleanup failed', name: 'AuthStorageError' },
+    }));
+
+    const cleared = await clearLocalAuthSessionForInvalidRefreshToken(refreshTokenError);
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(cleared).toBe(false);
+  });
+
+  it('returns false when local session cleanup throws', async () => {
+    const refreshTokenError = {
+      name: 'AuthApiError',
+      message: 'Invalid Refresh Token: Refresh Token Not Found',
+    };
+    mockSignOut.mockImplementationOnce(async () => {
+      throw new Error('SecureStore unavailable');
+    });
+
+    const cleared = await clearLocalAuthSessionForInvalidRefreshToken(refreshTokenError);
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(cleared).toBe(false);
   });
 
   it('builds a native password recovery redirect URL for reset-password', () => {

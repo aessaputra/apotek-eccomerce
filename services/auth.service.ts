@@ -23,6 +23,10 @@ interface SignUpInput {
   };
 }
 
+interface SignOutInput {
+  scope?: 'global' | 'local' | 'others';
+}
+
 /** Error shape for Google OAuth — compatible with Supabase AuthError.message */
 export interface GoogleAuthError {
   message: string;
@@ -39,6 +43,12 @@ const GOOGLE_AUTH_CALLBACK_PATH = 'google-auth';
 const GOOGLE_AUTH_REDIRECT_SCHEME = 'apotek-ecommerce';
 const PASSWORD_RECOVERY_CALLBACK_PATH = 'reset-password';
 const PASSWORD_RECOVERY_REDIRECT_SCHEME = 'apotek-ecommerce';
+
+const INVALID_REFRESH_TOKEN_PATTERNS = [
+  'invalid refresh token',
+  'refresh token not found',
+  'already used',
+];
 
 const GOOGLE_NATIVE_REDIRECT_CONFIG_ERROR =
   'Redirect Google OAuth masih mengarah ke localhost. Tambahkan apotek-ecommerce://google-auth ke Supabase Auth Redirect URLs, lalu pastikan Site URL bukan localhost untuk build native.';
@@ -90,8 +100,57 @@ export async function signUp(input: SignUpInput) {
   });
 }
 
-export async function signOut() {
-  return supabase.auth.signOut();
+export async function signOut(options?: SignOutInput) {
+  if (!options) {
+    return supabase.auth.signOut();
+  }
+
+  return supabase.auth.signOut(options);
+}
+
+function getErrorStringProperty(error: unknown, property: 'message' | 'name') {
+  if (error instanceof Error) {
+    return error[property];
+  }
+
+  if (typeof error === 'object' && error !== null && property in error) {
+    const value = (error as Record<'message' | 'name', unknown>)[property];
+    return typeof value === 'string' ? value : '';
+  }
+
+  return '';
+}
+
+export function isInvalidRefreshTokenError(error: unknown) {
+  const name = getErrorStringProperty(error, 'name');
+  const message = getErrorStringProperty(error, 'message').toLowerCase();
+
+  return (
+    name === 'AuthApiError' &&
+    INVALID_REFRESH_TOKEN_PATTERNS.some(pattern => message.includes(pattern))
+  );
+}
+
+export async function clearLocalAuthSessionForInvalidRefreshToken(error: unknown) {
+  if (!isInvalidRefreshTokenError(error)) {
+    return false;
+  }
+
+  try {
+    const { error: signOutError } = await signOut({ scope: 'local' });
+
+    if (signOutError && __DEV__) {
+      console.warn('[auth.service] failed to clear stale local session:', signOutError);
+    }
+
+    return !signOutError;
+  } catch (signOutError) {
+    if (__DEV__) {
+      console.warn('[auth.service] failed to clear stale local session:', signOutError);
+    }
+
+    return false;
+  }
 }
 
 export async function requestPasswordReset(

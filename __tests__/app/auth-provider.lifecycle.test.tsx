@@ -13,6 +13,7 @@ const mockReset = jest.fn(() => ({ type: 'reset' }));
 const mockGetCurrentUser = jest.fn();
 const mockHandleOAuthHashTokens = jest.fn();
 const mockAuthSignOut = jest.fn();
+const mockClearLocalAuthSessionForInvalidRefreshToken = jest.fn();
 const mockSyncExpoPushTokenIfPermitted = jest.fn();
 const mockClearExpoPushToken = jest.fn();
 const mockStartAutoRefresh = jest.fn();
@@ -43,6 +44,8 @@ jest.mock('@/services/user.service', () => ({
 }));
 
 jest.mock('@/services/auth.service', () => ({
+  clearLocalAuthSessionForInvalidRefreshToken: (...args: unknown[]) =>
+    mockClearLocalAuthSessionForInvalidRefreshToken(...args),
   handleOAuthHashTokens: () => mockHandleOAuthHashTokens(),
   signOut: () => mockAuthSignOut(),
 }));
@@ -120,12 +123,19 @@ function createSession(): Session {
 describe('AuthProvider notification lifecycle', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetCurrentUser.mockReset();
+    mockHandleOAuthHashTokens.mockReset();
+    mockAuthSignOut.mockReset();
+    mockClearLocalAuthSessionForInvalidRefreshToken.mockReset();
+    mockSyncExpoPushTokenIfPermitted.mockReset();
+    mockClearExpoPushToken.mockReset();
     jest.useFakeTimers();
     jest.spyOn(AppState, 'addEventListener').mockReturnValue({
       remove: mockAppStateRemove,
     } as ReturnType<typeof AppState.addEventListener>);
     authStateChangeCallback = null;
     mockHandleOAuthHashTokens.mockImplementation(async () => null);
+    mockClearLocalAuthSessionForInvalidRefreshToken.mockImplementation(async () => false);
     mockGetCurrentUser.mockImplementation(async () => null);
     mockSyncExpoPushTokenIfPermitted.mockImplementation(async () => ({ data: null, error: null }));
     mockClearExpoPushToken.mockImplementation(async () => ({ data: null, error: null }));
@@ -203,6 +213,46 @@ describe('AuthProvider notification lifecycle', () => {
     });
   });
 
+  it('does not warn when push token clear is a successful no-op after sign out', async () => {
+    const currentUserResult = createCurrentUserResult();
+    const session = createSession();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    mockGetCurrentUser
+      .mockImplementationOnce(async () => null)
+      .mockImplementationOnce(async () => currentUserResult);
+    mockClearExpoPushToken.mockImplementationOnce(async () => ({ data: null, error: null }));
+
+    render(
+      <AuthProvider>
+        <Text>child</Text>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authStateChangeCallback).not.toBeNull());
+
+    await act(async () => {
+      authStateChangeCallback?.('SIGNED_IN', session);
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockSyncExpoPushTokenIfPermitted).toHaveBeenCalledWith('user-1');
+    });
+
+    await act(async () => {
+      authStateChangeCallback?.('SIGNED_OUT', null);
+    });
+
+    await waitFor(() => {
+      expect(mockClearExpoPushToken).toHaveBeenCalledWith('user-1');
+    });
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      '[AuthProvider] push token clear error:',
+      expect.any(Error),
+    );
+  });
+
   it('does not sync a push token from a stale sign-in callback after sign out wins', async () => {
     const currentUserResult = createCurrentUserResult();
     const session = createSession();
@@ -226,5 +276,64 @@ describe('AuthProvider notification lifecycle', () => {
     });
 
     expect(mockSyncExpoPushTokenIfPermitted).not.toHaveBeenCalled();
+  });
+
+  it('clears local Supabase session when bootstrap hits an invalid refresh token', async () => {
+    jest.useRealTimers();
+
+    const refreshTokenError = new Error('Invalid Refresh Token: Refresh Token Not Found');
+    refreshTokenError.name = 'AuthApiError';
+
+    mockGetCurrentUser.mockImplementationOnce(async () => {
+      throw refreshTokenError;
+    });
+    mockClearLocalAuthSessionForInvalidRefreshToken.mockImplementationOnce(async () => true);
+
+    render(
+      <AuthProvider>
+        <Text>child</Text>
+      </AuthProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(mockGetCurrentUser).toHaveBeenCalled();
+      expect(mockClearLocalAuthSessionForInvalidRefreshToken).toHaveBeenCalledWith(
+        refreshTokenError,
+      );
+      expect(mockSetUser).toHaveBeenCalledWith(undefined);
+      expect(mockSetLoggedIn).toHaveBeenCalledWith(false);
+      expect(mockSetChecked).toHaveBeenCalledWith(true);
+    });
+  });
+
+  it('still marks auth checked when invalid refresh cleanup fails', async () => {
+    jest.useRealTimers();
+
+    const refreshTokenError = new Error('Invalid Refresh Token: Refresh Token Not Found');
+    refreshTokenError.name = 'AuthApiError';
+
+    mockGetCurrentUser.mockImplementationOnce(async () => {
+      throw refreshTokenError;
+    });
+    mockClearLocalAuthSessionForInvalidRefreshToken.mockImplementationOnce(async () => false);
+
+    render(
+      <AuthProvider>
+        <Text>child</Text>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockClearLocalAuthSessionForInvalidRefreshToken).toHaveBeenCalledWith(
+        refreshTokenError,
+      );
+      expect(mockSetUser).toHaveBeenCalledWith(undefined);
+      expect(mockSetLoggedIn).toHaveBeenCalledWith(false);
+      expect(mockSetChecked).toHaveBeenCalledWith(true);
+    });
   });
 });
