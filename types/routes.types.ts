@@ -9,6 +9,7 @@ export type AuthRoutes = {
   '(auth)/reset-password': {
     token_hash?: string;
     type?: string;
+    code?: string;
     error?: string;
   };
   '(auth)/signup': undefined;
@@ -144,6 +145,7 @@ export type AuthStackParams = {
   'reset-password': {
     token_hash?: string;
     type?: string;
+    code?: string;
     error?: string;
   };
   signup: undefined;

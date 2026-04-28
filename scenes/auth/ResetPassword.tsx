@@ -14,7 +14,12 @@ import {
   isRetryableError,
 } from '@/constants/auth.errors';
 import { FORM_SCROLL_PADDING, PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
-import { signOut, updatePassword, verifyEmailOtp } from '@/services/auth.service';
+import {
+  createSessionFromRecoveryCode,
+  signOut,
+  updatePassword,
+  verifyEmailOtp,
+} from '@/services/auth.service';
 import { images } from '@/utils/images';
 import { getThemeColor } from '@/utils/theme';
 import {
@@ -45,6 +50,7 @@ type ResetPasswordSubmissionState = 'idle' | 'submitting';
 type RecoverySearchParams = {
   token_hash?: string | string[];
   type?: string | string[];
+  code?: string | string[];
   error?: string | string[];
 };
 
@@ -100,9 +106,10 @@ export default function ResetPassword() {
     () => ({
       tokenHash: getFirstRouteParam(params.token_hash),
       type: getFirstRouteParam(params.type),
+      code: getFirstRouteParam(params.code),
       error: getFirstRouteParam(params.error),
     }),
-    [params.error, params.token_hash, params.type],
+    [params.code, params.error, params.token_hash, params.type],
   );
   const [status, setStatus] = useState<ResetPasswordStatus>('checking');
   const [submissionState, setSubmissionState] = useState<ResetPasswordSubmissionState>('idle');
@@ -135,36 +142,67 @@ export default function ResetPassword() {
         return;
       }
 
+      if (routeParams.tokenHash && routeParams.type === 'recovery') {
+        try {
+          const { error: verifyError } = await verifyEmailOtp({
+            tokenHash: routeParams.tokenHash,
+            type: 'recovery',
+          });
+
+          if (!isMounted) {
+            return;
+          }
+
+          if (verifyError) {
+            setError(getRecoveryVerificationErrorMessage(verifyError));
+            setStatus('invalid');
+            return;
+          }
+
+          setStatus('ready');
+        } catch {
+          if (!isMounted) {
+            return;
+          }
+
+          setError(RESET_PASSWORD_NETWORK_MESSAGE);
+          setStatus('invalid');
+        }
+
+        return;
+      }
+
+      if (routeParams.code) {
+        try {
+          const { error: exchangeError } = await createSessionFromRecoveryCode(routeParams.code);
+
+          if (!isMounted) {
+            return;
+          }
+
+          if (exchangeError) {
+            setError(getRecoveryVerificationErrorMessage(exchangeError));
+            setStatus('invalid');
+            return;
+          }
+
+          setStatus('ready');
+        } catch {
+          if (!isMounted) {
+            return;
+          }
+
+          setError(RESET_PASSWORD_NETWORK_MESSAGE);
+          setStatus('invalid');
+        }
+
+        return;
+      }
+
       if (!routeParams.tokenHash || routeParams.type !== 'recovery') {
         setError(AUTH_RESET_PASSWORD_INVALID_LINK_MESSAGE);
         setStatus('invalid');
         return;
-      }
-
-      try {
-        const { error: verifyError } = await verifyEmailOtp({
-          tokenHash: routeParams.tokenHash,
-          type: 'recovery',
-        });
-
-        if (!isMounted) {
-          return;
-        }
-
-        if (verifyError) {
-          setError(getRecoveryVerificationErrorMessage(verifyError));
-          setStatus('invalid');
-          return;
-        }
-
-        setStatus('ready');
-      } catch {
-        if (!isMounted) {
-          return;
-        }
-
-        setError(RESET_PASSWORD_NETWORK_MESSAGE);
-        setStatus('invalid');
       }
     }
 
@@ -173,7 +211,7 @@ export default function ResetPassword() {
     return () => {
       isMounted = false;
     };
-  }, [routeParams.error, routeParams.tokenHash, routeParams.type]);
+  }, [routeParams.code, routeParams.error, routeParams.tokenHash, routeParams.type]);
 
   const dismissError = useCallback(() => {
     setError(null);

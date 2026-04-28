@@ -11,11 +11,13 @@ type AuthSceneResult = Promise<unknown>;
 type ResetPasswordRouteParams = {
   token_hash?: string | string[];
   type?: string | string[];
+  code?: string | string[];
   error?: string | string[];
 };
 
 let mockRouteParams: ResetPasswordRouteParams = {};
 const mockVerifyEmailOtp = jest.fn<(...args: unknown[]) => AuthSceneResult>();
+const mockCreateSessionFromRecoveryCode = jest.fn<(...args: unknown[]) => AuthSceneResult>();
 const mockUpdatePassword = jest.fn<(...args: unknown[]) => AuthSceneResult>();
 const mockSignOut = jest.fn<(...args: unknown[]) => AuthSceneResult>();
 
@@ -30,6 +32,7 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('@/services/auth.service', () => ({
+  createSessionFromRecoveryCode: (...args: unknown[]) => mockCreateSessionFromRecoveryCode(...args),
   verifyEmailOtp: (...args: unknown[]) => mockVerifyEmailOtp(...args),
   updatePassword: (...args: unknown[]) => mockUpdatePassword(...args),
   signOut: (...args: unknown[]) => mockSignOut(...args),
@@ -59,9 +62,14 @@ describe('<ResetPassword />', () => {
     mockNavigate.mockClear();
     setRecoveryRouteParams();
     mockVerifyEmailOtp.mockReset();
+    mockCreateSessionFromRecoveryCode.mockReset();
     mockUpdatePassword.mockReset();
     mockSignOut.mockReset();
     mockVerifyEmailOtp.mockImplementation(async () => ({ data: { session: {} }, error: null }));
+    mockCreateSessionFromRecoveryCode.mockImplementation(async () => ({
+      data: { session: {} },
+      error: null,
+    }));
     mockUpdatePassword.mockImplementation(async () => ({
       data: { user: { id: 'user-1' } },
       error: null,
@@ -81,6 +89,20 @@ describe('<ResetPassword />', () => {
         tokenHash: 'recovery-token-hash',
         type: 'recovery',
       });
+      expect(screen.getByLabelText('Simpan Password Baru')).toBeTruthy();
+    });
+  });
+
+  it('exchanges PKCE recovery code links before rendering the password form', async () => {
+    setRecoveryRouteParams({ code: 'pkce-recovery-code' });
+
+    render(<ResetPassword />);
+
+    expect(screen.getByText('Memeriksa tautan reset password...')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(mockCreateSessionFromRecoveryCode).toHaveBeenCalledWith('pkce-recovery-code');
+      expect(mockVerifyEmailOtp).not.toHaveBeenCalled();
       expect(screen.getByLabelText('Simpan Password Baru')).toBeTruthy();
     });
   });
