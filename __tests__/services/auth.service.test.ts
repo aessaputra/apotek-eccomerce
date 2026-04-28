@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { Platform } from 'react-native';
 import {
   clearLocalAuthSessionForInvalidRefreshToken,
   createPasswordRecoveryRedirectUri,
+  createSessionFromRecoveryCode,
+  handleOAuthHashTokens,
   isInvalidRefreshTokenError,
   requestPasswordReset,
   signInWithPassword,
@@ -16,6 +19,7 @@ type AuthServiceResult = Promise<unknown>;
 interface RedirectUriOptions {
   scheme?: string;
   path?: string;
+  isTripleSlashed?: boolean;
 }
 
 const mockSignInWithPassword = jest.fn<(...args: unknown[]) => AuthServiceResult>();
@@ -24,6 +28,7 @@ const mockSignOut = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockVerifyOtp = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockResetPasswordForEmail = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockUpdateUser = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockExchangeCodeForSession = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockMakeRedirectUri = jest.fn<(options: RedirectUriOptions) => string>();
 
 jest.mock('expo-auth-session', () => ({
@@ -52,7 +57,7 @@ jest.mock('@/utils/supabase', () => ({
       verifyOtp: (...args: unknown[]) => mockVerifyOtp(...args),
       resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
-      exchangeCodeForSession: jest.fn(),
+      exchangeCodeForSession: (...args: unknown[]) => mockExchangeCodeForSession(...args),
       signInWithOAuth: jest.fn(),
     },
   },
@@ -66,9 +71,12 @@ describe('auth.service', () => {
     mockVerifyOtp.mockReset();
     mockResetPasswordForEmail.mockReset();
     mockUpdateUser.mockReset();
+    mockExchangeCodeForSession.mockReset();
     mockMakeRedirectUri.mockReset();
-    mockMakeRedirectUri.mockImplementation(
-      ({ path }) => `apotek-ecommerce://${path ?? 'google-auth'}`,
+    mockMakeRedirectUri.mockImplementation(({ path, isTripleSlashed }) =>
+      isTripleSlashed
+        ? `apotek-ecommerce:///${path ?? 'google-auth'}`
+        : `apotek-ecommerce://${path ?? 'google-auth'}`,
     );
   });
 
@@ -189,8 +197,9 @@ describe('auth.service', () => {
     expect(mockMakeRedirectUri).toHaveBeenCalledWith({
       scheme: 'apotek-ecommerce',
       path: 'reset-password',
+      isTripleSlashed: true,
     });
-    expect(redirectTo).toBe('apotek-ecommerce://reset-password');
+    expect(redirectTo).toBe('apotek-ecommerce:///reset-password');
     expect(redirectTo).not.toContain('localhost');
   });
 
@@ -201,7 +210,7 @@ describe('auth.service', () => {
     const result = await requestPasswordReset('  reset@example.com  ');
 
     expect(mockResetPasswordForEmail).toHaveBeenCalledWith('reset@example.com', {
-      redirectTo: 'apotek-ecommerce://reset-password',
+      redirectTo: 'apotek-ecommerce:///reset-password',
     });
     expect(result).toEqual({ data: {}, error: null });
   });
@@ -216,7 +225,7 @@ describe('auth.service', () => {
     const result = await requestPasswordReset('reset@example.com');
 
     expect(mockResetPasswordForEmail).toHaveBeenCalledWith('reset@example.com', {
-      redirectTo: 'apotek-ecommerce://reset-password',
+      redirectTo: 'apotek-ecommerce:///reset-password',
     });
     expect(result).toEqual({ data: null, error: resetError });
   });
@@ -293,6 +302,89 @@ describe('auth.service', () => {
       type: 'recovery',
     });
     expect(result).toEqual({ data: otpData, error: null });
+  });
+
+  it('exchanges PKCE recovery codes for a Supabase session', async () => {
+    const sessionData = { session: { access_token: 'token' } };
+    mockExchangeCodeForSession.mockImplementationOnce(async () => ({
+      data: sessionData,
+      error: null,
+    }));
+
+    const result = await createSessionFromRecoveryCode('recovery-code');
+
+    expect(mockExchangeCodeForSession).toHaveBeenCalledWith('recovery-code');
+    expect(result).toEqual({ data: sessionData, error: null });
+  });
+
+  it('does not reuse a completed PKCE recovery code exchange from cache', async () => {
+    mockExchangeCodeForSession
+      .mockImplementationOnce(async () => ({
+        data: { session: { access_token: 'first' } },
+        error: null,
+      }))
+      .mockImplementationOnce(async () => ({
+        data: null,
+        error: { message: 'used', name: 'AuthError' },
+      }));
+
+    const firstResult = await createSessionFromRecoveryCode('single-use-code');
+    const secondResult = await createSessionFromRecoveryCode('single-use-code');
+
+    expect(mockExchangeCodeForSession).toHaveBeenCalledTimes(2);
+    expect(firstResult).toEqual({ data: { session: { access_token: 'first' } }, error: null });
+    expect(secondResult).toEqual({ data: null, error: { message: 'used', name: 'AuthError' } });
+  });
+
+  it('returns a safe error when PKCE recovery code is missing', async () => {
+    const result = await createSessionFromRecoveryCode('');
+
+    expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      data: null,
+      error: {
+        message: 'Kode pemulihan tidak ditemukan di tautan reset password',
+        name: 'RecoveryCodeError',
+      },
+    });
+  });
+
+  it('leaves reset-password web codes for the reset screen instead of OAuth bootstrap', async () => {
+    const originalWindow = globalThis.window;
+    const originalPlatform = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      configurable: true,
+      value: 'web',
+    });
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        location: {
+          pathname: '/reset-password',
+          search: '?code=recovery-code',
+        },
+        history: {
+          replaceState: jest.fn(),
+        },
+      },
+    });
+
+    try {
+      const result = await handleOAuthHashTokens();
+
+      expect(result).toBeNull();
+      expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
+      expect(globalThis.window.history.replaceState).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: originalWindow,
+      });
+      Object.defineProperty(Platform, 'OS', {
+        configurable: true,
+        value: originalPlatform,
+      });
+    }
   });
 
   it('returns Supabase recovery OTP errors without throwing', async () => {

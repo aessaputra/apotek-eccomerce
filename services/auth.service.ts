@@ -64,6 +64,7 @@ export function createPasswordRecoveryRedirectUri() {
   return makeRedirectUri({
     scheme: PASSWORD_RECOVERY_REDIRECT_SCHEME,
     path: PASSWORD_RECOVERY_CALLBACK_PATH,
+    isTripleSlashed: true,
   });
 }
 
@@ -283,6 +284,41 @@ const _exchangePromises = new Map<
   Promise<{ data: unknown; error: GoogleAuthError | null }>
 >();
 
+function isPasswordRecoveryPath(pathname: string) {
+  return pathname.split('/').filter(Boolean).pop() === PASSWORD_RECOVERY_CALLBACK_PATH;
+}
+
+function exchangeCodeOnce(code: string) {
+  const existing = _exchangePromises.get(code);
+  if (existing) {
+    if (__DEV__) {
+      console.log('[auth.service] Code exchange already in flight, joining');
+    }
+    return existing;
+  }
+
+  const promise = exchangeCode(code).finally(() => {
+    _exchangePromises.delete(code);
+  });
+  _exchangePromises.set(code, promise);
+
+  return promise;
+}
+
+export async function createSessionFromRecoveryCode(code: string) {
+  if (!code) {
+    return {
+      data: null,
+      error: {
+        message: 'Kode pemulihan tidak ditemukan di tautan reset password',
+        name: 'RecoveryCodeError',
+      } as GoogleAuthError,
+    };
+  }
+
+  return exchangeCodeOnce(code);
+}
+
 export async function createSessionFromUrl(url: string) {
   try {
     const { params, errorCode } = QueryParams.getQueryParams(url);
@@ -331,23 +367,7 @@ export async function createSessionFromUrl(url: string) {
       };
     }
 
-    const existing = _exchangePromises.get(code);
-    if (existing) {
-      if (__DEV__) {
-        console.log('[auth.service] Code exchange already in flight, joining');
-      }
-      return existing;
-    }
-
-    const promise = exchangeCode(code).then(result => {
-      if (result.error) {
-        _exchangePromises.delete(code);
-      }
-      return result;
-    });
-    _exchangePromises.set(code, promise);
-
-    return promise;
+    return exchangeCodeOnce(code);
   } catch (thrown: unknown) {
     const message = thrown instanceof Error ? thrown.message : String(thrown);
 
@@ -380,10 +400,12 @@ export async function handleOAuthHashTokens(): Promise<{
 
   if (!code) return null;
 
+  if (isPasswordRecoveryPath(window.location.pathname)) return null;
+
   // Clean URL before processing to prevent re-processing on refresh
   window.history.replaceState(null, '', window.location.pathname);
 
-  return exchangeCode(code);
+  return exchangeCodeOnce(code);
 }
 
 /**
