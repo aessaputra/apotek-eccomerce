@@ -591,7 +591,7 @@ export async function clearExpoPushToken(
     }
 
     if (!data) {
-      return { data: null, error: new Error('Profile not found for push token clear.') };
+      return { data: null, error: null };
     }
 
     return { data: data as ProfileRow, error: null };

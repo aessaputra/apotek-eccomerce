@@ -99,6 +99,15 @@ function createProfileUpdateQuery(row: unknown) {
   };
 }
 
+function createProfileUpdateErrorQuery(error: Error) {
+  return {
+    update: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn(async () => ({ data: null, error })),
+  };
+}
+
 function createProfileTokenQuery(token: string | null) {
   return {
     select: jest.fn().mockReturnThis(),
@@ -315,6 +324,41 @@ describe('notification.service', () => {
 
     expect(result.error).toBeNull();
     expect(result.data).toEqual(clearedProfile);
+    expect(updateQuery.update).toHaveBeenCalledWith({
+      expo_push_token: null,
+      expo_push_token_updated_at: null,
+      updated_at: '2026-04-23T15:30:00.000Z',
+    });
+    expect(updateQuery.eq).toHaveBeenCalledWith('id', 'user-1');
+  });
+
+  it('treats a missing profile as a successful no-op when clearing the Expo token', async () => {
+    const updateQuery = createProfileUpdateQuery(null);
+
+    mockFrom.mockReturnValueOnce(updateQuery);
+
+    const result = await clearExpoPushToken('user-1');
+
+    expect(result.error).toBeNull();
+    expect(result.data).toBeNull();
+    expect(updateQuery.update).toHaveBeenCalledWith({
+      expo_push_token: null,
+      expo_push_token_updated_at: null,
+      updated_at: '2026-04-23T15:30:00.000Z',
+    });
+    expect(updateQuery.eq).toHaveBeenCalledWith('id', 'user-1');
+  });
+
+  it('returns Supabase errors when clearing the Expo token fails', async () => {
+    const databaseError = new Error('database unavailable');
+    const updateQuery = createProfileUpdateErrorQuery(databaseError);
+
+    mockFrom.mockReturnValueOnce(updateQuery);
+
+    const result = await clearExpoPushToken('user-1');
+
+    expect(result.data).toBeNull();
+    expect(result.error).toBe(databaseError);
     expect(updateQuery.update).toHaveBeenCalledWith({
       expo_push_token: null,
       expo_push_token_updated_at: null,
