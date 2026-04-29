@@ -4,6 +4,7 @@ import {
   clearLocalAuthSessionForInvalidRefreshToken,
   createPasswordRecoveryRedirectUri,
   createSessionFromRecoveryCode,
+  createSessionFromRecoveryTokens,
   handleOAuthHashTokens,
   isInvalidRefreshTokenError,
   requestPasswordReset,
@@ -29,6 +30,7 @@ const mockVerifyOtp = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockResetPasswordForEmail = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockUpdateUser = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockExchangeCodeForSession = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockSetSession = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockMakeRedirectUri = jest.fn<(options: RedirectUriOptions) => string>();
 
 jest.mock('expo-auth-session', () => ({
@@ -58,6 +60,7 @@ jest.mock('@/utils/supabase', () => ({
       resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
       exchangeCodeForSession: (...args: unknown[]) => mockExchangeCodeForSession(...args),
+      setSession: (...args: unknown[]) => mockSetSession(...args),
       signInWithOAuth: jest.fn(),
     },
   },
@@ -72,6 +75,7 @@ describe('auth.service', () => {
     mockResetPasswordForEmail.mockReset();
     mockUpdateUser.mockReset();
     mockExchangeCodeForSession.mockReset();
+    mockSetSession.mockReset();
     mockMakeRedirectUri.mockReset();
     mockMakeRedirectUri.mockImplementation(({ path, isTripleSlashed }) =>
       isTripleSlashed
@@ -315,6 +319,58 @@ describe('auth.service', () => {
 
     expect(mockExchangeCodeForSession).toHaveBeenCalledWith('recovery-code');
     expect(result).toEqual({ data: sessionData, error: null });
+  });
+
+  it('creates a recovery session from implicit access and refresh tokens', async () => {
+    const sessionData = { session: { access_token: 'token' } };
+    mockSetSession.mockImplementationOnce(async () => ({ data: sessionData, error: null }));
+
+    const result = await createSessionFromRecoveryTokens('access-token', 'refresh-token');
+
+    expect(mockSetSession).toHaveBeenCalledWith({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+    });
+    expect(result).toEqual({ data: sessionData, error: null });
+  });
+
+  it('returns Supabase setSession errors for implicit recovery tokens', async () => {
+    const sessionError = { message: 'Invalid refresh token', name: 'AuthSessionError' };
+    mockSetSession.mockImplementationOnce(async () => ({ data: null, error: sessionError }));
+
+    const result = await createSessionFromRecoveryTokens('access-token', 'refresh-token');
+
+    expect(mockSetSession).toHaveBeenCalledWith({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+    });
+    expect(result).toEqual({ data: null, error: sessionError });
+  });
+
+  it('returns a safe error when implicit recovery token session creation throws', async () => {
+    mockSetSession.mockImplementationOnce(async () => {
+      throw new Error('SecureStore unavailable');
+    });
+
+    const result = await createSessionFromRecoveryTokens('access-token', 'refresh-token');
+
+    expect(result).toEqual({
+      data: null,
+      error: { message: 'SecureStore unavailable', name: 'RecoveryTokenError' },
+    });
+  });
+
+  it('returns a safe error when implicit recovery tokens are missing', async () => {
+    const result = await createSessionFromRecoveryTokens('', 'refresh-token');
+
+    expect(mockSetSession).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      data: null,
+      error: {
+        message: 'Token pemulihan tidak ditemukan di tautan reset password',
+        name: 'RecoveryTokenError',
+      },
+    });
   });
 
   it('does not reuse a completed PKCE recovery code exchange from cache', async () => {

@@ -319,6 +319,34 @@ export async function createSessionFromRecoveryCode(code: string) {
   return exchangeCodeOnce(code);
 }
 
+export async function createSessionFromRecoveryTokens(accessToken: string, refreshToken: string) {
+  if (!accessToken || !refreshToken) {
+    return {
+      data: null,
+      error: {
+        message: 'Token pemulihan tidak ditemukan di tautan reset password',
+        name: 'RecoveryTokenError',
+      } as GoogleAuthError,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return { data: null, error: { message, name: 'RecoveryTokenError' } as GoogleAuthError };
+  }
+}
+
 export async function createSessionFromUrl(url: string) {
   try {
     const { params, errorCode } = QueryParams.getQueryParams(url);
