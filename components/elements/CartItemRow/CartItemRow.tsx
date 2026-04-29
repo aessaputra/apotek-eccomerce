@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useState } from 'react';
-import { Text, XStack, YStack, useTheme } from 'tamagui';
-import { Trash2 } from '@tamagui/lucide-icons';
+import { Button, Text, XStack, YStack, useTheme } from 'tamagui';
+import { Check, Trash2 } from '@tamagui/lucide-icons';
 import { CartItemWithProduct } from '@/types/cart';
 import Image from '@/components/elements/Image/Image';
 import QuantitySelector from '../QuantitySelector/QuantitySelector';
@@ -15,11 +15,14 @@ import Animated, {
 import { RectButton } from 'react-native-gesture-handler';
 import { formatPrice } from '@/services/home.service';
 import { getThemeColor } from '@/utils/theme';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 
 export interface CartItemRowProps {
   item: CartItemWithProduct;
   onQuantityChange: (cartItemId: string, newQuantity: number) => void;
   onRemove: (cartItemId: string) => void;
+  isSelected?: boolean;
+  onSelectionChange?: (cartItemId: string, nextSelected: boolean) => void;
   isUpdating?: boolean;
 }
 
@@ -63,6 +66,8 @@ function areCartItemRowPropsEqual(prevProps: CartItemRowProps, nextProps: CartIt
   if (
     prevProps.onQuantityChange !== nextProps.onQuantityChange ||
     prevProps.onRemove !== nextProps.onRemove ||
+    prevProps.onSelectionChange !== nextProps.onSelectionChange ||
+    prevProps.isSelected !== nextProps.isSelected ||
     prevProps.isUpdating !== nextProps.isUpdating
   ) {
     return false;
@@ -86,6 +91,8 @@ export const CartItemRow = memo(function CartItemRow({
   item,
   onQuantityChange,
   onRemove,
+  isSelected = false,
+  onSelectionChange,
 }: CartItemRowProps) {
   const imageUrl = item.images?.[0]?.url;
   const unitPrice = item.product.price;
@@ -128,6 +135,10 @@ export const CartItemRow = memo(function CartItemRow({
     setShowDeleteDialog(false);
   }, [item.id, onRemove]);
 
+  const handleToggleSelection = useCallback(() => {
+    onSelectionChange?.(item.id, !isSelected);
+  }, [isSelected, item.id, onSelectionChange]);
+
   return (
     <>
       <Swipeable
@@ -149,6 +160,23 @@ export const CartItemRow = memo(function CartItemRow({
           borderWidth={1}
           borderColor="$surfaceBorder"
           position="relative">
+          <Button
+            width={MIN_TOUCH_TARGET}
+            height={MIN_TOUCH_TARGET}
+            padding={0}
+            circular
+            backgroundColor={isSelected ? '$primary' : '$surfaceSubtle'}
+            borderWidth={1}
+            borderColor={isSelected ? '$primary' : '$surfaceBorder'}
+            pressStyle={{ opacity: 0.85, scale: 0.96 }}
+            onPress={handleToggleSelection}
+            role="checkbox"
+            aria-checked={isSelected}
+            aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${item.product.name}`}
+            testID={`cart-item-checkbox-${item.id}`}>
+            {isSelected ? <Check size={20} color="$onPrimary" /> : null}
+          </Button>
+
           <YStack
             width={80}
             height={80}

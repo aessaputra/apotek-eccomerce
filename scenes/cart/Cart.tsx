@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FlatList, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text, XStack, YStack, useTheme } from 'tamagui';
+import { Button, Text, XStack, YStack, useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 import { CartIcon } from '@/components/icons';
 import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
@@ -20,7 +20,7 @@ import { removeCartItem } from '@/services/cart.service';
 import { useCartQuantity } from '@/hooks/useCartQuantity';
 import { formatAddress } from '@/utils/address';
 import { translateErrorMessage, type AppError } from '@/utils/error';
-import type { CartItemWithProduct, ItemSummary } from '@/types/cart';
+import type { CartItemWithProduct, CartSnapshot, ItemSummary } from '@/types/cart';
 import type { TypedHref } from '@/types/routes.types';
 import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -44,6 +44,27 @@ function getCartFeedbackMessages({
   };
 }
 
+function areStringArraysEqual(previous: string[], next: string[]) {
+  if (previous.length !== next.length) {
+    return false;
+  }
+
+  return previous.every((value, index) => value === next[index]);
+}
+
+function getSelectedCartSnapshot(items: CartItemWithProduct[]): CartSnapshot {
+  return items.reduce<CartSnapshot>(
+    (cartSnapshot, item) => ({
+      itemCount: cartSnapshot.itemCount + item.quantity,
+      estimatedWeightGrams: cartSnapshot.estimatedWeightGrams + item.quantity * item.product.weight,
+      packageValue: cartSnapshot.packageValue + item.quantity * item.product.price,
+    }),
+    { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+  );
+}
+
+type SelectionMode = 'initial' | 'manual' | 'all';
+
 export default function Cart() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -54,6 +75,8 @@ export default function Cart() {
   const { offlineActionMessage, showOfflineActionMessage } = useOfflineActionMessage();
   const [cartActionError, setCartActionError] = useState<string | null>(null);
   const [addressError, setAddressError] = useState<AppError | null>(null);
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>('initial');
+  const [selectedCartItemIds, setSelectedCartItemIds] = useState<string[]>([]);
   const {
     items: serverItems,
     snapshot: serverSnapshot,
@@ -69,6 +92,57 @@ export default function Cart() {
     snapshot: serverSnapshot,
     onError: setCartActionError,
   });
+
+  const visibleCartItemIds = useMemo(() => items.map(item => item.id), [items]);
+  const visibleCartItemIdSet = useMemo(() => new Set(visibleCartItemIds), [visibleCartItemIds]);
+
+  useEffect(() => {
+    setSelectedCartItemIds(previousSelectedIds => {
+      const nextSelectedIds =
+        selectionMode === 'initial' || selectionMode === 'all'
+          ? visibleCartItemIds
+          : previousSelectedIds.filter(itemId => visibleCartItemIdSet.has(itemId));
+
+      return areStringArraysEqual(previousSelectedIds, nextSelectedIds)
+        ? previousSelectedIds
+        : nextSelectedIds;
+    });
+  }, [selectionMode, visibleCartItemIds, visibleCartItemIdSet]);
+
+  const activeSelectedCartItemIds = useMemo(() => {
+    if (selectionMode === 'initial' || selectionMode === 'all') {
+      return visibleCartItemIds;
+    }
+
+    return selectedCartItemIds.filter(itemId => visibleCartItemIdSet.has(itemId));
+  }, [selectedCartItemIds, selectionMode, visibleCartItemIds, visibleCartItemIdSet]);
+
+  const selectedCartItemIdSet = useMemo(
+    () => new Set(activeSelectedCartItemIds),
+    [activeSelectedCartItemIds],
+  );
+
+  const selectedItems = useMemo(
+    () => items.filter(item => selectedCartItemIdSet.has(item.id)),
+    [items, selectedCartItemIdSet],
+  );
+
+  const selectedSnapshot = useMemo(() => getSelectedCartSnapshot(selectedItems), [selectedItems]);
+
+  const selectedItemSummaries = useMemo<ItemSummary[]>(
+    () =>
+      selectedItems.map(item => ({
+        name: item.product.name,
+        quantity: item.quantity,
+      })),
+    [selectedItems],
+  );
+
+  const selectedItemCount = activeSelectedCartItemIds.length;
+  const allVisibleItemsSelected = items.length > 0 && selectedItemCount === items.length;
+  const selectAllCopy = allVisibleItemsSelected ? 'Batalkan semua' : 'Pilih semua';
+  const emptySelectionMessage =
+    items.length > 0 && selectedItemCount === 0 ? 'Pilih minimal satu produk untuk checkout' : null;
 
   const listContentContainerStyle = useMemo(
     () => ({
@@ -180,6 +254,10 @@ export default function Cart() {
         return;
       }
 
+      setSelectedCartItemIds(previousSelectedIds =>
+        previousSelectedIds.filter(itemId => itemId !== cartItemId),
+      );
+
       await refresh({ silent: true });
     },
     [isOffline, refresh, showOfflineActionMessage],
@@ -229,16 +307,11 @@ export default function Cart() {
   );
 
   const handleReviewCheckout = useCallback(() => {
-    if (!selectedAddress || !selectedShippingOption) {
+    if (!selectedAddress || !selectedShippingOption || activeSelectedCartItemIds.length === 0) {
       return;
     }
 
     setShippingError(null);
-
-    const itemSummaries: ItemSummary[] = items.map(item => ({
-      name: item.product.name,
-      quantity: item.quantity,
-    }));
 
     const reviewHref: TypedHref = {
       pathname: '/cart/review',
@@ -247,9 +320,9 @@ export default function Cart() {
         addressText: selectedAddressFullText,
         shippingOptionPayload: JSON.stringify(selectedShippingOption),
         selectedShippingKey: selectedShippingKey ?? undefined,
-        snapshotPayload: JSON.stringify(snapshot),
-        itemSummariesPayload: JSON.stringify(itemSummaries),
-        selectedCartItemIdsPayload: JSON.stringify(items.map(item => item.id)),
+        snapshotPayload: JSON.stringify(selectedSnapshot),
+        itemSummariesPayload: JSON.stringify(selectedItemSummaries),
+        selectedCartItemIdsPayload: JSON.stringify(activeSelectedCartItemIds),
         quoteAreaId: quoteAreaId ?? undefined,
         quotePostalCode: typeof quotePostalCode === 'number' ? String(quotePostalCode) : undefined,
       },
@@ -257,16 +330,17 @@ export default function Cart() {
 
     router.push(reviewHref);
   }, [
-    items,
+    activeSelectedCartItemIds,
     quoteAreaId,
     quotePostalCode,
     router,
     selectedAddress,
     selectedAddressFullText,
+    selectedItemSummaries,
+    selectedSnapshot,
     selectedShippingKey,
     selectedShippingOption,
     setShippingError,
-    snapshot,
   ]);
 
   const handleWrappedStartCheckout = useCallback(async () => {
@@ -283,22 +357,56 @@ export default function Cart() {
     void refresh();
   }, [isOffline, refresh, showOfflineActionMessage]);
 
+  const handleToggleItemSelection = useCallback(
+    (cartItemId: string, nextSelected: boolean) => {
+      setSelectionMode('manual');
+      setSelectedCartItemIds(previousSelectedIds => {
+        const nextSelectedIdSet = new Set(
+          previousSelectedIds.filter(itemId => visibleCartItemIdSet.has(itemId)),
+        );
+
+        if (nextSelected) {
+          nextSelectedIdSet.add(cartItemId);
+        } else {
+          nextSelectedIdSet.delete(cartItemId);
+        }
+
+        return visibleCartItemIds.filter(itemId => nextSelectedIdSet.has(itemId));
+      });
+    },
+    [visibleCartItemIds, visibleCartItemIdSet],
+  );
+
+  const handleToggleSelectAll = useCallback(() => {
+    if (allVisibleItemsSelected) {
+      setSelectionMode('manual');
+      setSelectedCartItemIds([]);
+      return;
+    }
+
+    setSelectionMode('all');
+    setSelectedCartItemIds(visibleCartItemIds);
+  }, [allVisibleItemsSelected, visibleCartItemIds]);
+
   const renderCartItem = useCallback(
     ({ item }: { item: CartItemWithProduct }) => (
       <CartItemRow
         item={item}
+        isSelected={selectedCartItemIdSet.has(item.id)}
+        onSelectionChange={handleToggleItemSelection}
         onQuantityChange={handleQuantityChange}
         onRemove={handleRemoveItem}
       />
     ),
-    [handleQuantityChange, handleRemoveItem],
+    [handleQuantityChange, handleRemoveItem, handleToggleItemSelection, selectedCartItemIdSet],
   );
 
   const showInitialLoadingOverlay = isLoading && items.length === 0;
   const shouldShowEmptyCartState = items.length === 0 && !error && !isOffline;
   const hasCartItems = items.length > 0;
   const shouldShowCheckoutBar = !isLoading && hasCartItems;
-  const checkoutDisabled = (!selectedShippingOption && !activeOrderId) || isOffline;
+  const checkoutDisabled =
+    selectedItemCount === 0 || (!selectedShippingOption && !activeOrderId) || isOffline;
 
   const handleDismissCartActionError = useCallback(() => {
     setCartActionError(null);
@@ -323,24 +431,72 @@ export default function Cart() {
 
   const listHeaderComponent = useMemo(
     () => (
-      <CartStatusBanners
-        isOffline={isOffline}
-        hasCachedData={items.length > 0}
-        offlineActionMessage={offlineActionMessage}
-        fetchError={error}
-        onRetryFetch={handleCartRefresh}
-        cartActionError={cartActionError}
-        onDismissCartActionError={handleDismissCartActionError}
-      />
+      <YStack gap="$3">
+        <CartStatusBanners
+          isOffline={isOffline}
+          hasCachedData={items.length > 0}
+          offlineActionMessage={offlineActionMessage}
+          fetchError={error}
+          onRetryFetch={handleCartRefresh}
+          cartActionError={cartActionError}
+          onDismissCartActionError={handleDismissCartActionError}
+        />
+
+        {items.length > 0 ? (
+          <XStack
+            padding="$3"
+            gap="$3"
+            alignItems="center"
+            justifyContent="space-between"
+            backgroundColor="$surface"
+            borderWidth={1}
+            borderColor="$surfaceBorder"
+            borderRadius="$4">
+            <YStack flex={1} gap="$0.5">
+              <Text testID="cart-selected-count" color="$color" fontWeight="700">
+                {selectedItemCount} produk dipilih
+              </Text>
+              {emptySelectionMessage ? (
+                <Text color="$warning" fontSize="$2" fontWeight="600">
+                  {emptySelectionMessage}
+                </Text>
+              ) : (
+                <Text color="$colorSubtle" fontSize="$2">
+                  Checklist produk yang ingin dibayar sekarang.
+                </Text>
+              )}
+            </YStack>
+
+            <Button
+              testID="cart-select-all-toggle"
+              size="$3"
+              borderRadius="$4"
+              backgroundColor="transparent"
+              borderWidth={1}
+              borderColor="$primary"
+              color="$primary"
+              fontWeight="700"
+              pressStyle={{ opacity: 0.85, scale: 0.98 }}
+              onPress={handleToggleSelectAll}
+              aria-label={selectAllCopy}>
+              {selectAllCopy}
+            </Button>
+          </XStack>
+        ) : null}
+      </YStack>
     ),
     [
       cartActionError,
+      emptySelectionMessage,
       error,
       handleCartRefresh,
       handleDismissCartActionError,
+      handleToggleSelectAll,
       isOffline,
       items.length,
       offlineActionMessage,
+      selectAllCopy,
+      selectedItemCount,
     ],
   );
 
@@ -486,7 +642,7 @@ export default function Cart() {
                 </XStack>
               ) : null}
               <StickyBottomBar
-                grandTotal={snapshot.packageValue + (selectedShippingOption?.price ?? 0)}
+                grandTotal={selectedSnapshot.packageValue + (selectedShippingOption?.price ?? 0)}
                 isLoading={startingCheckout}
                 disabled={checkoutDisabled}
                 onConfirm={activeOrderId ? handleWrappedStartCheckout : handleReviewCheckout}

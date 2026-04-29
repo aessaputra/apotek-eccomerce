@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme
 import Cart from '@/scenes/cart/Cart';
 import type { Address } from '@/types/address';
 import type { CartItemWithProduct } from '@/types/cart';
+import type { ShippingOption } from '@/types/shipping';
 import type { User } from '@/types';
 
 const mockPush = jest.fn();
@@ -73,7 +74,19 @@ const mockCartAddressHookState: {
   handleSelectAddress: jest.fn(async () => undefined),
 };
 
-const mockCartShippingHookState = {
+const mockCartShippingHookState: {
+  shippingOptions: ShippingOption[];
+  selectedShippingOption: ShippingOption | null;
+  loadingRates: boolean;
+  shippingError: Error | null;
+  setShippingError: jest.Mock;
+  selectedShippingKey: string | null;
+  shippingSheetOpen: boolean;
+  setShippingSheetOpen: jest.Mock;
+  handleCalculateShipping: jest.Mock<() => Promise<void>>;
+  handleSelectShippingKey: jest.Mock<(key: string) => void>;
+  quoteDestination: { areaId: string; postalCode: number } | null;
+} = {
   shippingOptions: [],
   selectedShippingOption: null,
   loadingRates: false,
@@ -204,9 +217,15 @@ jest.mock('@/services/checkout.service', () => ({
 jest.mock('@/components/elements/CartItemRow/CartItemRow', () => ({
   CartItemRow: ({
     item,
+    isSelected,
+    onSelectionChange,
+    onQuantityChange,
     onRemove,
   }: {
     item: CartItemWithProduct;
+    isSelected?: boolean;
+    onSelectionChange: (cartItemId: string, nextSelected: boolean) => void;
+    onQuantityChange: (cartItemId: string, nextQuantity: number) => void;
     onRemove: (cartItemId: string) => void;
   }) => {
     const { Pressable, Text, View } = jest.requireActual(
@@ -216,6 +235,20 @@ jest.mock('@/components/elements/CartItemRow/CartItemRow', () => ({
     return (
       <View>
         <Text>{item.product.name}</Text>
+        <Text>{isSelected ? `selected ${item.id}` : `not selected ${item.id}`}</Text>
+        <Pressable
+          testID={`cart-item-checkbox-${item.id}`}
+          accessibilityLabel={`toggle ${item.id}`}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: Boolean(isSelected) }}
+          onPress={() => onSelectionChange(item.id, !isSelected)}>
+          <Text>{isSelected ? 'Terpilih' : 'Tidak terpilih'}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel={`increase ${item.id}`}
+          onPress={() => onQuantityChange(item.id, item.quantity + 1)}>
+          <Text>Increase {item.id}</Text>
+        </Pressable>
         <Pressable accessibilityLabel={`remove ${item.id}`} onPress={() => onRemove(item.id)}>
           <Text>Remove {item.id}</Text>
         </Pressable>
@@ -226,10 +259,12 @@ jest.mock('@/components/elements/CartItemRow/CartItemRow', () => ({
 
 jest.mock('@/components/elements/StickyBottomBar/StickyBottomBar', () => ({
   StickyBottomBar: ({
+    grandTotal,
     disabled,
     onConfirm,
     confirmText,
   }: {
+    grandTotal: number;
     disabled?: boolean;
     onConfirm: () => void;
     confirmText?: string;
@@ -240,6 +275,7 @@ jest.mock('@/components/elements/StickyBottomBar/StickyBottomBar', () => ({
 
     return (
       <View>
+        <Text testID="sticky-grand-total">{String(grandTotal)}</Text>
         <Text testID="sticky-disabled">{String(Boolean(disabled))}</Text>
         <Pressable accessibilityLabel="sticky-confirm" disabled={disabled} onPress={onConfirm}>
           <Text>{confirmText ?? 'Konfirmasi'}</Text>
@@ -359,6 +395,45 @@ function createAddress(): Address {
   };
 }
 
+function createShippingOption(): ShippingOption {
+  return {
+    courier_name: 'JNE',
+    courier_code: 'jne',
+    service_name: 'REG',
+    service_code: 'reg',
+    shipping_type: 'parcel',
+    price: 12000,
+    currency: 'IDR',
+    estimated_delivery: '2-3 hari',
+  };
+}
+
+function setCartItems(items: CartItemWithProduct[]) {
+  mockCartHookState.items = items;
+  mockCartHookState.snapshot = items.reduce(
+    (cartSnapshot, item) => ({
+      itemCount: cartSnapshot.itemCount + item.quantity,
+      estimatedWeightGrams: cartSnapshot.estimatedWeightGrams + item.quantity * item.product.weight,
+      packageValue: cartSnapshot.packageValue + item.quantity * item.product.price,
+    }),
+    { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+  );
+  mockCartQuantityHookState.items = mockCartHookState.items;
+  mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
+}
+
+function setReadyForCheckout() {
+  const address = createAddress();
+  const shippingOption = createShippingOption();
+
+  mockCartAddressHookState.selectedAddress = address;
+  mockCartAddressHookState.selectedAddressId = address.id;
+  mockCartShippingHookState.shippingOptions = [shippingOption];
+  mockCartShippingHookState.selectedShippingOption = shippingOption;
+  mockCartShippingHookState.selectedShippingKey = 'jne-reg';
+  mockCartShippingHookState.quoteDestination = { areaId: 'AREA-1', postalCode: 12345 };
+}
+
 describe('<Cart />', () => {
   beforeEach(() => {
     mockPush.mockClear();
@@ -379,22 +454,35 @@ describe('<Cart />', () => {
       isExpensive: false,
     };
 
-    mockCartHookState.items = [createItem(1), createItem(2)];
-    mockCartHookState.snapshot = { itemCount: 2, estimatedWeightGrams: 200, packageValue: 50000 };
+    setCartItems([createItem(1), createItem(2)]);
     mockCartHookState.error = null;
     mockCartHookState.isLoading = false;
     mockCartHookState.isRefreshing = false;
     mockCartHookState.realtimeState = 'connected';
     mockCartHookState.refresh.mockClear();
-    mockCartQuantityHookState.items = mockCartHookState.items;
-    mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
     mockCartQuantityHookState.updateQuantity.mockClear();
+    mockCartAddressHookState.selectedAddress = null;
+    mockCartAddressHookState.selectedAddressId = null;
+    mockCartAddressHookState.loadingSelectedAddress = false;
+    mockCartAddressHookState.availableAddresses = [];
+    mockCartAddressHookState.loadingAddresses = false;
+    mockCartAddressHookState.addressSheetOpen = false;
     mockCartAddressHookState.setAddressSheetOpen.mockClear();
     mockCartAddressHookState.handleSelectAddress.mockClear();
+    mockCartShippingHookState.shippingOptions = [];
+    mockCartShippingHookState.selectedShippingOption = null;
+    mockCartShippingHookState.loadingRates = false;
+    mockCartShippingHookState.shippingError = null;
+    mockCartShippingHookState.selectedShippingKey = null;
+    mockCartShippingHookState.shippingSheetOpen = false;
+    mockCartShippingHookState.quoteDestination = null;
     mockCartShippingHookState.setShippingError.mockClear();
     mockCartShippingHookState.setShippingSheetOpen.mockClear();
     mockCartShippingHookState.handleCalculateShipping.mockClear();
     mockCartShippingHookState.handleSelectShippingKey.mockClear();
+    mockCartCheckoutHookState.startingCheckout = false;
+    mockCartCheckoutHookState.activeOrderId = null;
+    mockCartCheckoutHookState.paymentError = null;
     mockCartCheckoutHookState.clearCheckoutSession.mockClear();
     mockCartCheckoutHookState.resetPaymentError.mockClear();
   });
@@ -407,6 +495,131 @@ describe('<Cart />', () => {
     expect(screen.queryByText('SKU-PRODUK-1')).toBeNull();
     expect(screen.queryByText('SKU-PRODUK-2')).toBeNull();
     expect(screen.queryByText('Login Terlebih Dahulu')).toBeNull();
+  });
+
+  it('selects loaded cart rows by default and toggles individual rows', () => {
+    render(<Cart />);
+
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('2 produk dipilih');
+    expect(screen.getByTestId('cart-item-checkbox-cart-item-1').props.accessibilityState).toEqual({
+      checked: true,
+    });
+
+    fireEvent.press(screen.getByTestId('cart-item-checkbox-cart-item-1'));
+
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('1 produk dipilih');
+    expect(screen.getByTestId('cart-item-checkbox-cart-item-1').props.accessibilityState).toEqual({
+      checked: false,
+    });
+
+    fireEvent.press(screen.getByTestId('cart-item-checkbox-cart-item-1'));
+
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('2 produk dipilih');
+    expect(screen.getByTestId('cart-item-checkbox-cart-item-1').props.accessibilityState).toEqual({
+      checked: true,
+    });
+  });
+
+  it('supports select-all and deselect-all copy', () => {
+    render(<Cart />);
+
+    expect(screen.getByText('Batalkan semua')).not.toBeNull();
+
+    fireEvent.press(screen.getByTestId('cart-item-checkbox-cart-item-1'));
+
+    expect(screen.getByText('Pilih semua')).not.toBeNull();
+
+    fireEvent.press(screen.getByTestId('cart-select-all-toggle'));
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('2 produk dipilih');
+    expect(screen.getByText('Batalkan semua')).not.toBeNull();
+
+    fireEvent.press(screen.getByTestId('cart-select-all-toggle'));
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('0 produk dipilih');
+    expect(screen.getByText('Pilih minimal satu produk untuk checkout')).not.toBeNull();
+  });
+
+  it('does not auto-select newly refetched rows after manual selection unless select-all mode is active', () => {
+    const { rerender } = render(<Cart />);
+
+    fireEvent.press(screen.getByTestId('cart-item-checkbox-cart-item-1'));
+    setCartItems([createItem(1), createItem(2), createItem(3)]);
+    rerender(<Cart />);
+
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('1 produk dipilih');
+    expect(screen.getByTestId('cart-item-checkbox-cart-item-3').props.accessibilityState).toEqual({
+      checked: false,
+    });
+
+    fireEvent.press(screen.getByTestId('cart-select-all-toggle'));
+    setCartItems([createItem(1), createItem(2), createItem(3), createItem(4)]);
+    rerender(<Cart />);
+
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('4 produk dipilih');
+    expect(screen.getByTestId('cart-item-checkbox-cart-item-4').props.accessibilityState).toEqual({
+      checked: true,
+    });
+  });
+
+  it('disables checkout and shows an empty-selection message when no rows are selected', () => {
+    setReadyForCheckout();
+    render(<Cart />);
+
+    expect(screen.getByTestId('sticky-disabled').children.join('')).toBe('false');
+
+    fireEvent.press(screen.getByTestId('cart-select-all-toggle'));
+
+    expect(screen.getByText('Pilih minimal satu produk untuk checkout')).not.toBeNull();
+    expect(screen.getByTestId('sticky-disabled').children.join('')).toBe('true');
+  });
+
+  it('passes selected cart row IDs and selected snapshot to the review route', () => {
+    setReadyForCheckout();
+    render(<Cart />);
+
+    fireEvent.press(screen.getByTestId('cart-item-checkbox-cart-item-1'));
+    fireEvent.press(screen.getByLabelText('sticky-confirm'));
+
+    const pushedRoute = mockPush.mock.calls[0]?.[0];
+    expect(pushedRoute).toMatchObject({ pathname: '/cart/review' });
+
+    if (typeof pushedRoute !== 'object' || pushedRoute === null || !('params' in pushedRoute)) {
+      throw new Error('Expected review route params');
+    }
+
+    const params = (pushedRoute as { params: Record<string, string | undefined> }).params;
+
+    expect(JSON.parse(params.selectedCartItemIdsPayload ?? '[]')).toEqual(['cart-item-2']);
+    expect(JSON.parse(params.itemSummariesPayload ?? '[]')).toEqual([
+      { name: 'Produk 2', quantity: 1 },
+    ]);
+    expect(JSON.parse(params.snapshotPayload ?? '{}')).toEqual({
+      itemCount: 1,
+      estimatedWeightGrams: 100,
+      packageValue: 10002,
+    });
+    expect(screen.getByTestId('sticky-grand-total').children.join('')).toBe('22002');
+  });
+
+  it('keeps selection during quantity changes and prunes removed rows from selection', async () => {
+    const { rerender } = render(<Cart />);
+
+    fireEvent.press(screen.getByLabelText('increase cart-item-1'));
+
+    expect(mockCartQuantityHookState.updateQuantity).toHaveBeenCalledWith('cart-item-1', 2);
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('2 produk dipilih');
+
+    fireEvent.press(screen.getByTestId('cart-item-checkbox-cart-item-2'));
+    fireEvent.press(screen.getByLabelText('remove cart-item-1'));
+
+    await waitFor(() => {
+      expect(mockRemoveCartItem).toHaveBeenCalledWith('cart-item-1');
+    });
+
+    setCartItems([createItem(2)]);
+    rerender(<Cart />);
+
+    expect(screen.getByTestId('cart-selected-count').children.join('')).toBe('0 produk dipilih');
+    expect(screen.getByText('Pilih minimal satu produk untuk checkout')).not.toBeNull();
   });
 
   it('shows error banner on fetch error', () => {
