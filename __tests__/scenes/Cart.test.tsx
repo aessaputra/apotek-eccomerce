@@ -12,6 +12,8 @@ const mockRemoveCartItem =
 const mockGetAddresses = jest.fn<(...args: unknown[]) => Promise<{ data: never[]; error: null }>>();
 const mockCreateCheckoutOrder =
   jest.fn<(...args: unknown[]) => Promise<{ data: null; error: null }>>();
+const mockUseCartShippingParams = jest.fn<(...args: unknown[]) => void>();
+const mockUseCartCheckoutParams = jest.fn<(...args: unknown[]) => void>();
 
 let mockUser: Pick<User, 'id'> | undefined;
 let mockNetworkState: {
@@ -152,37 +154,33 @@ jest.mock('@/hooks/useCartAddress', () => ({
 }));
 
 jest.mock('@/hooks/useCartShipping', () => ({
-  useCartShipping: ({
-    isOffline,
-    onOfflineAction,
-  }: {
-    isOffline: boolean;
-    onOfflineAction: (message: string) => void;
-  }) => ({
-    ...mockCartShippingHookState,
-    handleOpenShippingSheet: () => {
-      if (isOffline) {
-        onOfflineAction('Opsi pengiriman tidak tersedia offline.');
-      }
-    },
-  }),
+  useCartShipping: (params: { isOffline: boolean; onOfflineAction: (message: string) => void }) => {
+    mockUseCartShippingParams(params);
+
+    return {
+      ...mockCartShippingHookState,
+      handleOpenShippingSheet: () => {
+        if (params.isOffline) {
+          params.onOfflineAction('Opsi pengiriman tidak tersedia offline.');
+        }
+      },
+    };
+  },
 }));
 
 jest.mock('@/hooks/useCartCheckout', () => ({
-  useCartCheckout: ({
-    isOffline,
-    onOfflineAction,
-  }: {
-    isOffline: boolean;
-    onOfflineAction: (message: string) => void;
-  }) => ({
-    ...mockCartCheckoutHookState,
-    handleStartCheckout: async () => {
-      if (isOffline) {
-        onOfflineAction('Checkout tidak tersedia offline');
-      }
-    },
-  }),
+  useCartCheckout: (params: { isOffline: boolean; onOfflineAction: (message: string) => void }) => {
+    mockUseCartCheckoutParams(params);
+
+    return {
+      ...mockCartCheckoutHookState,
+      handleStartCheckout: async () => {
+        if (params.isOffline) {
+          params.onOfflineAction('Checkout tidak tersedia offline');
+        }
+      },
+    };
+  },
 }));
 
 jest.mock('@/hooks/useDataPersist', () => ({
@@ -440,6 +438,8 @@ describe('<Cart />', () => {
     mockRemoveCartItem.mockReset();
     mockGetAddresses.mockReset();
     mockCreateCheckoutOrder.mockReset();
+    mockUseCartShippingParams.mockClear();
+    mockUseCartCheckoutParams.mockClear();
 
     mockRemoveCartItem.mockResolvedValue({ data: true, error: null });
     mockGetAddresses.mockResolvedValue({ data: [], error: null });
@@ -598,6 +598,36 @@ describe('<Cart />', () => {
       packageValue: 10002,
     });
     expect(screen.getByTestId('sticky-grand-total').children.join('')).toBe('22002');
+  });
+
+  it('passes selected cart row IDs and selected snapshot into shipping and checkout hooks', async () => {
+    setReadyForCheckout();
+    render(<Cart />);
+
+    fireEvent.press(screen.getByTestId('cart-item-checkbox-cart-item-1'));
+
+    await waitFor(() => {
+      expect(mockUseCartShippingParams).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selectedCartItemIds: ['cart-item-2'],
+          snapshot: {
+            itemCount: 1,
+            estimatedWeightGrams: 100,
+            packageValue: 10002,
+          },
+        }),
+      );
+      expect(mockUseCartCheckoutParams).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selectedCartItemIds: ['cart-item-2'],
+          snapshot: {
+            itemCount: 1,
+            estimatedWeightGrams: 100,
+            packageValue: 10002,
+          },
+        }),
+      );
+    });
   });
 
   it('keeps selection during quantity changes and prunes removed rows from selection', async () => {

@@ -87,7 +87,7 @@ export default function Cart() {
   } = useCartPaginated({
     userId: user?.id,
   });
-  const { items, snapshot, updateQuantity } = useCartQuantity({
+  const { items, updateQuantity } = useCartQuantity({
     items: serverItems,
     snapshot: serverSnapshot,
     onError: setCartActionError,
@@ -219,7 +219,8 @@ export default function Cart() {
   } = useCartShipping({
     selectedAddress,
     selectedAddressId,
-    snapshot,
+    selectedCartItemIds: activeSelectedCartItemIds,
+    snapshot: selectedSnapshot,
     isOffline,
     onOfflineAction,
   });
@@ -277,8 +278,9 @@ export default function Cart() {
     loadingSelectedAddress,
     selectedShippingOption,
     selectedShippingKey,
+    selectedCartItemIds: activeSelectedCartItemIds,
     quoteDestination,
-    snapshot,
+    snapshot: selectedSnapshot,
     isOffline,
     onOfflineAction,
     onError: setShippingError,

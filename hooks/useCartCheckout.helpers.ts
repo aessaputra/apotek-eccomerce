@@ -14,6 +14,7 @@ export interface PersistedCheckoutSession {
   fingerprint: string;
   idempotency_key: string;
   order_id: string | null;
+  selected_cart_item_ids: string[];
   selected_address_id: string | null;
   selected_shipping_key: string | null;
   destination_area_id: string | null;
@@ -27,6 +28,7 @@ interface CheckoutFingerprintInput {
   selectedAddress: Address | null;
   selectedAddressId: string | null;
   selectedShippingKey: string | null;
+  selectedCartItemIds: string[];
   quoteDestination: {
     areaId: string | null;
     postalCode: number | null;
@@ -41,6 +43,7 @@ interface PersistedCheckoutSessionInput {
   selectedAddress: Address | null;
   selectedAddressId: string | null;
   selectedShippingKey: string | null;
+  selectedCartItemIds: string[];
   quoteDestination: {
     areaId: string | null;
     postalCode: number | null;
@@ -51,11 +54,16 @@ function stringifyCoordinate(value: number | null | undefined): string {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : 'null';
 }
 
+export function canonicalizeSelectedCartItemIds(selectedCartItemIds: readonly string[]): string[] {
+  return selectedCartItemIds.map(itemId => itemId.trim()).sort();
+}
+
 export function buildCheckoutFingerprint({
   userId,
   selectedAddress,
   selectedAddressId,
   selectedShippingKey,
+  selectedCartItemIds,
   quoteDestination,
   snapshot,
 }: CheckoutFingerprintInput): string {
@@ -70,6 +78,7 @@ export function buildCheckoutFingerprint({
     snapshot.itemCount,
     snapshot.estimatedWeightGrams,
     snapshot.packageValue,
+    JSON.stringify(canonicalizeSelectedCartItemIds(selectedCartItemIds)),
   ].join('|');
 }
 
@@ -80,12 +89,14 @@ export function buildPersistedCheckoutSession({
   selectedAddress,
   selectedAddressId,
   selectedShippingKey,
+  selectedCartItemIds,
   quoteDestination,
 }: PersistedCheckoutSessionInput): PersistedCheckoutSession {
   return {
     fingerprint,
     idempotency_key: idempotencyKey,
     order_id: orderId,
+    selected_cart_item_ids: canonicalizeSelectedCartItemIds(selectedCartItemIds),
     selected_address_id: selectedAddressId,
     selected_shipping_key: selectedShippingKey,
     destination_area_id: quoteDestination.areaId,
