@@ -30,7 +30,7 @@ export {
 export default function Payment() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, dispatch, markCartCleared } = useAppSlice();
+  const { user, dispatch, markCartRefreshRequested } = useAppSlice();
   const { removePersistData } = useDataPersist();
   const { paymentUrl, orderId } = useLocalSearchParams<RouteParams<'cart/payment'>>();
   const resolvedPaymentUrl = useMemo(() => resolveRouteParam(paymentUrl), [paymentUrl]);
@@ -58,7 +58,7 @@ export default function Payment() {
     resolvedOrderId,
     userId: user?.id,
     dispatch,
-    markCartCleared,
+    markCartRefreshRequested,
     router,
     removePersistData,
   });

@@ -16,8 +16,8 @@ const mockUseLocalSearchParams = jest.fn();
 const mockPollOrderPaymentStatus = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockRemovePersistData = jest.fn<(...args: unknown[]) => Promise<boolean>>();
 const mockDispatch = jest.fn();
-const mockMarkCartCleared = jest.fn((timestamp: number) => ({
-  type: 'MARK_CART_CLEARED',
+const mockMarkCartRefreshRequested = jest.fn((timestamp: number) => ({
+  type: 'MARK_CART_REFRESH_REQUESTED',
   payload: timestamp,
 }));
 const mockInvalidateUnpaidOrdersCache = jest.fn((userId: string) => ({
@@ -85,7 +85,7 @@ jest.mock('@/slices', () => ({
   useAppSlice: () => ({
     user: { id: 'user-1' },
     dispatch: mockDispatch,
-    markCartCleared: mockMarkCartCleared,
+    markCartRefreshRequested: mockMarkCartRefreshRequested,
   }),
 }));
 
@@ -110,7 +110,7 @@ describe('<Payment />', () => {
     mockPollOrderPaymentStatus.mockReset();
     mockRemovePersistData.mockReset();
     mockDispatch.mockReset();
-    mockMarkCartCleared.mockClear();
+    mockMarkCartRefreshRequested.mockClear();
     mockInvalidateUnpaidOrdersCache.mockClear();
     mockInvalidateOrdersByStatusCache.mockClear();
     mockCanOpenURL.mockReset();
@@ -163,7 +163,7 @@ describe('<Payment />', () => {
     expect(parsePaymentNavigationStatus('https://snap.midtrans.com/finish')).toBe('pending');
   });
 
-  test('finalizes successful payments from webview navigation and redirects to success page', async () => {
+  test('finalizes successful payments and requests selected-safe cart refresh', async () => {
     mockUseLocalSearchParams.mockReturnValue({
       paymentUrl: 'https://snap.midtrans.com/v1/token',
       orderId: 'order-1',
@@ -200,8 +200,9 @@ describe('<Payment />', () => {
       type: 'INVALIDATE_BY_STATUS',
       payload: { cacheKey: 'completed', userId: 'user-1' },
     });
+    expect(mockMarkCartRefreshRequested).toHaveBeenCalledTimes(1);
     expect(mockDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'MARK_CART_CLEARED' }),
+      expect.objectContaining({ type: 'MARK_CART_REFRESH_REQUESTED' }),
     );
   });
 
@@ -299,7 +300,7 @@ describe('<Payment />', () => {
 
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'INVALIDATE_UNPAID', payload: 'user-1' });
     expect(mockDispatch).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'MARK_CART_CLEARED' }),
+      expect.objectContaining({ type: 'MARK_CART_REFRESH_REQUESTED' }),
     );
   });
 

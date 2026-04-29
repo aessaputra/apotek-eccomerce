@@ -116,7 +116,7 @@ function resetRealtimeTrackingState(
 }
 
 export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPaginatedReturn {
-  const cartClearedAt = useSelector((state: State) => state.app.cartClearedAt);
+  const cartRefreshRequestedAt = useSelector((state: State) => state.app.cartRefreshRequestedAt);
   const [cartId, setCartId] = useState<string | null>(null);
   const [items, setItems] = useState<CartItemWithProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +133,7 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   const needsReconnectSyncRef = useRef(false);
   const pendingRealtimeItemFetchesRef = useRef(new Set<string>());
   const refreshRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(async () => {});
-  const lastHandledCartClearedAtRef = useRef<number | null>(null);
+  const lastHandledCartRefreshRequestedAtRef = useRef<number | null>(null);
 
   const snapshot = useMemo(() => buildCartSnapshot(items, DEFAULT_CART_ITEM_WEIGHT_GRAMS), [items]);
 
@@ -324,19 +324,18 @@ export function useCartPaginated({ userId }: UseCartPaginatedParams): UseCartPag
   }, [refresh]);
 
   useEffect(() => {
-    if (!userId || !cartClearedAt) {
+    if (!userId || !cartRefreshRequestedAt) {
       return;
     }
 
-    if (lastHandledCartClearedAtRef.current === cartClearedAt) {
+    if (lastHandledCartRefreshRequestedAtRef.current === cartRefreshRequestedAt) {
       return;
     }
 
-    lastHandledCartClearedAtRef.current = cartClearedAt;
-    setItems([]);
+    lastHandledCartRefreshRequestedAtRef.current = cartRefreshRequestedAt;
     setError(null);
     void refreshRef.current({ silent: true });
-  }, [cartClearedAt, userId]);
+  }, [cartRefreshRequestedAt, userId]);
 
   useEffect(() => {
     if (!userId) {

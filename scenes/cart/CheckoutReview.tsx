@@ -31,6 +31,22 @@ function parseJsonRouteParam<T>(param: string | string[] | undefined): T | null 
   }
 }
 
+function parseSelectedCartItemIds(param: string | string[] | undefined): string[] | null {
+  const parsedValue = parseJsonRouteParam<unknown>(param);
+
+  if (!Array.isArray(parsedValue)) {
+    return null;
+  }
+
+  const selectedIds = parsedValue.map(item => (typeof item === 'string' ? item.trim() : ''));
+
+  if (selectedIds.length === 0 || selectedIds.some(item => item.length === 0)) {
+    return null;
+  }
+
+  return selectedIds;
+}
+
 function ErrorBanner({ message }: { message: string }) {
   return (
     <YStack
@@ -121,7 +137,7 @@ export default function CheckoutReview() {
     [params.itemSummariesPayload],
   );
   const selectedCartItemIds = useMemo(
-    () => parseJsonRouteParam<string[]>(params.selectedCartItemIdsPayload) ?? [],
+    () => parseSelectedCartItemIds(params.selectedCartItemIdsPayload),
     [params.selectedCartItemIdsPayload],
   );
   const selectedShippingKey = useMemo(
@@ -140,7 +156,8 @@ export default function CheckoutReview() {
     return Number.isFinite(parsedValue) ? parsedValue : null;
   }, [params.quotePostalCode]);
 
-  const invalidReviewState = !selectedAddress || !selectedShippingOption || !snapshot;
+  const invalidReviewState =
+    !selectedAddress || !selectedShippingOption || !snapshot || !selectedCartItemIds;
 
   const {
     startingCheckout,
@@ -156,7 +173,7 @@ export default function CheckoutReview() {
     loadingSelectedAddress: false,
     selectedShippingOption,
     selectedShippingKey: selectedShippingKey || null,
-    selectedCartItemIds,
+    selectedCartItemIds: selectedCartItemIds ?? [],
     quoteDestination: {
       areaId: quoteAreaId || null,
       postalCode: quotePostalCode,
@@ -232,9 +249,13 @@ export default function CheckoutReview() {
           borderColor="$primary"
           borderRadius="$4"
           backgroundColor="$surface"
-          padding="$4">
+          padding="$4"
+          gap="$1.5">
           <Text color="$color" fontSize="$3" lineHeight="$4">
             Tinjau Kembali detail pesanan Anda sebelum Melanjutkan pembayaran
+          </Text>
+          <Text color="$colorSubtle" fontSize="$2" lineHeight="$3">
+            Produk yang tidak dipilih tetap tersimpan di keranjang.
           </Text>
         </YStack>
 

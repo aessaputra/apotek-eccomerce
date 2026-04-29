@@ -137,7 +137,7 @@ export interface AppState {
   checked: boolean;
   loggedIn: boolean;
   user?: User;
-  cartClearedAt: number | null;
+  cartRefreshRequestedAt: number | null;
   completedOrdersTabViewedByUser: Record<string, boolean | undefined>;
   ordersCache: Record<string, OrdersCacheEntry | undefined>;
   unpaidOrdersCache: Record<string, OrdersCacheEntry | undefined>;
@@ -149,7 +149,7 @@ const initialState: AppState = {
   checked: false,
   loggedIn: false,
   user: undefined,
-  cartClearedAt: null,
+  cartRefreshRequestedAt: null,
   completedOrdersTabViewedByUser: {},
   ordersCache: {},
   unpaidOrdersCache: {},
@@ -176,8 +176,8 @@ const slice = createSlice({
     setUser: (state: AppState, { payload }: PayloadAction<User | undefined>) => {
       state.user = payload;
     },
-    markCartCleared: (state: AppState, { payload }: PayloadAction<number>) => {
-      state.cartClearedAt = payload;
+    markCartRefreshRequested: (state: AppState, { payload }: PayloadAction<number>) => {
+      state.cartRefreshRequestedAt = payload;
     },
     markCompletedOrdersTabViewed: (state: AppState, { payload }: PayloadAction<string>) => {
       state.completedOrdersTabViewedByUser[payload] = true;

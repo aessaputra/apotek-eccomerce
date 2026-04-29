@@ -22,7 +22,7 @@ interface UsePaymentFlowParams {
   resolvedOrderId: string;
   userId?: string;
   dispatch: PaymentFlowDispatch;
-  markCartCleared: (timestamp: number) => unknown;
+  markCartRefreshRequested: (timestamp: number) => unknown;
   router: PaymentFlowRouter;
   removePersistData: (key: DataPersistKeys) => Promise<boolean>;
 }
@@ -42,7 +42,7 @@ export function usePaymentFlow({
   resolvedOrderId,
   userId,
   dispatch,
-  markCartCleared,
+  markCartRefreshRequested,
   router,
   removePersistData,
 }: UsePaymentFlowParams) {
@@ -88,7 +88,7 @@ export function usePaymentFlow({
 
       if (!error && PAYMENT_SUCCESS_STATUSES.includes(paymentStatus)) {
         invalidateOrderCaches(dispatch, userId);
-        dispatch(markCartCleared(Date.now()));
+        dispatch(markCartRefreshRequested(Date.now()));
         router.replace(`/orders/success?orderId=${resolvedOrderId}`);
         return;
       }
@@ -121,7 +121,7 @@ export function usePaymentFlow({
       setPostPaymentState('timeout');
       setPostPaymentMessage('Pembayaran sedang diproses. Cek status di halaman Pesanan.');
     },
-    [dispatch, markCartCleared, removePersistData, resolvedOrderId, router, userId],
+    [dispatch, markCartRefreshRequested, removePersistData, resolvedOrderId, router, userId],
   );
 
   return {

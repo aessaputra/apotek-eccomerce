@@ -7,6 +7,7 @@ const mockReplace = jest.fn();
 const mockHandleStartCheckout = jest.fn<() => Promise<void>>();
 const mockClearCheckoutSession = jest.fn<() => Promise<void>>();
 const mockResetPaymentError = jest.fn();
+const mockUseCartCheckout = jest.fn((_params: unknown) => mockCheckoutState);
 
 const validParams = {
   addressPayload: JSON.stringify({
@@ -42,7 +43,7 @@ const validParams = {
   }),
   selectedShippingKey: 'jne-reg',
   snapshotPayload: JSON.stringify({
-    itemCount: 2,
+    itemCount: 3,
     estimatedWeightGrams: 400,
     packageValue: 50000,
   }),
@@ -80,7 +81,7 @@ jest.mock('@/hooks/useNetworkStatus', () => ({
 }));
 
 jest.mock('@/hooks/useCartCheckout', () => ({
-  useCartCheckout: () => mockCheckoutState,
+  useCartCheckout: (params: unknown) => mockUseCartCheckout(params),
 }));
 
 jest.mock('@/components/elements/StickyBottomBar/StickyBottomBar', () => {
@@ -104,6 +105,7 @@ describe('<CheckoutReview />', () => {
     mockHandleStartCheckout.mockReset();
     mockClearCheckoutSession.mockReset();
     mockResetPaymentError.mockReset();
+    mockUseCartCheckout.mockClear();
     mockParams = validParams;
     mockCheckoutState = {
       startingCheckout: false,
@@ -115,16 +117,25 @@ describe('<CheckoutReview />', () => {
     };
   });
 
-  it('renders product names and continues to payment', () => {
+  it('renders selected product summary and continues to payment with selected cart row IDs', () => {
     render(<CheckoutReview />);
 
     expect(screen.getByText('Paracetamol 500mg')).toBeTruthy();
     expect(screen.getByText('×2')).toBeTruthy();
     expect(screen.getByText('Vitamin C 1000mg')).toBeTruthy();
     expect(screen.getByText('×1')).toBeTruthy();
-    expect(screen.getByText('Subtotal 2 barang')).toBeTruthy();
+    expect(screen.getByText('Subtotal 3 barang')).toBeTruthy();
     expect(screen.getByText('Ongkos kirim')).toBeTruthy();
+    expect(
+      screen.getByText('Produk yang tidak dipilih tetap tersimpan di keranjang.'),
+    ).toBeTruthy();
     expect(screen.getByText('Lanjutkan ke Pembayaran')).toBeTruthy();
+    expect(mockUseCartCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedCartItemIds: ['cart-item-1', 'cart-item-2'],
+        snapshot: expect.objectContaining({ itemCount: 3, packageValue: 50000 }),
+      }),
+    );
 
     fireEvent.press(screen.getByText('Lanjutkan ke Pembayaran'));
 
@@ -156,6 +167,26 @@ describe('<CheckoutReview />', () => {
     expect(mockReplace).toHaveBeenCalledWith('/cart');
   });
 
+  it.each([
+    ['missing', undefined],
+    ['empty', JSON.stringify([])],
+    ['non-array', JSON.stringify({ id: 'cart-item-1' })],
+    ['blank', JSON.stringify(['cart-item-1', ''])],
+    ['non-string', JSON.stringify(['cart-item-1', 42])],
+  ])('blocks checkout when selected cart item IDs are %s', (_label, selectedCartItemIdsPayload) => {
+    mockParams = { ...validParams, selectedCartItemIdsPayload };
+
+    render(<CheckoutReview />);
+
+    expect(screen.getByText('Data review pesanan tidak lengkap.')).toBeTruthy();
+    expect(screen.queryByText('Lanjutkan ke Pembayaran')).toBeNull();
+
+    fireEvent.press(screen.getByLabelText('Kembali ke keranjang'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/cart');
+    expect(mockHandleStartCheckout).not.toHaveBeenCalled();
+  });
+
   it('passes hideTotal to StickyBottomBar so total is not duplicated in footer', () => {
     render(<CheckoutReview />);
 
@@ -178,6 +209,6 @@ describe('<CheckoutReview />', () => {
     render(<CheckoutReview />);
 
     expect(screen.queryByText('Paracetamol 500mg')).toBeNull();
-    expect(screen.getByText('Subtotal 2 barang')).toBeTruthy();
+    expect(screen.getByText('Subtotal 3 barang')).toBeTruthy();
   });
 });

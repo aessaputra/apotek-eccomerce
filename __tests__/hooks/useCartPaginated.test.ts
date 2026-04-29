@@ -8,11 +8,11 @@ import {
 import type { CartItemWithProduct, CartRealtimeChange, CartWithItems } from '@/types/cart';
 import { useCartPaginated } from '@/hooks/useCartPaginated';
 
-let mockCartClearedAt: number | null = null;
+let mockCartRefreshRequestedAt: number | null = null;
 
 jest.mock('react-redux', () => ({
-  useSelector: (selector: (state: { app: { cartClearedAt: number | null } }) => unknown) =>
-    selector({ app: { cartClearedAt: mockCartClearedAt } }),
+  useSelector: (selector: (state: { app: { cartRefreshRequestedAt: number | null } }) => unknown) =>
+    selector({ app: { cartRefreshRequestedAt: mockCartRefreshRequestedAt } }),
 }));
 
 const mockSubscribeToCartChanges = subscribeToCartChanges as jest.MockedFunction<
@@ -102,7 +102,7 @@ function createDeferred<T>() {
 
 describe('useCartPaginated', () => {
   afterEach(() => {
-    mockCartClearedAt = null;
+    mockCartRefreshRequestedAt = null;
     mockLatestRealtimeHandler = null;
     mockLatestConnectionHandler = null;
     mockUnsubscribe.mockReset();
@@ -347,16 +347,16 @@ describe('useCartPaginated', () => {
     expect(result.current.items[0]?.quantity).toBe(1);
   });
 
-  it('clears visible items and refreshes when cart is marked cleared after payment', async () => {
-    mockGetCartWithItems
-      .mockResolvedValueOnce({
-        data: createCart([createItem(0, 2)]),
-        error: null,
-      })
-      .mockResolvedValueOnce({
-        data: createCart([]),
-        error: null,
-      });
+  it('keeps visible items while payment success refresh is pending', async () => {
+    const selectedItem = createItem(0, 2);
+    const unselectedItem = createItem(1, 1);
+    const refreshRequest = createDeferred<Awaited<ReturnType<typeof getCartWithItems>>>();
+
+    mockGetCartWithItems.mockResolvedValueOnce({
+      data: createCart([selectedItem, unselectedItem]),
+      error: null,
+    });
+    mockGetCartWithItems.mockReturnValueOnce(refreshRequest.promise);
 
     const { result, rerender } = renderHook<
       ReturnType<typeof useCartPaginated>,
@@ -366,14 +366,25 @@ describe('useCartPaginated', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.items).toHaveLength(1);
+      expect(result.current.items).toEqual([selectedItem, unselectedItem]);
     });
 
-    mockCartClearedAt = Date.now();
+    mockCartRefreshRequestedAt = Date.now();
     rerender({ userId: 'user-1' });
 
     await waitFor(() => {
-      expect(result.current.items).toEqual([]);
+      expect(mockGetCartWithItems).toHaveBeenCalledTimes(2);
+    });
+
+    expect(result.current.items).toEqual([selectedItem, unselectedItem]);
+
+    refreshRequest.resolve({
+      data: createCart([unselectedItem]),
+      error: null,
+    });
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual([unselectedItem]);
     });
 
     expect(mockGetCartWithItems).toHaveBeenCalledTimes(2);
