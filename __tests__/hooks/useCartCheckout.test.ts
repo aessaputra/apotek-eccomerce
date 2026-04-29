@@ -78,6 +78,8 @@ const snapshot: CartSnapshot = {
   packageValue: 50000,
 };
 
+const selectedCartItemIds = ['cart-item-1', 'cart-item-2'];
+
 const selectedAddressWithCoords: Address = {
   ...selectedAddress,
   latitude: -6.2,
@@ -158,6 +160,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption,
         selectedShippingKey: 'jne-reg',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -226,6 +229,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption,
         selectedShippingKey: 'jne-reg',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -246,6 +250,55 @@ describe('useCartCheckout', () => {
         selected_address_latitude: null,
         selected_address_longitude: null,
       }),
+    );
+
+    expect(mockCreateCheckoutOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ selected_cart_item_ids: selectedCartItemIds }),
+    );
+  });
+
+  it('uses the latest selected cart item ids after rerendering', async () => {
+    mockCreateCheckoutOrder.mockResolvedValue({
+      data: {
+        order_id: 'order-new',
+        checkout_idempotency_key: 'idem-new',
+      },
+      error: null,
+    });
+    mockCreateSnapToken.mockResolvedValue({
+      data: {
+        redirectUrl: 'https://pay.example.com',
+      },
+      error: null,
+    });
+
+    const { result, rerender } = renderHook(
+      ({ selectedIds }: { selectedIds: string[] }) =>
+        useCartCheckout({
+          userId: 'user-1',
+          selectedAddress,
+          selectedAddressId: 'address-1',
+          loadingSelectedAddress: false,
+          selectedShippingOption,
+          selectedShippingKey: 'jne-reg',
+          selectedCartItemIds: selectedIds,
+          quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+          snapshot,
+          isOffline: false,
+        }),
+      {
+        initialProps: { selectedIds: ['cart-item-1'] },
+      },
+    );
+
+    rerender({ selectedIds: ['cart-item-2'] });
+
+    await act(async () => {
+      await result.current.handleStartCheckout();
+    });
+
+    expect(mockCreateCheckoutOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ selected_cart_item_ids: ['cart-item-2'] }),
     );
   });
 

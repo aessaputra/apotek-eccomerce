@@ -74,6 +74,7 @@ describe('checkout.service', () => {
     mockFunctionInvoke.mockReset();
     mockGetSession.mockReset();
     mockRefreshSession.mockReset();
+    mockFrom.mockReset();
     mockFrom.mockImplementation((table: string) => createQueryBuilder(table));
 
     mockGetSession.mockResolvedValue({
@@ -124,7 +125,7 @@ describe('checkout.service', () => {
   test('creates checkout through edge function with backend-required payload', async () => {
     enqueueQuery('carts', { data: [{ id: 'cart-1' }], error: null });
     enqueueQuery('cart_items', {
-      data: [{ product_id: 'product-1', quantity: 2 }],
+      data: [{ id: 'cart-item-1', product_id: 'product-1', quantity: 2 }],
       error: null,
     });
     enqueueQuery('products', {
@@ -157,6 +158,7 @@ describe('checkout.service', () => {
         estimated_delivery: '2-3 hari',
       },
       checkout_idempotency_key: 'idem-1',
+      selected_cart_item_ids: ['cart-item-1'],
     });
 
     expect(mockFunctionInvoke).toHaveBeenCalledWith('create-checkout-order', {
@@ -164,6 +166,7 @@ describe('checkout.service', () => {
         shipping_address_id: 'address-1',
         destination_area_id: 'AREA-1',
         destination_postal_code: 12345,
+        selected_cart_item_ids: ['cart-item-1'],
         shipping_option: {
           courier_code: 'jne',
           service_code: 'reg',
@@ -185,6 +188,35 @@ describe('checkout.service', () => {
       },
       error: null,
     });
+
+    expect(queryRecords.find(record => record.table === 'cart_items')?.operations).toEqual([
+      { method: 'select', args: ['id, product_id, quantity'] },
+      { method: 'eq', args: ['cart_id', 'cart-1'] },
+      { method: 'in', args: ['id', ['cart-item-1']] },
+    ]);
+  });
+
+  test('rejects checkout before backend invocation when no cart items are selected', async () => {
+    const result = await createCheckoutOrder({
+      user_id: 'user-1',
+      shipping_address_id: 'address-1',
+      shipping_option: {
+        courier_name: 'JNE',
+        courier_code: 'jne',
+        service_name: 'REG',
+        service_code: 'reg',
+        shipping_type: 'parcel',
+        price: 15000,
+        currency: 'IDR',
+        estimated_delivery: '2-3 hari',
+      },
+      checkout_idempotency_key: 'idem-empty',
+      selected_cart_item_ids: [],
+    });
+
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockFunctionInvoke).not.toHaveBeenCalled();
+    expect(result.error?.message).toBe('Pilih minimal satu produk untuk checkout');
   });
 
   test('rejects checkout when destination area and postal code are both missing', async () => {
@@ -212,6 +244,7 @@ describe('checkout.service', () => {
         estimated_delivery: '2-3 hari',
       },
       checkout_idempotency_key: 'idem-2',
+      selected_cart_item_ids: ['cart-item-1'],
     });
 
     expect(mockFunctionInvoke).not.toHaveBeenCalled();

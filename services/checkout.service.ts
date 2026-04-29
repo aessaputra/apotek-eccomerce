@@ -12,6 +12,7 @@ interface CheckoutOrderParams {
   destination_postal_code?: number;
   shipping_option: ShippingOption;
   checkout_idempotency_key?: string;
+  selected_cart_item_ids: string[];
 }
 
 interface CheckoutOrderResult {
@@ -35,6 +36,7 @@ interface ConfirmMidtransPaymentResponse {
 }
 
 interface CartLine {
+  id: string;
   product_id: string;
   quantity: number;
 }
@@ -122,24 +124,35 @@ function generateCheckoutIdempotencyKey(): string {
   return Crypto.randomUUID();
 }
 
-async function getCartLines(cartId: string): Promise<{ data: CartLine[]; error: Error | null }> {
-  const { data: cartItems, error: cartItemsError } = await supabase
+async function getCartLines(
+  cartId: string,
+  selectedCartItemIds: string[],
+): Promise<{ data: CartLine[]; error: Error | null }> {
+  const { data: selectedCartItems, error: selectedCartItemsError } = await supabase
     .from('cart_items')
-    .select('product_id, quantity')
-    .eq('cart_id', cartId);
+    .select('id, product_id, quantity')
+    .eq('cart_id', cartId)
+    .in('id', selectedCartItemIds);
 
-  if (cartItemsError) {
-    return { data: [], error: cartItemsError as unknown as Error };
+  if (selectedCartItemsError) {
+    return { data: [], error: selectedCartItemsError as unknown as Error };
   }
 
-  const lines = (cartItems ?? []) as CartLine[];
-
-  return { data: lines, error: null };
+  return { data: (selectedCartItems ?? []) as CartLine[], error: null };
 }
 
 export async function createCheckoutOrder(
   params: CheckoutOrderParams,
 ): Promise<{ data: CheckoutOrderResult | null; error: Error | null }> {
+  const selectedCartItemIds = params.selected_cart_item_ids.map(id => id.trim());
+
+  if (selectedCartItemIds.length === 0 || selectedCartItemIds.some(id => id.length === 0)) {
+    return {
+      data: null,
+      error: new Error('Pilih minimal satu produk untuk checkout'),
+    };
+  }
+
   const idempotencyKey =
     params.checkout_idempotency_key?.trim() || generateCheckoutIdempotencyKey();
 
@@ -151,7 +164,10 @@ export async function createCheckoutOrder(
     };
   }
 
-  const { data: cartLines, error: cartLinesError } = await getCartLines(cart.id);
+  const { data: cartLines, error: cartLinesError } = await getCartLines(
+    cart.id,
+    selectedCartItemIds,
+  );
   if (cartLinesError) {
     return { data: null, error: cartLinesError };
   }
@@ -159,7 +175,7 @@ export async function createCheckoutOrder(
   if (cartLines.length === 0) {
     return {
       data: null,
-      error: new Error('Keranjang kosong. Tambahkan produk sebelum melanjutkan pembayaran.'),
+      error: new Error('Pilih minimal satu produk untuk checkout'),
     };
   }
 
@@ -224,6 +240,7 @@ export async function createCheckoutOrder(
         shipping_address_id: params.shipping_address_id,
         destination_area_id: params.destination_area_id ?? null,
         destination_postal_code: params.destination_postal_code ?? null,
+        selected_cart_item_ids: selectedCartItemIds,
         shipping_option: {
           courier_code: shippingOption.courier_code,
           service_code: shippingOption.service_code,

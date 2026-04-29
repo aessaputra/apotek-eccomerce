@@ -249,6 +249,7 @@ export default function Cart() {
         selectedShippingKey: selectedShippingKey ?? undefined,
         snapshotPayload: JSON.stringify(snapshot),
         itemSummariesPayload: JSON.stringify(itemSummaries),
+        selectedCartItemIdsPayload: JSON.stringify(items.map(item => item.id)),
         quoteAreaId: quoteAreaId ?? undefined,
         quotePostalCode: typeof quotePostalCode === 'number' ? String(quotePostalCode) : undefined,
       },

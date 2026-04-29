@@ -120,6 +120,10 @@ export default function CheckoutReview() {
     () => parseJsonRouteParam<ItemSummary[]>(params.itemSummariesPayload),
     [params.itemSummariesPayload],
   );
+  const selectedCartItemIds = useMemo(
+    () => parseJsonRouteParam<string[]>(params.selectedCartItemIdsPayload) ?? [],
+    [params.selectedCartItemIdsPayload],
+  );
   const selectedShippingKey = useMemo(
     () => resolveRouteParam(params.selectedShippingKey),
     [params.selectedShippingKey],
@@ -152,6 +156,7 @@ export default function CheckoutReview() {
     loadingSelectedAddress: false,
     selectedShippingOption,
     selectedShippingKey: selectedShippingKey || null,
+    selectedCartItemIds,
     quoteDestination: {
       areaId: quoteAreaId || null,
       postalCode: quotePostalCode,

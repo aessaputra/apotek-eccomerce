@@ -50,6 +50,7 @@ const validParams = {
     { name: 'Paracetamol 500mg', quantity: 2 },
     { name: 'Vitamin C 1000mg', quantity: 1 },
   ]),
+  selectedCartItemIdsPayload: JSON.stringify(['cart-item-1', 'cart-item-2']),
   quoteAreaId: 'AREA-1',
   quotePostalCode: '12345',
 };

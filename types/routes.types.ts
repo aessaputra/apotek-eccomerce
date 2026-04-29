@@ -43,6 +43,7 @@ export type CartRoutes = {
     selectedShippingKey?: string;
     snapshotPayload?: string;
     itemSummariesPayload?: string;
+    selectedCartItemIdsPayload?: string;
     quoteAreaId?: string;
     quotePostalCode?: string;
   };
@@ -130,6 +131,7 @@ export type CartStackParams = {
     selectedShippingKey?: string;
     snapshotPayload?: string;
     itemSummariesPayload?: string;
+    selectedCartItemIdsPayload?: string;
     quoteAreaId?: string;
     quotePostalCode?: string;
   };

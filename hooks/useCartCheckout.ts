@@ -29,6 +29,7 @@ export interface UseCartCheckoutParams {
   loadingSelectedAddress?: boolean;
   selectedShippingOption: ShippingOption | null;
   selectedShippingKey: string | null;
+  selectedCartItemIds?: string[];
   quoteDestination: {
     areaId: string | null;
     postalCode: number | null;
@@ -57,6 +58,7 @@ export function useCartCheckout({
   loadingSelectedAddress = false,
   selectedShippingOption,
   selectedShippingKey,
+  selectedCartItemIds = [],
   quoteDestination,
   snapshot,
   isOffline,
@@ -299,6 +301,7 @@ export function useCartCheckout({
           destination_postal_code: quoteDestination.postalCode ?? undefined,
           shipping_option: selectedShippingOption,
           checkout_idempotency_key: currentIdempotencyKey,
+          selected_cart_item_ids: selectedCartItemIds,
         });
 
         if (orderError || !orderData) {
@@ -349,6 +352,7 @@ export function useCartCheckout({
     router,
     persistCheckoutSession,
     selectedAddress,
+    selectedCartItemIds,
     selectedShippingOption,
     userId,
   ]);
