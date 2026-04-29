@@ -30,6 +30,71 @@ SplashScreen.preventAutoHideAsync();
 const PROTECTED_ROUTE_GROUPS = ['(tabs)', 'cart', 'product-details'];
 const NOTIFICATION_BLOCKING_AUTH_CALLBACK_ROUTES = new Set(['google-auth', 'reset-password']);
 const POST_AUTH_NOTIFICATION_ALLOWED_TAB_ROUTES = new Set(['home', 'orders', 'profile']);
+const PASSWORD_RECOVERY_ROUTE = 'reset-password';
+
+function getCallbackUrlSegments(url: string) {
+  const parsedUrl = new URL(url);
+
+  return [parsedUrl.hostname, ...parsedUrl.pathname.split('/')]
+    .map(segment => segment.trim())
+    .filter(Boolean);
+}
+
+function appendSearchParamsFromString(target: URLSearchParams, rawParams: string) {
+  const params = new URLSearchParams(rawParams);
+
+  params.forEach((value, key) => {
+    if (!target.has(key)) {
+      target.set(key, value);
+    }
+  });
+}
+
+function getPasswordRecoveryRouteFromUrl(url: string | null) {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    const isPasswordRecoveryUrl = getCallbackUrlSegments(url).some(
+      segment => segment === PASSWORD_RECOVERY_ROUTE,
+    );
+
+    if (!isPasswordRecoveryUrl) {
+      return null;
+    }
+
+    const recoveryParams = new URLSearchParams(parsedUrl.search);
+
+    if (parsedUrl.hash) {
+      appendSearchParamsFromString(recoveryParams, parsedUrl.hash.replace(/^#/, ''));
+    }
+
+    const queryString = recoveryParams.toString();
+    return queryString ? `/(auth)/reset-password?${queryString}` : '/(auth)/reset-password';
+  } catch {
+    if (!url.includes(PASSWORD_RECOVERY_ROUTE)) {
+      return null;
+    }
+
+    const queryStartIndex = url.indexOf('?');
+    const hashStartIndex = url.indexOf('#');
+    const recoveryParams = new URLSearchParams();
+
+    if (queryStartIndex >= 0) {
+      const queryEndIndex = hashStartIndex >= 0 ? hashStartIndex : undefined;
+      appendSearchParamsFromString(recoveryParams, url.slice(queryStartIndex + 1, queryEndIndex));
+    }
+
+    if (hashStartIndex >= 0) {
+      appendSearchParamsFromString(recoveryParams, url.slice(hashStartIndex + 1));
+    }
+
+    const queryString = recoveryParams.toString();
+    return queryString ? `/(auth)/reset-password?${queryString}` : '/(auth)/reset-password';
+  }
+}
 
 function isNotificationBlockingAuthCallbackUrl(url: string | null) {
   if (!url) {
@@ -37,12 +102,9 @@ function isNotificationBlockingAuthCallbackUrl(url: string | null) {
   }
 
   try {
-    const parsedUrl = new URL(url);
-    const segments = [parsedUrl.hostname, ...parsedUrl.pathname.split('/')]
-      .map(segment => segment.trim())
-      .filter(Boolean);
-
-    return segments.some(segment => NOTIFICATION_BLOCKING_AUTH_CALLBACK_ROUTES.has(segment));
+    return getCallbackUrlSegments(url).some(segment =>
+      NOTIFICATION_BLOCKING_AUTH_CALLBACK_ROUTES.has(segment),
+    );
   } catch {
     return Array.from(NOTIFICATION_BLOCKING_AUTH_CALLBACK_ROUTES).some(route =>
       url.includes(route),
@@ -62,6 +124,7 @@ function Router() {
   const checkedRef = useRef(checked);
   const loggedInRef = useRef(loggedIn);
   const isNotificationBlockingAuthCallbackRouteRef = useRef(false);
+  const handledPasswordRecoveryRouteRef = useRef<string | null>(null);
   const pendingNotificationResponseRef = useRef<NotificationResponse | null>(null);
   const lastHandledNotificationResponseIdRef = useRef<string | null>(null);
   const routeSegments = Array.from(segments);
@@ -80,6 +143,11 @@ function Router() {
     !hasSettledPostAuthTabRoute && isNotificationBlockingAuthCallbackUrl(linkingUrl);
   const isNotificationBlockingAuthCallbackFlow =
     isCallback || isRecoveryAuthRoute || isNotificationBlockingAuthCallbackDeepLink;
+  const passwordRecoveryRouteFromUrl = getPasswordRecoveryRouteFromUrl(linkingUrl);
+  const isHandledPasswordRecoveryReplay =
+    passwordRecoveryRouteFromUrl &&
+    handledPasswordRecoveryRouteRef.current === passwordRecoveryRouteFromUrl &&
+    (!currentGroup || inAuthGroup);
 
   useEffect(() => {
     assetsReadyRef.current = assetsReady;
@@ -221,6 +289,16 @@ function Router() {
   useEffect(() => {
     if (!checked) return;
 
+    if (passwordRecoveryRouteFromUrl && isRecoveryAuthRoute) {
+      handledPasswordRecoveryRouteRef.current = passwordRecoveryRouteFromUrl;
+    }
+
+    if (passwordRecoveryRouteFromUrl && !isRecoveryAuthRoute && !isHandledPasswordRecoveryReplay) {
+      handledPasswordRecoveryRouteRef.current = passwordRecoveryRouteFromUrl;
+      setTimeout(() => router.replace(passwordRecoveryRouteFromUrl), 0);
+      return;
+    }
+
     if (loggedIn) {
       if ((inAuthGroup && !isRecoveryAuthRoute) || isCallback) {
         setTimeout(() => router.navigate('/home'), 0);
@@ -237,9 +315,11 @@ function Router() {
     currentAuthRoute,
     currentGroup,
     inAuthGroup,
+    isHandledPasswordRecoveryReplay,
     isCallback,
     isRecoveryAuthRoute,
     loggedIn,
+    passwordRecoveryRouteFromUrl,
     router,
   ]);
 
