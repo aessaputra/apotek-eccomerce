@@ -1,23 +1,37 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
+import { StyleSheet } from 'react-native';
+import {
+  fireEvent,
+  render,
+  renderWithDarkTheme,
+  screen,
+  waitFor,
+} from '@/test-utils/renderWithTheme';
 import ResetPassword from '@/scenes/auth/ResetPassword';
 import { AuthErrorCode } from '@/constants/auth.errors';
 import { LOGIN_RESET_SUCCESS_MESSAGE } from '@/scenes/auth/authForm.helpers';
+import { themes } from '@/themes';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockNavigate = jest.fn();
+const mockUseLinkingURL = jest.fn<() => string | null>();
 type AuthSceneResult = Promise<unknown>;
 type ResetPasswordRouteParams = {
   token_hash?: string | string[];
   type?: string | string[];
   code?: string | string[];
+  access_token?: string | string[];
+  refresh_token?: string | string[];
   error?: string | string[];
+  error_code?: string | string[];
+  error_description?: string | string[];
 };
 
 let mockRouteParams: ResetPasswordRouteParams = {};
 const mockVerifyEmailOtp = jest.fn<(...args: unknown[]) => AuthSceneResult>();
 const mockCreateSessionFromRecoveryCode = jest.fn<(...args: unknown[]) => AuthSceneResult>();
+const mockCreateSessionFromRecoveryTokens = jest.fn<(...args: unknown[]) => AuthSceneResult>();
 const mockUpdatePassword = jest.fn<(...args: unknown[]) => AuthSceneResult>();
 const mockSignOut = jest.fn<(...args: unknown[]) => AuthSceneResult>();
 
@@ -31,8 +45,14 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
 }));
 
+jest.mock('expo-linking', () => ({
+  useLinkingURL: () => mockUseLinkingURL(),
+}));
+
 jest.mock('@/services/auth.service', () => ({
   createSessionFromRecoveryCode: (...args: unknown[]) => mockCreateSessionFromRecoveryCode(...args),
+  createSessionFromRecoveryTokens: (...args: unknown[]) =>
+    mockCreateSessionFromRecoveryTokens(...args),
   verifyEmailOtp: (...args: unknown[]) => mockVerifyEmailOtp(...args),
   updatePassword: (...args: unknown[]) => mockUpdatePassword(...args),
   signOut: (...args: unknown[]) => mockSignOut(...args),
@@ -60,13 +80,20 @@ describe('<ResetPassword />', () => {
     mockPush.mockClear();
     mockReplace.mockClear();
     mockNavigate.mockClear();
+    mockUseLinkingURL.mockReset();
+    mockUseLinkingURL.mockImplementation(() => null);
     setRecoveryRouteParams();
     mockVerifyEmailOtp.mockReset();
     mockCreateSessionFromRecoveryCode.mockReset();
+    mockCreateSessionFromRecoveryTokens.mockReset();
     mockUpdatePassword.mockReset();
     mockSignOut.mockReset();
     mockVerifyEmailOtp.mockImplementation(async () => ({ data: { session: {} }, error: null }));
     mockCreateSessionFromRecoveryCode.mockImplementation(async () => ({
+      data: { session: {} },
+      error: null,
+    }));
+    mockCreateSessionFromRecoveryTokens.mockImplementation(async () => ({
       data: { session: {} },
       error: null,
     }));
@@ -107,6 +134,108 @@ describe('<ResetPassword />', () => {
     });
   });
 
+  it('keeps a verified PKCE recovery code ready when reset params update later', async () => {
+    setRecoveryRouteParams({ code: 'pkce-recovery-code' });
+
+    const { rerender } = render(<ResetPassword />);
+
+    expect(await screen.findByLabelText('Simpan Password Baru')).toBeTruthy();
+    expect(mockCreateSessionFromRecoveryCode).toHaveBeenCalledTimes(1);
+
+    mockCreateSessionFromRecoveryCode.mockImplementationOnce(async () => ({
+      data: null,
+      error: { code: AuthErrorCode.INVALID_GRANT, message: AuthErrorCode.INVALID_GRANT },
+    }));
+    setRecoveryRouteParams({ code: 'pkce-recovery-code', type: 'recovery' });
+    rerender(<ResetPassword />);
+
+    await waitFor(() => {
+      expect(mockCreateSessionFromRecoveryCode).toHaveBeenCalledTimes(1);
+      expect(screen.getByLabelText('Simpan Password Baru')).toBeTruthy();
+      expect(screen.queryByText('Tautan Tidak Valid')).toBeNull();
+    });
+  });
+
+  it('creates a recovery session from implicit access-token links before rendering the form', async () => {
+    setRecoveryRouteParams({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+      type: 'recovery',
+    });
+
+    render(<ResetPassword />);
+
+    expect(screen.getByText('Memeriksa tautan reset password...')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(mockCreateSessionFromRecoveryTokens).toHaveBeenCalledWith(
+        'access-token',
+        'refresh-token',
+      );
+      expect(mockCreateSessionFromRecoveryCode).not.toHaveBeenCalled();
+      expect(mockVerifyEmailOtp).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('Simpan Password Baru')).toBeTruthy();
+    });
+  });
+
+  it('creates a recovery session from implicit token links even when type is missing', async () => {
+    setRecoveryRouteParams({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+    });
+
+    render(<ResetPassword />);
+
+    await waitFor(() => {
+      expect(mockCreateSessionFromRecoveryTokens).toHaveBeenCalledWith(
+        'access-token',
+        'refresh-token',
+      );
+      expect(screen.getByLabelText('Simpan Password Baru')).toBeTruthy();
+    });
+  });
+
+  it('falls back to the original deep link when route params are not populated', async () => {
+    mockUseLinkingURL.mockImplementation(
+      () =>
+        'apotek-ecommerce:///reset-password#access_token=access-token&refresh_token=refresh-token&type=recovery',
+    );
+
+    render(<ResetPassword />);
+
+    await waitFor(() => {
+      expect(mockCreateSessionFromRecoveryTokens).toHaveBeenCalledWith(
+        'access-token',
+        'refresh-token',
+      );
+      expect(mockCreateSessionFromRecoveryCode).not.toHaveBeenCalled();
+      expect(mockVerifyEmailOtp).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('Simpan Password Baru')).toBeTruthy();
+    });
+  });
+
+  it('ignores retained Google OAuth deep links when reset route params are empty', async () => {
+    mockUseLinkingURL.mockImplementation(() => 'apotek-ecommerce://google-auth?code=oauth-code');
+
+    render(<ResetPassword />);
+
+    expect(await screen.findByText('Tautan Tidak Valid')).toBeTruthy();
+    expect(mockCreateSessionFromRecoveryCode).not.toHaveBeenCalled();
+    expect(mockCreateSessionFromRecoveryTokens).not.toHaveBeenCalled();
+    expect(mockVerifyEmailOtp).not.toHaveBeenCalled();
+  });
+
+  it('ignores unrelated retained deep links when reset route params are empty', async () => {
+    mockUseLinkingURL.mockImplementation(() => 'apotek-ecommerce:///home?code=not-recovery');
+
+    render(<ResetPassword />);
+
+    expect(await screen.findByText('Tautan Tidak Valid')).toBeTruthy();
+    expect(mockCreateSessionFromRecoveryCode).not.toHaveBeenCalled();
+    expect(mockCreateSessionFromRecoveryTokens).not.toHaveBeenCalled();
+    expect(mockVerifyEmailOtp).not.toHaveBeenCalled();
+  });
+
   it('shows the invalid-link state with Forgot Password and Login CTAs when opened directly', async () => {
     render(<ResetPassword />);
 
@@ -129,6 +258,14 @@ describe('<ResetPassword />', () => {
 
     expect(mockReplace).toHaveBeenCalledWith('/(auth)/forgot-password');
     expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
+  });
+
+  it('uses theme-aware danger coloring for the invalid-link icon in dark theme', async () => {
+    renderWithDarkTheme(<ResetPassword />);
+
+    expect(await screen.findByText('Tautan Tidak Valid')).toBeTruthy();
+    const iconStyle = StyleSheet.flatten(screen.getByText('✕').props.style);
+    expect(iconStyle.color).toBe(themes.brand_dark.danger);
   });
 
   it('does not render arbitrary route error text from reset-password links', async () => {

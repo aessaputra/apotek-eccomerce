@@ -10,7 +10,11 @@ export type AuthRoutes = {
     token_hash?: string;
     type?: string;
     code?: string;
+    access_token?: string;
+    refresh_token?: string;
     error?: string;
+    error_code?: string;
+    error_description?: string;
   };
   '(auth)/signup': undefined;
   '(auth)/verify-email': { email: string };
@@ -146,7 +150,11 @@ export type AuthStackParams = {
     token_hash?: string;
     type?: string;
     code?: string;
+    access_token?: string;
+    refresh_token?: string;
     error?: string;
+    error_code?: string;
+    error_description?: string;
   };
   signup: undefined;
   'verify-email': { email: string };

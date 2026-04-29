@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { YStack, Text, Image, Spinner, useMedia, useTheme, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView } from 'react-native';
+import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
@@ -16,6 +17,7 @@ import {
 import { FORM_SCROLL_PADDING, PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
 import {
   createSessionFromRecoveryCode,
+  createSessionFromRecoveryTokens,
   signOut,
   updatePassword,
   verifyEmailOtp,
@@ -37,6 +39,7 @@ const SIGN_OUT_FAILURE_MESSAGE =
   'Password berhasil diperbarui, tetapi kami gagal mengakhiri sesi reset. Silakan coba lagi.';
 const UPDATE_PASSWORD_GENERIC_ERROR_MESSAGE =
   'Password belum dapat diperbarui. Silakan coba lagi atau minta tautan reset baru.';
+const PASSWORD_RECOVERY_ROUTE = 'reset-password';
 
 const ALLOWED_UPDATE_PASSWORD_ERROR_CODES = new Set<string>([
   AuthErrorCode.SAME_PASSWORD,
@@ -51,11 +54,80 @@ type RecoverySearchParams = {
   token_hash?: string | string[];
   type?: string | string[];
   code?: string | string[];
+  access_token?: string | string[];
+  refresh_token?: string | string[];
   error?: string | string[];
+  error_code?: string | string[];
+  error_description?: string | string[];
+};
+
+type ParsedRecoveryParams = {
+  tokenHash?: string;
+  type?: string;
+  code?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  error?: string;
+  errorDescription?: string;
 };
 
 function getFirstRouteParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function getFirstSearchParam(params: URLSearchParams, key: string): string | undefined {
+  const value = params.get(key);
+  return value ?? undefined;
+}
+
+function appendSearchParamsFromString(target: URLSearchParams, rawParams: string) {
+  const params = new URLSearchParams(rawParams.replace(/^[?#]/, ''));
+
+  params.forEach((value, key) => {
+    if (!target.has(key)) {
+      target.set(key, value);
+    }
+  });
+}
+
+function getUrlSegments(url: URL) {
+  return [url.hostname, ...url.pathname.split('/')].map(segment => segment.trim()).filter(Boolean);
+}
+
+function isPasswordRecoveryUrl(url: URL) {
+  return getUrlSegments(url).some(segment => segment === PASSWORD_RECOVERY_ROUTE);
+}
+
+function getRecoveryParamsFromUrl(url: string | null): ParsedRecoveryParams {
+  if (!url) {
+    return {};
+  }
+
+  try {
+    const parsedUrl = new URL(url, 'apotek-ecommerce:///');
+
+    if (!isPasswordRecoveryUrl(parsedUrl)) {
+      return {};
+    }
+
+    const params = new URLSearchParams(parsedUrl.search);
+
+    if (parsedUrl.hash) {
+      appendSearchParamsFromString(params, parsedUrl.hash);
+    }
+
+    return {
+      tokenHash: getFirstSearchParam(params, 'token_hash'),
+      type: getFirstSearchParam(params, 'type'),
+      code: getFirstSearchParam(params, 'code'),
+      accessToken: getFirstSearchParam(params, 'access_token'),
+      refreshToken: getFirstSearchParam(params, 'refresh_token'),
+      error: getFirstSearchParam(params, 'error') ?? getFirstSearchParam(params, 'error_code'),
+      errorDescription: getFirstSearchParam(params, 'error_description'),
+    };
+  } catch {
+    return {};
+  }
 }
 
 function getErrorCode(error: unknown): string | undefined {
@@ -73,6 +145,45 @@ function getErrorCode(error: unknown): string | undefined {
   }
 
   return undefined;
+}
+
+function getErrorField(error: unknown, field: string): string | number | undefined {
+  if (typeof error !== 'object' || error === null || !(field in error)) {
+    return undefined;
+  }
+
+  const value = (error as Record<string, unknown>)[field];
+  return typeof value === 'string' || typeof value === 'number' ? value : undefined;
+}
+
+function logRecoveryVerificationFailure(context: string, error: unknown) {
+  if (!__DEV__) {
+    return;
+  }
+
+  console.log('[ResetPassword] Recovery verification failed', {
+    context,
+    code: getErrorField(error, 'code'),
+    message: getErrorField(error, 'message'),
+    name: getErrorField(error, 'name'),
+    status: getErrorField(error, 'status'),
+  });
+}
+
+function getRecoveryCredentialKey(params: ParsedRecoveryParams): string | null {
+  if (params.code) {
+    return `code:${params.code}`;
+  }
+
+  if (params.tokenHash && params.type === 'recovery') {
+    return `token_hash:${params.tokenHash}`;
+  }
+
+  if (params.accessToken && params.refreshToken && (!params.type || params.type === 'recovery')) {
+    return `session:${params.accessToken}`;
+  }
+
+  return null;
 }
 
 function getRecoveryVerificationErrorMessage(error: unknown): string {
@@ -102,14 +213,39 @@ export default function ResetPassword() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<RecoverySearchParams>();
+  const linkingUrl = Linking.useLinkingURL();
+  const linkingParams = useMemo(() => getRecoveryParamsFromUrl(linkingUrl), [linkingUrl]);
   const routeParams = useMemo(
     () => ({
-      tokenHash: getFirstRouteParam(params.token_hash),
-      type: getFirstRouteParam(params.type),
-      code: getFirstRouteParam(params.code),
-      error: getFirstRouteParam(params.error),
+      tokenHash: getFirstRouteParam(params.token_hash) ?? linkingParams.tokenHash,
+      type: getFirstRouteParam(params.type) ?? linkingParams.type,
+      code: getFirstRouteParam(params.code) ?? linkingParams.code,
+      accessToken: getFirstRouteParam(params.access_token) ?? linkingParams.accessToken,
+      refreshToken: getFirstRouteParam(params.refresh_token) ?? linkingParams.refreshToken,
+      error:
+        getFirstRouteParam(params.error) ??
+        getFirstRouteParam(params.error_code) ??
+        linkingParams.error,
+      errorDescription:
+        getFirstRouteParam(params.error_description) ?? linkingParams.errorDescription,
     }),
-    [params.code, params.error, params.token_hash, params.type],
+    [
+      linkingParams.accessToken,
+      linkingParams.code,
+      linkingParams.error,
+      linkingParams.errorDescription,
+      linkingParams.refreshToken,
+      linkingParams.tokenHash,
+      linkingParams.type,
+      params.access_token,
+      params.code,
+      params.error,
+      params.error_code,
+      params.error_description,
+      params.refresh_token,
+      params.token_hash,
+      params.type,
+    ],
   );
   const [status, setStatus] = useState<ResetPasswordStatus>('checking');
   const [submissionState, setSubmissionState] = useState<ResetPasswordSubmissionState>('idle');
@@ -118,6 +254,7 @@ export default function ResetPassword() {
   const [passwordError, setPasswordError] = useState(false);
   const [confirmPasswordError, setConfirmPasswordError] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const verifiedRecoveryCredentialRef = useRef<string | null>(null);
   const loading = submissionState === 'submitting';
   const scrollContentContainerStyle = useMemo(
     () => ({
@@ -133,11 +270,27 @@ export default function ResetPassword() {
     let isMounted = true;
 
     async function verifyRecoveryToken() {
+      const recoveryCredentialKey = getRecoveryCredentialKey(routeParams);
+
+      if (
+        recoveryCredentialKey &&
+        verifiedRecoveryCredentialRef.current === recoveryCredentialKey
+      ) {
+        setStatus('ready');
+        setError(null);
+        return;
+      }
+
       setStatus('checking');
       setError(null);
 
       if (routeParams.error) {
-        setError(getRecoveryVerificationErrorMessage({ code: routeParams.error }));
+        setError(
+          getRecoveryVerificationErrorMessage({
+            code: routeParams.error,
+            message: routeParams.errorDescription ?? routeParams.error,
+          }),
+        );
         setStatus('invalid');
         return;
       }
@@ -154,17 +307,20 @@ export default function ResetPassword() {
           }
 
           if (verifyError) {
+            logRecoveryVerificationFailure('token_hash', verifyError);
             setError(getRecoveryVerificationErrorMessage(verifyError));
             setStatus('invalid');
             return;
           }
 
+          verifiedRecoveryCredentialRef.current = recoveryCredentialKey;
           setStatus('ready');
-        } catch {
+        } catch (verificationError) {
           if (!isMounted) {
             return;
           }
 
+          logRecoveryVerificationFailure('token_hash_exception', verificationError);
           setError(RESET_PASSWORD_NETWORK_MESSAGE);
           setStatus('invalid');
         }
@@ -181,17 +337,57 @@ export default function ResetPassword() {
           }
 
           if (exchangeError) {
+            logRecoveryVerificationFailure('code', exchangeError);
             setError(getRecoveryVerificationErrorMessage(exchangeError));
             setStatus('invalid');
             return;
           }
 
+          verifiedRecoveryCredentialRef.current = recoveryCredentialKey;
           setStatus('ready');
-        } catch {
+        } catch (exchangeException) {
           if (!isMounted) {
             return;
           }
 
+          logRecoveryVerificationFailure('code_exception', exchangeException);
+          setError(RESET_PASSWORD_NETWORK_MESSAGE);
+          setStatus('invalid');
+        }
+
+        return;
+      }
+
+      if (
+        routeParams.accessToken &&
+        routeParams.refreshToken &&
+        (!routeParams.type || routeParams.type === 'recovery')
+      ) {
+        try {
+          const { error: tokenSessionError } = await createSessionFromRecoveryTokens(
+            routeParams.accessToken,
+            routeParams.refreshToken,
+          );
+
+          if (!isMounted) {
+            return;
+          }
+
+          if (tokenSessionError) {
+            logRecoveryVerificationFailure('implicit_tokens', tokenSessionError);
+            setError(getRecoveryVerificationErrorMessage(tokenSessionError));
+            setStatus('invalid');
+            return;
+          }
+
+          verifiedRecoveryCredentialRef.current = recoveryCredentialKey;
+          setStatus('ready');
+        } catch (tokenSessionException) {
+          if (!isMounted) {
+            return;
+          }
+
+          logRecoveryVerificationFailure('implicit_tokens_exception', tokenSessionException);
           setError(RESET_PASSWORD_NETWORK_MESSAGE);
           setStatus('invalid');
         }
@@ -211,7 +407,15 @@ export default function ResetPassword() {
     return () => {
       isMounted = false;
     };
-  }, [routeParams.code, routeParams.error, routeParams.tokenHash, routeParams.type]);
+  }, [
+    routeParams.accessToken,
+    routeParams.code,
+    routeParams.error,
+    routeParams.errorDescription,
+    routeParams.refreshToken,
+    routeParams.tokenHash,
+    routeParams.type,
+  ]);
 
   const dismissError = useCallback(() => {
     setError(null);
@@ -473,7 +677,9 @@ function InvalidRecoveryState({
           backgroundColor="$dangerSoft"
           alignItems="center"
           justifyContent="center">
-          <Text fontSize={40}>✕</Text>
+          <Text fontSize={40} fontWeight="700" color="$danger" lineHeight={44}>
+            ✕
+          </Text>
         </YStack>
         <YStack gap="$2" alignItems="center">
           <Text fontSize={24} fontWeight="700" color="$color" textAlign="center">
