@@ -10,7 +10,8 @@ web-build/
 expo-env.d.ts
 
 # Native — CNG: EAS Build runs expo prebuild automatically
-/android
+/android/*
+!/android/AGENTS.md
 /ios
 *.orig.*
 *.jks
