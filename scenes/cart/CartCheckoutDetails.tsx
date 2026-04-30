@@ -126,7 +126,8 @@ export function CartCheckoutDetails({
         backgroundColor="$surface"
         borderColor="$surfaceBorder"
         opacity={isOffline ? 0.7 : 1}
-        onPress={onOpenShippingSheet}>
+        onPress={onOpenShippingSheet}
+        aria-label="Pilih opsi pengiriman">
         <Card.Header padded>
           <XStack alignItems="center" justifyContent="space-between" gap="$3">
             <Text fontSize="$4" fontWeight="600" color="$color" numberOfLines={1} flex={1}>
