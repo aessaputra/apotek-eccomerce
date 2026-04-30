@@ -296,7 +296,7 @@ describe('RootLayout notification lifecycle', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('/home');
   });
 
-  it('routes a handled reset-password deep link again from Home when the recovery link is active', async () => {
+  it('does not replay a handled reset-password deep link after login reaches Home', async () => {
     mockUseSegments.mockImplementation(() => []);
     mockUseLinkingURL.mockImplementation(
       () => 'apotek-ecommerce:///reset-password?code=recovery-code',
@@ -324,8 +324,42 @@ describe('RootLayout notification lifecycle', () => {
       jest.runAllTimers();
     });
 
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+  });
+
+  it('routes a different reset-password deep link after a previous link was handled', async () => {
+    mockUseSegments.mockImplementation(() => []);
+    mockUseLinkingURL.mockImplementation(
+      () => 'apotek-ecommerce:///reset-password?code=recovery-code',
+    );
+
+    const { rerender } = render(<RootLayout />);
+
+    await Promise.resolve();
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockReplace).toHaveBeenCalledWith('/(auth)/reset-password?code=recovery-code');
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+
+    mockUseSegments.mockImplementation(() => ['(tabs)', 'home']);
+    mockUseLinkingURL.mockImplementation(
+      () => 'apotek-ecommerce:///reset-password?code=fresh-recovery-code',
+    );
+
+    rerender(<RootLayout />);
+
+    await Promise.resolve();
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
     expect(mockReplace).toHaveBeenCalledTimes(2);
-    expect(mockReplace).toHaveBeenLastCalledWith('/(auth)/reset-password?code=recovery-code');
+    expect(mockReplace).toHaveBeenLastCalledWith('/(auth)/reset-password?code=fresh-recovery-code');
     expect(mockNavigate).not.toHaveBeenCalledWith('/home');
   });
 

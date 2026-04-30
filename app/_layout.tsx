@@ -146,8 +146,7 @@ function Router() {
   const passwordRecoveryRouteFromUrl = getPasswordRecoveryRouteFromUrl(linkingUrl);
   const isHandledPasswordRecoveryReplay =
     passwordRecoveryRouteFromUrl &&
-    handledPasswordRecoveryRouteRef.current === passwordRecoveryRouteFromUrl &&
-    (!currentGroup || inAuthGroup);
+    handledPasswordRecoveryRouteRef.current === passwordRecoveryRouteFromUrl;
 
   useEffect(() => {
     assetsReadyRef.current = assetsReady;
