@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useState } from 'react';
-import { Button, Text, XStack, YStack, useTheme } from 'tamagui';
+import { Text, XStack, YStack, useTheme } from 'tamagui';
 import { Check, Trash2 } from '@tamagui/lucide-icons';
 import { CartItemWithProduct } from '@/types/cart';
 import Image from '@/components/elements/Image/Image';
@@ -15,7 +15,9 @@ import Animated, {
 import { RectButton } from 'react-native-gesture-handler';
 import { formatPrice } from '@/services/home.service';
 import { getThemeColor } from '@/utils/theme';
-import { MIN_TOUCH_TARGET } from '@/constants/ui';
+
+const CART_ITEM_CHECKBOX_SIZE = 26;
+const CART_ITEM_CHECK_ICON_SIZE = 16;
 
 export interface CartItemRowProps {
   item: CartItemWithProduct;
@@ -193,23 +195,27 @@ export const CartItemRow = memo(function CartItemRow({
                 </Text>
               </YStack>
 
-              <Button
-                width={MIN_TOUCH_TARGET}
-                height={MIN_TOUCH_TARGET}
-                padding={0}
+              <XStack
+                width={CART_ITEM_CHECKBOX_SIZE}
+                height={CART_ITEM_CHECKBOX_SIZE}
+                marginTop="$0.5"
+                flexShrink={0}
+                alignItems="center"
+                justifyContent="center"
                 borderRadius="$2"
                 backgroundColor={isSelected ? '$primary' : '$surfaceSubtle'}
                 borderWidth={1.5}
                 borderColor={isSelected ? '$primary' : '$surfaceBorder'}
                 pressStyle={{ opacity: 0.85, scale: 0.96 }}
                 focusStyle={{ borderColor: '$primary' }}
+                hitSlop={9}
                 onPress={handleToggleSelection}
                 role="checkbox"
                 aria-checked={isSelected}
                 aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${item.product.name}`}
                 testID={`cart-item-checkbox-${item.id}`}>
-                {isSelected ? <Check size={20} color="$onPrimary" /> : null}
-              </Button>
+                {isSelected ? <Check size={CART_ITEM_CHECK_ICON_SIZE} color="$onPrimary" /> : null}
+              </XStack>
             </XStack>
 
             <XStack justifyContent="flex-end" alignItems="center">
