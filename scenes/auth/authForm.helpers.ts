@@ -16,7 +16,7 @@ export type AuthLoginMessageRouteParams = {
 export type AuthPasswordValidationResult = ReturnType<typeof validatePassword>;
 
 export const LOGIN_RESET_SUCCESS_MESSAGE =
-  'Password berhasil direset. Silakan login dengan password baru Anda.';
+  'Password berhasil diperbarui. Silakan login dengan password baru Anda.';
 
 export function normalizeAuthEmail(email: string): string {
   return email.trim();

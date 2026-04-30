@@ -24,11 +24,7 @@ import {
 } from '@/services/auth.service';
 import { images } from '@/utils/images';
 import { getThemeColor } from '@/utils/theme';
-import {
-  buildLoginMessageRouteParams,
-  LOGIN_RESET_SUCCESS_MESSAGE,
-  validateAuthPassword,
-} from './authForm.helpers';
+import { LOGIN_RESET_SUCCESS_MESSAGE, validateAuthPassword } from './authForm.helpers';
 
 const PASSWORD_MISMATCH_MESSAGE = 'Konfirmasi password tidak sama.';
 const UPDATE_PASSWORD_EXCEPTION_MESSAGE =
@@ -48,7 +44,7 @@ const ALLOWED_UPDATE_PASSWORD_ERROR_CODES = new Set<string>([
   AuthErrorCode.VALIDATION_FAILED,
 ]);
 
-type ResetPasswordStatus = 'checking' | 'ready' | 'invalid';
+type ResetPasswordStatus = 'checking' | 'ready' | 'invalid' | 'success';
 type ResetPasswordSubmissionState = 'idle' | 'submitting';
 type RecoverySearchParams = {
   token_hash?: string | string[];
@@ -480,10 +476,9 @@ export default function ResetPassword() {
         return;
       }
 
-      router.replace({
-        pathname: '/(auth)/login',
-        params: buildLoginMessageRouteParams({ resetSuccess: LOGIN_RESET_SUCCESS_MESSAGE }),
-      });
+      setPassword('');
+      setConfirmPassword('');
+      setStatus('success');
     } catch {
       setError(UPDATE_PASSWORD_EXCEPTION_MESSAGE);
     } finally {
@@ -569,6 +564,8 @@ export default function ResetPassword() {
                     onGoToForgotPassword={handleGoToForgotPassword}
                     onGoToLogin={handleGoToLogin}
                   />
+                ) : status === 'success' ? (
+                  <SuccessfulRecoveryState onGoToLogin={handleGoToLogin} />
                 ) : (
                   <YStack gap="$4">
                     <ErrorMessage message={error} onDismiss={dismissError} dismissible={true} />
@@ -642,6 +639,47 @@ export default function ResetPassword() {
         </KeyboardAvoidingWrapper>
       </YStack>
     </SafeAreaView>
+  );
+}
+
+type SuccessfulRecoveryStateProps = {
+  onGoToLogin: () => void;
+};
+
+function SuccessfulRecoveryState({ onGoToLogin }: SuccessfulRecoveryStateProps) {
+  return (
+    <YStack gap="$6" paddingVertical="$4">
+      <YStack gap="$4" alignItems="center">
+        <YStack
+          width={80}
+          height={80}
+          borderRadius={40}
+          backgroundColor="$successSoft"
+          alignItems="center"
+          justifyContent="center">
+          <Text fontSize={40} fontWeight="800" color="$success" lineHeight={44}>
+            ✓
+          </Text>
+        </YStack>
+        <YStack gap="$2" alignItems="center">
+          <Text fontSize={24} fontWeight="700" color="$color" textAlign="center">
+            Password Berhasil Diperbarui
+          </Text>
+          <Text fontSize={15} color="$colorSubtle" textAlign="center" lineHeight={22}>
+            {LOGIN_RESET_SUCCESS_MESSAGE}
+          </Text>
+        </YStack>
+      </YStack>
+
+      <Button
+        title="Masuk Sekarang"
+        onPress={onGoToLogin}
+        paddingVertical={14}
+        borderRadius={12}
+        backgroundColor="$primary"
+        titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
+      />
+    </YStack>
   );
 }
 

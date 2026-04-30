@@ -9,7 +9,6 @@ import {
 } from '@/test-utils/renderWithTheme';
 import ResetPassword from '@/scenes/auth/ResetPassword';
 import { AuthErrorCode } from '@/constants/auth.errors';
-import { LOGIN_RESET_SUCCESS_MESSAGE } from '@/scenes/auth/authForm.helpers';
 import { themes } from '@/themes';
 
 const mockPush = jest.fn();
@@ -304,7 +303,7 @@ describe('<ResetPassword />', () => {
     expect(mockSignOut).not.toHaveBeenCalled();
   });
 
-  it('updates the password, signs out, and navigates to Login with reset-success copy', async () => {
+  it('updates the password, signs out, and shows a success confirmation before Login', async () => {
     const callSequence: string[] = [];
     mockUpdatePassword.mockImplementationOnce(async () => {
       callSequence.push('updatePassword');
@@ -323,11 +322,17 @@ describe('<ResetPassword />', () => {
       expect(mockUpdatePassword).toHaveBeenCalledWith('password1');
       expect(mockSignOut).toHaveBeenCalledWith();
       expect(callSequence).toEqual(['updatePassword', 'signOut']);
-      expect(mockReplace).toHaveBeenCalledWith({
-        pathname: '/(auth)/login',
-        params: { resetSuccess: LOGIN_RESET_SUCCESS_MESSAGE },
-      });
+      expect(screen.getByText('Password Berhasil Diperbarui')).toBeTruthy();
+      expect(
+        screen.getByText('Password berhasil diperbarui. Silakan login dengan password baru Anda.'),
+      ).toBeTruthy();
     });
+
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
+
+    fireEvent.press(screen.getByLabelText('Masuk Sekarang'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
   });
 
   it.each([
@@ -432,9 +437,7 @@ describe('<ResetPassword />', () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByText('Keep this session open')).toBeNull();
-    expect(mockReplace).not.toHaveBeenCalledWith({
-      pathname: '/(auth)/login',
-      params: { resetSuccess: LOGIN_RESET_SUCCESS_MESSAGE },
-    });
+    expect(screen.queryByText('Password Berhasil Diperbarui')).toBeNull();
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/login');
   });
 });
