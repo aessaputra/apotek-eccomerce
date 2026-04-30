@@ -21,6 +21,8 @@ scenes/
 
 ## CHILD AGENTS
 
+- `auth/AGENTS.md` — login/signup/reset/verify-email form and route-param helper rules.
+- `home/AGENTS.md` — home feed sections, banner CTA routing, category/product layout rules.
 - `cart/AGENTS.md` — cart, checkout review, payment WebView, and persisted checkout-session rules.
 - `orders/AGENTS.md` — order list/detail/status patterns and tracking conventions.
 - `profile/AGENTS.md` — profile/address flows, area-picker helper cluster, and route-param helpers.
