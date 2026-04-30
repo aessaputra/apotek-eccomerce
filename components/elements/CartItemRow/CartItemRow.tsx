@@ -154,35 +154,19 @@ export const CartItemRow = memo(function CartItemRow({
         <XStack
           padding="$3"
           gap="$3"
-          alignItems="center"
+          alignItems="stretch"
           backgroundColor="$surface"
           borderRadius="$3"
           borderWidth={1}
           borderColor="$surfaceBorder"
           position="relative">
-          <Button
-            width={MIN_TOUCH_TARGET}
-            height={MIN_TOUCH_TARGET}
-            padding={0}
-            circular
-            backgroundColor={isSelected ? '$primary' : '$surfaceSubtle'}
-            borderWidth={1}
-            borderColor={isSelected ? '$primary' : '$surfaceBorder'}
-            pressStyle={{ opacity: 0.85, scale: 0.96 }}
-            onPress={handleToggleSelection}
-            role="checkbox"
-            aria-checked={isSelected}
-            aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${item.product.name}`}
-            testID={`cart-item-checkbox-${item.id}`}>
-            {isSelected ? <Check size={20} color="$onPrimary" /> : null}
-          </Button>
-
           <YStack
             width={80}
             height={80}
             borderRadius="$2"
             overflow="hidden"
-            backgroundColor="$surfaceSubtle">
+            backgroundColor="$surfaceSubtle"
+            alignSelf="center">
             {imageUrl ? (
               <Image
                 source={{ uri: imageUrl }}
@@ -192,36 +176,52 @@ export const CartItemRow = memo(function CartItemRow({
             ) : null}
           </YStack>
 
-          <YStack flex={1} minWidth={0} gap="$1" justifyContent="center">
-            <Text
-              fontSize="$3"
-              fontWeight="600"
-              color="$color"
-              numberOfLines={2}
-              ellipsizeMode="tail"
-              flexShrink={1}>
-              {item.product.name}
-            </Text>
-            <Text fontSize="$2" color="$colorSubtle" numberOfLines={1} ellipsizeMode="tail">
-              {formatPrice(unitPrice)}
-            </Text>
-          </YStack>
+          <YStack flex={1} minWidth={0} gap="$2" justifyContent="space-between">
+            <XStack alignItems="flex-start" gap="$2">
+              <YStack flex={1} minWidth={0} gap="$1" paddingTop="$0.5">
+                <Text
+                  fontSize="$3"
+                  fontWeight="600"
+                  color="$color"
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                  flexShrink={1}>
+                  {item.product.name}
+                </Text>
+                <Text fontSize="$2" color="$colorSubtle" numberOfLines={1} ellipsizeMode="tail">
+                  {formatPrice(unitPrice)}
+                </Text>
+              </YStack>
 
-          <YStack
-            alignItems="flex-end"
-            gap="$2"
-            justifyContent="flex-end"
-            flexShrink={0}
-            marginLeft="auto"
-            alignSelf="stretch">
-            <QuantitySelector
-              value={item.quantity}
-              min={0}
-              max={item.product.stock || 99}
-              onChange={handleQuantityChange}
-              size="sm"
-              disableAnimation
-            />
+              <Button
+                width={MIN_TOUCH_TARGET}
+                height={MIN_TOUCH_TARGET}
+                padding={0}
+                borderRadius="$2"
+                backgroundColor={isSelected ? '$primary' : '$surfaceSubtle'}
+                borderWidth={1.5}
+                borderColor={isSelected ? '$primary' : '$surfaceBorder'}
+                pressStyle={{ opacity: 0.85, scale: 0.96 }}
+                focusStyle={{ borderColor: '$primary' }}
+                onPress={handleToggleSelection}
+                role="checkbox"
+                aria-checked={isSelected}
+                aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${item.product.name}`}
+                testID={`cart-item-checkbox-${item.id}`}>
+                {isSelected ? <Check size={20} color="$onPrimary" /> : null}
+              </Button>
+            </XStack>
+
+            <XStack justifyContent="flex-end" alignItems="center">
+              <QuantitySelector
+                value={item.quantity}
+                min={0}
+                max={item.product.stock || 99}
+                onChange={handleQuantityChange}
+                size="sm"
+                disableAnimation
+              />
+            </XStack>
           </YStack>
         </XStack>
       </Swipeable>
