@@ -14,12 +14,12 @@ providers/
 
 ## WHERE TO LOOK
 
-| Task | Location | Notes |
-| --- | --- | --- |
-| Base provider order | `Provider.tsx` | Wraps Redux and Tamagui before navigation theme |
-| Query cache settings | `QueryProvider.tsx` | `staleTime` 1h, `gcTime` 24h, retry disabled |
-| Auth bootstrap | `AuthProvider.tsx` | 15s init timeout, OAuth hash handling, profile validation |
-| Export providers | `index.ts` | Keep imports stable for `app/_layout.tsx` |
+| Task                 | Location            | Notes                                                     |
+| -------------------- | ------------------- | --------------------------------------------------------- |
+| Base provider order  | `Provider.tsx`      | Wraps Redux and Tamagui before navigation theme           |
+| Query cache settings | `QueryProvider.tsx` | `staleTime` 1h, `gcTime` 24h, `retry: 2`                  |
+| Auth bootstrap       | `AuthProvider.tsx`  | 15s init timeout, OAuth hash handling, profile validation |
+| Export providers     | `index.ts`          | Keep imports stable for `app/_layout.tsx`                 |
 
 ## CONVENTIONS
 
