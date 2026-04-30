@@ -86,6 +86,7 @@ const mockCartShippingHookState: {
   shippingSheetOpen: boolean;
   setShippingSheetOpen: jest.Mock;
   handleCalculateShipping: jest.Mock<() => Promise<void>>;
+  handleOpenShippingSheet: jest.Mock<() => void>;
   handleSelectShippingKey: jest.Mock<(key: string) => void>;
   quoteDestination: { areaId: string; postalCode: number } | null;
 } = {
@@ -98,6 +99,7 @@ const mockCartShippingHookState: {
   shippingSheetOpen: false,
   setShippingSheetOpen: jest.fn(),
   handleCalculateShipping: jest.fn(async () => undefined),
+  handleOpenShippingSheet: jest.fn(),
   handleSelectShippingKey: jest.fn((_: string) => undefined),
   quoteDestination: null,
 };
@@ -162,7 +164,10 @@ jest.mock('@/hooks/useCartShipping', () => ({
       handleOpenShippingSheet: () => {
         if (params.isOffline) {
           params.onOfflineAction('Opsi pengiriman tidak tersedia offline.');
+          return;
         }
+
+        mockCartShippingHookState.handleOpenShippingSheet();
       },
     };
   },
@@ -300,6 +305,41 @@ jest.mock('@/components/elements/EmptyCartState/EmptyCartState', () => ({
         <Text>Empty Cart State</Text>
         <Pressable accessibilityLabel="browse-products" onPress={onBrowse}>
           <Text>Browse products</Text>
+        </Pressable>
+      </View>
+    );
+  },
+}));
+
+jest.mock('@/components/elements/AppAlertDialog', () => ({
+  __esModule: true,
+  default: ({
+    open,
+    title,
+    description,
+    confirmText,
+    onOpenChange,
+  }: {
+    open: boolean;
+    title: string;
+    description: string;
+    confirmText?: string;
+    onOpenChange: (open: boolean) => void;
+  }) => {
+    const { Pressable, Text, View } = jest.requireActual(
+      'react-native',
+    ) as typeof import('react-native');
+
+    if (!open) {
+      return null;
+    }
+
+    return (
+      <View accessibilityRole="alert">
+        <Text>{title}</Text>
+        <Text>{description}</Text>
+        <Pressable accessibilityLabel={confirmText ?? 'OK'} onPress={() => onOpenChange(false)}>
+          <Text>{confirmText ?? 'OK'}</Text>
         </Pressable>
       </View>
     );
@@ -479,6 +519,7 @@ describe('<Cart />', () => {
     mockCartShippingHookState.setShippingError.mockClear();
     mockCartShippingHookState.setShippingSheetOpen.mockClear();
     mockCartShippingHookState.handleCalculateShipping.mockClear();
+    mockCartShippingHookState.handleOpenShippingSheet.mockClear();
     mockCartShippingHookState.handleSelectShippingKey.mockClear();
     mockCartCheckoutHookState.startingCheckout = false;
     mockCartCheckoutHookState.activeOrderId = null;
@@ -570,6 +611,41 @@ describe('<Cart />', () => {
 
     expect(screen.getByText('Pilih minimal satu produk untuk checkout')).not.toBeNull();
     expect(screen.getByTestId('sticky-disabled').children.join('')).toBe('true');
+  });
+
+  it('shows an alert dialog instead of inline shipping error when calculating shipping with no selected rows', () => {
+    setReadyForCheckout();
+    mockCartShippingHookState.shippingError = new Error(
+      'Keranjang kosong. Tambahkan produk sebelum menghitung ongkir.',
+    );
+
+    render(<Cart />);
+
+    fireEvent.press(screen.getByTestId('cart-select-all-toggle'));
+    fireEvent.press(screen.getByLabelText('Pilih opsi pengiriman'));
+
+    expect(screen.getByText('Keranjang kosong')).not.toBeNull();
+    expect(
+      screen.getByText('Tambahkan atau pilih produk sebelum menghitung ongkir.'),
+    ).not.toBeNull();
+    expect(
+      screen.queryByText('Keranjang kosong. Tambahkan produk sebelum menghitung ongkir.'),
+    ).toBeNull();
+    expect(mockCartShippingHookState.setShippingError).toHaveBeenCalledWith(null);
+
+    fireEvent.press(screen.getByLabelText('Mengerti'));
+
+    expect(screen.queryByText('Keranjang kosong')).toBeNull();
+  });
+
+  it('keeps normal shipping flow when at least one row is selected', () => {
+    setReadyForCheckout();
+    render(<Cart />);
+
+    fireEvent.press(screen.getByLabelText('Pilih opsi pengiriman'));
+
+    expect(screen.queryByText('Keranjang kosong')).toBeNull();
+    expect(mockCartShippingHookState.handleOpenShippingSheet).toHaveBeenCalledTimes(1);
   });
 
   it('passes selected cart row IDs and selected snapshot to the review route', () => {

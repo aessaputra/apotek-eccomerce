@@ -10,6 +10,7 @@ import { CartIcon } from '@/components/icons';
 import { CartItemRow } from '@/components/elements/CartItemRow/CartItemRow';
 import { StickyBottomBar } from '@/components/elements/StickyBottomBar/StickyBottomBar';
 import { EmptyCartState } from '@/components/elements/EmptyCartState/EmptyCartState';
+import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { useAppSlice } from '@/slices';
 import { useOfflineActionMessage } from '@/scenes/cart/useOfflineActionMessage';
 import { useCartAddress } from '@/hooks/useCartAddress';
@@ -65,6 +66,10 @@ function getSelectedCartSnapshot(items: CartItemWithProduct[]): CartSnapshot {
 
 type SelectionMode = 'initial' | 'manual' | 'all';
 
+const EMPTY_SHIPPING_SELECTION_TITLE = 'Keranjang kosong';
+const EMPTY_SHIPPING_SELECTION_DESCRIPTION =
+  'Tambahkan atau pilih produk sebelum menghitung ongkir.';
+
 export default function Cart() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -75,6 +80,7 @@ export default function Cart() {
   const { offlineActionMessage, showOfflineActionMessage } = useOfflineActionMessage();
   const [cartActionError, setCartActionError] = useState<string | null>(null);
   const [addressError, setAddressError] = useState<AppError | null>(null);
+  const [emptyShippingSelectionDialogOpen, setEmptyShippingSelectionDialogOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('initial');
   const [selectedCartItemIds, setSelectedCartItemIds] = useState<string[]>([]);
   const {
@@ -308,6 +314,19 @@ export default function Cart() {
     [addressError, shippingError],
   );
 
+  const hasEmptyShippingSelection =
+    selectedSnapshot.itemCount <= 0 || selectedSnapshot.estimatedWeightGrams <= 0;
+  const displayedShippingErrorMessage = hasEmptyShippingSelection ? null : shippingErrorMessage;
+  const displayedShippingRecoverySuggestion = hasEmptyShippingSelection
+    ? null
+    : shippingRecoverySuggestion;
+
+  useEffect(() => {
+    if (hasEmptyShippingSelection) {
+      setShippingError(null);
+    }
+  }, [hasEmptyShippingSelection, setShippingError]);
+
   const handleReviewCheckout = useCallback(() => {
     if (!selectedAddress || !selectedShippingOption || activeSelectedCartItemIds.length === 0) {
       return;
@@ -431,6 +450,16 @@ export default function Cart() {
     void handleCalculateShipping();
   }, [handleCalculateShipping]);
 
+  const handleOpenShippingOptions = useCallback(() => {
+    if (hasEmptyShippingSelection) {
+      setShippingError(null);
+      setEmptyShippingSelectionDialogOpen(true);
+      return;
+    }
+
+    handleOpenShippingSheet();
+  }, [handleOpenShippingSheet, hasEmptyShippingSelection, setShippingError]);
+
   const listHeaderComponent = useMemo(
     () => (
       <YStack gap="$3">
@@ -530,15 +559,15 @@ export default function Cart() {
         loadingRates={loadingRates}
         selectedShippingOption={selectedShippingOption}
         isOffline={isOffline}
-        onOpenShippingSheet={handleOpenShippingSheet}
+        onOpenShippingSheet={handleOpenShippingOptions}
         activeOrderId={activeOrderId}
         paymentError={paymentError}
         startingCheckout={startingCheckout}
         onCancelPendingCheckout={handleCancelPendingCheckout}
         onContinuePendingCheckout={handleContinuePendingCheckout}
         shippingOptionsCount={shippingOptions.length}
-        shippingErrorMessage={shippingErrorMessage}
-        shippingRecoverySuggestion={shippingRecoverySuggestion}
+        shippingErrorMessage={displayedShippingErrorMessage}
+        shippingRecoverySuggestion={displayedShippingRecoverySuggestion}
         onRetryShipping={handleRetryShipping}
       />
     );
@@ -549,7 +578,7 @@ export default function Cart() {
     handleContinuePendingCheckout,
     handleAddAddress,
     handleOpenAddressSheet,
-    handleOpenShippingSheet,
+    handleOpenShippingOptions,
     handleRetryShipping,
     isLoading,
     isOffline,
@@ -560,9 +589,9 @@ export default function Cart() {
     selectedAddress,
     selectedAddressFullText,
     selectedShippingOption,
-    shippingErrorMessage,
+    displayedShippingErrorMessage,
     shippingOptions.length,
-    shippingRecoverySuggestion,
+    displayedShippingRecoverySuggestion,
     startingCheckout,
   ]);
 
@@ -626,6 +655,14 @@ export default function Cart() {
             onSelectAddress={handleSelectAddress}
             onEditAddress={handleEditAddress}
             onAddAddress={handleAddAddress}
+          />
+
+          <AppAlertDialog
+            open={emptyShippingSelectionDialogOpen}
+            onOpenChange={setEmptyShippingSelectionDialogOpen}
+            title={EMPTY_SHIPPING_SELECTION_TITLE}
+            description={EMPTY_SHIPPING_SELECTION_DESCRIPTION}
+            confirmText="Mengerti"
           />
 
           {shouldShowCheckoutBar ? (
