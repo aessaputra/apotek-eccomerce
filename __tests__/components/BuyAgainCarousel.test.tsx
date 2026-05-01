@@ -25,6 +25,15 @@ describe('<BuyAgainCarousel />', () => {
     expect(screen.queryByText('Beli Lagi')).toBeNull();
   });
 
+  test('renders the section title and skeletons while loading products', () => {
+    render(
+      <BuyAgainCarousel products={[]} isLoading onProductPress={() => {}} onAddToCart={() => {}} />,
+    );
+
+    expect(screen.getByText('Beli Lagi')).toBeTruthy();
+    expect(screen.getAllByTestId('buy-again-skeleton-item')).toHaveLength(2);
+  });
+
   test('renders product cards with prices', () => {
     render(
       <BuyAgainCarousel

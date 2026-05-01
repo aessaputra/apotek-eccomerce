@@ -15,12 +15,6 @@ const StyledCard = styled(Card, {
   borderWidth: 1,
   borderLeftWidth: 4,
   borderLeftColor: '$primary',
-  // Smooth entrance style using config defaults if react-native-reanimated is active
-  animation: 'lazy',
-  enterStyle: {
-    opacity: 0,
-    y: 10,
-  },
 });
 
 const IconWrapper = styled(YStack, {

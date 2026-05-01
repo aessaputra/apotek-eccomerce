@@ -28,14 +28,51 @@ const SectionTitle = styled(Text, {
   letterSpacing: -0.3,
 });
 
+const SkeletonCard = styled(YStack, {
+  width: 140,
+  padding: '$3',
+  gap: '$2',
+  backgroundColor: '$surface',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  borderRadius: '$5',
+});
+
+const SkeletonImage = styled(YStack, {
+  height: 112,
+  borderRadius: '$3',
+  backgroundColor: '$surfaceBorder',
+});
+
+const SkeletonLine = styled(YStack, {
+  height: 14,
+  borderRadius: '$2',
+  backgroundColor: '$surfaceBorder',
+});
+
 interface BuyAgainCarouselProps {
   products: PastPurchaseProduct[];
+  isLoading?: boolean;
   onProductPress: (product: PastPurchaseProduct) => void;
   onAddToCart: (product: PastPurchaseProduct) => void;
 }
 
+function BuyAgainSkeletonCards({ width }: { width: number }) {
+  return (
+    <>
+      {[1, 2].map(index => (
+        <SkeletonCard key={index} width={width} testID="buy-again-skeleton-item">
+          <SkeletonImage />
+          <SkeletonLine width="80%" />
+          <SkeletonLine width="50%" />
+        </SkeletonCard>
+      ))}
+    </>
+  );
+}
+
 export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
-  ({ products, onProductPress, onAddToCart }) => {
+  ({ products, isLoading = false, onProductPress, onAddToCart }) => {
     const media = useMedia();
     const { width: screenWidth } = useWindowDimensions();
 
@@ -43,12 +80,12 @@ export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
       ? DESKTOP_CARD_WIDTH
       : Math.max(140, Math.floor((screenWidth - HORIZONTAL_PADDING - CARD_GAP - PEEK_OFFSET) / 2));
 
-    if (products.length === 0) {
+    if (products.length === 0 && !isLoading) {
       return null;
     }
 
     return (
-      <YStack paddingTop="$4" animation="lazy" enterStyle={{ opacity: 0, y: 8 }}>
+      <YStack paddingTop="$4">
         <SectionHeader>
           <RotateCcw size={18} color="$primary" />
           <SectionTitle>Beli Lagi</SectionTitle>
@@ -58,15 +95,19 @@ export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={CAROUSEL_CONTENT_CONTAINER_STYLE}>
-          {products.map(product => (
-            <BuyAgainCard
-              key={product.id}
-              product={product}
-              width={cardWidth}
-              onPress={onProductPress}
-              onAddToCart={onAddToCart}
-            />
-          ))}
+          {products.length > 0 ? (
+            products.map(product => (
+              <BuyAgainCard
+                key={product.id}
+                product={product}
+                width={cardWidth}
+                onPress={onProductPress}
+                onAddToCart={onAddToCart}
+              />
+            ))
+          ) : (
+            <BuyAgainSkeletonCards width={cardWidth} />
+          )}
         </ScrollView>
       </YStack>
     );
