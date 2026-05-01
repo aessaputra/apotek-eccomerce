@@ -2,14 +2,14 @@ import React from 'react';
 import { ScrollView } from 'react-native';
 import { act, fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import Orders from '@/scenes/orders/Orders';
+import type { UseOrdersLandingDataReturn } from '@/hooks/useOrdersLandingData';
 import type { PastPurchaseProduct } from '@/services';
 
 const mockPush = jest.fn();
-const mockGetOrderTabCounts = jest.fn();
-const mockGetPastPurchasedProducts = jest.fn();
 const mockAddProductToCart = jest.fn();
 const mockOrderStatusTabs = jest.fn();
 const mockBuyAgainCarousel = jest.fn();
+const mockUseOrdersLandingData = jest.fn<UseOrdersLandingDataReturn, [string | undefined]>();
 const mockUseAppSlice = jest.fn();
 
 type OrderStatusTabsProps = {
@@ -19,6 +19,7 @@ type OrderStatusTabsProps = {
 
 type BuyAgainCarouselProps = {
   products: PastPurchaseProduct[];
+  isLoading?: boolean;
   onProductPress: (product: PastPurchaseProduct) => void;
   onAddToCart: (product: PastPurchaseProduct) => Promise<void>;
 };
@@ -63,9 +64,11 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('@/services', () => ({
-  getOrderTabCounts: (...args: unknown[]) => mockGetOrderTabCounts(...args),
-  getPastPurchasedProducts: (...args: unknown[]) => mockGetPastPurchasedProducts(...args),
   addProductToCart: (...args: unknown[]) => mockAddProductToCart(...args),
+}));
+
+jest.mock('@/hooks/useOrdersLandingData', () => ({
+  useOrdersLandingData: (userId: string | undefined) => mockUseOrdersLandingData(userId),
 }));
 
 jest.mock('@/slices', () => ({
@@ -87,51 +90,56 @@ jest.mock('@/components/elements/BuyAgainCarousel', () => ({
 describe('<Orders />', () => {
   beforeEach(() => {
     mockPush.mockReset();
-    mockGetOrderTabCounts.mockReset();
-    mockGetPastPurchasedProducts.mockReset();
     mockAddProductToCart.mockReset();
     mockOrderStatusTabs.mockClear();
     mockBuyAgainCarousel.mockClear();
+    mockUseOrdersLandingData.mockReset();
     mockUseAppSlice.mockReset();
 
-    mockGetOrderTabCounts.mockResolvedValue({
-      data: {
+    mockUseOrdersLandingData.mockReturnValue({
+      counts: {
         unpaid: 2,
         packing: 3,
         shipped: 4,
         completed: 1,
       },
       error: null,
-    });
-    mockGetPastPurchasedProducts.mockResolvedValue({
-      data: [],
-      error: null,
+      pastProducts: [],
+      isLoadingCounts: false,
+      isLoadingPastProducts: false,
+      isRefreshing: false,
+      refresh: jest.fn(() => Promise.resolve()),
     });
     mockAddProductToCart.mockResolvedValue({ error: null });
   });
 
-  test('passes the fetched counts directly to the order tabs', async () => {
+  test('passes the landing hook counts directly to the order tabs', () => {
     mockUseAppSlice.mockReturnValue({
       user: { id: 'user-1' },
     });
 
     render(<Orders />);
 
-    await waitFor(() => {
-      const orderStatusTabsProps = getLatestOrderStatusTabsProps();
+    const orderStatusTabsProps = getLatestOrderStatusTabsProps();
 
-      expect(orderStatusTabsProps.counts).toEqual({
-        unpaid: 2,
-        packing: 3,
-        shipped: 4,
-        completed: 1,
-      });
+    expect(orderStatusTabsProps.counts).toEqual({
+      unpaid: 2,
+      packing: 3,
+      shipped: 4,
+      completed: 1,
     });
   });
 
   test('renders landing content inside a vertical scroll container', () => {
-    mockGetOrderTabCounts.mockReturnValue(new Promise(() => undefined));
-    mockGetPastPurchasedProducts.mockReturnValue(new Promise(() => undefined));
+    mockUseOrdersLandingData.mockReturnValue({
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0 },
+      pastProducts: [],
+      isLoadingCounts: true,
+      isLoadingPastProducts: true,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(() => Promise.resolve()),
+    });
     mockUseAppSlice.mockReturnValue({
       user: { id: 'user-1' },
     });
@@ -147,6 +155,9 @@ describe('<Orders />', () => {
       flexGrow: 1,
     });
     expect(scrollView.props.showsVerticalScrollIndicator).toBe(false);
+
+    const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
+    expect(buyAgainCarouselProps.isLoading).toBe(true);
   });
 
   test('navigates to the completed tab without mutating local badge state', async () => {
@@ -174,9 +185,14 @@ describe('<Orders />', () => {
     const secondProduct = createPastProduct({ id: 'product-2', name: 'Paracetamol' });
     const thirdProduct = createPastProduct({ id: 'product-3', name: 'Obat Batuk' });
 
-    mockGetPastPurchasedProducts.mockResolvedValue({
-      data: [firstProduct, secondProduct, thirdProduct],
+    mockUseOrdersLandingData.mockReturnValue({
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0 },
+      pastProducts: [firstProduct, secondProduct, thirdProduct],
+      isLoadingCounts: false,
+      isLoadingPastProducts: false,
+      isRefreshing: false,
       error: null,
+      refresh: jest.fn(() => Promise.resolve()),
     });
 
     mockUseAppSlice.mockReturnValue({
@@ -185,19 +201,22 @@ describe('<Orders />', () => {
 
     render(<Orders />);
 
-    await waitFor(() => {
-      const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
+    const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
 
-      expect(buyAgainCarouselProps.products).toEqual([firstProduct, secondProduct]);
-    });
+    expect(buyAgainCarouselProps.products).toEqual([firstProduct, secondProduct]);
   });
 
   test('shows a success dialog after buy again adds a product to cart', async () => {
     const product = createPastProduct();
 
-    mockGetPastPurchasedProducts.mockResolvedValue({
-      data: [product],
+    mockUseOrdersLandingData.mockReturnValue({
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0 },
+      pastProducts: [product],
+      isLoadingCounts: false,
+      isLoadingPastProducts: false,
+      isRefreshing: false,
       error: null,
+      refresh: jest.fn(() => Promise.resolve()),
     });
 
     mockUseAppSlice.mockReturnValue({
@@ -232,9 +251,14 @@ describe('<Orders />', () => {
   test('navigates buy again product presses to product details with the product id', async () => {
     const product = createPastProduct();
 
-    mockGetPastPurchasedProducts.mockResolvedValue({
-      data: [product],
+    mockUseOrdersLandingData.mockReturnValue({
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0 },
+      pastProducts: [product],
+      isLoadingCounts: false,
+      isLoadingPastProducts: false,
+      isRefreshing: false,
       error: null,
+      refresh: jest.fn(() => Promise.resolve()),
     });
 
     mockUseAppSlice.mockReturnValue({
