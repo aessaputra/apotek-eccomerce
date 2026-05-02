@@ -8,7 +8,6 @@ import type { OrderListItem } from '@/services';
 const mockPush = jest.fn();
 const mockUseOrdersByStatusPaginated = jest.fn();
 const mockOrderCard = jest.fn();
-const mockOrderStatusTabsHeader = jest.fn();
 
 const createOrder = (id: string, productName: string): OrderListItem => ({
   id,
@@ -72,17 +71,6 @@ jest.mock('@/components/elements/OrderCard', () => ({
   },
 }));
 
-jest.mock('@/scenes/orders/OrderStatusTabsHeader', () => ({
-  OrderStatusTabsHeader: (props: { activeTab: string }) => {
-    mockOrderStatusTabsHeader(props);
-
-    const React = require('react') as typeof import('react');
-    const { Text } = require('react-native') as typeof import('react-native');
-
-    return React.createElement(Text, null, `tabs-header-${props.activeTab}`);
-  },
-}));
-
 jest.mock('@/slices', () => ({
   useAppSlice: () => ({
     user: { id: 'user-1' },
@@ -93,7 +81,6 @@ describe('<CancelledOrders />', () => {
   beforeEach(() => {
     mockPush.mockClear();
     mockOrderCard.mockClear();
-    mockOrderStatusTabsHeader.mockClear();
     mockUseOrdersByStatusPaginated.mockReset();
     mockUseOrdersByStatusPaginated.mockReturnValue({
       orders: mockOrders,
@@ -139,7 +126,7 @@ describe('<CancelledOrders />', () => {
 
     render(<CancelledOrders />);
 
-    expect(screen.getByText('tabs-header-cancelled')).toBeTruthy();
+    expect(screen.queryByText('Dibatalkan')).toBeNull();
     expect(screen.getByText('Memuat pesanan...')).toBeTruthy();
   });
 
@@ -161,7 +148,7 @@ describe('<CancelledOrders />', () => {
 
     render(<CancelledOrders />);
 
-    expect(screen.getByText('tabs-header-cancelled')).toBeTruthy();
+    expect(screen.queryByText('Dibatalkan')).toBeNull();
     expect(screen.getByText('Belum Ada Pesanan Dibatalkan')).not.toBeNull();
     expect(screen.getByText('Pesanan yang dibatalkan akan muncul di sini.')).not.toBeNull();
   });
@@ -208,7 +195,7 @@ describe('<CancelledOrders />', () => {
 
     render(<CancelledOrders />);
 
-    expect(screen.getByText('tabs-header-cancelled')).toBeTruthy();
+    expect(screen.queryByText('Dibatalkan')).toBeNull();
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
     expect(screen.getByText('Gagal memuat data')).toBeTruthy();
 
@@ -220,8 +207,7 @@ describe('<CancelledOrders />', () => {
   test('routes to order detail when an order card is pressed', () => {
     render(<CancelledOrders />);
 
-    expect(screen.getByText('tabs-header-cancelled')).toBeTruthy();
-    expect(mockOrderStatusTabsHeader).toHaveBeenCalledWith({ activeTab: 'cancelled' });
+    expect(screen.queryByText('Dibatalkan')).toBeNull();
 
     fireEvent.press(screen.getByText(formatOrderNumber('order-5')));
 
