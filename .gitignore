@@ -52,5 +52,7 @@ app-example
 .agent/
 .sisyphus/
 .sisypush/
+# local git worktrees
+.worktrees/
 #.agents/
 run-gradlew-logs.txt
