@@ -1,6 +1,6 @@
 # PROFILE SCENES
 
-Profile/account flows live here: profile view, address list/forms, support, order history, and the area-picker workflow. This directory mixes screens with tightly coupled local helpers because the address flow is feature-specific.
+Profile/account flows live here: profile view, address list/forms, support, and the area-picker workflow. This directory mixes screens with tightly coupled local helpers because the address flow is feature-specific.
 
 ## WHERE TO LOOK
 
@@ -10,7 +10,6 @@ Profile/account flows live here: profile view, address list/forms, support, orde
 | Address list and form | `AddressList.tsx`, `AddressForm.tsx` | Saved addresses and CRUD flow |
 | Map/search address flow | `AddressMap.tsx`, `AddressSearch.tsx` | Search + pin selection helpers |
 | Area selection | `AreaPicker.tsx` | Multi-stage province/city/district/postal flow |
-| Order history entry point | `OrderHistory.tsx` | Profile-owned jump into order history |
 | Route param helpers | `addressRouteParams.ts` | Keep profile route params typed and synchronized |
 
 ## AREA PICKER SUBSYSTEM
