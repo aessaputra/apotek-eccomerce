@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { XCircleIcon } from '@/components/icons';
@@ -7,6 +7,7 @@ import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import { type OrderListItem } from '@/services';
 import { OrderStatusList } from './OrderStatusList';
+import { OrderStatusTabsHeader } from './OrderStatusTabsHeader';
 
 const EMPTY_TITLE = 'Belum Ada Pesanan Dibatalkan';
 const EMPTY_DESCRIPTION = 'Pesanan yang dibatalkan akan muncul di sini.';
@@ -60,6 +61,8 @@ export default function CancelledOrders() {
     router.push('/home');
   }, [router]);
 
+  const tabsHeader = useMemo(() => <OrderStatusTabsHeader activeTab="cancelled" />, []);
+
   return (
     <OrderStatusList
       orders={cancelledOrders}
@@ -77,6 +80,7 @@ export default function CancelledOrders() {
       onOrderPress={handleOrderPress}
       onEmptyCtaPress={handleShopNow}
       refreshTintColor={refreshTintColor}
+      headerComponent={tabsHeader}
     />
   );
 }
