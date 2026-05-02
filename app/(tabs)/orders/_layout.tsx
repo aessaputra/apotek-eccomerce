@@ -49,6 +49,14 @@ function OrdersStackLayout() {
         }}
       />
       <Stack.Screen
+        name="cancelled"
+        options={{
+          title: 'Dibatalkan',
+          headerTitleAlign: 'center',
+          headerBackTitle: 'Pesanan',
+        }}
+      />
+      <Stack.Screen
         name="success"
         options={{
           title: 'Pembayaran Berhasil',

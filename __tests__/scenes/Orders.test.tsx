@@ -13,8 +13,14 @@ const mockUseOrdersLandingData = jest.fn<UseOrdersLandingDataReturn, [string | u
 const mockUseAppSlice = jest.fn();
 
 type OrderStatusTabsProps = {
-  counts: { unpaid: number; packing: number; shipped: number; completed: number };
-  onTabChange: (tab: 'unpaid' | 'packing' | 'shipped' | 'completed') => void;
+  counts: {
+    unpaid: number;
+    packing: number;
+    shipped: number;
+    completed: number;
+    cancelled: number;
+  };
+  onTabChange: (tab: 'unpaid' | 'packing' | 'shipped' | 'completed' | 'cancelled') => void;
 };
 
 type BuyAgainCarouselProps = {
@@ -102,6 +108,7 @@ describe('<Orders />', () => {
         packing: 3,
         shipped: 4,
         completed: 1,
+        cancelled: 5,
       },
       error: null,
       pastProducts: [],
@@ -127,12 +134,13 @@ describe('<Orders />', () => {
       packing: 3,
       shipped: 4,
       completed: 1,
+      cancelled: 5,
     });
   });
 
   test('renders landing content inside a vertical scroll container', () => {
     mockUseOrdersLandingData.mockReturnValue({
-      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0 },
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0, cancelled: 0 },
       pastProducts: [],
       isLoadingCounts: true,
       isLoadingPastProducts: true,
@@ -180,13 +188,33 @@ describe('<Orders />', () => {
     expect(mockPush).toHaveBeenCalledWith('/orders/completed');
   });
 
+  test('navigates to the cancelled tab when selected from order tabs', async () => {
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+    });
+
+    render(<Orders />);
+
+    await waitFor(() => {
+      expect(mockOrderStatusTabs).toHaveBeenCalled();
+    });
+
+    const orderStatusTabsProps = getLatestOrderStatusTabsProps();
+
+    act(() => {
+      orderStatusTabsProps.onTabChange('cancelled');
+    });
+
+    expect(mockPush).toHaveBeenCalledWith('/orders/cancelled');
+  });
+
   test('passes only the first two past products to the buy again carousel', async () => {
     const firstProduct = createPastProduct({ id: 'product-1', name: 'Vitamin C' });
     const secondProduct = createPastProduct({ id: 'product-2', name: 'Paracetamol' });
     const thirdProduct = createPastProduct({ id: 'product-3', name: 'Obat Batuk' });
 
     mockUseOrdersLandingData.mockReturnValue({
-      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0 },
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0, cancelled: 0 },
       pastProducts: [firstProduct, secondProduct, thirdProduct],
       isLoadingCounts: false,
       isLoadingPastProducts: false,
@@ -210,7 +238,7 @@ describe('<Orders />', () => {
     const product = createPastProduct();
 
     mockUseOrdersLandingData.mockReturnValue({
-      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0 },
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0, cancelled: 0 },
       pastProducts: [product],
       isLoadingCounts: false,
       isLoadingPastProducts: false,
@@ -252,7 +280,7 @@ describe('<Orders />', () => {
     const product = createPastProduct();
 
     mockUseOrdersLandingData.mockReturnValue({
-      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0 },
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0, cancelled: 0 },
       pastProducts: [product],
       isLoadingCounts: false,
       isLoadingPastProducts: false,
