@@ -12,7 +12,6 @@ import { signOut as authSignOut } from '@/services/auth.service';
 import {
   ChevronRightIcon,
   CircleHelpIcon,
-  HistoryIcon,
   MapPinIcon,
   UserIcon,
   type IconProps,
@@ -174,13 +173,6 @@ export default function Profile() {
           onPress={() => router.push('/profile/addresses')}
           aria-label="Alamat pengiriman"
           aria-describedby="Kelola alamat pengiriman Anda"
-        />
-        <MenuItem
-          label="Riwayat Pesanan"
-          icon={HistoryIcon}
-          onPress={() => router.push('/profile/order-history')}
-          aria-label="Riwayat Pesanan"
-          aria-describedby="Lihat riwayat pesanan yang kadaluarsa atau dibatalkan"
         />
         <MenuItem
           label="Dukungan"

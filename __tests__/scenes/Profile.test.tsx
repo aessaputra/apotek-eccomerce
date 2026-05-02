@@ -112,7 +112,6 @@ jest.mock('@/components/icons', () => ({
   __esModule: true,
   ChevronRightIcon: () => null,
   CircleHelpIcon: () => null,
-  HistoryIcon: () => null,
   MapPinIcon: () => null,
   UserIcon: () => null,
 }));
@@ -153,18 +152,19 @@ describe('<Profile />', () => {
     expect(screen.getByText('Pengguna')).not.toBeNull();
   });
 
-  it('navigates each profile menu item to its current route', () => {
+  it('navigates remaining profile menu items and omits profile order history', () => {
     render(<Profile />);
+
+    expect(screen.queryByLabelText('Riwayat Pesanan')).toBeNull();
 
     fireEvent.press(screen.getByLabelText('Profile Saya'));
     fireEvent.press(screen.getByLabelText('Alamat pengiriman'));
-    fireEvent.press(screen.getByLabelText('Riwayat Pesanan'));
     fireEvent.press(screen.getByLabelText('Dukungan'));
 
     expect(mockPush).toHaveBeenNthCalledWith(1, '/profile/edit-profile');
     expect(mockPush).toHaveBeenNthCalledWith(2, '/profile/addresses');
-    expect(mockPush).toHaveBeenNthCalledWith(3, '/profile/order-history');
-    expect(mockPush).toHaveBeenNthCalledWith(4, '/profile/support');
+    expect(mockPush).toHaveBeenNthCalledWith(3, '/profile/support');
+    expect(mockPush).not.toHaveBeenCalledWith(['/profile', 'order-history'].join('/'));
   });
 
   it('opens the logout dialog and logs out successfully', async () => {
