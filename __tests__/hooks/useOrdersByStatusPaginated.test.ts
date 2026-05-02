@@ -150,6 +150,68 @@ describe('useOrdersByStatusPaginated', () => {
     expect(result.current.orders[0]?.id).toBe('order-1');
   });
 
+  it('stores cancelled orders in the cancelled cache bucket', async () => {
+    mockRootState = {
+      app: appReducer(
+        mockRootState.app,
+        appActions.upsertOrdersByStatusCachePage({
+          cacheKey: 'completed',
+          userId: 'user-1',
+          items: [
+            {
+              ...createOrder(99),
+              id: 'completed-order',
+              customer_order_bucket: 'completed',
+            },
+          ],
+          offset: 0,
+          hasMore: false,
+          fetchedAt: Date.now(),
+          payloadBytes: 200,
+          durationMs: 50,
+          replace: true,
+        }),
+      ),
+    };
+
+    mockGetOrdersOptimized.mockResolvedValue({
+      data: [
+        {
+          ...createOrder(1),
+          customer_order_bucket: 'cancelled',
+        },
+      ],
+      error: null,
+      metrics: createMetrics(false),
+    });
+
+    const { result } = renderHook(() =>
+      useOrdersByStatusPaginated({
+        userId: 'user-1',
+        cacheKey: 'cancelled',
+        customerOrderBucket: 'cancelled',
+      }),
+    );
+
+    await act(async () => {
+      await result.current.refreshIfNeeded();
+    });
+
+    await waitFor(() => {
+      expect(mockGetOrdersOptimized).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({
+          customerOrderBucket: 'cancelled',
+        }),
+      );
+    });
+
+    expect(mockRootState.app.ordersByStatusCache.cancelled['user-1']?.items[0]?.id).toBe('order-1');
+    expect(mockRootState.app.ordersByStatusCache.completed['user-1']?.items[0]?.id).toBe(
+      'completed-order',
+    );
+  });
+
   it('does not retrigger initial fetches when refreshIfNeeded is used from an effect', async () => {
     mockGetOrdersOptimized.mockResolvedValue({
       data: [createOrder(1)],

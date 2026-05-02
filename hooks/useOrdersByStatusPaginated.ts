@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Dispatch, State } from '@/utils/store';
-import { appActions } from '@/slices/app.slice';
+import { appActions, type OrdersByStatusCacheKey } from '@/slices/app.slice';
 import type { GetUserOrdersParams, OrderListItem } from '@/services';
 import {
   usePaginatedOrderList,
@@ -31,7 +31,7 @@ export interface OrdersByStatusParams {
   orderStatuses?: string[];
   paymentStatuses?: GetUserOrdersParams['paymentStatuses'];
   customerOrderBucket?: GetUserOrdersParams['customerOrderBucket'];
-  cacheKey: 'packing' | 'shipped' | 'completed';
+  cacheKey: OrdersByStatusCacheKey;
 }
 
 const EMPTY_CACHE: OrderListCacheState = {
