@@ -14,6 +14,7 @@ const EMPTY_COUNTS: OrderTabCounts = {
   packing: 0,
   shipped: 0,
   completed: 0,
+  cancelled: 0,
 };
 
 interface OrdersLandingCacheEntry {

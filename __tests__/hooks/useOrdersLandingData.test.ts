@@ -38,6 +38,7 @@ function createCounts(): OrderTabCounts {
     packing: 2,
     shipped: 3,
     completed: 4,
+    cancelled: 5,
   };
 }
 
