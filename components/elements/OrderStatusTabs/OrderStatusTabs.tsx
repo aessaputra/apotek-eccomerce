@@ -1,10 +1,16 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { XStack, YStack, Text, styled } from 'tamagui';
-import { WalletIcon, PackageIcon, TruckIcon, CheckCircleIcon } from '@/components/icons';
+import {
+  WalletIcon,
+  PackageIcon,
+  TruckIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from '@/components/icons';
 import type { IconProps } from '@/components/icons';
 
-export type OrderTab = 'unpaid' | 'packing' | 'shipped' | 'completed';
+export type OrderTab = 'unpaid' | 'packing' | 'shipped' | 'completed' | 'cancelled';
 
 interface TabConfig {
   key: OrderTab;
@@ -24,6 +30,7 @@ const TABS: TabConfig[] = [
   { key: 'packing', label: 'Dikemas', icon: PackageIcon },
   { key: 'shipped', label: 'Dikirim', icon: TruckIcon },
   { key: 'completed', label: 'Selesai', icon: CheckCircleIcon },
+  { key: 'cancelled', label: 'Dibatalkan', icon: XCircleIcon },
 ];
 
 const TABS_CONTENT_CONTAINER_STYLE = {
@@ -39,6 +46,7 @@ interface OrderStatusTabsProps {
     packing: number;
     shipped: number;
     completed: number;
+    cancelled: number;
   };
   onTabChange: (tab: OrderTab) => void;
 }
