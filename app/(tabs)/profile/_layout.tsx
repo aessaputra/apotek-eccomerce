@@ -58,13 +58,6 @@ function ProfileStackLayout() {
         }}
       />
       <Stack.Screen
-        name="order-history"
-        options={{
-          title: 'Riwayat Pesanan',
-          headerTitleAlign: 'center',
-        }}
-      />
-      <Stack.Screen
         name="order-detail/[orderId]"
         options={{
           title: 'Detail Pesanan',
