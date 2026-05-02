@@ -8,7 +8,6 @@ import type { OrderListItem } from '@/services';
 const mockPush = jest.fn();
 const mockUseOrdersByStatusPaginated = jest.fn();
 const mockOrderCard = jest.fn();
-const mockOrderStatusTabsHeader = jest.fn();
 
 const createOrder = (id: string, productName: string): OrderListItem => ({
   id,
@@ -72,17 +71,6 @@ jest.mock('@/components/elements/OrderCard', () => ({
   },
 }));
 
-jest.mock('@/scenes/orders/OrderStatusTabsHeader', () => ({
-  OrderStatusTabsHeader: (props: { activeTab: string }) => {
-    mockOrderStatusTabsHeader(props);
-
-    const React = require('react') as typeof import('react');
-    const { Text } = require('react-native') as typeof import('react-native');
-
-    return React.createElement(Text, null, `tabs-header-${props.activeTab}`);
-  },
-}));
-
 jest.mock('@/slices', () => ({
   useAppSlice: () => ({
     user: { id: 'user-1' },
@@ -93,7 +81,6 @@ describe('<ShippedOrders />', () => {
   beforeEach(() => {
     mockPush.mockClear();
     mockOrderCard.mockClear();
-    mockOrderStatusTabsHeader.mockClear();
     mockUseOrdersByStatusPaginated.mockReset();
     mockUseOrdersByStatusPaginated.mockReturnValue({
       orders: mockOrders,
@@ -139,7 +126,7 @@ describe('<ShippedOrders />', () => {
 
     render(<ShippedOrders />);
 
-    expect(screen.getByText('tabs-header-shipped')).toBeTruthy();
+    expect(screen.queryByText('Dikirim')).toBeNull();
     expect(screen.getByText('Memuat pesanan...')).toBeTruthy();
   });
 
@@ -161,7 +148,7 @@ describe('<ShippedOrders />', () => {
 
     render(<ShippedOrders />);
 
-    expect(screen.getByText('tabs-header-shipped')).toBeTruthy();
+    expect(screen.queryByText('Dikirim')).toBeNull();
     expect(
       screen.getByText(
         'Pesanan yang sedang dikirim atau menunggu konfirmasi penerimaan akan muncul di sini.',
@@ -211,7 +198,7 @@ describe('<ShippedOrders />', () => {
 
     render(<ShippedOrders />);
 
-    expect(screen.getByText('tabs-header-shipped')).toBeTruthy();
+    expect(screen.queryByText('Dikirim')).toBeNull();
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
     expect(screen.getByText('Gagal memuat data')).toBeTruthy();
 
@@ -223,8 +210,7 @@ describe('<ShippedOrders />', () => {
   test('routes to order detail when an order card is pressed', () => {
     render(<ShippedOrders />);
 
-    expect(screen.getByText('tabs-header-shipped')).toBeTruthy();
-    expect(mockOrderStatusTabsHeader).toHaveBeenCalledWith({ activeTab: 'shipped' });
+    expect(screen.queryByText('Dikirim')).toBeNull();
 
     fireEvent.press(screen.getByText(formatOrderNumber('order-3')));
 
