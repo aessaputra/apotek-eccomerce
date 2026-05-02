@@ -1,1 +1,1 @@
-export { default } from '@/scenes/orders/AllOrders';
+export { default } from '@/scenes/orders';

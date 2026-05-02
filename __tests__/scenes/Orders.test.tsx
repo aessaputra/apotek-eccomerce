@@ -1,8 +1,8 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { act, fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
-import OrdersDefault, { OrdersLanding } from '@/scenes/orders';
-import AllOrders from '@/scenes/orders/AllOrders';
+import OrdersDefault, { AllOrders as AllOrdersExport } from '@/scenes/orders';
+import AllOrdersScene from '@/scenes/orders/AllOrders';
 import type { UseOrdersLandingDataReturn } from '@/hooks/useOrdersLandingData';
 import type { PastPurchaseProduct } from '@/services';
 
@@ -21,7 +21,7 @@ type OrderStatusTabsProps = {
     completed: number;
     cancelled: number;
   };
-  onTabChange: (tab: 'unpaid' | 'packing' | 'shipped' | 'completed' | 'cancelled') => void;
+  onTabChange: (tab: 'all' | 'unpaid' | 'packing' | 'shipped' | 'completed' | 'cancelled') => void;
 };
 
 type BuyAgainCarouselProps = {
@@ -131,9 +131,9 @@ describe('<Orders />', () => {
     mockAddProductToCart.mockResolvedValue({ error: null });
   });
 
-  test('keeps all orders as the default scene export and landing content as legacy-only', () => {
-    expect(OrdersDefault).toBe(AllOrders);
-    expect(OrdersLanding).not.toBe(AllOrders);
+  test('keeps landing content as the default scene export and all orders as a named export', () => {
+    expect(OrdersDefault).not.toBe(AllOrdersScene);
+    expect(AllOrdersExport).toBe(AllOrdersScene);
   });
 
   test('passes the legacy landing hook counts directly to the order tabs', () => {
@@ -141,7 +141,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<OrdersLanding />);
+    render(<OrdersDefault />);
 
     const orderStatusTabsProps = getLatestOrderStatusTabsProps();
 
@@ -168,7 +168,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    const { UNSAFE_getByType } = render(<OrdersLanding />);
+    const { UNSAFE_getByType } = render(<OrdersDefault />);
 
     const scrollView = UNSAFE_getByType(ScrollView);
 
@@ -189,7 +189,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<OrdersLanding />);
+    render(<OrdersDefault />);
 
     await waitFor(() => {
       expect(mockOrderStatusTabs).toHaveBeenCalled();
@@ -204,12 +204,32 @@ describe('<Orders />', () => {
     expect(mockPush).toHaveBeenCalledWith('/orders/completed');
   });
 
+  test('navigates to all orders when the all tab is selected from the landing scene', async () => {
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+    });
+
+    render(<OrdersDefault />);
+
+    await waitFor(() => {
+      expect(mockOrderStatusTabs).toHaveBeenCalled();
+    });
+
+    const orderStatusTabsProps = getLatestOrderStatusTabsProps();
+
+    act(() => {
+      orderStatusTabsProps.onTabChange('all');
+    });
+
+    expect(mockPush).toHaveBeenCalledWith('/orders/all');
+  });
+
   test('navigates to the cancelled tab when selected from order tabs', async () => {
     mockUseAppSlice.mockReturnValue({
       user: { id: 'user-1' },
     });
 
-    render(<OrdersLanding />);
+    render(<OrdersDefault />);
 
     await waitFor(() => {
       expect(mockOrderStatusTabs).toHaveBeenCalled();
@@ -243,7 +263,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<OrdersLanding />);
+    render(<OrdersDefault />);
 
     const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
 
@@ -267,7 +287,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<OrdersLanding />);
+    render(<OrdersDefault />);
 
     await waitFor(() => {
       expect(mockBuyAgainCarousel).toHaveBeenCalled();
@@ -309,7 +329,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<OrdersLanding />);
+    render(<OrdersDefault />);
 
     await waitFor(() => {
       expect(mockBuyAgainCarousel).toHaveBeenCalled();

@@ -1,2 +1,2 @@
-export { default } from './AllOrders';
-export { default as OrdersLanding } from './Orders';
+export { default } from './Orders';
+export { default as AllOrders } from './AllOrders';
