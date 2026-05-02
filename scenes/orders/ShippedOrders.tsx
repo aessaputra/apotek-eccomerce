@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { TruckIcon } from '@/components/icons';
@@ -7,6 +7,7 @@ import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import { type OrderListItem } from '@/services';
 import { OrderStatusList } from './OrderStatusList';
+import { OrderStatusTabsHeader } from './OrderStatusTabsHeader';
 
 const EMPTY_TITLE = 'Belum Ada Pesanan';
 const EMPTY_DESCRIPTION =
@@ -61,6 +62,8 @@ export default function ShippedOrders() {
     router.push('/home');
   }, [router]);
 
+  const tabsHeader = useMemo(() => <OrderStatusTabsHeader activeTab="shipped" />, []);
+
   return (
     <OrderStatusList
       orders={shippedOrders}
@@ -78,6 +81,7 @@ export default function ShippedOrders() {
       onOrderPress={handleOrderPress}
       onEmptyCtaPress={handleShopNow}
       refreshTintColor={refreshTintColor}
+      headerComponent={tabsHeader}
     />
   );
 }

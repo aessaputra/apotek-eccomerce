@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { PackageIcon } from '@/components/icons';
@@ -7,6 +7,7 @@ import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import { type OrderListItem } from '@/services';
 import { OrderStatusList } from './OrderStatusList';
+import { OrderStatusTabsHeader } from './OrderStatusTabsHeader';
 
 const EMPTY_TITLE = 'Belum Ada Pesanan';
 const EMPTY_DESCRIPTION = 'Pesanan yang sedang diproses atau siap dikirim akan muncul di sini.';
@@ -61,6 +62,8 @@ export default function PackingOrders() {
     router.push('/home');
   }, [router]);
 
+  const tabsHeader = useMemo(() => <OrderStatusTabsHeader activeTab="packing" />, []);
+
   return (
     <OrderStatusList
       orders={packingOrders}
@@ -82,6 +85,7 @@ export default function PackingOrders() {
       errorVariant="framed"
       loadingState={PACKING_LOADING_STATE}
       loadingMoreLabel="Memuat lebih banyak..."
+      headerComponent={tabsHeader}
     />
   );
 }
