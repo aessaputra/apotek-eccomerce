@@ -10,7 +10,6 @@ export { useOrdersLandingData } from './useOrdersLandingData';
 export { useUnpaidOrdersPaginated } from './useUnpaidOrdersPaginated';
 export { useOrderDetail } from './useOrderDetail';
 export { useOrderTracking } from './useOrderTracking';
-export { useOrderHistoryPaginated } from './useOrderHistoryPaginated';
 export { useProductsPaginated } from './useProductsPaginated';
 export { useDebounce } from './useDebounce';
 export { useCartAddress } from './useCartAddress';
@@ -32,7 +31,6 @@ export type {
 } from './useUnpaidOrdersPaginated';
 export type { UseOrderDetailReturn, UseOrderDetailState } from './useOrderDetail';
 export type { UseOrderTrackingReturn, UseOrderTrackingState } from './useOrderTracking';
-export type { UseOrderHistoryPaginatedReturn } from './useOrderHistoryPaginated';
 export type {
   UseProductsPaginatedReturn,
   ProductsPerformanceSnapshot,
