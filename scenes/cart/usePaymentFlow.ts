@@ -27,15 +27,22 @@ interface UsePaymentFlowParams {
   removePersistData: (key: DataPersistKeys) => Promise<boolean>;
 }
 
+const ORDER_STATUS_CACHE_KEYS_TO_INVALIDATE = [
+  'packing',
+  'shipped',
+  'completed',
+  'cancelled',
+] as const;
+
 function invalidateOrderCaches(dispatch: PaymentFlowDispatch, userId?: string) {
   if (!userId) {
     return;
   }
 
   dispatch(appActions.invalidateUnpaidOrdersCache(userId));
-  dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey: 'packing', userId }));
-  dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey: 'shipped', userId }));
-  dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey: 'completed', userId }));
+  ORDER_STATUS_CACHE_KEYS_TO_INVALIDATE.forEach(cacheKey => {
+    dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey, userId }));
+  });
 }
 
 export function usePaymentFlow({

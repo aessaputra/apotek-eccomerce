@@ -200,6 +200,10 @@ describe('<Payment />', () => {
       type: 'INVALIDATE_BY_STATUS',
       payload: { cacheKey: 'completed', userId: 'user-1' },
     });
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'INVALIDATE_BY_STATUS',
+      payload: { cacheKey: 'cancelled', userId: 'user-1' },
+    });
     expect(mockMarkCartRefreshRequested).toHaveBeenCalledTimes(1);
     expect(mockDispatch).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'MARK_CART_REFRESH_REQUESTED' }),
@@ -280,7 +284,7 @@ describe('<Payment />', () => {
       orderId: 'order-1',
     });
     mockPollOrderPaymentStatus.mockResolvedValue({
-      data: { payment_status: 'failure' },
+      data: { payment_status: 'cancel' },
       error: null,
     });
 
@@ -299,6 +303,10 @@ describe('<Payment />', () => {
     });
 
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'INVALIDATE_UNPAID', payload: 'user-1' });
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'INVALIDATE_BY_STATUS',
+      payload: { cacheKey: 'cancelled', userId: 'user-1' },
+    });
     expect(mockDispatch).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: 'MARK_CART_REFRESH_REQUESTED' }),
     );
