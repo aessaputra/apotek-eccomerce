@@ -17,6 +17,14 @@ function OrdersStackLayout() {
         }}
       />
       <Stack.Screen
+        name="all"
+        options={{
+          title: 'Semua Pesanan',
+          headerTitleAlign: 'center',
+          headerBackTitle: 'Pesanan',
+        }}
+      />
+      <Stack.Screen
         name="unpaid"
         options={{
           title: 'Belum Bayar',

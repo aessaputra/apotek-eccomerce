@@ -54,6 +54,7 @@ export type CartRoutes = {
 export type OrdersRoutes = {
   orders: undefined;
   'orders/index': undefined;
+  'orders/all': undefined;
   'orders/unpaid': undefined;
   'orders/packing': undefined;
   'orders/shipped': undefined;
@@ -145,6 +146,7 @@ export type CartStackParams = {
 
 export type OrdersStackParams = {
   index: undefined;
+  all: undefined;
   unpaid: undefined;
   packing: undefined;
   shipped: undefined;
