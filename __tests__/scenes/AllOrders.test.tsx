@@ -28,7 +28,6 @@ const mockPush = jest.fn();
 const mockUseOrdersPaginated = jest.fn();
 const mockOrderCard = jest.fn();
 const mockUnpaidOrderCard = jest.fn();
-const mockOrderStatusTabsHeader = jest.fn();
 
 const createOrder = (id: string, productName: string): OrderListItem => ({
   id,
@@ -102,17 +101,6 @@ jest.mock('@/slices', () => ({
   }),
 }));
 
-jest.mock('@/scenes/orders/OrderStatusTabsHeader', () => ({
-  OrderStatusTabsHeader: (props: { activeTab: string }) => {
-    mockOrderStatusTabsHeader(props);
-
-    const React = require('react') as typeof import('react');
-    const { Text } = require('react-native') as typeof import('react-native');
-
-    return React.createElement(Text, null, `tabs-header-${props.activeTab}`);
-  },
-}));
-
 jest.mock('@/components/elements/OrderCard', () => ({
   OrderCard: ({ order, onPress }: { order: OrderListItem; onPress?: () => void }) => {
     mockOrderCard(order);
@@ -150,7 +138,6 @@ describe('<AllOrders />', () => {
     mockUseOrdersPaginated.mockReset();
     mockOrderCard.mockClear();
     mockUnpaidOrderCard.mockClear();
-    mockOrderStatusTabsHeader.mockClear();
     mockHookState();
   });
 
@@ -160,11 +147,11 @@ describe('<AllOrders />', () => {
     expect(mockUseOrdersPaginated.mock.calls[0]).toEqual(['user-1']);
   });
 
-  test('renders all orders with the all tab header and default order cards', () => {
+  test('renders all orders directly without the status tabs header', () => {
     render(<AllOrders />);
 
-    expect(screen.getByText('tabs-header-all')).toBeTruthy();
-    expect(mockOrderStatusTabsHeader).toHaveBeenCalledWith({ activeTab: 'all' });
+    expect(screen.queryByText('Semua pesanan')).toBeNull();
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Paracetamol')).toBeTruthy();
     expect(screen.getByText('Vitamin C')).toBeTruthy();
     expect(mockOrderCard).toHaveBeenCalledTimes(2);
@@ -177,7 +164,6 @@ describe('<AllOrders />', () => {
 
     render(<AllOrders />);
 
-    expect(screen.getByText('tabs-header-all')).toBeTruthy();
     expect(screen.getByText('Memuat pesanan...')).toBeTruthy();
   });
 
@@ -186,7 +172,6 @@ describe('<AllOrders />', () => {
 
     render(<AllOrders />);
 
-    expect(screen.getByText('tabs-header-all')).toBeTruthy();
     expect(screen.getByText('Belum ada pesanan')).toBeTruthy();
     expect(screen.getByText('Pesanan yang kamu buat akan muncul di sini.')).toBeTruthy();
 
@@ -201,7 +186,6 @@ describe('<AllOrders />', () => {
 
     render(<AllOrders />);
 
-    expect(screen.getByText('tabs-header-all')).toBeTruthy();
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
     expect(screen.getByText('Gagal memuat data')).toBeTruthy();
 

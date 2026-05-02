@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useTheme } from 'tamagui';
 import { ShoppingBagIcon } from '@/components/icons';
@@ -7,7 +7,6 @@ import { useAppSlice } from '@/slices';
 import type { OrderListItem } from '@/services';
 import { getThemeColor } from '@/utils/theme';
 import { OrderStatusList } from './OrderStatusList';
-import { OrderStatusTabsHeader } from './OrderStatusTabsHeader';
 
 const EMPTY_TITLE = 'Belum ada pesanan';
 const EMPTY_DESCRIPTION = 'Pesanan yang kamu buat akan muncul di sini.';
@@ -57,8 +56,6 @@ export function AllOrders() {
     router.push('/home');
   }, [router]);
 
-  const tabsHeader = useMemo(() => <OrderStatusTabsHeader activeTab="all" />, []);
-
   return (
     <OrderStatusList
       orders={orders}
@@ -76,7 +73,6 @@ export function AllOrders() {
       onOrderPress={handleOrderPress}
       onEmptyCtaPress={handleShopNow}
       refreshTintColor={refreshTintColor}
-      headerComponent={tabsHeader}
     />
   );
 }
