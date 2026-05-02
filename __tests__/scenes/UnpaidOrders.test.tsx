@@ -9,7 +9,6 @@ const mockRefresh = jest.fn();
 const mockRefreshIfNeeded = jest.fn();
 const mockLoadMore = jest.fn();
 const mockUseUnpaidOrdersPaginated = jest.fn();
-const mockOrderStatusTabsHeader = jest.fn();
 
 const mockOrders: OrderListItem[] = [
   {
@@ -111,23 +110,11 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
-jest.mock('@/scenes/orders/OrderStatusTabsHeader', () => ({
-  OrderStatusTabsHeader: (props: { activeTab: string }) => {
-    mockOrderStatusTabsHeader(props);
-
-    const React = require('react') as typeof import('react');
-    const { Text } = require('react-native') as typeof import('react-native');
-
-    return React.createElement(Text, null, `tabs-header-${props.activeTab}`);
-  },
-}));
-
 describe('UnpaidOrders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
     mockUseUnpaidOrdersPaginated.mockClear();
-    mockOrderStatusTabsHeader.mockClear();
     hookState.orders = mockOrders;
     hookState.error = null;
     hookState.hasMore = false;
@@ -147,8 +134,7 @@ describe('UnpaidOrders', () => {
   test('renders order list', () => {
     render(<UnpaidOrdersScreen />);
 
-    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
-    expect(mockOrderStatusTabsHeader).toHaveBeenCalledWith({ activeTab: 'unpaid' });
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Paracetamol')).toBeTruthy();
     expect(screen.getByText('Vitamin C')).toBeTruthy();
   });
@@ -159,7 +145,7 @@ describe('UnpaidOrders', () => {
 
     render(<UnpaidOrdersScreen />);
 
-    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Belum Ada Pesanan')).toBeTruthy();
     expect(
       screen.getByText('Pesanan yang masih bisa dibayar akan muncul di sini. Yuk, mulai belanja!'),
@@ -169,7 +155,7 @@ describe('UnpaidOrders', () => {
   test('shows active unpaid helper copy above the list', () => {
     render(<UnpaidOrdersScreen />);
 
-    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Masih Bisa Dibayar')).toBeTruthy();
     expect(
       screen.getByText('Hanya pesanan yang masih bisa dibayar ditampilkan di sini.'),
@@ -195,7 +181,7 @@ describe('UnpaidOrders', () => {
 
     render(<UnpaidOrdersScreen />);
 
-    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Memuat pesanan...')).toBeTruthy();
   });
 
@@ -206,7 +192,7 @@ describe('UnpaidOrders', () => {
 
     render(<UnpaidOrdersScreen />);
 
-    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
   });
 
