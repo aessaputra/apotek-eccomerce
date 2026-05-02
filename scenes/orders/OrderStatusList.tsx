@@ -272,8 +272,21 @@ export function OrderStatusList({
     );
   }, [isLoadingMore, loadingMoreLabel]);
 
-  if (isLoading) {
+  const renderStateWithHeader = (state: React.ReactElement) => {
+    if (!headerComponent) {
+      return state;
+    }
+
     return (
+      <YStack flex={1} backgroundColor="$background">
+        {headerComponent}
+        {state}
+      </YStack>
+    );
+  };
+
+  if (isLoading) {
+    return renderStateWithHeader(
       <YStack
         flex={1}
         alignItems="center"
@@ -284,25 +297,27 @@ export function OrderStatusList({
         <Text color="$colorSubtle" fontSize={loadingState?.textSize}>
           Memuat pesanan...
         </Text>
-      </YStack>
+      </YStack>,
     );
   }
 
   if (error && orders.length === 0) {
     const classifiedError = classifyError(new Error(error));
     const errorMessage = translateErrorMessage(classifiedError);
-    return <ErrorState message={errorMessage} onRetry={onRetry} variant={errorVariant} />;
+    return renderStateWithHeader(
+      <ErrorState message={errorMessage} onRetry={onRetry} variant={errorVariant} />,
+    );
   }
 
   if (orders.length === 0) {
-    return (
+    return renderStateWithHeader(
       <EmptyState
         Icon={EmptyIcon}
         title={emptyTitle}
         description={emptyDescription}
         variant={emptyVariant}
         onCtaPress={onEmptyCtaPress}
-      />
+      />,
     );
   }
 
