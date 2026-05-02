@@ -1,7 +1,8 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { act, fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
-import Orders from '@/scenes/orders/Orders';
+import OrdersDefault, { OrdersLanding } from '@/scenes/orders';
+import AllOrders from '@/scenes/orders/AllOrders';
 import type { UseOrdersLandingDataReturn } from '@/hooks/useOrdersLandingData';
 import type { PastPurchaseProduct } from '@/services';
 
@@ -58,6 +59,16 @@ function getLatestBuyAgainCarouselProps() {
 
   return props as BuyAgainCarouselProps;
 }
+
+jest.mock('@/scenes/orders/AllOrders', () => {
+  const MockAllOrders = () => null;
+
+  return {
+    __esModule: true,
+    default: MockAllOrders,
+    AllOrders: MockAllOrders,
+  };
+});
 
 jest.mock('expo-router', () => ({
   __esModule: true,
@@ -120,12 +131,17 @@ describe('<Orders />', () => {
     mockAddProductToCart.mockResolvedValue({ error: null });
   });
 
-  test('passes the landing hook counts directly to the order tabs', () => {
+  test('keeps all orders as the default scene export and landing content as legacy-only', () => {
+    expect(OrdersDefault).toBe(AllOrders);
+    expect(OrdersLanding).not.toBe(AllOrders);
+  });
+
+  test('passes the legacy landing hook counts directly to the order tabs', () => {
     mockUseAppSlice.mockReturnValue({
       user: { id: 'user-1' },
     });
 
-    render(<Orders />);
+    render(<OrdersLanding />);
 
     const orderStatusTabsProps = getLatestOrderStatusTabsProps();
 
@@ -152,7 +168,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    const { UNSAFE_getByType } = render(<Orders />);
+    const { UNSAFE_getByType } = render(<OrdersLanding />);
 
     const scrollView = UNSAFE_getByType(ScrollView);
 
@@ -173,7 +189,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<Orders />);
+    render(<OrdersLanding />);
 
     await waitFor(() => {
       expect(mockOrderStatusTabs).toHaveBeenCalled();
@@ -193,7 +209,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<Orders />);
+    render(<OrdersLanding />);
 
     await waitFor(() => {
       expect(mockOrderStatusTabs).toHaveBeenCalled();
@@ -227,7 +243,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<Orders />);
+    render(<OrdersLanding />);
 
     const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
 
@@ -251,7 +267,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<Orders />);
+    render(<OrdersLanding />);
 
     await waitFor(() => {
       expect(mockBuyAgainCarousel).toHaveBeenCalled();
@@ -293,7 +309,7 @@ describe('<Orders />', () => {
       user: { id: 'user-1' },
     });
 
-    render(<Orders />);
+    render(<OrdersLanding />);
 
     await waitFor(() => {
       expect(mockBuyAgainCarousel).toHaveBeenCalled();
