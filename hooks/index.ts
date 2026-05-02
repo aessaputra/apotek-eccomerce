@@ -7,6 +7,7 @@ export { useHomeData } from './useHomeData';
 export { useAllProductsPaginated } from './useAllProductsPaginated';
 export { useOrdersPaginated } from './useOrdersPaginated';
 export { useOrdersLandingData } from './useOrdersLandingData';
+export { useOrderTabCounts } from './useOrderTabCounts';
 export { useUnpaidOrdersPaginated } from './useUnpaidOrdersPaginated';
 export { useOrderDetail } from './useOrderDetail';
 export { useOrderTracking } from './useOrderTracking';
@@ -25,6 +26,7 @@ export type { UseHomeDataReturn, HomeDataState } from './useHomeData';
 export type { UseAllProductsPaginatedReturn } from './useAllProductsPaginated';
 export type { UseOrdersPaginatedReturn, OrdersPerformanceSnapshot } from './useOrdersPaginated';
 export type { UseOrdersLandingDataReturn } from './useOrdersLandingData';
+export type { UseOrderTabCountsReturn } from './useOrderTabCounts';
 export type {
   UseUnpaidOrdersPaginatedReturn,
   UnpaidOrdersPerformanceSnapshot,
