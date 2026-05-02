@@ -5,7 +5,7 @@ import { withRetry } from '@/utils/retry';
 
 type PaymentStatus = Database['public']['Enums']['payment_status'];
 export type CustomerCompletionStage = 'not_applicable' | 'awaiting_customer' | 'completed';
-export type CustomerOrderBucket = 'unpaid' | 'packing' | 'shipped' | 'completed';
+export type CustomerOrderBucket = 'unpaid' | 'packing' | 'shipped' | 'completed' | 'cancelled';
 
 export interface Order {
   id: string;
@@ -205,6 +205,7 @@ export interface OrderTabCounts {
   packing: number;
   shipped: number;
   completed: number;
+  cancelled: number;
 }
 
 export type OrderStatusVariant = 'success' | 'warning' | 'danger' | 'primary' | 'neutral';
@@ -216,7 +217,6 @@ export interface OrderStatusDisplay {
 
 export const UNPAID_ORDER_STATUSES = ['pending'] as const;
 export const UNPAID_PAYMENT_STATUSES = ['pending'] as const;
-export const HISTORY_PAYMENT_STATUSES = ['expire', 'cancel', 'deny'] as const;
 export const PACKING_ORDER_STATUSES = ['processing', 'awaiting_shipment'] as const;
 export const SHIPPED_ORDER_STATUSES = ['shipped', 'in_transit'] as const;
 export const COMPLETED_ORDER_STATUSES = ['delivered'] as const;
@@ -232,7 +232,7 @@ export interface GetUserOrdersParams {
   orderStatus?: string;
   orderStatuses?: string[];
   excludeExpiredPending?: boolean;
-  includeExpiredPendingInHistory?: boolean;
+  includeExpiredPendingOrders?: boolean;
 }
 
 const DATABASE_ERROR_MESSAGE = 'Gagal memuat data pesanan. Silakan coba lagi.';
@@ -778,7 +778,7 @@ async function countOrdersByFilters(
     | 'orderStatus'
     | 'orderStatuses'
     | 'excludeExpiredPending'
-    | 'includeExpiredPendingInHistory'
+    | 'includeExpiredPendingOrders'
   >,
 ): Promise<number> {
   const hasPaymentFilter = Boolean(
@@ -834,7 +834,7 @@ async function countOrdersByFilters(
   }
 
   if (params.paymentStatuses && params.paymentStatuses.length > 0) {
-    if (params.includeExpiredPendingInHistory) {
+    if (params.includeExpiredPendingOrders) {
       query = query.or(
         `payment_status.in.(${params.paymentStatuses.join(',')}),and(status.eq.pending,payment_status.eq.pending,expired_at.lt.${new Date().toISOString()})`,
       );
@@ -896,7 +896,7 @@ export async function getOrdersOptimized(
           .range(offset, offset + fetchLimit - 1);
 
         if (params.paymentStatuses && params.paymentStatuses.length > 0) {
-          if (params.includeExpiredPendingInHistory) {
+          if (params.includeExpiredPendingOrders) {
             query = query.or(
               `payment_status.in.(${params.paymentStatuses.join(',')}),and(status.eq.pending,payment_status.eq.pending,expired_at.lt.${new Date().toISOString()})`,
             );
@@ -1027,11 +1027,12 @@ export async function getOrderTabCounts(
   userId: string,
 ): Promise<{ data: OrderTabCounts | null; error: Error | null }> {
   try {
-    const [unpaid, packing, shipped, completed] = await Promise.all([
+    const [unpaid, packing, shipped, completed, cancelled] = await Promise.all([
       countOrdersByFilters(userId, { customerOrderBucket: 'unpaid' }),
       countOrdersByFilters(userId, { customerOrderBucket: 'packing' }),
       countOrdersByFilters(userId, { customerOrderBucket: 'shipped' }),
       countOrdersByFilters(userId, { customerOrderBucket: 'completed' }),
+      countOrdersByFilters(userId, { customerOrderBucket: 'cancelled' }),
     ]);
 
     return {
@@ -1040,6 +1041,7 @@ export async function getOrderTabCounts(
         packing,
         shipped,
         completed,
+        cancelled,
       },
       error: null,
     };
@@ -1215,6 +1217,10 @@ export function getOrderPrimaryStatusDisplay(
   expiredAt?: string | null,
   customerCompletionStage?: CustomerCompletionStage | null,
 ): OrderStatusDisplay {
+  if (orderStatus === 'cancelled') {
+    return getOrderStatusDisplay(orderStatus);
+  }
+
   if (paymentStatus === 'pending') {
     const isExpired = isBackendExpired(expiredAt);
 
@@ -1223,10 +1229,6 @@ export function getOrderPrimaryStatusDisplay(
     }
 
     return { label: 'Menunggu Pembayaran', variant: 'warning' };
-  }
-
-  if (orderStatus === 'cancelled') {
-    return getOrderStatusDisplay(orderStatus);
   }
 
   if (FAILED_PAYMENT_STATES.includes(paymentStatus)) {

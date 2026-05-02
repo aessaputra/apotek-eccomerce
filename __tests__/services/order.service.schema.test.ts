@@ -95,6 +95,7 @@ describe('order.service schema-aligned reads', () => {
     enqueueQuery('order_read_model', { count: 3, error: null });
     enqueueQuery('order_read_model', { count: 4, error: null });
     enqueueQuery('order_read_model', { count: 1, error: null });
+    enqueueQuery('order_read_model', { count: 5, error: null });
 
     const result = await getOrderTabCounts('user-1');
 
@@ -104,6 +105,7 @@ describe('order.service schema-aligned reads', () => {
         packing: 3,
         shipped: 4,
         completed: 1,
+        cancelled: 5,
       },
       error: null,
     });
@@ -114,6 +116,31 @@ describe('order.service schema-aligned reads', () => {
       expect.arrayContaining([
         { method: 'eq', args: ['user_id', 'user-1'] },
         { method: 'eq', args: ['customer_order_bucket', 'unpaid'] },
+      ]),
+    );
+
+    const cancelledQuery = queryRecords[4];
+    expect(cancelledQuery.table).toBe('order_read_model');
+    expect(cancelledQuery.operations).toEqual(
+      expect.arrayContaining([{ method: 'eq', args: ['customer_order_bucket', 'cancelled'] }]),
+    );
+  });
+
+  test('filters getOrdersOptimized by the cancelled customer order bucket', async () => {
+    enqueueQuery('order_read_model', {
+      data: [],
+      error: null,
+    });
+
+    const result = await getOrdersOptimized('user-1', {
+      customerOrderBucket: 'cancelled',
+    });
+
+    expect(result.error).toBeNull();
+    expect(queryRecords[0]?.operations).toEqual(
+      expect.arrayContaining([
+        { method: 'eq', args: ['user_id', 'user-1'] },
+        { method: 'eq', args: ['customer_order_bucket', 'cancelled'] },
       ]),
     );
   });
@@ -140,7 +167,7 @@ describe('order.service schema-aligned reads', () => {
     );
   });
 
-  test('includes expired pending orders in history query logic alongside terminal payment states', async () => {
+  test('includes expired pending orders alongside terminal payment states', async () => {
     enqueueQuery('order_read_model', {
       data: [],
       error: null,
@@ -148,7 +175,7 @@ describe('order.service schema-aligned reads', () => {
 
     const result = await getOrdersOptimized('user-1', {
       paymentStatuses: ['expire', 'cancel', 'deny'],
-      includeExpiredPendingInHistory: true,
+      includeExpiredPendingOrders: true,
     });
 
     expect(result.error).toBeNull();

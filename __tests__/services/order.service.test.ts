@@ -103,6 +103,10 @@ describe('order.service lifecycle helpers', () => {
       label: 'Dibatalkan',
       variant: 'danger',
     });
+    expect(getOrderPrimaryStatusDisplay('cancelled', 'pending')).toEqual({
+      label: 'Dibatalkan',
+      variant: 'danger',
+    });
   });
 
   test('reports whether backend expiration timestamp has passed', () => {

@@ -16,6 +16,8 @@ export interface OrdersCacheEntry {
   error: string | null;
 }
 
+export type OrdersByStatusCacheKey = 'packing' | 'shipped' | 'completed' | 'cancelled';
+
 export interface UpsertOrdersCachePagePayload {
   userId: string;
   items: OrderListItem[];
@@ -118,18 +120,19 @@ export interface OrdersByStatusCache {
   packing: Record<string, OrdersCacheEntry | undefined>;
   shipped: Record<string, OrdersCacheEntry | undefined>;
   completed: Record<string, OrdersCacheEntry | undefined>;
+  cancelled: Record<string, OrdersCacheEntry | undefined>;
 }
 
 export interface UpsertOrdersByStatusCachePagePayload extends UpsertOrdersCachePagePayload {
-  cacheKey: 'packing' | 'shipped' | 'completed';
+  cacheKey: OrdersByStatusCacheKey;
 }
 
 export interface SetOrdersByStatusCacheStatusPayload extends SetOrdersCacheStatusPayload {
-  cacheKey: 'packing' | 'shipped' | 'completed';
+  cacheKey: OrdersByStatusCacheKey;
 }
 
 export interface InvalidateOrdersByStatusCachePayload {
-  cacheKey: 'packing' | 'shipped' | 'completed';
+  cacheKey: OrdersByStatusCacheKey;
   userId: string;
 }
 
@@ -157,6 +160,7 @@ const initialState: AppState = {
     packing: {},
     shipped: {},
     completed: {},
+    cancelled: {},
   },
   productsCache: {},
 };
