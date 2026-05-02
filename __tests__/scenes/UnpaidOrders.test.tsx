@@ -8,6 +8,8 @@ const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 const mockRefreshIfNeeded = jest.fn();
 const mockLoadMore = jest.fn();
+const mockUseUnpaidOrdersPaginated = jest.fn();
+const mockOrderStatusTabsHeader = jest.fn();
 
 const mockOrders: OrderListItem[] = [
   {
@@ -80,17 +82,21 @@ const hookState = {
 };
 
 jest.mock('@/hooks/useUnpaidOrdersPaginated', () => ({
-  useUnpaidOrdersPaginated: () => ({
-    ...hookState,
-    refresh: mockRefresh,
-    refreshIfNeeded: mockRefreshIfNeeded,
-    loadMore: mockLoadMore,
-    metrics: {
-      lastFetchDurationMs: 100,
-      lastPayloadBytes: 1024,
-      cacheAgeMs: 5000,
-    },
-  }),
+  useUnpaidOrdersPaginated: (userId?: string) => {
+    mockUseUnpaidOrdersPaginated(userId);
+
+    return {
+      ...hookState,
+      refresh: mockRefresh,
+      refreshIfNeeded: mockRefreshIfNeeded,
+      loadMore: mockLoadMore,
+      metrics: {
+        lastFetchDurationMs: 100,
+        lastPayloadBytes: 1024,
+        cacheAgeMs: 5000,
+      },
+    };
+  },
 }));
 
 jest.mock('@/slices', () => ({
@@ -105,10 +111,23 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
+jest.mock('@/scenes/orders/OrderStatusTabsHeader', () => ({
+  OrderStatusTabsHeader: (props: { activeTab: string }) => {
+    mockOrderStatusTabsHeader(props);
+
+    const React = require('react') as typeof import('react');
+    const { Text } = require('react-native') as typeof import('react-native');
+
+    return React.createElement(Text, null, `tabs-header-${props.activeTab}`);
+  },
+}));
+
 describe('UnpaidOrders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
+    mockUseUnpaidOrdersPaginated.mockClear();
+    mockOrderStatusTabsHeader.mockClear();
     hookState.orders = mockOrders;
     hookState.error = null;
     hookState.hasMore = false;
@@ -119,9 +138,17 @@ describe('UnpaidOrders', () => {
     hookState.isUsingCachedData = true;
   });
 
+  test('queries unpaid orders for the current user with the existing hook contract', () => {
+    render(<UnpaidOrdersScreen />);
+
+    expect(mockUseUnpaidOrdersPaginated.mock.calls[0]).toEqual(['user-123']);
+  });
+
   test('renders order list', () => {
     render(<UnpaidOrdersScreen />);
 
+    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
+    expect(mockOrderStatusTabsHeader).toHaveBeenCalledWith({ activeTab: 'unpaid' });
     expect(screen.getByText('Paracetamol')).toBeTruthy();
     expect(screen.getByText('Vitamin C')).toBeTruthy();
   });
@@ -132,6 +159,7 @@ describe('UnpaidOrders', () => {
 
     render(<UnpaidOrdersScreen />);
 
+    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
     expect(screen.getByText('Belum Ada Pesanan')).toBeTruthy();
     expect(
       screen.getByText('Pesanan yang masih bisa dibayar akan muncul di sini. Yuk, mulai belanja!'),
@@ -141,6 +169,7 @@ describe('UnpaidOrders', () => {
   test('shows active unpaid helper copy above the list', () => {
     render(<UnpaidOrdersScreen />);
 
+    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
     expect(screen.getByText('Masih Bisa Dibayar')).toBeTruthy();
     expect(
       screen.getByText('Hanya pesanan yang masih bisa dibayar ditampilkan di sini.'),
@@ -166,6 +195,7 @@ describe('UnpaidOrders', () => {
 
     render(<UnpaidOrdersScreen />);
 
+    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
     expect(screen.getByText('Memuat pesanan...')).toBeTruthy();
   });
 
@@ -176,6 +206,7 @@ describe('UnpaidOrders', () => {
 
     render(<UnpaidOrdersScreen />);
 
+    expect(screen.getByText('tabs-header-unpaid')).toBeTruthy();
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
   });
 

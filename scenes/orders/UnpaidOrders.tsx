@@ -7,6 +7,7 @@ import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import type { OrderListItem } from '@/services';
 import { OrderStatusList } from './OrderStatusList';
+import { OrderStatusTabsHeader } from './OrderStatusTabsHeader';
 
 const EMPTY_TITLE = 'Belum Ada Pesanan';
 const EMPTY_DESCRIPTION =
@@ -63,20 +64,23 @@ export function UnpaidOrders() {
 
   const unpaidHeader = useMemo(
     () => (
-      <YStack paddingHorizontal="$4" paddingTop="$4" paddingBottom="$2">
-        <YStack
-          backgroundColor="$warningSoft"
-          borderRadius="$4"
-          padding="$3"
-          gap="$1.5"
-          borderWidth={1}
-          borderColor="$warning">
-          <Text fontSize="$4" fontWeight="700" color="$warning">
-            Masih Bisa Dibayar
-          </Text>
-          <Text fontSize="$3" color="$colorSubtle">
-            Hanya pesanan yang masih bisa dibayar ditampilkan di sini.
-          </Text>
+      <YStack>
+        <OrderStatusTabsHeader activeTab="unpaid" />
+        <YStack paddingHorizontal="$4" paddingTop="$4" paddingBottom="$2">
+          <YStack
+            backgroundColor="$warningSoft"
+            borderRadius="$4"
+            padding="$3"
+            gap="$1.5"
+            borderWidth={1}
+            borderColor="$warning">
+            <Text fontSize="$4" fontWeight="700" color="$warning">
+              Masih Bisa Dibayar
+            </Text>
+            <Text fontSize="$3" color="$colorSubtle">
+              Hanya pesanan yang masih bisa dibayar ditampilkan di sini.
+            </Text>
+          </YStack>
         </YStack>
       </YStack>
     ),
