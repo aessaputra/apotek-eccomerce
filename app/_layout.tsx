@@ -27,7 +27,7 @@ import '@/tamagui-web.css';
 
 SplashScreen.preventAutoHideAsync();
 
-const PROTECTED_ROUTE_GROUPS = ['(tabs)', 'cart', 'product-details'];
+const PROTECTED_ROUTE_GROUPS = ['(tabs)', 'cart', 'product-details', 'payment-success'];
 const NOTIFICATION_BLOCKING_AUTH_CALLBACK_ROUTES = new Set(['google-auth', 'reset-password']);
 const POST_AUTH_NOTIFICATION_ALLOWED_TAB_ROUTES = new Set(['home', 'orders', 'profile']);
 const PASSWORD_RECOVERY_ROUTE = 'reset-password';
@@ -352,6 +352,7 @@ function Router() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="product-details" />
         <Stack.Screen name="cart" />
+        <Stack.Screen name="payment-success" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="google-auth" />
         <Stack.Screen name="+not-found" />
