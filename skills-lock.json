@@ -56,6 +56,12 @@
       "sourceType": "github",
       "computedHash": "cc9be80cb2718b656378763bf429332922445026f3e30809c56b7229636e2ae6"
     },
+    "e2e-testing-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/developer-essentials/skills/e2e-testing-patterns/SKILL.md",
+      "computedHash": "37ea37e42a81c926ebd81924691a15fb657df7c8a52b863c34967e5ab99cdc22"
+    },
     "eraser-diagrams": {
       "source": "eraserlabs/eraser-io",
       "sourceType": "github",
@@ -80,6 +86,12 @@
       "source": "tivojn/google-maps-api-skill",
       "sourceType": "github",
       "computedHash": "5e052e505bfac4945d2f19f32125242233d29428233c8c71f6ce08a827d8b681"
+    },
+    "jest-react-testing": {
+      "source": "manutej/luxor-claude-marketplace",
+      "sourceType": "github",
+      "skillPath": "plugins/luxor-frontend-essentials/skills/jest-react-testing/SKILL.md",
+      "computedHash": "2f938ce10a81d8583b679d7ce75eb935fffbad5aab4e5d9681285bc3c9b83224"
     },
     "native-data-fetching": {
       "source": "expo/skills",
