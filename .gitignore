@@ -44,8 +44,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# coverage or example directories
+# coverage, cache, or example directories
 coverage/
+.jest-cache/
 app-example
 
 # Agent
