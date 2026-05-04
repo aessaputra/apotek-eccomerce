@@ -15,6 +15,8 @@ jest.mock('@/utils/config', () => ({
   __esModule: true,
   default: {
     googleApiKey: 'test-api-key',
+    googlePlacesApiUrl: 'https://places.googleapis.com/v1',
+    googleGeocodingApiUrl: 'https://maps.googleapis.com/maps/api',
   },
 }));
 

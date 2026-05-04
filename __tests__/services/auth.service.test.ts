@@ -114,10 +114,14 @@ jest.mock('@/utils/config', () => ({
   __esModule: true,
   default: {
     env: 'test',
-    apiUrl: '',
     supabaseUrl: 'https://project.supabase.co',
     supabasePublishableKey: 'publishable-key',
     googleApiKey: '',
+    regionalApiUrl: 'https://wilayah.id/api',
+    postalDataUrl:
+      'https://raw.githubusercontent.com/ArrayAccess/Indonesia-Postal-And-Area/master/data/json/area/62',
+    googlePlacesApiUrl: 'https://places.googleapis.com/v1',
+    googleGeocodingApiUrl: 'https://maps.googleapis.com/maps/api',
   },
 }));
 
