@@ -2,25 +2,40 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Platform } from 'react-native';
 import {
   clearLocalAuthSessionForInvalidRefreshToken,
+  createMfaChallenge,
   createPasswordRecoveryRedirectUri,
   createSessionFromRecoveryCode,
   createSessionFromRecoveryTokens,
+  enrollTotpFactor,
+  getMfaAssuranceLevel,
   handleOAuthHashTokens,
   isInvalidRefreshTokenError,
+  listMfaFactors,
   requestPasswordReset,
+  reauthenticateWithPassword,
+  refreshAuthSession,
   signInWithPassword,
   signOut,
   signUp,
+  unenrollMfaFactor,
   updatePassword,
+  verifyMfaChallenge,
   verifyEmailOtp,
 } from '@/services/auth.service';
 
 type AuthServiceResult = Promise<unknown>;
+type FetchMock = (...args: Parameters<typeof fetch>) => Promise<Response>;
 
 interface RedirectUriOptions {
   scheme?: string;
   path?: string;
   isTripleSlashed?: boolean;
+}
+
+interface MfaThrowNormalizationCase {
+  mock: jest.Mock<(...args: unknown[]) => AuthServiceResult>;
+  action: () => AuthServiceResult;
+  errorName: string;
 }
 
 const mockSignInWithPassword = jest.fn<(...args: unknown[]) => AuthServiceResult>();
@@ -31,7 +46,26 @@ const mockResetPasswordForEmail = jest.fn<(...args: unknown[]) => AuthServiceRes
 const mockUpdateUser = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockExchangeCodeForSession = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockSetSession = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockRefreshSession = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockGetAuthenticatorAssuranceLevel = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockListFactors = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockEnroll = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockChallenge = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockVerify = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockUnenroll = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockMakeRedirectUri = jest.fn<(options: RedirectUriOptions) => string>();
+const mockFetch = jest.fn<FetchMock>();
+
+async function expectMfaThrowNormalization({ mock, action, errorName }: MfaThrowNormalizationCase) {
+  mock.mockImplementationOnce(async () => {
+    throw new Error('MFA transport unavailable');
+  });
+
+  await expect(action()).resolves.toEqual({
+    data: null,
+    error: { message: 'MFA transport unavailable', name: errorName },
+  });
+}
 
 jest.mock('expo-auth-session', () => ({
   makeRedirectUri: (options: RedirectUriOptions) => mockMakeRedirectUri(options),
@@ -61,8 +95,29 @@ jest.mock('@/utils/supabase', () => ({
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
       exchangeCodeForSession: (...args: unknown[]) => mockExchangeCodeForSession(...args),
       setSession: (...args: unknown[]) => mockSetSession(...args),
+      refreshSession: (...args: unknown[]) => mockRefreshSession(...args),
       signInWithOAuth: jest.fn(),
+      mfa: {
+        getAuthenticatorAssuranceLevel: (...args: unknown[]) =>
+          mockGetAuthenticatorAssuranceLevel(...args),
+        listFactors: (...args: unknown[]) => mockListFactors(...args),
+        enroll: (...args: unknown[]) => mockEnroll(...args),
+        challenge: (...args: unknown[]) => mockChallenge(...args),
+        verify: (...args: unknown[]) => mockVerify(...args),
+        unenroll: (...args: unknown[]) => mockUnenroll(...args),
+      },
     },
+  },
+}));
+
+jest.mock('@/utils/config', () => ({
+  __esModule: true,
+  default: {
+    env: 'test',
+    apiUrl: '',
+    supabaseUrl: 'https://project.supabase.co',
+    supabasePublishableKey: 'publishable-key',
+    googleApiKey: '',
   },
 }));
 
@@ -76,7 +131,16 @@ describe('auth.service', () => {
     mockUpdateUser.mockReset();
     mockExchangeCodeForSession.mockReset();
     mockSetSession.mockReset();
+    mockRefreshSession.mockReset();
+    mockGetAuthenticatorAssuranceLevel.mockReset();
+    mockListFactors.mockReset();
+    mockEnroll.mockReset();
+    mockChallenge.mockReset();
+    mockVerify.mockReset();
+    mockUnenroll.mockReset();
     mockMakeRedirectUri.mockReset();
+    mockFetch.mockReset();
+    global.fetch = mockFetch as typeof fetch;
     mockMakeRedirectUri.mockImplementation(({ path, isTripleSlashed }) =>
       isTripleSlashed
         ? `apotek-ecommerce:///${path ?? 'google-auth'}`
@@ -136,6 +200,303 @@ describe('auth.service', () => {
 
     expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(result).toBe(supabaseResult);
+  });
+
+  it('gets MFA assurance level through Supabase Auth MFA', async () => {
+    const aalData = { currentLevel: 'aal1', nextLevel: 'aal2', currentAuthenticationMethods: [] };
+    mockGetAuthenticatorAssuranceLevel.mockImplementationOnce(async () => ({
+      data: aalData,
+      error: null,
+    }));
+
+    const result = await getMfaAssuranceLevel();
+
+    expect(mockGetAuthenticatorAssuranceLevel).toHaveBeenCalledWith();
+    expect(result).toEqual({ data: aalData, error: null });
+  });
+
+  it('normalizes thrown MFA assurance level failures', async () => {
+    await expectMfaThrowNormalization({
+      mock: mockGetAuthenticatorAssuranceLevel,
+      action: getMfaAssuranceLevel,
+      errorName: 'MfaAssuranceLevelError',
+    });
+  });
+
+  it('lists MFA factors through Supabase Auth MFA', async () => {
+    const factorsData = { all: [], totp: [], phone: [] };
+    mockListFactors.mockImplementationOnce(async () => ({ data: factorsData, error: null }));
+
+    const result = await listMfaFactors();
+
+    expect(mockListFactors).toHaveBeenCalledWith();
+    expect(result).toEqual({ data: factorsData, error: null });
+  });
+
+  it('normalizes thrown MFA factor listing failures', async () => {
+    await expectMfaThrowNormalization({
+      mock: mockListFactors,
+      action: listMfaFactors,
+      errorName: 'MfaListFactorsError',
+    });
+  });
+
+  it('enrolls TOTP factors with friendly name and issuer', async () => {
+    const enrollmentData = {
+      id: 'factor-secret-id',
+      type: 'totp',
+      totp: {
+        qr_code: '<svg>secret-qr</svg>',
+        secret: 'totp-secret-value',
+        uri: 'otpauth://totp/secret-uri',
+      },
+    };
+    mockEnroll.mockImplementationOnce(async () => ({ data: enrollmentData, error: null }));
+
+    const result = await enrollTotpFactor({ friendlyName: 'HP utama', issuer: 'Apotek' });
+
+    expect(mockEnroll).toHaveBeenCalledWith({
+      factorType: 'totp',
+      friendlyName: 'HP utama',
+      issuer: 'Apotek',
+    });
+    expect(result).toEqual({ data: enrollmentData, error: null });
+  });
+
+  it('normalizes thrown TOTP enrollment failures', async () => {
+    await expectMfaThrowNormalization({
+      mock: mockEnroll,
+      action: () => enrollTotpFactor({ friendlyName: 'HP utama', issuer: 'Apotek' }),
+      errorName: 'MfaEnrollTotpError',
+    });
+  });
+
+  it('creates MFA challenges with factor ID', async () => {
+    const challengeData = { id: 'challenge-secret-id', expires_at: 12345 };
+    mockChallenge.mockImplementationOnce(async () => ({ data: challengeData, error: null }));
+
+    const result = await createMfaChallenge('factor-secret-id');
+
+    expect(mockChallenge).toHaveBeenCalledWith({ factorId: 'factor-secret-id' });
+    expect(result).toEqual({ data: challengeData, error: null });
+  });
+
+  it('normalizes thrown MFA challenge failures', async () => {
+    await expectMfaThrowNormalization({
+      mock: mockChallenge,
+      action: () => createMfaChallenge('factor-secret-id'),
+      errorName: 'MfaChallengeError',
+    });
+  });
+
+  it('verifies MFA challenges with trimmed codes', async () => {
+    const verifyData = { access_token: 'new-session-token' };
+    mockVerify.mockImplementationOnce(async () => ({ data: verifyData, error: null }));
+
+    const result = await verifyMfaChallenge({
+      factorId: 'factor-secret-id',
+      challengeId: 'challenge-secret-id',
+      code: ' 123456 ',
+    });
+
+    expect(mockVerify).toHaveBeenCalledWith({
+      factorId: 'factor-secret-id',
+      challengeId: 'challenge-secret-id',
+      code: '123456',
+    });
+    expect(result).toEqual({ data: verifyData, error: null });
+  });
+
+  it('normalizes thrown MFA verification failures', async () => {
+    await expectMfaThrowNormalization({
+      mock: mockVerify,
+      action: () =>
+        verifyMfaChallenge({
+          factorId: 'factor-secret-id',
+          challengeId: 'challenge-secret-id',
+          code: '123456',
+        }),
+      errorName: 'MfaVerifyChallengeError',
+    });
+  });
+
+  it('unenrolls MFA factors with factor ID', async () => {
+    const unenrollData = { id: 'factor-secret-id' };
+    mockUnenroll.mockImplementationOnce(async () => ({ data: unenrollData, error: null }));
+
+    const result = await unenrollMfaFactor('factor-secret-id');
+
+    expect(mockUnenroll).toHaveBeenCalledWith({ factorId: 'factor-secret-id' });
+    expect(result).toEqual({ data: unenrollData, error: null });
+  });
+
+  it('normalizes thrown MFA unenrollment failures', async () => {
+    await expectMfaThrowNormalization({
+      mock: mockUnenroll,
+      action: () => unenrollMfaFactor('factor-secret-id'),
+      errorName: 'MfaUnenrollFactorError',
+    });
+  });
+
+  it('refreshes the auth session through Supabase Auth', async () => {
+    const sessionData = { session: { access_token: 'fresh-token' } };
+    mockRefreshSession.mockImplementationOnce(async () => ({ data: sessionData, error: null }));
+
+    const result = await refreshAuthSession();
+
+    expect(mockRefreshSession).toHaveBeenCalledWith();
+    expect(result).toEqual({ data: sessionData, error: null });
+  });
+
+  it('normalizes thrown auth session refresh failures', async () => {
+    await expectMfaThrowNormalization({
+      mock: mockRefreshSession,
+      action: refreshAuthSession,
+      errorName: 'RefreshAuthSessionError',
+    });
+  });
+
+  it('reauthenticates users with password credentials without exposing tokens or mutating client session', async () => {
+    const authData = { user: { id: 'user-reauth' }, session: { access_token: 'token' } };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => authData,
+    } as Response);
+
+    const result = await reauthenticateWithPassword({
+      email: 'user@example.com',
+      password: 'secret123',
+    });
+
+    expect(mockSignInWithPassword).not.toHaveBeenCalled();
+    expect(mockSetSession).not.toHaveBeenCalled();
+    expect(mockRefreshSession).not.toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://project.supabase.co/auth/v1/token?grant_type=password',
+      {
+        method: 'POST',
+        headers: {
+          apikey: 'publishable-key',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'user@example.com',
+          password: 'secret123',
+        }),
+      },
+    );
+    expect(result).toEqual({ data: { verified: true }, error: null });
+  });
+
+  it('normalizes password reauthentication REST failures', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error_code: 'invalid_credentials', msg: 'Invalid login credentials' }),
+    } as Response);
+
+    await expect(
+      reauthenticateWithPassword({ email: 'user@example.com', password: 'wrong-password' }),
+    ).resolves.toEqual({
+      data: null,
+      error: {
+        message: 'Invalid login credentials',
+        name: 'InvalidLoginCredentialsError',
+      },
+    });
+  });
+
+  it('keeps transport password reauthentication failures separate from wrong passwords', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      json: async () => ({ message: 'Too many requests' }),
+    } as Response);
+
+    await expect(
+      reauthenticateWithPassword({ email: 'user@example.com', password: 'secret123' }),
+    ).resolves.toEqual({
+      data: null,
+      error: {
+        message: 'Too many requests',
+        name: 'ReauthenticateWithPasswordError',
+      },
+    });
+  });
+
+  it('normalizes thrown password reauthentication failures', async () => {
+    mockFetch.mockImplementationOnce(async () => {
+      throw new Error('Auth transport unavailable');
+    });
+
+    await expect(
+      reauthenticateWithPassword({ email: 'user@example.com', password: 'secret123' }),
+    ).resolves.toEqual({
+      data: null,
+      error: {
+        message: 'Auth transport unavailable',
+        name: 'ReauthenticateWithPasswordError',
+      },
+    });
+  });
+
+  it('does not log or persist MFA secrets, challenge IDs, codes, or factor IDs', async () => {
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const localStorageSetItem = jest.fn();
+    const sessionStorageSetItem = jest.fn();
+    const originalLocalStorage = globalThis.localStorage;
+    const originalSessionStorage = globalThis.sessionStorage;
+
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: { setItem: localStorageSetItem },
+    });
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      configurable: true,
+      value: { setItem: sessionStorageSetItem },
+    });
+
+    mockEnroll.mockImplementationOnce(async () => ({
+      data: {
+        id: 'factor-secret-id',
+        type: 'totp',
+        totp: {
+          qr_code: '<svg>secret-qr</svg>',
+          secret: 'totp-secret-value',
+          uri: 'otpauth://totp/secret-uri',
+        },
+      },
+      error: null,
+    }));
+    mockChallenge.mockImplementationOnce(async () => ({
+      data: { id: 'challenge-secret-id' },
+      error: null,
+    }));
+    mockVerify.mockImplementationOnce(async () => ({ data: { success: true }, error: null }));
+
+    try {
+      await enrollTotpFactor({ friendlyName: 'HP utama', issuer: 'Apotek' });
+      await createMfaChallenge('factor-secret-id');
+      await verifyMfaChallenge({
+        factorId: 'factor-secret-id',
+        challengeId: 'challenge-secret-id',
+        code: ' 123456 ',
+      });
+
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(localStorageSetItem).not.toHaveBeenCalled();
+      expect(sessionStorageSetItem).not.toHaveBeenCalled();
+    } finally {
+      consoleLogSpy.mockRestore();
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: originalLocalStorage,
+      });
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        configurable: true,
+        value: originalSessionStorage,
+      });
+    }
   });
 
   it('detects invalid refresh token errors and clears local session', async () => {

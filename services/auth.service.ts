@@ -1,4 +1,5 @@
 import { supabase } from '@/utils/supabase';
+import config from '@/utils/config';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as Linking from 'expo-linking';
@@ -27,10 +28,46 @@ interface SignOutInput {
   scope?: 'global' | 'local' | 'others';
 }
 
+interface EnrollTotpFactorInput {
+  friendlyName?: string;
+  issuer?: string;
+}
+
+interface VerifyMfaChallengeInput {
+  factorId: string;
+  challengeId: string;
+  code: string;
+}
+
+interface MfaAssuranceLevelData {
+  currentLevel?: string | null;
+  nextLevel?: string | null;
+}
+
+interface PasswordReauthenticationData {
+  verified: true;
+}
+
 /** Error shape for Google OAuth — compatible with Supabase AuthError.message */
 export interface GoogleAuthError {
   message: string;
   name: string;
+}
+
+// WARNING: qr_code, secret, and uri must NEVER be logged or persisted.
+export interface TotpEnrollmentData {
+  id: string;
+  type: 'totp';
+  totp: {
+    qr_code: string;
+    secret: string;
+    uri: string;
+  };
+}
+
+interface AuthServiceResult<TData = unknown> {
+  data: TData | null;
+  error: GoogleAuthError | null;
 }
 
 /** Consistent return type for signInWithGoogle() */
@@ -43,6 +80,7 @@ const GOOGLE_AUTH_CALLBACK_PATH = 'google-auth';
 const GOOGLE_AUTH_REDIRECT_SCHEME = 'apotek-ecommerce';
 const PASSWORD_RECOVERY_CALLBACK_PATH = 'reset-password';
 const PASSWORD_RECOVERY_REDIRECT_SCHEME = 'apotek-ecommerce';
+const PASSWORD_REAUTH_ENDPOINT = '/auth/v1/token?grant_type=password';
 
 const INVALID_REFRESH_TOKEN_PATTERNS = [
   'invalid refresh token',
@@ -122,6 +160,49 @@ function getErrorStringProperty(error: unknown, property: 'message' | 'name') {
   return '';
 }
 
+function normalizeThrownAuthServiceError<TData = unknown>(
+  thrown: unknown,
+  name: string,
+): AuthServiceResult<TData> {
+  const message = thrown instanceof Error ? thrown.message : String(thrown);
+
+  return {
+    data: null,
+    error: { message, name },
+  };
+}
+
+function getAuthRestErrorMessage(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null) {
+    return '';
+  }
+
+  const record = payload as Record<string, unknown>;
+  const candidates = [record.message, record.error_description, record.msg, record.error];
+  const message = candidates.find(value => typeof value === 'string' && value.length > 0);
+
+  return typeof message === 'string' ? message : '';
+}
+
+function getAuthRestErrorCode(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null) {
+    return '';
+  }
+
+  const record = payload as Record<string, unknown>;
+  const candidates = [record.error_code, record.code, record.error];
+  const code = candidates.find(value => typeof value === 'string' && value.length > 0);
+
+  return typeof code === 'string' ? code : '';
+}
+
+function isInvalidLoginCredentialsError(status: number, code: string, message: string) {
+  return (
+    status === 400 &&
+    (code === 'invalid_credentials' || message.toLowerCase().includes('invalid login credentials'))
+  );
+}
+
 export function isInvalidRefreshTokenError(error: unknown) {
   const name = getErrorStringProperty(error, 'name');
   const message = getErrorStringProperty(error, 'message').toLowerCase();
@@ -194,6 +275,180 @@ export async function updatePassword(
       data: null,
       error: { message, name: 'UpdatePasswordError' },
     };
+  }
+}
+
+export async function getMfaAssuranceLevel(): Promise<AuthServiceResult<MfaAssuranceLevelData>> {
+  try {
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaAssuranceLevelError');
+  }
+}
+
+export function requiresMfaChallenge(aalData: {
+  currentLevel?: string | null;
+  nextLevel?: string | null;
+}): boolean {
+  return aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2';
+}
+
+export async function listMfaFactors(): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaListFactorsError');
+  }
+}
+
+export async function enrollTotpFactor({
+  friendlyName,
+  issuer,
+}: EnrollTotpFactorInput): Promise<AuthServiceResult<TotpEnrollmentData>> {
+  try {
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName,
+      issuer,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaEnrollTotpError');
+  }
+}
+
+export async function createMfaChallenge(factorId: string): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.mfa.challenge({ factorId });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaChallengeError');
+  }
+}
+
+export async function verifyMfaChallenge({
+  factorId,
+  challengeId,
+  code,
+}: VerifyMfaChallengeInput): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId,
+      code: code.trim(),
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaVerifyChallengeError');
+  }
+}
+
+export async function unenrollMfaFactor(factorId: string): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.mfa.unenroll({ factorId });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaUnenrollFactorError');
+  }
+}
+
+export async function refreshAuthSession(): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.refreshSession();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'RefreshAuthSessionError');
+  }
+}
+
+export async function reauthenticateWithPassword(
+  input: SignInInput,
+): Promise<AuthServiceResult<PasswordReauthenticationData>> {
+  try {
+    if (!config.supabaseUrl || !config.supabasePublishableKey) {
+      return {
+        data: null,
+        error: {
+          message: 'Konfigurasi autentikasi belum lengkap.',
+          name: 'ReauthenticateWithPasswordError',
+        },
+      };
+    }
+
+    const response = await fetch(`${config.supabaseUrl}${PASSWORD_REAUTH_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        apikey: config.supabasePublishableKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: input.email,
+        password: input.password,
+      }),
+    });
+
+    let data: unknown = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    if (!response.ok) {
+      const code = getAuthRestErrorCode(data);
+      const message = getAuthRestErrorMessage(data);
+
+      return {
+        data: null,
+        error: {
+          message: message || 'Gagal memverifikasi password. Coba lagi.',
+          name: isInvalidLoginCredentialsError(response.status, code, message)
+            ? 'InvalidLoginCredentialsError'
+            : 'ReauthenticateWithPasswordError',
+        },
+      };
+    }
+
+    return { data: { verified: true }, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'ReauthenticateWithPasswordError');
   }
 }
 
