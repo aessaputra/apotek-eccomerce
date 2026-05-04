@@ -302,13 +302,9 @@ export function convertPlaceDetailsToAddressValue(placeDetails: GooglePlaceDetai
     components.find(c => c.types.includes('administrative_area_level_3'))?.longName ?? '';
   const adminArea4 =
     components.find(c => c.types.includes('administrative_area_level_4'))?.longName ?? '';
-  const city =
-    components.find(c => c.types.includes('locality'))?.longName ??
-    adminArea2 ??
-    adminArea3 ??
-    subLocality ??
-    '';
-  const district = adminArea3 || adminArea4 || subLocality || neighborhood || '';
+  const locality = components.find(c => c.types.includes('locality'))?.longName ?? '';
+  const city = adminArea2 || locality || adminArea3 || subLocality || '';
+  const district = adminArea3 || locality || adminArea4 || subLocality || neighborhood || '';
   const province =
     components.find(c => c.types.includes('administrative_area_level_1'))?.longName ?? '';
   const postalCode = components.find(c => c.types.includes('postal_code'))?.longName ?? '';
@@ -354,8 +350,8 @@ export function mapReverseGeocodeResultToAddress(
   const sanitizedFromParts = sanitizeAddressCandidate(streetParts.join(' '));
   const sanitizedFallback = sanitizeAddressCandidate(result.formatted_address.split(',')[0]);
   const streetAddress = sanitizedFromParts || sanitizedFallback || 'Lokasi';
-  const city = locality || adminArea2 || adminArea3 || subLocality || '';
-  const district = adminArea3 || adminArea4 || subLocality || neighborhood || '';
+  const city = adminArea2 || locality || adminArea3 || subLocality || '';
+  const district = adminArea3 || locality || adminArea4 || subLocality || neighborhood || '';
 
   return {
     id: result.place_id,
