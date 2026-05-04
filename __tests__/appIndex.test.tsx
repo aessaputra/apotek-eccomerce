@@ -40,7 +40,9 @@ describe('<Index />', () => {
   });
 
   test('redirects authenticated users to /home', async () => {
-    mockedUseAppSlice.mockReturnValue({ authPhase: 'signed-in' } as ReturnType<typeof useAppSlice>);
+    mockedUseAppSlice.mockReturnValue({ authPhase: 'authenticated' } as ReturnType<
+      typeof useAppSlice
+    >);
 
     render(<Index />);
 
