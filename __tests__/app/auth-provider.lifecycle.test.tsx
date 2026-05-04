@@ -9,9 +9,12 @@ const mockDispatch = jest.fn();
 const mockSetUser = jest.fn((payload: unknown) => ({ type: 'setUser', payload }));
 const mockSetLoggedIn = jest.fn((payload: boolean) => ({ type: 'setLoggedIn', payload }));
 const mockSetChecked = jest.fn((payload: boolean) => ({ type: 'setChecked', payload }));
+const mockSetPendingMfa = jest.fn((payload: boolean) => ({ type: 'setPendingMfa', payload }));
+const mockSetAuthPhase = jest.fn((payload: string) => ({ type: 'setAuthPhase', payload }));
 const mockReset = jest.fn(() => ({ type: 'reset' }));
 const mockGetCurrentUser = jest.fn();
 const mockHandleOAuthHashTokens = jest.fn();
+const mockGetMfaAssuranceLevel = jest.fn();
 const mockAuthSignOut = jest.fn();
 const mockClearLocalAuthSessionForInvalidRefreshToken = jest.fn();
 const mockSyncExpoPushTokenIfPermitted = jest.fn();
@@ -35,6 +38,8 @@ jest.mock('@/slices', () => ({
     setUser: mockSetUser,
     setLoggedIn: mockSetLoggedIn,
     setChecked: mockSetChecked,
+    setPendingMfa: mockSetPendingMfa,
+    setAuthPhase: mockSetAuthPhase,
     reset: mockReset,
   }),
 }));
@@ -46,7 +51,10 @@ jest.mock('@/services/user.service', () => ({
 jest.mock('@/services/auth.service', () => ({
   clearLocalAuthSessionForInvalidRefreshToken: (...args: unknown[]) =>
     mockClearLocalAuthSessionForInvalidRefreshToken(...args),
+  getMfaAssuranceLevel: () => mockGetMfaAssuranceLevel(),
   handleOAuthHashTokens: () => mockHandleOAuthHashTokens(),
+  requiresMfaChallenge: (aalData: { currentLevel?: string | null; nextLevel?: string | null }) =>
+    aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2',
   signOut: () => mockAuthSignOut(),
 }));
 
@@ -120,11 +128,23 @@ function createSession(): Session {
   } as Session;
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
 describe('AuthProvider notification lifecycle', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetCurrentUser.mockReset();
     mockHandleOAuthHashTokens.mockReset();
+    mockGetMfaAssuranceLevel.mockReset();
     mockAuthSignOut.mockReset();
     mockClearLocalAuthSessionForInvalidRefreshToken.mockReset();
     mockSyncExpoPushTokenIfPermitted.mockReset();
@@ -137,6 +157,10 @@ describe('AuthProvider notification lifecycle', () => {
     mockHandleOAuthHashTokens.mockImplementation(async () => null);
     mockClearLocalAuthSessionForInvalidRefreshToken.mockImplementation(async () => false);
     mockGetCurrentUser.mockImplementation(async () => null);
+    mockGetMfaAssuranceLevel.mockImplementation(async () => ({
+      data: { currentLevel: 'aal2', nextLevel: 'aal2' },
+      error: null,
+    }));
     mockSyncExpoPushTokenIfPermitted.mockImplementation(async () => ({ data: null, error: null }));
     mockClearExpoPushToken.mockImplementation(async () => ({ data: null, error: null }));
   });
@@ -174,10 +198,137 @@ describe('AuthProvider notification lifecycle', () => {
           createIfMissing: event === 'SIGNED_IN' || event === 'INITIAL_SESSION',
           session,
         });
-        expect(mockSyncExpoPushTokenIfPermitted).toHaveBeenCalledWith('user-1');
+        expect(mockGetMfaAssuranceLevel).toHaveBeenCalled();
+        expect(mockSetAuthPhase).toHaveBeenLastCalledWith('authenticated');
       });
+
+      expect(mockSyncExpoPushTokenIfPermitted).toHaveBeenCalledWith('user-1');
     },
   );
+
+  it('marks signed-in AAL1 sessions that require AAL2 as pending MFA', async () => {
+    const currentUserResult = createCurrentUserResult();
+    const session = createSession();
+
+    mockGetCurrentUser
+      .mockImplementationOnce(async () => null)
+      .mockImplementationOnce(async () => currentUserResult);
+    mockGetMfaAssuranceLevel.mockImplementationOnce(async () => ({
+      data: { currentLevel: 'aal1', nextLevel: 'aal2' },
+      error: null,
+    }));
+
+    render(
+      <AuthProvider>
+        <Text>child</Text>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authStateChangeCallback).not.toBeNull());
+
+    await act(async () => {
+      authStateChangeCallback?.('SIGNED_IN', session);
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockSetAuthPhase).toHaveBeenLastCalledWith('requires-mfa');
+    });
+    expect(mockSyncExpoPushTokenIfPermitted).not.toHaveBeenCalledWith('user-1');
+  });
+
+  it('defers auth checked on sign-in until the MFA assurance check resolves', async () => {
+    const currentUserResult = createCurrentUserResult();
+    const session = createSession();
+    const assuranceLevel = createDeferred<{
+      data: { currentLevel: string; nextLevel: string };
+      error: null;
+    }>();
+
+    mockGetCurrentUser.mockImplementationOnce(async () => null);
+
+    render(
+      <AuthProvider>
+        <Text>child</Text>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(authStateChangeCallback).not.toBeNull());
+    await waitFor(() => expect(mockSetAuthPhase).toHaveBeenCalledWith('signed-out'));
+
+    mockSetAuthPhase.mockClear();
+    mockGetCurrentUser.mockImplementationOnce(async () => currentUserResult);
+    mockGetMfaAssuranceLevel.mockImplementationOnce(() => assuranceLevel.promise);
+
+    await act(async () => {
+      authStateChangeCallback?.('SIGNED_IN', session);
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockSetAuthPhase).toHaveBeenCalledWith('checking-mfa');
+      expect(mockGetMfaAssuranceLevel).toHaveBeenCalled();
+    });
+    expect(mockSetAuthPhase).not.toHaveBeenCalledWith('authenticated');
+
+    await act(async () => {
+      assuranceLevel.resolve({
+        data: { currentLevel: 'aal2', nextLevel: 'aal2' },
+        error: null,
+      });
+      await assuranceLevel.promise;
+    });
+
+    await waitFor(() => {
+      expect(mockSetAuthPhase).toHaveBeenLastCalledWith('authenticated');
+    });
+  });
+
+  it('checks MFA assurance after cold-start user validation succeeds', async () => {
+    jest.useRealTimers();
+
+    mockGetCurrentUser.mockImplementationOnce(async () => createCurrentUserResult());
+    mockGetMfaAssuranceLevel.mockImplementationOnce(async () => ({
+      data: { currentLevel: 'aal1', nextLevel: 'aal2' },
+      error: null,
+    }));
+
+    render(
+      <AuthProvider>
+        <Text>child</Text>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockSetAuthPhase).toHaveBeenCalledWith('checking-mfa');
+      expect(mockGetMfaAssuranceLevel).toHaveBeenCalled();
+      expect(mockSetAuthPhase).toHaveBeenLastCalledWith('requires-mfa');
+    });
+  });
+
+  it('still marks auth checked when cold-start MFA assurance returns an error', async () => {
+    jest.useRealTimers();
+
+    const assuranceError = new Error('AAL unavailable');
+
+    mockGetCurrentUser.mockImplementationOnce(async () => createCurrentUserResult());
+    mockGetMfaAssuranceLevel.mockImplementationOnce(async () => ({
+      data: null,
+      error: assuranceError,
+    }));
+
+    render(
+      <AuthProvider>
+        <Text>child</Text>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockSetAuthPhase).toHaveBeenCalledWith('checking-mfa');
+      expect(mockGetMfaAssuranceLevel).toHaveBeenCalled();
+      expect(mockSetAuthPhase).toHaveBeenLastCalledWith('requires-mfa');
+    });
+  });
 
   it('clears the last known Expo token on sign out', async () => {
     const currentUserResult = createCurrentUserResult();
@@ -210,6 +361,7 @@ describe('AuthProvider notification lifecycle', () => {
 
     await waitFor(() => {
       expect(mockClearExpoPushToken).toHaveBeenCalledWith('user-1');
+      expect(mockSetAuthPhase).toHaveBeenLastCalledWith('signed-out');
     });
   });
 
@@ -305,8 +457,7 @@ describe('AuthProvider notification lifecycle', () => {
         refreshTokenError,
       );
       expect(mockSetUser).toHaveBeenCalledWith(undefined);
-      expect(mockSetLoggedIn).toHaveBeenCalledWith(false);
-      expect(mockSetChecked).toHaveBeenCalledWith(true);
+      expect(mockSetAuthPhase).toHaveBeenCalledWith('signed-out');
     });
   });
 
@@ -332,8 +483,7 @@ describe('AuthProvider notification lifecycle', () => {
         refreshTokenError,
       );
       expect(mockSetUser).toHaveBeenCalledWith(undefined);
-      expect(mockSetLoggedIn).toHaveBeenCalledWith(false);
-      expect(mockSetChecked).toHaveBeenCalledWith(true);
+      expect(mockSetAuthPhase).toHaveBeenCalledWith('signed-out');
     });
   });
 });
