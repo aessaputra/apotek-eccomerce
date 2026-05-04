@@ -3,6 +3,37 @@ import type { Database, Tables } from '@/types/supabase';
 import { classifyError, isRetryableError, translateErrorMessage } from '@/utils/error';
 import { withRetry } from '@/utils/retry';
 
+const SESSION_EXPIRY_SAFETY_WINDOW_SECONDS = 60;
+
+async function getValidAccessToken(): Promise<string | null> {
+  const {
+    data: { session: cachedSession },
+  } = await supabase.auth.getSession();
+
+  if (!cachedSession?.access_token) {
+    return null;
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const expiresAt = cachedSession.expires_at ?? 0;
+  const isExpiredOrNearExpiry = expiresAt <= nowSeconds + SESSION_EXPIRY_SAFETY_WINDOW_SECONDS;
+
+  if (!isExpiredOrNearExpiry) {
+    return cachedSession.access_token;
+  }
+
+  const {
+    data: { session: refreshedSession },
+    error: refreshError,
+  } = await supabase.auth.refreshSession();
+
+  if (refreshError || !refreshedSession?.access_token) {
+    return null;
+  }
+
+  return refreshedSession.access_token;
+}
+
 type PaymentStatus = Database['public']['Enums']['payment_status'];
 export type CustomerCompletionStage = 'not_applicable' | 'awaiting_customer' | 'completed';
 export type CustomerOrderBucket = 'unpaid' | 'packing' | 'shipped' | 'completed' | 'cancelled';
@@ -1107,8 +1138,19 @@ export async function confirmOrderReceived(orderId: string): Promise<ConfirmOrde
   }
 
   try {
+    const accessToken = await getValidAccessToken();
+    if (!accessToken) {
+      return {
+        data: null,
+        error: new Error('Sesi login belum siap. Silakan coba lagi dalam beberapa saat.'),
+      };
+    }
+
     const { data, error } = await supabase.functions.invoke('confirm-order-received', {
       body: { order_id: normalizedOrderId },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
     if (error) {
