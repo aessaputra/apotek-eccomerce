@@ -184,7 +184,7 @@ describe('<Payment />', () => {
     await waitFor(() => {
       expect(mockPollOrderPaymentStatus).toHaveBeenCalledWith('order-1', 12, 2000);
       expect(mockRemovePersistData).toHaveBeenCalledWith('CHECKOUT_SESSION');
-      expect(mockReplace).toHaveBeenCalledWith('/orders/success?orderId=order-1');
+      expect(mockReplace).toHaveBeenCalledWith('/payment-success?orderId=order-1');
     });
 
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'INVALIDATE_UNPAID', payload: 'user-1' });
@@ -263,7 +263,7 @@ describe('<Payment />', () => {
       ).toBeTruthy();
     });
 
-    expect(mockReplace).not.toHaveBeenCalledWith('/orders/success?orderId=order-1');
+    expect(mockReplace).not.toHaveBeenCalledWith('/payment-success?orderId=order-1');
   });
 
   test('allows trusted Midtrans simulator URLs to render inside the webview', () => {
