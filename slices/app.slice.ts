@@ -136,9 +136,18 @@ export interface InvalidateOrdersByStatusCachePayload {
   userId: string;
 }
 
+export type AuthPhase =
+  | 'initializing'
+  | 'signed-out'
+  | 'checking-mfa'
+  | 'requires-mfa'
+  | 'authenticated';
+
 export interface AppState {
   checked: boolean;
   loggedIn: boolean;
+  pendingMfa: boolean;
+  authPhase: AuthPhase;
   user?: User;
   cartRefreshRequestedAt: number | null;
   completedOrdersTabViewedByUser: Record<string, boolean | undefined>;
@@ -151,6 +160,8 @@ export interface AppState {
 const initialState: AppState = {
   checked: false,
   loggedIn: false,
+  pendingMfa: false,
+  authPhase: 'initializing',
   user: undefined,
   cartRefreshRequestedAt: null,
   completedOrdersTabViewedByUser: {},
@@ -172,13 +183,44 @@ const slice = createSlice({
     setChecked: (state: AppState, { payload }: PayloadAction<boolean>) => {
       state.checked = payload;
     },
-    /** Also sets checked=true so callers don't need to dispatch setChecked separately. */
     setLoggedIn: (state: AppState, { payload }: PayloadAction<boolean>) => {
-      state.checked = true;
       state.loggedIn = payload;
     },
     setUser: (state: AppState, { payload }: PayloadAction<User | undefined>) => {
       state.user = payload;
+    },
+    setPendingMfa: (state: AppState, { payload }: PayloadAction<boolean>) => {
+      state.pendingMfa = payload;
+    },
+    setAuthPhase: (state: AppState, { payload }: PayloadAction<AuthPhase>) => {
+      state.authPhase = payload;
+      switch (payload) {
+        case 'initializing':
+          state.checked = false;
+          state.loggedIn = false;
+          state.pendingMfa = false;
+          break;
+        case 'signed-out':
+          state.checked = true;
+          state.loggedIn = false;
+          state.pendingMfa = false;
+          break;
+        case 'checking-mfa':
+          state.checked = false;
+          state.loggedIn = true;
+          state.pendingMfa = false;
+          break;
+        case 'requires-mfa':
+          state.checked = true;
+          state.loggedIn = true;
+          state.pendingMfa = true;
+          break;
+        case 'authenticated':
+          state.checked = true;
+          state.loggedIn = true;
+          state.pendingMfa = false;
+          break;
+      }
     },
     markCartRefreshRequested: (state: AppState, { payload }: PayloadAction<number>) => {
       state.cartRefreshRequestedAt = payload;
