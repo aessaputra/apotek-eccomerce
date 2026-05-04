@@ -12,6 +12,7 @@ import { signOut as authSignOut } from '@/services/auth.service';
 import {
   ChevronRightIcon,
   CircleHelpIcon,
+  LockIcon,
   MapPinIcon,
   UserIcon,
   type IconProps,
@@ -24,6 +25,7 @@ const SafeAreaView = styled(RNSafeAreaView, {
 
 interface MenuItemProps {
   label: string;
+  subtitle?: string;
   icon: ComponentType<IconProps>;
   onPress: () => void;
   'aria-label': string;
@@ -32,6 +34,7 @@ interface MenuItemProps {
 
 const MenuItem = memo(function MenuItem({
   label,
+  subtitle,
   icon: Icon,
   onPress,
   'aria-label': ariaLabel,
@@ -56,9 +59,16 @@ const MenuItem = memo(function MenuItem({
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap="$3" flex={1}>
           <Icon size={22} color="$colorPress" />
-          <Text fontSize="$4" color="$color" fontWeight="500">
-            {label}
-          </Text>
+          <YStack flex={1}>
+            <Text fontSize="$4" color="$color" fontWeight="500">
+              {label}
+            </Text>
+            {subtitle && (
+              <Text fontSize={13} color="$colorHover" lineHeight={18}>
+                {subtitle}
+              </Text>
+            )}
+          </YStack>
         </XStack>
         <ChevronRightIcon size={20} color="$colorPress" />
       </XStack>
@@ -173,6 +183,13 @@ export default function Profile() {
           onPress={() => router.push('/profile/addresses')}
           aria-label="Alamat pengiriman"
           aria-describedby="Kelola alamat pengiriman Anda"
+        />
+        <MenuItem
+          label="Verifikasi 2 Langkah"
+          icon={LockIcon}
+          onPress={() => router.push('/profile/two-step-verification')}
+          aria-label="Verifikasi 2 Langkah"
+          aria-describedby="Kelola pengaturan verifikasi dua langkah"
         />
         <MenuItem
           label="Dukungan"

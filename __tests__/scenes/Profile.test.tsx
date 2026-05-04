@@ -112,6 +112,7 @@ jest.mock('@/components/icons', () => ({
   __esModule: true,
   ChevronRightIcon: () => null,
   CircleHelpIcon: () => null,
+  LockIcon: () => null,
   MapPinIcon: () => null,
   UserIcon: () => null,
 }));
@@ -159,12 +160,22 @@ describe('<Profile />', () => {
 
     fireEvent.press(screen.getByLabelText('Profile Saya'));
     fireEvent.press(screen.getByLabelText('Alamat pengiriman'));
+    fireEvent.press(screen.getByLabelText('Verifikasi 2 Langkah'));
     fireEvent.press(screen.getByLabelText('Dukungan'));
 
     expect(mockPush).toHaveBeenNthCalledWith(1, '/profile/edit-profile');
     expect(mockPush).toHaveBeenNthCalledWith(2, '/profile/addresses');
-    expect(mockPush).toHaveBeenNthCalledWith(3, '/profile/support');
+    expect(mockPush).toHaveBeenNthCalledWith(3, '/profile/two-step-verification');
+    expect(mockPush).toHaveBeenNthCalledWith(4, '/profile/support');
     expect(mockPush).not.toHaveBeenCalledWith(['/profile', 'order-history'].join('/'));
+  });
+
+  it('renders the Verifikasi 2 Langkah menu item without redundant subtitle', () => {
+    render(<Profile />);
+
+    expect(screen.getByText('Verifikasi 2 Langkah')).not.toBeNull();
+    expect(screen.queryByText('Tambahkan lapisan keamanan saat masuk.')).toBeNull();
+    expect(screen.getByLabelText('Verifikasi 2 Langkah')).not.toBeNull();
   });
 
   it('opens the logout dialog and logs out successfully', async () => {

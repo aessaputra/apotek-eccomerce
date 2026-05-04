@@ -79,6 +79,13 @@ function ProfileStackLayout() {
           headerTitleAlign: 'center',
         }}
       />
+      <Stack.Screen
+        name="two-step-verification"
+        options={{
+          title: 'Verifikasi 2 Langkah',
+          headerTitleAlign: 'center',
+        }}
+      />
       <Stack.Screen name="details" options={{ title: 'Detail' }} />
     </Stack>
   );
