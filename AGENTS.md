@@ -151,7 +151,7 @@ npm run dev:deploy:web               # EAS Hosting development deploy
 ## TESTING & CI NOTES
 
 - Jest uses `jest-expo`, `jest.setup.js`, fake timers, and common native mocks; CI runs `npm ci`, format check, lint, then Jest on Node 20.x.
-- Preview CI maps branches to env examples and runs EAS Update; `staging` currently references missing `.env.staging.example`.
+- Preview CI maps branches to env examples and runs EAS Update.
 - Preview CI installs `lightningcss-linux-x64-gnu --save-optional` after `npm ci`; preserve this Tamagui/Linux workaround.
 
 ## NOTES

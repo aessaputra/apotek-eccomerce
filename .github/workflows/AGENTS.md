@@ -12,7 +12,7 @@ CI and preview automation. Root commands are in `package.json`; this folder owns
 
 ## WORKFLOWS
 
-- `test.yml` runs on all PRs and pushes to `dev`, `staging`, `main`, and `release/**`.
+- `test.yml` runs on all PRs and pushes to `dev`, `main`, and `release/**`.
 - Test CI uses Node `20.x`, `npm ci`, `npm run format:check`, `npm run lint`, then `npm run test`.
 - `preview.yml` requires `EXPO_TOKEN`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_KEY` GitHub secrets.
 - PR previews use `expo/expo-github-action/preview@v8` with `eas update --auto`, which comments preview/QR on the PR.
@@ -20,13 +20,12 @@ CI and preview automation. Root commands are in `package.json`; this folder owns
 
 ## ENV MAPPING
 
-| Branch               | Env example            |
-| -------------------- | ---------------------- |
-| `main`, `release/**` | `.env.prod.example`    |
-| `staging`            | `.env.staging.example` |
-| other branches / PR  | `.env.dev.example`     |
+| Branch               | Env example         |
+| -------------------- | ------------------- |
+| `main`, `release/**` | `.env.prod.example` |
+| other branches / PR  | `.env.dev.example`  |
 
-Current repo has only `.env.dev.example` and `.env.prod.example`; `staging` workflow will fail until `.env.staging.example` exists or mapping changes.
+Current repo has `.env.dev.example`, `.env.preview.example`, and `.env.prod.example`.
 
 ## CI QUIRKS
 
