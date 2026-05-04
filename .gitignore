@@ -58,3 +58,4 @@ app-example
 .worktrees/
 #.agents/
 run-gradlew-logs.txt
+.agents/skills/**/.cache/
