@@ -6,14 +6,10 @@
     "version": "3.0.0",
     "owner": "i-have-no-company",
     "newArchEnabled": true,
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
+    "platforms": ["ios", "android", "web"],
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "userInterfaceStyle": "automatic",
-    "runtimeVersion": "3.0.0"
+    "runtimeVersion": { "policy": "appVersion" }
   }
 }
