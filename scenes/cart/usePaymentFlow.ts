@@ -96,7 +96,7 @@ export function usePaymentFlow({
       if (!error && PAYMENT_SUCCESS_STATUSES.includes(paymentStatus)) {
         invalidateOrderCaches(dispatch, userId);
         dispatch(markCartRefreshRequested(Date.now()));
-        router.replace(`/orders/success?orderId=${resolvedOrderId}`);
+        router.replace(`/payment-success?orderId=${resolvedOrderId}`);
         return;
       }
 
