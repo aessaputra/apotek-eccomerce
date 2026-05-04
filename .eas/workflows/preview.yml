@@ -1,0 +1,19 @@
+name: Preview Build
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch: {}
+
+jobs:
+  build-android-preview:
+    name: Build Android APK Preview
+    type: build
+    params:
+      platform: android
+      profile: preview
+
+  deploy-web-preview:
+    name: Deploy Web Preview
+    type: deploy
