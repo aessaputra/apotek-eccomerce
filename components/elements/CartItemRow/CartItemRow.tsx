@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useState } from 'react';
 import { Text, XStack, YStack, useTheme } from 'tamagui';
-import { Trash2 } from '@tamagui/lucide-icons';
+import { Check, Trash2 } from '@tamagui/lucide-icons';
 import { CartItemWithProduct } from '@/types/cart';
 import Image from '@/components/elements/Image/Image';
 import QuantitySelector from '../QuantitySelector/QuantitySelector';
@@ -16,10 +16,15 @@ import { RectButton } from 'react-native-gesture-handler';
 import { formatPrice } from '@/services/home.service';
 import { getThemeColor } from '@/utils/theme';
 
+const CART_ITEM_CHECKBOX_SIZE = 26;
+const CART_ITEM_CHECK_ICON_SIZE = 16;
+
 export interface CartItemRowProps {
   item: CartItemWithProduct;
   onQuantityChange: (cartItemId: string, newQuantity: number) => void;
   onRemove: (cartItemId: string) => void;
+  isSelected?: boolean;
+  onSelectionChange?: (cartItemId: string, nextSelected: boolean) => void;
   isUpdating?: boolean;
 }
 
@@ -59,11 +64,37 @@ function DeleteAction({
   );
 }
 
+function areCartItemRowPropsEqual(prevProps: CartItemRowProps, nextProps: CartItemRowProps) {
+  if (
+    prevProps.onQuantityChange !== nextProps.onQuantityChange ||
+    prevProps.onRemove !== nextProps.onRemove ||
+    prevProps.onSelectionChange !== nextProps.onSelectionChange ||
+    prevProps.isSelected !== nextProps.isSelected ||
+    prevProps.isUpdating !== nextProps.isUpdating
+  ) {
+    return false;
+  }
+
+  const previousItem = prevProps.item;
+  const nextItem = nextProps.item;
+
+  return (
+    previousItem.id === nextItem.id &&
+    previousItem.quantity === nextItem.quantity &&
+    previousItem.product.name === nextItem.product.name &&
+    previousItem.product.price === nextItem.product.price &&
+    previousItem.product.stock === nextItem.product.stock &&
+    previousItem.product.weight === nextItem.product.weight &&
+    previousItem.images[0]?.url === nextItem.images[0]?.url
+  );
+}
+
 export const CartItemRow = memo(function CartItemRow({
   item,
   onQuantityChange,
   onRemove,
-  isUpdating = false,
+  isSelected = false,
+  onSelectionChange,
 }: CartItemRowProps) {
   const imageUrl = item.images?.[0]?.url;
   const unitPrice = item.product.price;
@@ -86,13 +117,29 @@ export const CartItemRow = memo(function CartItemRow({
     setShowDeleteDialog(true);
   }, []);
 
+  const dangerColor = getThemeColor(theme, 'danger');
+  const onDangerColor = getThemeColor(theme, 'onDanger');
+
+  const renderRightActions = useCallback(
+    (progress: SharedValue<number>) => (
+      <DeleteAction
+        progress={progress}
+        onDelete={handleSwipeDelete}
+        backgroundColor={dangerColor}
+        iconColor={onDangerColor}
+      />
+    ),
+    [dangerColor, handleSwipeDelete, onDangerColor],
+  );
+
   const handleConfirmDelete = useCallback(() => {
     onRemove(item.id);
     setShowDeleteDialog(false);
   }, [item.id, onRemove]);
 
-  const dangerColor = getThemeColor(theme, 'danger');
-  const onDangerColor = getThemeColor(theme, 'onDanger');
+  const handleToggleSelection = useCallback(() => {
+    onSelectionChange?.(item.id, !isSelected);
+  }, [isSelected, item.id, onSelectionChange]);
 
   return (
     <>
@@ -101,14 +148,7 @@ export const CartItemRow = memo(function CartItemRow({
         overshootFriction={8}
         rightThreshold={40}
         overshootRight={false}
-        renderRightActions={progress => (
-          <DeleteAction
-            progress={progress}
-            onDelete={handleSwipeDelete}
-            backgroundColor={dangerColor}
-            iconColor={onDangerColor}
-          />
-        )}
+        renderRightActions={renderRightActions}
         containerStyle={{
           backgroundColor: dangerColor,
           borderRadius: 12, // matches $3
@@ -116,7 +156,7 @@ export const CartItemRow = memo(function CartItemRow({
         <XStack
           padding="$3"
           gap="$3"
-          alignItems="center"
+          alignItems="stretch"
           backgroundColor="$surface"
           borderRadius="$3"
           borderWidth={1}
@@ -127,7 +167,8 @@ export const CartItemRow = memo(function CartItemRow({
             height={80}
             borderRadius="$2"
             overflow="hidden"
-            backgroundColor="$surfaceSubtle">
+            backgroundColor="$surfaceSubtle"
+            alignSelf="center">
             {imageUrl ? (
               <Image
                 source={{ uri: imageUrl }}
@@ -137,36 +178,56 @@ export const CartItemRow = memo(function CartItemRow({
             ) : null}
           </YStack>
 
-          <YStack flex={1} minWidth={0} gap="$1" justifyContent="center">
-            <Text
-              fontSize="$3"
-              fontWeight="600"
-              color="$color"
-              numberOfLines={2}
-              ellipsizeMode="tail"
-              flexShrink={1}>
-              {item.product.name}
-            </Text>
-            <Text fontSize="$2" color="$colorSubtle" numberOfLines={1} ellipsizeMode="tail">
-              {formatPrice(unitPrice)}
-            </Text>
-          </YStack>
+          <YStack flex={1} minWidth={0} gap="$2" justifyContent="space-between">
+            <XStack alignItems="flex-start" gap="$2">
+              <YStack flex={1} minWidth={0} gap="$1" paddingTop="$0.5">
+                <Text
+                  fontSize="$3"
+                  fontWeight="600"
+                  color="$color"
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                  flexShrink={1}>
+                  {item.product.name}
+                </Text>
+                <Text fontSize="$2" color="$colorSubtle" numberOfLines={1} ellipsizeMode="tail">
+                  {formatPrice(unitPrice)}
+                </Text>
+              </YStack>
 
-          <YStack
-            alignItems="flex-end"
-            gap="$2"
-            justifyContent="flex-end"
-            flexShrink={0}
-            marginLeft="auto"
-            alignSelf="stretch">
-            <QuantitySelector
-              value={item.quantity}
-              min={0}
-              max={item.product.stock || 99}
-              onChange={handleQuantityChange}
-              size="sm"
-              disableAnimation
-            />
+              <XStack
+                width={CART_ITEM_CHECKBOX_SIZE}
+                height={CART_ITEM_CHECKBOX_SIZE}
+                marginTop="$0.5"
+                flexShrink={0}
+                alignItems="center"
+                justifyContent="center"
+                borderRadius="$2"
+                backgroundColor={isSelected ? '$primary' : '$surfaceSubtle'}
+                borderWidth={1.5}
+                borderColor={isSelected ? '$primary' : '$surfaceBorder'}
+                pressStyle={{ opacity: 0.85, scale: 0.96 }}
+                focusStyle={{ borderColor: '$primary' }}
+                hitSlop={9}
+                onPress={handleToggleSelection}
+                role="checkbox"
+                aria-checked={isSelected}
+                aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${item.product.name}`}
+                testID={`cart-item-checkbox-${item.id}`}>
+                {isSelected ? <Check size={CART_ITEM_CHECK_ICON_SIZE} color="$onPrimary" /> : null}
+              </XStack>
+            </XStack>
+
+            <XStack justifyContent="flex-end" alignItems="center">
+              <QuantitySelector
+                value={item.quantity}
+                min={0}
+                max={item.product.stock || 99}
+                onChange={handleQuantityChange}
+                size="sm"
+                disableAnimation
+              />
+            </XStack>
           </YStack>
         </XStack>
       </Swipeable>
@@ -183,6 +244,6 @@ export const CartItemRow = memo(function CartItemRow({
       />
     </>
   );
-});
+}, areCartItemRowPropsEqual);
 
 export default CartItemRow;

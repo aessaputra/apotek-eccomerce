@@ -1,20 +1,27 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react-native';
-import { getCartWithItems, subscribeToCartChanges } from '@/services/cart.service';
+import {
+  getCartItemWithProduct,
+  getCartWithItems,
+  subscribeToCartChanges,
+} from '@/services/cart.service';
 import type { CartItemWithProduct, CartRealtimeChange, CartWithItems } from '@/types/cart';
 import { useCartPaginated } from '@/hooks/useCartPaginated';
 
-let mockCartClearedAt: number | null = null;
+let mockCartRefreshRequestedAt: number | null = null;
 
 jest.mock('react-redux', () => ({
-  useSelector: (selector: (state: { app: { cartClearedAt: number | null } }) => unknown) =>
-    selector({ app: { cartClearedAt: mockCartClearedAt } }),
+  useSelector: (selector: (state: { app: { cartRefreshRequestedAt: number | null } }) => unknown) =>
+    selector({ app: { cartRefreshRequestedAt: mockCartRefreshRequestedAt } }),
 }));
 
 const mockSubscribeToCartChanges = subscribeToCartChanges as jest.MockedFunction<
   typeof subscribeToCartChanges
 >;
 const mockGetCartWithItems = getCartWithItems as jest.MockedFunction<typeof getCartWithItems>;
+const mockGetCartItemWithProduct = getCartItemWithProduct as jest.MockedFunction<
+  typeof getCartItemWithProduct
+>;
 
 let mockLatestRealtimeHandler: ((event: CartRealtimeChange) => void) | null = null;
 let mockLatestConnectionHandler:
@@ -23,6 +30,7 @@ let mockLatestConnectionHandler:
 const mockUnsubscribe = jest.fn();
 
 jest.mock('@/services/cart.service', () => ({
+  getCartItemWithProduct: jest.fn(),
   getCartWithItems: jest.fn(),
   subscribeToCartChanges: jest.fn(
     (
@@ -94,11 +102,12 @@ function createDeferred<T>() {
 
 describe('useCartPaginated', () => {
   afterEach(() => {
-    mockCartClearedAt = null;
+    mockCartRefreshRequestedAt = null;
     mockLatestRealtimeHandler = null;
     mockLatestConnectionHandler = null;
     mockUnsubscribe.mockReset();
     mockGetCartWithItems.mockReset();
+    mockGetCartItemWithProduct.mockReset();
     mockSubscribeToCartChanges.mockClear();
     cleanup();
   });
@@ -181,6 +190,47 @@ describe('useCartPaginated', () => {
     expect(result.current.snapshot.itemCount).toBe(4);
   });
 
+  it('hydrates realtime inserts with a targeted item fetch instead of refetching the whole cart', async () => {
+    const existingItem = createItem(0, 1);
+    const insertedItem = createItem(1, 3);
+
+    mockGetCartWithItems.mockResolvedValue({
+      data: createCart([existingItem]),
+      error: null,
+    });
+    mockGetCartItemWithProduct.mockResolvedValue({
+      data: insertedItem,
+      error: null,
+    });
+
+    const { result } = renderHook(() => useCartPaginated({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual([existingItem]);
+    });
+
+    await act(async () => {
+      mockLatestRealtimeHandler?.({
+        type: 'INSERT',
+        new: {
+          id: insertedItem.id,
+          cart_id: insertedItem.cart_id,
+          product_id: insertedItem.product_id,
+          quantity: insertedItem.quantity,
+        },
+        old: null,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.items[0]?.id).toBe(insertedItem.id);
+      expect(result.current.items[1]?.id).toBe(existingItem.id);
+    });
+
+    expect(mockGetCartItemWithProduct).toHaveBeenCalledWith(insertedItem.id);
+    expect(mockGetCartWithItems).toHaveBeenCalledTimes(1);
+  });
+
   it('updates realtime connection state and cleans up subscriptions', async () => {
     mockGetCartWithItems.mockResolvedValue({
       data: createCart([createItem(0)]),
@@ -202,6 +252,39 @@ describe('useCartPaginated', () => {
     unmount();
 
     expect(mockUnsubscribe).toHaveBeenCalled();
+  });
+
+  it('silently refreshes once after a reconnect cycle to resync missed realtime changes', async () => {
+    mockGetCartWithItems
+      .mockResolvedValueOnce({
+        data: createCart([createItem(0, 1)]),
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: createCart([createItem(0, 2)]),
+        error: null,
+      });
+
+    const { result } = renderHook(() => useCartPaginated({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.cartId).toBe('cart-1');
+    });
+
+    await act(async () => {
+      mockLatestConnectionHandler?.('connected');
+    });
+
+    await act(async () => {
+      mockLatestConnectionHandler?.('reconnecting');
+      mockLatestConnectionHandler?.('connected');
+    });
+
+    await waitFor(() => {
+      expect(result.current.items[0]?.quantity).toBe(2);
+    });
+
+    expect(mockGetCartWithItems).toHaveBeenCalledTimes(2);
   });
 
   it('keeps the latest fetch result when refreshes overlap', async () => {
@@ -264,33 +347,44 @@ describe('useCartPaginated', () => {
     expect(result.current.items[0]?.quantity).toBe(1);
   });
 
-  it('clears visible items and refreshes when cart is marked cleared after payment', async () => {
-    mockGetCartWithItems
-      .mockResolvedValueOnce({
-        data: createCart([createItem(0, 2)]),
-        error: null,
-      })
-      .mockResolvedValueOnce({
-        data: createCart([]),
-        error: null,
-      });
+  it('keeps visible items while payment success refresh is pending', async () => {
+    const selectedItem = createItem(0, 2);
+    const unselectedItem = createItem(1, 1);
+    const refreshRequest = createDeferred<Awaited<ReturnType<typeof getCartWithItems>>>();
+
+    mockGetCartWithItems.mockResolvedValueOnce({
+      data: createCart([selectedItem, unselectedItem]),
+      error: null,
+    });
+    mockGetCartWithItems.mockReturnValueOnce(refreshRequest.promise);
 
     const { result, rerender } = renderHook<
       ReturnType<typeof useCartPaginated>,
       { userId: string }
-    >(({ userId }) => useCartPaginated({ userId }), {
+    >(({ userId }: { userId: string }) => useCartPaginated({ userId }), {
       initialProps: { userId: 'user-1' },
     });
 
     await waitFor(() => {
-      expect(result.current.items).toHaveLength(1);
+      expect(result.current.items).toEqual([selectedItem, unselectedItem]);
     });
 
-    mockCartClearedAt = Date.now();
+    mockCartRefreshRequestedAt = Date.now();
     rerender({ userId: 'user-1' });
 
     await waitFor(() => {
-      expect(result.current.items).toEqual([]);
+      expect(mockGetCartWithItems).toHaveBeenCalledTimes(2);
+    });
+
+    expect(result.current.items).toEqual([selectedItem, unselectedItem]);
+
+    refreshRequest.resolve({
+      data: createCart([unselectedItem]),
+      error: null,
+    });
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual([unselectedItem]);
     });
 
     expect(mockGetCartWithItems).toHaveBeenCalledTimes(2);

@@ -1,13 +1,32 @@
 ---
 name: create-specification
-description: 'Create a new specification file for the solution, optimized for Generative AI consumption.'
+description: 'Create a new AI-ready solution specification as an entry in Plane.so Pages, the Plane Knowledge Management feature, not as a local /spec file. Use this whenever the user asks to create a spec, specification, technical design, requirements document, architecture spec, process spec, schema spec, or implementation contract that should live in Plane.so Pages.'
 ---
 
 # Create Specification
 
-Your goal is to create a new specification file for `${input:SpecPurpose}`.
+Your goal is to create a new specification in **Plane.so Pages** for `${input:SpecPurpose}`.
 
-The specification file must define the requirements, constraints, and interfaces for the solution components in a manner that is clear, unambiguous, and structured for effective use by Generative AIs. Follow established documentation standards and ensure the content is machine-readable and self-contained.
+The specification must define the requirements, constraints, and interfaces for the solution components in a manner that is clear, unambiguous, and structured for effective use by Generative AIs. Follow established documentation standards and ensure the content is machine-readable and self-contained.
+
+## Storage Location
+
+Create the specification as a **Plane.so Pages entry**, which is Plane's Knowledge Management feature for technical documentation, product requirements, meeting notes, and specifications. Do not create or update local files under `/spec`, `spec/`, `docs/spec`, or any other filesystem directory unless the user explicitly asks for a local copy in addition to the Plane Pages entry.
+
+Use the `plane-operations` skill and the available Plane tools to access Plane. Prefer `plane_create_project_page` when the relevant Plane project is known; this creates a Project Page under that project's Pages module. Use `plane_create_workspace_page` only when the spec should live as workspace-wide / Wiki-level documentation.
+
+Before creating a Page:
+
+1. Resolve the target Plane Pages scope from the request or current context:
+   - Project Page: a specific Plane project is mentioned or inferable.
+   - Workspace/Wiki Page: the spec applies across projects or no single project is clear.
+2. Read before write where practical: list/retrieve relevant projects or existing work items/pages when needed to avoid ambiguity or duplicates.
+3. Use a concise Plane Pages title following this convention:
+   - `[SPEC] [High-level Purpose] - [Work Item ID] [Descriptive Subject]`
+   - High-level purpose should be one of: `Schema`, `Tool`, `Data`, `Infrastructure`, `Process`, `Architecture`, or `Design`.
+   - Include the Plane work item ID when available. If no work item ID is available, omit that segment and use `[SPEC] [High-level Purpose] - [Descriptive Subject]`.
+4. Put the full specification body in the Plane Pages `description_html` field. Use semantic HTML generated from the Markdown structure below (`<h1>`, `<h2>`, `<ul>`, `<table>`, `<pre><code>`, etc.) so the Page renders correctly in Plane.
+5. After creation, report the Plane Pages ID/link returned by the tool, the scope used, and any assumptions.
 
 ## Best Practices for AI-Ready Specifications
 
@@ -19,21 +38,17 @@ The specification file must define the requirements, constraints, and interfaces
 - Include examples and edge cases where applicable.
 - Ensure the document is self-contained and does not rely on external context.
 
-The specification should be saved in the [/spec/](/spec/) directory and named according to the following convention: `spec-[a-z0-9-]+.md`, where the name should be descriptive of the specification's content and starting with the highlevel purpose, which is one of [schema, tool, data, infrastructure, process, architecture, or design].
+The specification content should be drafted in well-formed Markdown first for clarity, then converted to clean HTML for Plane Pages creation.
 
-The specification file must be formatted in well formed Markdown.
-
-Specification files must follow the template below, ensuring that all sections are filled out appropriately. The front matter for the markdown should be structured correctly as per the example following:
+Specification Pages must follow the template below, ensuring that all sections are filled out appropriately. Include the metadata block at the top of the Page body instead of filesystem front matter:
 
 ```md
----
-title: [Concise Title Describing the Specification's Focus]
-version: [Optional: e.g., 1.0, Date]
-date_created: [YYYY-MM-DD]
-last_updated: [Optional: YYYY-MM-DD]
-owner: [Optional: Team/Individual responsible for this spec]
-tags: [Optional: List of relevant tags or categories, e.g., `infrastructure`, `process`, `design`, `app` etc]
----
+> **Title:** [Concise Title Describing the Specification's Focus]  
+> **Version:** [Optional: e.g., 1.0, Date]  
+> **Date Created:** [YYYY-MM-DD]  
+> **Last Updated:** [Optional: YYYY-MM-DD]  
+> **Owner:** [Optional: Team/Individual responsible for this spec]  
+> **Tags:** [Optional: List of relevant tags or categories, e.g., `infrastructure`, `process`, `design`, `app` etc]
 
 # Introduction
 
@@ -125,3 +140,15 @@ tags: [Optional: List of relevant tags or categories, e.g., `infrastructure`, `p
 [Link to relevant external documentation]
 
 ```
+
+## Plane Pages Creation Checklist
+
+- Load and follow `plane-operations` whenever Plane access is required.
+- Resolve whether to use a Project Page or Workspace/Wiki Page in Plane.so Pages.
+- Create the Plane.so Pages entry with:
+  - `name`: `[SPEC] [Purpose] - [Work Item ID] [Subject]`
+  - `description_html`: the rendered HTML version of the completed specification
+  - `project_id`: only for Project Pages
+- Do not write a local `/spec/*.md` file as the primary deliverable.
+- Do not confuse Plane.so Pages with filesystem pages, website pages, frontend routes, or generic documents.
+- Final response must include the created Plane Pages identifier/link and the scope used.

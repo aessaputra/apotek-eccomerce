@@ -6,6 +6,7 @@ import { createCheckoutOrder } from '@/services/checkout.service';
 import {
   buildCheckoutFingerprint,
   buildPersistedCheckoutSession,
+  canonicalizeSelectedCartItemIds,
   PersistedCheckoutSession,
   requestSnapTokenWithRetry,
   toTranslatedCheckoutError,
@@ -29,6 +30,7 @@ export interface UseCartCheckoutParams {
   loadingSelectedAddress?: boolean;
   selectedShippingOption: ShippingOption | null;
   selectedShippingKey: string | null;
+  selectedCartItemIds?: string[];
   quoteDestination: {
     areaId: string | null;
     postalCode: number | null;
@@ -57,6 +59,7 @@ export function useCartCheckout({
   loadingSelectedAddress = false,
   selectedShippingOption,
   selectedShippingKey,
+  selectedCartItemIds = [],
   quoteDestination,
   snapshot,
   isOffline,
@@ -72,6 +75,14 @@ export function useCartCheckout({
   const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string | null>(null);
 
   const checkoutInProgressRef = useRef(false);
+  const canonicalSelectedCartItemIds = useMemo(
+    () => canonicalizeSelectedCartItemIds(selectedCartItemIds),
+    [selectedCartItemIds],
+  );
+  const selectedCartItemIdsFingerprintPart = useMemo(
+    () => JSON.stringify(canonicalSelectedCartItemIds),
+    [canonicalSelectedCartItemIds],
+  );
 
   const checkoutFingerprint = useMemo(
     () =>
@@ -80,10 +91,19 @@ export function useCartCheckout({
         selectedAddress,
         selectedAddressId,
         selectedShippingKey,
+        selectedCartItemIds: canonicalSelectedCartItemIds,
         quoteDestination,
         snapshot,
       }),
-    [quoteDestination, selectedAddress, selectedAddressId, selectedShippingKey, snapshot, userId],
+    [
+      canonicalSelectedCartItemIds,
+      quoteDestination,
+      selectedAddress,
+      selectedAddressId,
+      selectedShippingKey,
+      snapshot,
+      userId,
+    ],
   );
 
   const resetCheckoutState = useCallback(() => {
@@ -115,6 +135,7 @@ export function useCartCheckout({
           selectedAddress,
           selectedAddressId,
           selectedShippingKey,
+          selectedCartItemIds: canonicalSelectedCartItemIds,
           quoteDestination,
         }),
       );
@@ -125,6 +146,7 @@ export function useCartCheckout({
       selectedAddress,
       selectedAddressId,
       selectedShippingKey,
+      canonicalSelectedCartItemIds,
       setPersistData,
     ],
   );
@@ -147,6 +169,11 @@ export function useCartCheckout({
 
     const persistedAddressId = persisted.selected_address_id ?? null;
     const persistedShippingKey = persisted.selected_shipping_key ?? null;
+    const persistedSelectedCartItemIdsFingerprintPart = Array.isArray(
+      persisted.selected_cart_item_ids,
+    )
+      ? JSON.stringify(canonicalizeSelectedCartItemIds(persisted.selected_cart_item_ids))
+      : null;
     const persistedLatitude = persisted.selected_address_latitude ?? null;
     const persistedLongitude = persisted.selected_address_longitude ?? null;
     const currentLatitude = selectedAddress?.latitude ?? null;
@@ -183,13 +210,17 @@ export function useCartCheckout({
       persisted.destination_postal_code !== null &&
       quoteDestination.postalCode !== null &&
       persisted.destination_postal_code !== quoteDestination.postalCode;
+    const hasKnownSelectedCartItemIdsMismatch =
+      persistedSelectedCartItemIdsFingerprintPart === null ||
+      persistedSelectedCartItemIdsFingerprintPart !== selectedCartItemIdsFingerprintPart;
     const hasKnownMismatch =
       hasKnownAddressIdMismatch ||
       hasKnownAddressCoordinateMismatch ||
       hasKnownAddressLongitudeMismatch ||
       hasKnownShippingMismatch ||
       hasKnownQuoteAreaMismatch ||
-      hasKnownQuotePostalCodeMismatch;
+      hasKnownQuotePostalCodeMismatch ||
+      hasKnownSelectedCartItemIdsMismatch;
     const isWaitingAddressHydration =
       Boolean(persistedAddressId) &&
       (!selectedAddressId || (persistedAddressId === selectedAddressId && !selectedAddress));
@@ -227,6 +258,7 @@ export function useCartCheckout({
     selectedShippingKey,
     quoteDestination.areaId,
     quoteDestination.postalCode,
+    selectedCartItemIdsFingerprintPart,
     userId,
   ]);
 
@@ -299,6 +331,7 @@ export function useCartCheckout({
           destination_postal_code: quoteDestination.postalCode ?? undefined,
           shipping_option: selectedShippingOption,
           checkout_idempotency_key: currentIdempotencyKey,
+          selected_cart_item_ids: canonicalSelectedCartItemIds,
         });
 
         if (orderError || !orderData) {
@@ -349,6 +382,7 @@ export function useCartCheckout({
     router,
     persistCheckoutSession,
     selectedAddress,
+    canonicalSelectedCartItemIds,
     selectedShippingOption,
     userId,
   ]);

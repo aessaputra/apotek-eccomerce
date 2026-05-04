@@ -1,5 +1,6 @@
 import { Button as TamaguiButton, Card, Separator, Spinner, Text, XStack, YStack } from 'tamagui';
 import { ChevronRightIcon, MapPinIcon } from '@/components/icons';
+import EmptyAddressCard from '@/components/elements/EmptyAddressCard';
 import type { Address } from '@/types/address';
 import type { ShippingOption } from '@/types/shipping';
 import { formatRupiah } from '@/scenes/cart/cart.constants';
@@ -34,11 +35,17 @@ interface CartCheckoutDetailsProps {
   selectedAddress: Address | null;
   selectedAddressFullText: string;
   onOpenAddressSheet: () => void;
+  onAddAddress: () => void;
   addressErrorMessage: string | null;
   loadingRates: boolean;
   selectedShippingOption: ShippingOption | null;
   isOffline: boolean;
   onOpenShippingSheet: () => void;
+  activeOrderId: string | null;
+  paymentError: string | null;
+  startingCheckout: boolean;
+  onCancelPendingCheckout: () => void;
+  onContinuePendingCheckout: () => void;
   shippingOptionsCount: number;
   shippingErrorMessage: string | null;
   shippingRecoverySuggestion: string | null;
@@ -50,11 +57,17 @@ export function CartCheckoutDetails({
   selectedAddress,
   selectedAddressFullText,
   onOpenAddressSheet,
+  onAddAddress,
   addressErrorMessage,
   loadingRates,
   selectedShippingOption,
   isOffline,
   onOpenShippingSheet,
+  activeOrderId,
+  paymentError,
+  startingCheckout,
+  onCancelPendingCheckout,
+  onContinuePendingCheckout,
   shippingOptionsCount,
   shippingErrorMessage,
   shippingRecoverySuggestion,
@@ -102,31 +115,7 @@ export function CartCheckoutDetails({
           </XStack>
         </Card>
       ) : (
-        <Card
-          borderRadius="$4"
-          borderWidth={1}
-          borderStyle="dashed"
-          borderColor="$surfaceBorder"
-          backgroundColor="$surface"
-          padding="$4">
-          <YStack gap="$3">
-            <XStack alignItems="center" gap="$2">
-              <MapPinIcon size={18} color="$primary" />
-              <Text color="$color" fontWeight="600">
-                Belum ada alamat
-              </Text>
-            </XStack>
-            <TamaguiButton
-              backgroundColor="$primary"
-              color="$onPrimary"
-              borderRadius="$3"
-              minHeight={44}
-              onPress={onOpenAddressSheet}
-              aria-label="Tambah alamat pengiriman">
-              Tambah Alamat
-            </TamaguiButton>
-          </YStack>
-        </Card>
+        <EmptyAddressCard onPress={onAddAddress} />
       )}
 
       {addressErrorMessage ? <ErrorDetailsCard message={addressErrorMessage} /> : null}
@@ -137,7 +126,8 @@ export function CartCheckoutDetails({
         backgroundColor="$surface"
         borderColor="$surfaceBorder"
         opacity={isOffline ? 0.7 : 1}
-        onPress={onOpenShippingSheet}>
+        onPress={onOpenShippingSheet}
+        aria-label="Pilih opsi pengiriman">
         <Card.Header padded>
           <XStack alignItems="center" justifyContent="space-between" gap="$3">
             <Text fontSize="$4" fontWeight="600" color="$color" numberOfLines={1} flex={1}>
@@ -183,6 +173,50 @@ export function CartCheckoutDetails({
           </XStack>
         ) : null}
       </Card>
+
+      {activeOrderId ? (
+        <Card
+          borderRadius="$4"
+          borderWidth={1}
+          borderColor="$warning"
+          padding="$3"
+          backgroundColor="$warningSoft">
+          <YStack gap="$2.5">
+            <Text color="$warning" fontWeight="700">
+              Pembayaran Tertunda
+            </Text>
+            <Text color="$colorSubtle" fontSize="$2">
+              {paymentError ??
+                'Order sudah dibuat. Lanjutkan pembayaran untuk menggunakan order yang sama tanpa membuat order baru. Pilihan kurir tidak wajib dipilih ulang saat melanjutkan pembayaran.'}
+            </Text>
+            <XStack justifyContent="flex-end" gap="$2">
+              <TamaguiButton
+                size="$2"
+                borderRadius="$3"
+                backgroundColor="transparent"
+                borderWidth={1}
+                borderColor="$surfaceBorder"
+                color="$color"
+                onPress={onCancelPendingCheckout}
+                aria-label="Batalkan checkout tertunda">
+                Batalkan
+              </TamaguiButton>
+              <TamaguiButton
+                size="$2"
+                borderRadius="$3"
+                backgroundColor="$primary"
+                color="$onPrimary"
+                disabled={isOffline || startingCheckout}
+                opacity={isOffline || startingCheckout ? 0.7 : 1}
+                onPress={onContinuePendingCheckout}
+                aria-label="Lanjutkan pembayaran">
+                {startingCheckout ? 'Memproses...' : 'Lanjutkan Pembayaran'}
+              </TamaguiButton>
+            </XStack>
+          </YStack>
+        </Card>
+      ) : null}
+
       {shippingErrorMessage && shippingOptionsCount === 0 && !loadingRates ? (
         <XStack justifyContent="flex-end" marginTop="$-2">
           <TamaguiButton

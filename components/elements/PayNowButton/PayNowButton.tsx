@@ -1,16 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { Spinner, Text, Button as TamaguiButton } from 'tamagui';
-import { useRouter } from 'expo-router';
 import { CreditCardIcon } from '@/components/icons';
-import { createSnapToken } from '@/services/checkout.service';
-import {
-  classifyError,
-  ErrorType,
-  isRetryableError,
-  translateErrorMessage,
-  type AppError,
-} from '@/utils/error';
-import { withRetry } from '@/utils/retry';
+import { usePayNow } from '@/hooks/usePayNow';
+import type { AppError } from '@/utils/error';
 
 export interface PayNowButtonProps {
   orderId: string;
@@ -31,65 +23,13 @@ export function PayNowButton({
   onPaymentComplete,
   onError,
 }: PayNowButtonProps) {
-  const router = useRouter();
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const handlePayNow = useCallback(async () => {
-    if (isProcessing || disabled) return;
-
-    setIsProcessing(true);
-    onPaymentStart?.();
-
-    try {
-      const snapData = await withRetry(
-        async () => {
-          const { data, error } = await createSnapToken(orderId);
-
-          if (error || !data) {
-            throw error ?? new Error('Gagal membuat token pembayaran.');
-          }
-
-          return data;
-        },
-        {
-          maxRetries: 2,
-          baseDelay: 800,
-          maxDelay: 4000,
-          shouldRetry: error => {
-            const classifiedError = classifyError(error);
-            return (
-              classifiedError.type === ErrorType.NETWORK ||
-              classifiedError.type === ErrorType.TIMEOUT ||
-              classifiedError.type === ErrorType.SERVER
-            );
-          },
-        },
-      );
-
-      router.push({
-        pathname: '/cart/payment',
-        params: {
-          paymentUrl: snapData.redirectUrl,
-          orderId: orderId,
-        },
-      });
-
-      onPaymentComplete?.(true);
-    } catch (error) {
-      const classifiedError = classifyError(error);
-      const translatedMessage = translateErrorMessage(classifiedError);
-
-      const appError: AppError = {
-        ...classifiedError,
-        message: translatedMessage,
-        retryable: isRetryableError(classifiedError),
-      };
-
-      onError?.(appError);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [orderId, isProcessing, disabled, onPaymentStart, onPaymentComplete, onError, router]);
+  const { isProcessing, handlePayNow } = usePayNow({
+    orderId,
+    disabled,
+    onPaymentStart,
+    onPaymentComplete,
+    onError,
+  });
 
   const isFullWidth = variant === 'fullWidth';
 

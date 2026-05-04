@@ -1,4 +1,5 @@
 import { supabase } from '@/utils/supabase';
+import config from '@/utils/config';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as Linking from 'expo-linking';
@@ -23,16 +24,104 @@ interface SignUpInput {
   };
 }
 
+interface SignOutInput {
+  scope?: 'global' | 'local' | 'others';
+}
+
+interface EnrollTotpFactorInput {
+  friendlyName?: string;
+  issuer?: string;
+}
+
+interface VerifyMfaChallengeInput {
+  factorId: string;
+  challengeId: string;
+  code: string;
+}
+
+interface MfaAssuranceLevelData {
+  currentLevel?: string | null;
+  nextLevel?: string | null;
+}
+
+interface PasswordReauthenticationData {
+  verified: true;
+}
+
 /** Error shape for Google OAuth — compatible with Supabase AuthError.message */
 export interface GoogleAuthError {
   message: string;
   name: string;
 }
 
+// WARNING: qr_code, secret, and uri must NEVER be logged or persisted.
+export interface TotpEnrollmentData {
+  id: string;
+  type: 'totp';
+  totp: {
+    qr_code: string;
+    secret: string;
+    uri: string;
+  };
+}
+
+interface AuthServiceResult<TData = unknown> {
+  data: TData | null;
+  error: GoogleAuthError | null;
+}
+
 /** Consistent return type for signInWithGoogle() */
 interface GoogleAuthResult {
   data: unknown;
   error: GoogleAuthError | null;
+}
+
+const GOOGLE_AUTH_CALLBACK_PATH = 'google-auth';
+const GOOGLE_AUTH_REDIRECT_SCHEME = 'apotek-ecommerce';
+const PASSWORD_RECOVERY_CALLBACK_PATH = 'reset-password';
+const PASSWORD_RECOVERY_REDIRECT_SCHEME = 'apotek-ecommerce';
+const PASSWORD_REAUTH_ENDPOINT = '/auth/v1/token?grant_type=password';
+
+const INVALID_REFRESH_TOKEN_PATTERNS = [
+  'invalid refresh token',
+  'refresh token not found',
+  'already used',
+];
+
+const GOOGLE_NATIVE_REDIRECT_CONFIG_ERROR =
+  'Redirect Google OAuth masih mengarah ke localhost. Tambahkan apotek-ecommerce://google-auth ke Supabase Auth Redirect URLs, lalu pastikan Site URL bukan localhost untuk build native.';
+
+function createGoogleNativeRedirectUri() {
+  return makeRedirectUri({
+    scheme: GOOGLE_AUTH_REDIRECT_SCHEME,
+    path: GOOGLE_AUTH_CALLBACK_PATH,
+  });
+}
+
+export function createPasswordRecoveryRedirectUri() {
+  return makeRedirectUri({
+    scheme: PASSWORD_RECOVERY_REDIRECT_SCHEME,
+    path: PASSWORD_RECOVERY_CALLBACK_PATH,
+    isTripleSlashed: true,
+  });
+}
+
+function isLocalhostCallbackUrl(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
+  } catch {
+    return /^https?:\/\/(localhost|127\.0\.0\.1)(?::|\/)/.test(url);
+  }
+}
+
+function getAuthorizeRedirectTo(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.searchParams.get('redirect_to') ?? parsedUrl.searchParams.get('redirectTo');
+  } catch {
+    return null;
+  }
 }
 
 export async function signInWithPassword(input: SignInInput) {
@@ -50,18 +139,322 @@ export async function signUp(input: SignUpInput) {
   });
 }
 
-export async function signOut() {
-  return supabase.auth.signOut();
+export async function signOut(options?: SignOutInput) {
+  if (!options) {
+    return supabase.auth.signOut();
+  }
+
+  return supabase.auth.signOut(options);
+}
+
+function getErrorStringProperty(error: unknown, property: 'message' | 'name') {
+  if (error instanceof Error) {
+    return error[property];
+  }
+
+  if (typeof error === 'object' && error !== null && property in error) {
+    const value = (error as Record<'message' | 'name', unknown>)[property];
+    return typeof value === 'string' ? value : '';
+  }
+
+  return '';
+}
+
+function normalizeThrownAuthServiceError<TData = unknown>(
+  thrown: unknown,
+  name: string,
+): AuthServiceResult<TData> {
+  const message = thrown instanceof Error ? thrown.message : String(thrown);
+
+  return {
+    data: null,
+    error: { message, name },
+  };
+}
+
+function getAuthRestErrorMessage(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null) {
+    return '';
+  }
+
+  const record = payload as Record<string, unknown>;
+  const candidates = [record.message, record.error_description, record.msg, record.error];
+  const message = candidates.find(value => typeof value === 'string' && value.length > 0);
+
+  return typeof message === 'string' ? message : '';
+}
+
+function getAuthRestErrorCode(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null) {
+    return '';
+  }
+
+  const record = payload as Record<string, unknown>;
+  const candidates = [record.error_code, record.code, record.error];
+  const code = candidates.find(value => typeof value === 'string' && value.length > 0);
+
+  return typeof code === 'string' ? code : '';
+}
+
+function isInvalidLoginCredentialsError(status: number, code: string, message: string) {
+  return (
+    status === 400 &&
+    (code === 'invalid_credentials' || message.toLowerCase().includes('invalid login credentials'))
+  );
+}
+
+export function isInvalidRefreshTokenError(error: unknown) {
+  const name = getErrorStringProperty(error, 'name');
+  const message = getErrorStringProperty(error, 'message').toLowerCase();
+
+  return (
+    name === 'AuthApiError' &&
+    INVALID_REFRESH_TOKEN_PATTERNS.some(pattern => message.includes(pattern))
+  );
+}
+
+export async function clearLocalAuthSessionForInvalidRefreshToken(error: unknown) {
+  if (!isInvalidRefreshTokenError(error)) {
+    return false;
+  }
+
+  try {
+    const { error: signOutError } = await signOut({ scope: 'local' });
+
+    if (signOutError && __DEV__) {
+      console.warn('[auth.service] failed to clear stale local session:', signOutError);
+    }
+
+    return !signOutError;
+  } catch (signOutError) {
+    if (__DEV__) {
+      console.warn('[auth.service] failed to clear stale local session:', signOutError);
+    }
+
+    return false;
+  }
+}
+
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ data: unknown; error: GoogleAuthError | null }> {
+  try {
+    const redirectTo = createPasswordRecoveryRedirectUri();
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return {
+      data: null,
+      error: { message, name: 'PasswordResetRequestError' },
+    };
+  }
+}
+
+export async function updatePassword(
+  password: string,
+): Promise<{ data: unknown; error: GoogleAuthError | null }> {
+  try {
+    const { data, error } = await supabase.auth.updateUser({ password });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return {
+      data: null,
+      error: { message, name: 'UpdatePasswordError' },
+    };
+  }
+}
+
+export async function getMfaAssuranceLevel(): Promise<AuthServiceResult<MfaAssuranceLevelData>> {
+  try {
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaAssuranceLevelError');
+  }
+}
+
+export function requiresMfaChallenge(aalData: {
+  currentLevel?: string | null;
+  nextLevel?: string | null;
+}): boolean {
+  return aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2';
+}
+
+export async function listMfaFactors(): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaListFactorsError');
+  }
+}
+
+export async function enrollTotpFactor({
+  friendlyName,
+  issuer,
+}: EnrollTotpFactorInput): Promise<AuthServiceResult<TotpEnrollmentData>> {
+  try {
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName,
+      issuer,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaEnrollTotpError');
+  }
+}
+
+export async function createMfaChallenge(factorId: string): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.mfa.challenge({ factorId });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaChallengeError');
+  }
+}
+
+export async function verifyMfaChallenge({
+  factorId,
+  challengeId,
+  code,
+}: VerifyMfaChallengeInput): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId,
+      code: code.trim(),
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaVerifyChallengeError');
+  }
+}
+
+export async function unenrollMfaFactor(factorId: string): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.mfa.unenroll({ factorId });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'MfaUnenrollFactorError');
+  }
+}
+
+export async function refreshAuthSession(): Promise<AuthServiceResult> {
+  try {
+    const { data, error } = await supabase.auth.refreshSession();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'RefreshAuthSessionError');
+  }
+}
+
+export async function reauthenticateWithPassword(
+  input: SignInInput,
+): Promise<AuthServiceResult<PasswordReauthenticationData>> {
+  try {
+    if (!config.supabaseUrl || !config.supabasePublishableKey) {
+      return {
+        data: null,
+        error: {
+          message: 'Konfigurasi autentikasi belum lengkap.',
+          name: 'ReauthenticateWithPasswordError',
+        },
+      };
+    }
+
+    const response = await fetch(`${config.supabaseUrl}${PASSWORD_REAUTH_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        apikey: config.supabasePublishableKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: input.email,
+        password: input.password,
+      }),
+    });
+
+    let data: unknown = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    if (!response.ok) {
+      const code = getAuthRestErrorCode(data);
+      const message = getAuthRestErrorMessage(data);
+
+      return {
+        data: null,
+        error: {
+          message: message || 'Gagal memverifikasi password. Coba lagi.',
+          name: isInvalidLoginCredentialsError(response.status, code, message)
+            ? 'InvalidLoginCredentialsError'
+            : 'ReauthenticateWithPasswordError',
+        },
+      };
+    }
+
+    return { data: { verified: true }, error: null };
+  } catch (thrown: unknown) {
+    return normalizeThrownAuthServiceError(thrown, 'ReauthenticateWithPasswordError');
+  }
 }
 
 interface VerifyEmailOtpInput {
   tokenHash: string;
   type: 'email' | 'signup' | 'recovery' | 'invite' | 'email_change';
-}
-
-interface ResendVerificationInput {
-  email: string;
-  type?: 'signup' | 'email_change';
 }
 
 /**
@@ -146,6 +539,69 @@ const _exchangePromises = new Map<
   Promise<{ data: unknown; error: GoogleAuthError | null }>
 >();
 
+function isPasswordRecoveryPath(pathname: string) {
+  return pathname.split('/').filter(Boolean).pop() === PASSWORD_RECOVERY_CALLBACK_PATH;
+}
+
+function exchangeCodeOnce(code: string) {
+  const existing = _exchangePromises.get(code);
+  if (existing) {
+    if (__DEV__) {
+      console.log('[auth.service] Code exchange already in flight, joining');
+    }
+    return existing;
+  }
+
+  const promise = exchangeCode(code).finally(() => {
+    _exchangePromises.delete(code);
+  });
+  _exchangePromises.set(code, promise);
+
+  return promise;
+}
+
+export async function createSessionFromRecoveryCode(code: string) {
+  if (!code) {
+    return {
+      data: null,
+      error: {
+        message: 'Kode pemulihan tidak ditemukan di tautan reset password',
+        name: 'RecoveryCodeError',
+      } as GoogleAuthError,
+    };
+  }
+
+  return exchangeCodeOnce(code);
+}
+
+export async function createSessionFromRecoveryTokens(accessToken: string, refreshToken: string) {
+  if (!accessToken || !refreshToken) {
+    return {
+      data: null,
+      error: {
+        message: 'Token pemulihan tidak ditemukan di tautan reset password',
+        name: 'RecoveryTokenError',
+      } as GoogleAuthError,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (thrown: unknown) {
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    return { data: null, error: { message, name: 'RecoveryTokenError' } as GoogleAuthError };
+  }
+}
+
 export async function createSessionFromUrl(url: string) {
   try {
     const { params, errorCode } = QueryParams.getQueryParams(url);
@@ -155,6 +611,16 @@ export async function createSessionFromUrl(url: string) {
         hasCode: Boolean(params?.code),
         errorCode,
       });
+    }
+
+    if (Platform.OS !== 'web' && isLocalhostCallbackUrl(url)) {
+      return {
+        data: null,
+        error: {
+          message: GOOGLE_NATIVE_REDIRECT_CONFIG_ERROR,
+          name: 'OAuthRedirectConfigError',
+        } as GoogleAuthError,
+      };
     }
 
     if (errorCode) {
@@ -184,23 +650,7 @@ export async function createSessionFromUrl(url: string) {
       };
     }
 
-    const existing = _exchangePromises.get(code);
-    if (existing) {
-      if (__DEV__) {
-        console.log('[auth.service] Code exchange already in flight, joining');
-      }
-      return existing;
-    }
-
-    const promise = exchangeCode(code).then(result => {
-      if (result.error) {
-        _exchangePromises.delete(code);
-      }
-      return result;
-    });
-    _exchangePromises.set(code, promise);
-
-    return promise;
+    return exchangeCodeOnce(code);
   } catch (thrown: unknown) {
     const message = thrown instanceof Error ? thrown.message : String(thrown);
 
@@ -233,10 +683,12 @@ export async function handleOAuthHashTokens(): Promise<{
 
   if (!code) return null;
 
+  if (isPasswordRecoveryPath(window.location.pathname)) return null;
+
   // Clean URL before processing to prevent re-processing on refresh
   window.history.replaceState(null, '', window.location.pathname);
 
-  return exchangeCode(code);
+  return exchangeCodeOnce(code);
 }
 
 /**
@@ -273,9 +725,7 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
 
     const isAndroid = Platform.OS === 'android';
     let linkingPromise: Promise<string> | null = null;
-    const redirectTo = makeRedirectUri({
-      path: 'google-auth',
-    });
+    const redirectTo = createGoogleNativeRedirectUri();
 
     if (__DEV__) {
       console.log('[auth.service] Google native redirectTo:', redirectTo);
@@ -322,6 +772,22 @@ export async function signInWithGoogle(): Promise<GoogleAuthResult> {
       return {
         data: null,
         error: { message: 'OAuth URL tidak tersedia', name: 'AuthError' },
+      };
+    }
+
+    const authorizeRedirectTo = getAuthorizeRedirectTo(data.url);
+
+    if (__DEV__) {
+      console.log('[auth.service] Google authorize redirect_to:', authorizeRedirectTo);
+    }
+
+    if (authorizeRedirectTo && authorizeRedirectTo !== redirectTo) {
+      return {
+        data: null,
+        error: {
+          message: GOOGLE_NATIVE_REDIRECT_CONFIG_ERROR,
+          name: 'OAuthRedirectConfigError',
+        },
       };
     }
 

@@ -15,10 +15,15 @@ function stringifyCoordinate(value: number | null | undefined): string {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : 'null';
 }
 
+function canonicalizeSelectedCartItemIds(selectedCartItemIds: readonly string[]): string[] {
+  return selectedCartItemIds.map(itemId => itemId.trim()).sort();
+}
+
 function createShippingQuoteSignature(params: {
   addressId: string;
   latitude: number | null | undefined;
   longitude: number | null | undefined;
+  selectedCartItemIdsSignature: string;
   itemCount: number;
   estimatedWeightGrams: number;
   packageValue: number;
@@ -27,6 +32,7 @@ function createShippingQuoteSignature(params: {
     params.addressId,
     stringifyCoordinate(params.latitude),
     stringifyCoordinate(params.longitude),
+    params.selectedCartItemIdsSignature,
     params.itemCount,
     params.estimatedWeightGrams,
     params.packageValue,
@@ -36,6 +42,7 @@ function createShippingQuoteSignature(params: {
 export interface UseCartShippingParams {
   selectedAddress: Address | null;
   selectedAddressId: string | null;
+  selectedCartItemIds: string[];
   snapshot: CartSnapshot;
   isOffline: boolean;
   onOfflineAction?: (message: string) => void;
@@ -63,6 +70,7 @@ export interface UseCartShippingReturn {
 export function useCartShipping({
   selectedAddress,
   selectedAddressId,
+  selectedCartItemIds,
   snapshot,
   isOffline,
   onOfflineAction,
@@ -79,6 +87,10 @@ export function useCartShipping({
   const snapshotItemCount = snapshot.itemCount;
   const snapshotEstimatedWeightGrams = snapshot.estimatedWeightGrams;
   const snapshotPackageValue = snapshot.packageValue;
+  const selectedCartItemIdsSignature = useMemo(
+    () => JSON.stringify(canonicalizeSelectedCartItemIds(selectedCartItemIds)),
+    [selectedCartItemIds],
+  );
 
   const expectedQuoteSignatureRef = useRef<string | null>(null);
   const shippingQuoteRequestIdRef = useRef(0);
@@ -134,6 +146,7 @@ export function useCartShipping({
       addressId: selectedAddress.id,
       latitude: selectedAddressLatitude,
       longitude: selectedAddressLongitude,
+      selectedCartItemIdsSignature,
       itemCount: snapshotItemCount,
       estimatedWeightGrams: snapshotEstimatedWeightGrams,
       packageValue: snapshotPackageValue,
@@ -213,6 +226,7 @@ export function useCartShipping({
     selectedAddress,
     selectedAddressLatitude,
     selectedAddressLongitude,
+    selectedCartItemIdsSignature,
     snapshotEstimatedWeightGrams,
     snapshotItemCount,
     snapshotPackageValue,
@@ -259,6 +273,7 @@ export function useCartShipping({
       addressId: selectedAddress.id,
       latitude: selectedAddressLatitude,
       longitude: selectedAddressLongitude,
+      selectedCartItemIdsSignature,
       itemCount: snapshotItemCount,
       estimatedWeightGrams: snapshotEstimatedWeightGrams,
       packageValue: snapshotPackageValue,
@@ -280,6 +295,7 @@ export function useCartShipping({
     selectedAddress?.id,
     selectedAddressLatitude,
     selectedAddressLongitude,
+    selectedCartItemIdsSignature,
     snapshotEstimatedWeightGrams,
     snapshotItemCount,
     snapshotPackageValue,

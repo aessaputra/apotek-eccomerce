@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { BiteshipArea } from '@/types/shipping';
 import type { RegionalProvince, RegionalRegency, RegionalDistrict } from '@/types/regional';
-
-export type SelectionStage = 'province' | 'city' | 'district' | 'postal';
+import type { SelectionStage } from '@/scenes/profile/areaPickerTypes';
 
 export interface AreaPickerSelection {
   stage: SelectionStage;

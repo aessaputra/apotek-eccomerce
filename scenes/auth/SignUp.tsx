@@ -1,23 +1,16 @@
-import { useState, useMemo } from 'react';
 import { YStack, XStack, Text, Image, useMedia, useTheme, styled } from 'tamagui';
 import { Platform, ScrollView, KeyboardAvoidingView, Pressable } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
 import EmailInput from '@/components/elements/EmailInput';
 import PasswordInput from '@/components/elements/PasswordInput';
 import ErrorMessage from '@/components/elements/ErrorMessage';
-import { signUp } from '@/services/auth.service';
-import { getAuthErrorMessage, isUserAlreadyExistsError } from '@/constants/auth.errors';
 import { images } from '@/utils/images';
 import { PRIMARY_BUTTON_TITLE_STYLE, getCardShadow } from '@/constants/ui';
 import { getThemeColor } from '@/utils/theme';
-import {
-  validateEmail,
-  validatePassword,
-  getPasswordStrength,
-  PasswordStrength,
-} from '@/utils/validation';
+import { PasswordStrength } from '@/utils/validation';
+import { useSignUpForm } from './useSignUpForm';
 
 /**
  * Enhanced SignUp Page - Modern Pharmacy Elegance Design
@@ -35,79 +28,23 @@ import {
 export default function SignUp() {
   const media = useMedia();
   const theme = useTheme();
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState(false);
-  const [passwordError, setPasswordError] = useState(false);
-  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
-
-  /**
-   * Handles form submission with validation
-   * Validates email and password before calling signUp service
-   */
-  async function handleSubmit() {
-    setError(null);
-    setEmailError(false);
-    setPasswordError(false);
-    const trimmedEmail = email.trim();
-
-    // Validate required fields
-    if (!trimmedEmail || !password) {
-      setError('Email dan password wajib diisi.');
-      if (!trimmedEmail) setEmailError(true);
-      if (!password) setPasswordError(true);
-      return;
-    }
-
-    // Validate email format
-    if (!validateEmail(trimmedEmail)) {
-      setEmailError(true);
-      setError('Format email tidak valid.');
-      return;
-    }
-
-    // Validate password with complexity requirements
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.valid) {
-      setPasswordError(true);
-      setError(passwordValidation.error ?? 'Password tidak valid.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error: err } = await signUp({
-        email: trimmedEmail,
-        password,
-      });
-      if (err) {
-        const errorMessage = getAuthErrorMessage(err);
-        setError(errorMessage);
-
-        if (isUserAlreadyExistsError(err)) {
-          setEmailError(true);
-        }
-        return;
-      }
-      if (data?.session) {
-      } else if (data?.user && !data.session) {
-        router.push({
-          pathname: '/(auth)/verify-email',
-          params: { email: trimmedEmail },
-        });
-      }
-    } catch {
-      setError('Terjadi kesalahan saat mendaftar. Silakan coba lagi.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Calculate password strength indicator with useMemo for optimization
-  const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
+  const {
+    email,
+    password,
+    loading,
+    error,
+    emailError,
+    passwordError,
+    focusedField,
+    passwordStrength,
+    dismissError,
+    handleEmailChange,
+    handlePasswordChange,
+    handleEmailFocus,
+    handlePasswordFocus,
+    handleFieldBlur,
+    handleSubmit,
+  } = useSignUpForm();
 
   return (
     <SafeAreaView edges={['top']}>
@@ -183,7 +120,7 @@ export default function SignUp() {
                 opacity={1}
                 y={0}>
                 {/* Error Message dengan height collapse animation (best practice) */}
-                <ErrorMessage message={error} onDismiss={() => setError(null)} dismissible={true} />
+                <ErrorMessage message={error} onDismiss={dismissError} dismissible={true} />
 
                 <YStack gap="$4">
                   {/* Email Input dengan label dan enhanced focus states */}
@@ -202,18 +139,14 @@ export default function SignUp() {
                     </Text>
                     <EmailInput
                       value={email}
-                      onChangeText={text => {
-                        setEmail(text);
-                        setEmailError(false);
-                        setError(null);
-                      }}
+                      onChangeText={handleEmailChange}
                       placeholder="contoh@email.com"
                       error={emailError}
                       disabled={loading}
                       keyboardType="email-address"
                       aria-label="Email"
-                      onFocus={() => setFocusedField('email')}
-                      onBlur={() => setFocusedField(null)}
+                      onFocus={handleEmailFocus}
+                      onBlur={handleFieldBlur}
                     />
                     {focusedField === 'email' && !emailError && (
                       <YStack marginTop="$1">
@@ -276,16 +209,12 @@ export default function SignUp() {
                     </XStack>
                     <PasswordInput
                       value={password}
-                      onChangeText={text => {
-                        setPassword(text);
-                        setPasswordError(false);
-                        setError(null);
-                      }}
+                      onChangeText={handlePasswordChange}
                       placeholder="Minimal 6 karakter"
                       error={passwordError}
                       disabled={loading}
-                      onFocus={() => setFocusedField('password')}
-                      onBlur={() => setFocusedField(null)}
+                      onFocus={handlePasswordFocus}
+                      onBlur={handleFieldBlur}
                     />
                     {focusedField === 'password' && !passwordError && (
                       <YStack marginTop="$1">

@@ -1,20 +1,19 @@
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
-import { fireEvent, waitFor } from '@testing-library/react-native';
-import { render, screen } from '@/test-utils/renderWithTheme';
-import UnpaidOrders from '@/scenes/orders/UnpaidOrders';
+import { FlatList } from 'react-native';
+import { fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
+import UnpaidOrdersScreen from '@/scenes/orders/UnpaidOrders';
 import type { OrderListItem } from '@/services/order.service';
 
 const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 const mockRefreshIfNeeded = jest.fn();
 const mockLoadMore = jest.fn();
-const mockCancelUserOrder =
-  jest.fn<(orderId: string) => Promise<{ data: { cancelled: boolean }; error: null }>>();
+const mockUseUnpaidOrdersPaginated = jest.fn();
 
 const mockOrders: OrderListItem[] = [
   {
     id: 'order-1',
-    created_at: '2026-12-01T00:00:00Z',
+    created_at: '2030-01-01T00:00:00Z',
     expired_at: null,
     midtrans_order_id: 'MID-001',
     gross_amount: 50000,
@@ -23,6 +22,8 @@ const mockOrders: OrderListItem[] = [
     courier_service: 'same-day',
     payment_status: 'pending',
     status: 'pending',
+    customer_completion_stage: null,
+    customer_order_bucket: 'unpaid',
     order_items: [
       {
         id: 'item-1',
@@ -40,7 +41,7 @@ const mockOrders: OrderListItem[] = [
   },
   {
     id: 'order-2',
-    created_at: '2026-12-02T00:00:00Z',
+    created_at: '2030-01-02T00:00:00Z',
     expired_at: null,
     midtrans_order_id: 'MID-002',
     gross_amount: 100000,
@@ -49,6 +50,8 @@ const mockOrders: OrderListItem[] = [
     courier_service: null,
     payment_status: 'pending',
     status: 'pending',
+    customer_completion_stage: null,
+    customer_order_bucket: 'unpaid',
     order_items: [
       {
         id: 'item-2',
@@ -78,17 +81,21 @@ const hookState = {
 };
 
 jest.mock('@/hooks/useUnpaidOrdersPaginated', () => ({
-  useUnpaidOrdersPaginated: () => ({
-    ...hookState,
-    refresh: mockRefresh,
-    refreshIfNeeded: mockRefreshIfNeeded,
-    loadMore: mockLoadMore,
-    metrics: {
-      lastFetchDurationMs: 100,
-      lastPayloadBytes: 1024,
-      cacheAgeMs: 5000,
-    },
-  }),
+  useUnpaidOrdersPaginated: (userId?: string) => {
+    mockUseUnpaidOrdersPaginated(userId);
+
+    return {
+      ...hookState,
+      refresh: mockRefresh,
+      refreshIfNeeded: mockRefreshIfNeeded,
+      loadMore: mockLoadMore,
+      metrics: {
+        lastFetchDurationMs: 100,
+        lastPayloadBytes: 1024,
+        cacheAgeMs: 5000,
+      },
+    };
+  },
 }));
 
 jest.mock('@/slices', () => ({
@@ -103,14 +110,11 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
-jest.mock('@/services/checkout.service', () => ({
-  cancelUserOrder: (orderId: string) => mockCancelUserOrder(orderId),
-}));
-
 describe('UnpaidOrders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
+    mockUseUnpaidOrdersPaginated.mockClear();
     hookState.orders = mockOrders;
     hookState.error = null;
     hookState.hasMore = false;
@@ -119,12 +123,18 @@ describe('UnpaidOrders', () => {
     hookState.isFetchingMore = false;
     hookState.isRevalidating = false;
     hookState.isUsingCachedData = true;
-    mockCancelUserOrder.mockResolvedValue({ data: { cancelled: true }, error: null });
+  });
+
+  test('queries unpaid orders for the current user with the existing hook contract', () => {
+    render(<UnpaidOrdersScreen />);
+
+    expect(mockUseUnpaidOrdersPaginated.mock.calls[0]).toEqual(['user-123']);
   });
 
   test('renders order list', () => {
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Paracetamol')).toBeTruthy();
     expect(screen.getByText('Vitamin C')).toBeTruthy();
   });
@@ -133,16 +143,30 @@ describe('UnpaidOrders', () => {
     hookState.orders = [];
     hookState.isUsingCachedData = false;
 
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Belum Ada Pesanan')).toBeTruthy();
+    expect(
+      screen.getByText('Pesanan yang masih bisa dibayar akan muncul di sini. Yuk, mulai belanja!'),
+    ).toBeTruthy();
+  });
+
+  test('shows active unpaid helper copy above the list', () => {
+    render(<UnpaidOrdersScreen />);
+
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
+    expect(screen.getByText('Masih Bisa Dibayar')).toBeTruthy();
+    expect(
+      screen.getByText('Hanya pesanan yang masih bisa dibayar ditampilkan di sini.'),
+    ).toBeTruthy();
   });
 
   test('navigates shop now CTA to /home from the empty state', () => {
     hookState.orders = [];
     hookState.isUsingCachedData = false;
 
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
     fireEvent.press(screen.getByText('Belanja Sekarang'));
 
@@ -155,8 +179,9 @@ describe('UnpaidOrders', () => {
     hookState.isInitialLoading = true;
     hookState.isUsingCachedData = false;
 
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Memuat pesanan...')).toBeTruthy();
   });
 
@@ -165,20 +190,58 @@ describe('UnpaidOrders', () => {
     hookState.error = 'Gagal memuat data';
     hookState.isUsingCachedData = false;
 
-    render(<UnpaidOrders />);
+    render(<UnpaidOrdersScreen />);
 
+    expect(screen.queryByText('Belum Bayar')).toBeNull();
     expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
   });
 
-  test('cancels order from unpaid list after confirmation', async () => {
-    render(<UnpaidOrders />);
+  test('retries from the error state', () => {
+    hookState.orders = [];
+    hookState.error = 'Gagal memuat data';
+    hookState.isUsingCachedData = false;
 
-    fireEvent.press(screen.getAllByLabelText(/Batalkan pesanan/i)[0]);
-    fireEvent.press(screen.getByText('Ya, Batalkan Pesanan'));
+    render(<UnpaidOrdersScreen />);
+
+    expect(screen.getByText('Gagal Memuat Pesanan')).toBeTruthy();
+    expect(screen.getByText('Gagal memuat data')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Coba Lagi'));
+
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  test('routes to the order detail screen when a visible unpaid order is pressed', () => {
+    render(<UnpaidOrdersScreen />);
+
+    fireEvent.press(screen.getByText('Paracetamol'));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/orders/order-detail/[orderId]',
+      params: { orderId: 'order-1' },
+    });
+  });
+
+  test('wires refresh and pagination on the rendered list', () => {
+    hookState.isRefreshing = true;
+    hookState.hasMore = true;
+
+    render(<UnpaidOrdersScreen />);
+
+    const list = screen.UNSAFE_getByType(FlatList);
+    expect(list.props.refreshControl.props.refreshing).toBe(true);
+    list.props.refreshControl.props.onRefresh();
+    list.props.onEndReached();
+
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    expect(mockLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  test('refreshes cached unpaid orders on mount', async () => {
+    render(<UnpaidOrdersScreen />);
 
     await waitFor(() => {
-      expect(mockCancelUserOrder).toHaveBeenCalledWith('order-1');
-      expect(mockRefresh).toHaveBeenCalled();
+      expect(mockRefreshIfNeeded).toHaveBeenCalledTimes(1);
     });
   });
 });

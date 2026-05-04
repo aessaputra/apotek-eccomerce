@@ -54,13 +54,13 @@ export default function AddressSearchScreen() {
     selectSuggestion,
   } = useAddressSuggestions(initialLocation);
 
+  // placeholderTextColor is a native TextInput prop and requires a resolved color string.
   const placeholderColor = getThemeColor(
     theme,
     'searchPlaceholderColor',
     THEME_FALLBACKS.searchPlaceholderColor ?? THEME_FALLBACKS.placeholderColor,
   );
 
-  const iconColor = getThemeColor(theme, 'color', THEME_FALLBACKS.color);
   const gpsDeniedRef = useRef(false);
 
   const handleBack = useCallback(() => {
@@ -174,7 +174,7 @@ export default function AddressSearchScreen() {
             justifyContent="center"
             pressStyle={{ opacity: 0.8, scale: 0.96 }}
             onPress={handleBack}>
-            <ArrowLeft size={22} color={iconColor} />
+            <ArrowLeft size={22} color="$color" />
           </XStack>
 
           <Text flex={1} fontSize="$7" fontWeight="700" color="$color">

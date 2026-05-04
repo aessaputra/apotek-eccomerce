@@ -48,11 +48,17 @@ function createProps() {
     selectedAddress: baseAddress,
     selectedAddressFullText: 'Jl. Test 1, Jakarta, DKI Jakarta, 12345',
     onOpenAddressSheet: jest.fn(),
+    onAddAddress: jest.fn(),
     addressErrorMessage: null,
     loadingRates: false,
     selectedShippingOption: shippingOption,
     isOffline: false,
     onOpenShippingSheet: jest.fn(),
+    activeOrderId: null,
+    paymentError: null,
+    startingCheckout: false,
+    onCancelPendingCheckout: jest.fn(),
+    onContinuePendingCheckout: jest.fn(),
     shippingOptionsCount: 1,
     shippingErrorMessage: null,
     shippingRecoverySuggestion: null,
@@ -93,16 +99,34 @@ describe('<CartCheckoutDetails />', () => {
     expect(screen.getByText('Kurir tidak tersedia')).toBeTruthy();
     expect(screen.getByText('Coba pilih alamat lain')).toBeTruthy();
 
+    fireEvent.press(screen.getByLabelText('Tambah alamat pengiriman'));
+    expect(props.onAddAddress).toHaveBeenCalledTimes(1);
+    expect(props.onOpenAddressSheet).not.toHaveBeenCalled();
+
     fireEvent.press(screen.getByLabelText('Muat ulang ongkir'));
     expect(props.onRetryShipping).toHaveBeenCalledTimes(1);
   });
 
-  test('renders offline messaging on shipping card without pending checkout banner', () => {
+  test('renders pending checkout banner and offline messaging', () => {
     const props = createProps();
 
-    render(<CartCheckoutDetails {...props} isOffline />);
+    render(
+      <CartCheckoutDetails
+        {...props}
+        isOffline
+        activeOrderId="order-1"
+        paymentError="Pembayaran sebelumnya gagal diverifikasi"
+      />,
+    );
 
+    expect(screen.getByText('Pembayaran Tertunda')).toBeTruthy();
+    expect(screen.getByText('Pembayaran sebelumnya gagal diverifikasi')).toBeTruthy();
     expect(screen.getByText('Tidak tersedia offline')).toBeTruthy();
-    expect(screen.queryByText('Pembayaran Tertunda')).toBeNull();
+
+    fireEvent.press(screen.getByLabelText('Batalkan checkout tertunda'));
+    expect(props.onCancelPendingCheckout).toHaveBeenCalledTimes(1);
+
+    const continueButton = screen.getByLabelText('Lanjutkan pembayaran');
+    expect(continueButton).toBeTruthy();
   });
 });

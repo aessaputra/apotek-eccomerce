@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ComponentRef } from 'react';
-import { Platform, Keyboard, KeyboardAvoidingView } from 'react-native';
+import { Platform, KeyboardAvoidingView } from 'react-native';
 import { YStack, Text, Card, Spinner, Input, Separator, styled, ScrollView } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -15,6 +15,7 @@ import { useAppSlice } from '@/slices';
 import { updateProfile, uploadAvatar } from '@/services/profile.service';
 import { windowWidth } from '@/utils/deviceInfo';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
+import { useAndroidKeyboardInset } from './useAndroidKeyboardInset';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -47,25 +48,7 @@ export default function EditProfile() {
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [fullNameError, setFullNameError] = useState<string | null>(null);
   const [phoneNumberError, setPhoneNumberError] = useState<string | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const phoneInputRef = useRef<ComponentRef<typeof Input>>(null);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-
-    const showListener = Keyboard.addListener('keyboardDidShow', e => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-
-    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showListener.remove();
-      hideListener.remove();
-    };
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -77,6 +60,7 @@ export default function EditProfile() {
   const avatarSize = windowWidth < 375 ? 100 : 120;
   const insets = useSafeAreaInsets();
   const keyboardGap = 16;
+  const keyboardHeight = useAndroidKeyboardInset();
   const extraBottomOffset = Platform.OS === 'android' ? keyboardHeight : 0;
   const scrollPaddingBottom =
     BOTTOM_BAR_HEIGHT + insets.bottom + FORM_SCROLL_PADDING.COMPACT + keyboardHeight + keyboardGap;

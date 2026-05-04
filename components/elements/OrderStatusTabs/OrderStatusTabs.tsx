@@ -1,10 +1,20 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { XStack, YStack, Text, styled } from 'tamagui';
-import { WalletIcon, PackageIcon, TruckIcon, CheckCircleIcon } from '@/components/icons';
+import {
+  ShoppingBagIcon,
+  WalletIcon,
+  PackageIcon,
+  TruckIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from '@/components/icons';
 import type { IconProps } from '@/components/icons';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 
-export type OrderTab = 'unpaid' | 'packing' | 'shipped' | 'completed';
+export type OrderTab = 'all' | 'unpaid' | 'packing' | 'shipped' | 'completed' | 'cancelled';
+type CountedOrderTab = Exclude<OrderTab, 'all'>;
+export type OrderStatusTabCounts = Partial<Record<CountedOrderTab, number>>;
 
 interface TabConfig {
   key: OrderTab;
@@ -12,28 +22,46 @@ interface TabConfig {
   icon: React.ComponentType<IconProps>;
 }
 
+interface OrderStatusTabItemProps {
+  tab: TabConfig;
+  count?: number;
+  isActive: boolean;
+  onTabChange: (tab: OrderTab) => void;
+}
+
 const TABS: TabConfig[] = [
+  { key: 'all', label: 'Semua pesanan', icon: ShoppingBagIcon },
   { key: 'unpaid', label: 'Belum Bayar', icon: WalletIcon },
   { key: 'packing', label: 'Dikemas', icon: PackageIcon },
   { key: 'shipped', label: 'Dikirim', icon: TruckIcon },
   { key: 'completed', label: 'Selesai', icon: CheckCircleIcon },
+  { key: 'cancelled', label: 'Dibatalkan', icon: XCircleIcon },
 ];
+
+const TABS_CONTENT_CONTAINER_STYLE = {
+  paddingHorizontal: 16,
+  gap: 8,
+} as const;
+const TAB_PRESS_STYLE = { opacity: 0.7 } as const;
+const ACTIVE_ACCESSIBILITY_STATE = { selected: true } as const;
+const INACTIVE_ACCESSIBILITY_STATE = { selected: false } as const;
+const TAB_ICON_SIZE = 28;
+const TAB_MIN_WIDTH = 92;
+const ALL_TAB_MIN_WIDTH = 116;
 
 interface OrderStatusTabsProps {
   activeTab?: OrderTab | null;
-  counts: {
-    unpaid: number;
-    packing: number;
-    shipped: number;
-    completed: number;
-  };
+  counts: OrderStatusTabCounts;
   onTabChange: (tab: OrderTab) => void;
+}
+
+function isCountedTab(tab: TabConfig): tab is TabConfig & { key: CountedOrderTab } {
+  return tab.key !== 'all';
 }
 
 const TabsContainer = styled(XStack, {
   backgroundColor: '$background',
   paddingVertical: '$3',
-  paddingHorizontal: '$4',
   gap: '$2',
 });
 
@@ -42,10 +70,10 @@ const TabButton = styled(YStack, {
   justifyContent: 'center',
   gap: '$1',
   paddingVertical: '$2',
-  paddingHorizontal: '$2',
+  paddingHorizontal: '$3',
   borderRadius: '$3',
-  minWidth: 65,
-  flex: 1,
+  minWidth: TAB_MIN_WIDTH,
+  minHeight: MIN_TOUCH_TARGET,
   position: 'relative',
 
   variants: {
@@ -128,37 +156,61 @@ const BadgeText = styled(Text, {
   lineHeight: 14,
 });
 
+const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
+  tab,
+  count,
+  isActive,
+  onTabChange,
+}: OrderStatusTabItemProps) {
+  const IconComponent = tab.icon;
+  const handlePress = React.useCallback(() => {
+    onTabChange(tab.key);
+  }, [onTabChange, tab.key]);
+  const accessibilityLabel = `${tab.label}, tab pesanan${isActive ? ' aktif' : ''}`;
+  const accessibilityHint = `Ketuk untuk melihat ${tab.label.toLowerCase()}.`;
+
+  return (
+    <TabButton
+      active={isActive}
+      minWidth={tab.key === 'all' ? ALL_TAB_MIN_WIDTH : TAB_MIN_WIDTH}
+      onPress={handlePress}
+      pressStyle={TAB_PRESS_STYLE}
+      accessibilityRole="tab"
+      accessibilityState={isActive ? ACTIVE_ACCESSIBILITY_STATE : INACTIVE_ACCESSIBILITY_STATE}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}>
+      <TabIcon active={isActive}>
+        <IconComponent size={TAB_ICON_SIZE} color={isActive ? '$primary' : '$colorSubtle'} />
+      </TabIcon>
+      <TabLabel active={isActive}>{tab.label}</TabLabel>
+      {count !== undefined && count > 0 && (
+        <Badge>
+          <BadgeText>{count > 99 ? '99+' : count}</BadgeText>
+        </Badge>
+      )}
+    </TabButton>
+  );
+});
+
 export function OrderStatusTabs({ activeTab, counts, onTabChange }: OrderStatusTabsProps) {
   return (
     <TabsContainer>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: 'space-between',
-        }}>
+        contentContainerStyle={TABS_CONTENT_CONTAINER_STYLE}>
         {TABS.map(tab => {
           const isActive = activeTab === tab.key;
-          const count = counts[tab.key] || 0;
-          const IconComponent = tab.icon;
+          const count = isCountedTab(tab) ? (counts[tab.key] ?? 0) : undefined;
 
           return (
-            <TabButton
+            <OrderStatusTabItem
               key={tab.key}
-              active={isActive}
-              onPress={() => onTabChange(tab.key)}
-              pressStyle={{ opacity: 0.7 }}>
-              <TabIcon active={isActive}>
-                <IconComponent size={28} color={isActive ? '$primary' : '$colorSubtle'} />
-              </TabIcon>
-              <TabLabel active={isActive}>{tab.label}</TabLabel>
-              {count > 0 && (
-                <Badge>
-                  <BadgeText>{count > 99 ? '99+' : count}</BadgeText>
-                </Badge>
-              )}
-            </TabButton>
+              tab={tab}
+              count={count}
+              isActive={isActive}
+              onTabChange={onTabChange}
+            />
           );
         })}
       </ScrollView>

@@ -17,6 +17,14 @@ function OrdersStackLayout() {
         }}
       />
       <Stack.Screen
+        name="all"
+        options={{
+          title: 'Semua Pesanan',
+          headerTitleAlign: 'center',
+          headerBackTitle: 'Pesanan',
+        }}
+      />
+      <Stack.Screen
         name="unpaid"
         options={{
           title: 'Belum Bayar',
@@ -46,6 +54,21 @@ function OrdersStackLayout() {
           title: 'Selesai',
           headerTitleAlign: 'center',
           headerBackTitle: 'Pesanan',
+        }}
+      />
+      <Stack.Screen
+        name="cancelled"
+        options={{
+          title: 'Dibatalkan',
+          headerTitleAlign: 'center',
+          headerBackTitle: 'Pesanan',
+        }}
+      />
+      <Stack.Screen
+        name="success"
+        options={{
+          title: 'Pembayaran Berhasil',
+          headerShown: false,
         }}
       />
       <Stack.Screen

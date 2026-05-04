@@ -11,7 +11,7 @@ export interface BiteshipArea {
   administrative_division_level_2_type?: string;
   administrative_division_level_3_name?: string;
   administrative_division_level_3_type?: string;
-  postal_code?: number;
+  postal_code?: string | number | null;
 }
 
 export interface ShippingOption {

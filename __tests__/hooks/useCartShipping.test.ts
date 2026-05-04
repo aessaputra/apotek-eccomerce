@@ -48,6 +48,8 @@ const snapshot: CartSnapshot = {
   packageValue: 50000,
 };
 
+const selectedCartItemIds = ['cart-item-1', 'cart-item-2'];
+
 describe('useCartShipping', () => {
   beforeEach(() => {
     mockGetShippingRatesForAddress.mockReset();
@@ -97,6 +99,7 @@ describe('useCartShipping', () => {
         useCartShipping({
           selectedAddress,
           selectedAddressId: selectedAddress?.id ?? null,
+          selectedCartItemIds,
           snapshot,
           isOffline: false,
         }),
@@ -156,6 +159,7 @@ describe('useCartShipping', () => {
         useCartShipping({
           selectedAddress,
           selectedAddressId: selectedAddress?.id ?? null,
+          selectedCartItemIds,
           snapshot,
           isOffline: false,
         }),
@@ -232,6 +236,135 @@ describe('useCartShipping', () => {
     await waitFor(() => {
       expect(result.current.shippingOptions[0]?.courier_code).toBe('gojek');
       expect(result.current.shippingOptions[0]?.price).toBe(26000);
+    });
+  });
+
+  it('sends selected-only aggregate values when requesting shipping rates', async () => {
+    const selectedSnapshot: CartSnapshot = {
+      itemCount: 3,
+      estimatedWeightGrams: 750,
+      packageValue: 123456,
+    };
+
+    mockGetShippingRatesForAddress.mockResolvedValue({
+      data: {
+        destination_area_id: 'AREA-1',
+        destination_postal_code: 12345,
+        options: [],
+      },
+      error: null,
+    });
+
+    renderHook(() =>
+      useCartShipping({
+        selectedAddress: baseAddress,
+        selectedAddressId: baseAddress.id,
+        selectedCartItemIds: ['cart-item-2'],
+        snapshot: selectedSnapshot,
+        isOffline: false,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(mockGetShippingRatesForAddress).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockGetShippingRatesForAddress).toHaveBeenCalledWith({
+      address: baseAddress,
+      package_weight_grams: 750,
+      package_value: 123456,
+      package_name: 'Checkout package (3 item)',
+    });
+  });
+
+  it('clears stale shipping selection and recalculates when selected set changes with identical totals', async () => {
+    const secondRequest = createDeferred<{
+      data: {
+        destination_area_id: string;
+        destination_postal_code: number;
+        options: Record<string, unknown>[];
+      };
+      error: null;
+    }>();
+    const selectedOnlySnapshot: CartSnapshot = {
+      itemCount: 1,
+      estimatedWeightGrams: 100,
+      packageValue: 10000,
+    };
+
+    mockGetShippingRatesForAddress
+      .mockResolvedValueOnce({
+        data: {
+          destination_area_id: 'AREA-1',
+          destination_postal_code: 12345,
+          options: [
+            {
+              courier_name: 'JNE',
+              courier_code: 'jne',
+              service_name: 'REG',
+              service_code: 'reg',
+              shipping_type: 'parcel',
+              price: 15000,
+              currency: 'IDR',
+              estimated_delivery: '2-3 hari',
+            },
+          ],
+        },
+        error: null,
+      })
+      .mockImplementationOnce(() => secondRequest.promise);
+
+    const { result, rerender } = renderHook(
+      ({ selectedIds }: { selectedIds: string[] }) =>
+        useCartShipping({
+          selectedAddress: baseAddress,
+          selectedAddressId: baseAddress.id,
+          selectedCartItemIds: selectedIds,
+          snapshot: selectedOnlySnapshot,
+          isOffline: false,
+        }),
+      {
+        initialProps: { selectedIds: ['cart-item-1'] },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.selectedShippingKey).toBe('jne-reg');
+    });
+
+    rerender({ selectedIds: ['cart-item-2'] });
+
+    await waitFor(() => {
+      expect(mockGetShippingRatesForAddress).toHaveBeenCalledTimes(2);
+      expect(result.current.selectedShippingKey).toBeNull();
+      expect(result.current.shippingOptions).toEqual([]);
+    });
+
+    await act(async () => {
+      secondRequest.resolve({
+        data: {
+          destination_area_id: 'AREA-1',
+          destination_postal_code: 12345,
+          options: [
+            {
+              courier_name: 'Gojek',
+              courier_code: 'gojek',
+              service_name: 'Instant',
+              service_code: 'instant',
+              shipping_type: 'parcel',
+              price: 18000,
+              currency: 'IDR',
+              estimated_delivery: '1 jam',
+            },
+          ],
+        },
+        error: null,
+      });
+      await secondRequest.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.shippingOptions[0]?.courier_code).toBe('gojek');
     });
   });
 });

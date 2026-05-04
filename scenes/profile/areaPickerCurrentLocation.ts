@@ -7,6 +7,7 @@ import {
   normalizeExactAdminName,
 } from '@/utils/areaNormalization';
 import { normalizePostalCode } from '@/utils/postalCode';
+import type { SelectionStage } from './areaPickerTypes';
 import type {
   CurrentLocationAddress,
   PostalOption,
@@ -37,7 +38,7 @@ type ResolvedCurrentLocationSelection = {
 
 type ManualCurrentLocationSelection = {
   kind: 'manual';
-  stage: 'city' | 'district' | 'postal';
+  stage: Exclude<SelectionStage, 'province'>;
   errorMessage: string;
   province?: RegionalProvince;
   regency?: RegionalRegency;
@@ -166,37 +167,151 @@ async function resolveAddressFromCoordinates(
   };
 }
 
-export async function resolveCurrentLocationSelection(
+type CurrentLocationErrorOptions = {
+  errorMessage: string;
+  provinceOptions?: RegionalProvince[];
+};
+
+type ManualCityFallbackOptions = {
+  province: RegionalProvince;
+  cityOptions: RegionalRegency[];
+};
+
+type ManualDistrictFallbackOptions = {
+  province: RegionalProvince;
+  regency: RegionalRegency;
+  districtOptions: RegionalDistrict[];
+};
+
+type ManualPostalFallbackOptions = {
+  errorMessage: string;
+  province: RegionalProvince;
+  regency: RegionalRegency;
+  district: RegionalDistrict;
+  postalOptions: PostalOption[];
+};
+
+type DistrictSearchResult = {
+  regency: RegionalRegency;
+  districts: RegionalDistrict[];
+};
+
+type LocatedAddress = {
+  address: CurrentLocationAddress;
+  usedLastKnown: boolean;
+};
+
+type ProvinceResolution =
+  | { matchedProvince: RegionalProvince; fallback?: never }
+  | { matchedProvince?: never; fallback: FailedCurrentLocationSelection };
+
+type RegencyResolution =
+  | { matchedRegency: RegionalRegency; fallback?: never }
+  | {
+      matchedRegency?: never;
+      fallback: FailedCurrentLocationSelection | ManualCurrentLocationSelection;
+    };
+
+type DistrictPostalResolution =
+  | { district: RegionalDistrict; postalOptions: PostalOption[]; fallback?: never }
+  | {
+      district?: never;
+      postalOptions?: never;
+      fallback: FailedCurrentLocationSelection | ManualCurrentLocationSelection;
+    };
+
+type AreaResolution = ResolvedCurrentLocationSelection | ManualCurrentLocationSelection;
+
+function shapeCurrentLocationError({
+  errorMessage,
+  provinceOptions,
+}: CurrentLocationErrorOptions): FailedCurrentLocationSelection {
+  return provinceOptions
+    ? { kind: 'error', errorMessage, provinceOptions }
+    : { kind: 'error', errorMessage };
+}
+
+function shapeManualCityFallback({
+  province,
+  cityOptions,
+}: ManualCityFallbackOptions): ManualCurrentLocationSelection {
+  return {
+    kind: 'manual',
+    stage: 'city',
+    errorMessage: 'Kota atau kabupaten tidak cocok otomatis. Silakan pilih manual.',
+    province,
+    cityOptions,
+  };
+}
+
+function shapeManualDistrictFallback({
+  province,
+  regency,
+  districtOptions,
+}: ManualDistrictFallbackOptions): ManualCurrentLocationSelection {
+  return {
+    kind: 'manual',
+    stage: 'district',
+    errorMessage: 'Kecamatan tidak cocok otomatis. Silakan pilih manual.',
+    province,
+    regency,
+    districtOptions,
+  };
+}
+
+function shapeManualPostalFallback({
+  errorMessage,
+  province,
+  regency,
+  district,
+  postalOptions,
+}: ManualPostalFallbackOptions): ManualCurrentLocationSelection {
+  return {
+    kind: 'manual',
+    stage: 'postal',
+    errorMessage,
+    province,
+    regency,
+    district,
+    postalOptions,
+  };
+}
+
+async function loadAvailableProvinces(
   params: ResolveCurrentLocationSelectionParams,
-): Promise<CurrentLocationSelectionResult> {
-  const locationModule = params.locationModule ?? Location;
-  const availableProvinces =
-    params.provinceOptions.length > 0 ? params.provinceOptions : await params.fetchProvinces();
+): Promise<RegionalProvince[]> {
+  return params.provinceOptions.length > 0 ? params.provinceOptions : await params.fetchProvinces();
+}
 
-  if (availableProvinces.length === 0) {
-    return {
-      kind: 'error',
-      errorMessage: 'Daftar provinsi belum siap. Silakan coba lagi.',
-    };
-  }
-
+async function ensureLocationPermission(
+  locationModule: LocationModule,
+  availableProvinces: RegionalProvince[],
+): Promise<FailedCurrentLocationSelection | null> {
   const permission = await locationModule.requestForegroundPermissionsAsync();
-  if (permission.status !== 'granted') {
-    return {
-      kind: 'error',
-      errorMessage: 'Izin lokasi diperlukan untuk menggunakan lokasi saat ini.',
-      provinceOptions: availableProvinces,
-    };
+
+  if (permission.status === 'granted') {
+    return null;
   }
 
+  return shapeCurrentLocationError({
+    errorMessage: 'Izin lokasi diperlukan untuk menggunakan lokasi saat ini.',
+    provinceOptions: availableProvinces,
+  });
+}
+
+async function resolveLocatedAddress(
+  params: ResolveCurrentLocationSelectionParams,
+  locationModule: LocationModule,
+  availableProvinces: RegionalProvince[],
+): Promise<LocatedAddress | FailedCurrentLocationSelection> {
   const { location: current, usedLastKnown } = await resolveCurrentCoordinates(locationModule);
+
   if (!current) {
-    return {
-      kind: 'error',
+    return shapeCurrentLocationError({
       errorMessage:
         'Lokasi saat ini tidak tersedia. Pastikan GPS aktif lalu coba lagi, atau pilih manual.',
       provinceOptions: availableProvinces,
-    };
+    });
   }
 
   const { resolvedAddress } = await resolveAddressFromCoordinates(
@@ -207,217 +322,391 @@ export async function resolveCurrentLocationSelection(
   );
 
   if (!resolvedAddress) {
-    return {
-      kind: 'error',
+    return shapeCurrentLocationError({
       errorMessage:
         'Alamat dari lokasi saat ini tidak dapat dikenali. Silakan pilih area secara manual.',
       provinceOptions: availableProvinces,
-    };
+    });
   }
 
+  return { address: resolvedAddress, usedLastKnown };
+}
+
+function resolveProvincePhase(
+  address: CurrentLocationAddress,
+  availableProvinces: RegionalProvince[],
+): ProvinceResolution {
   const matchedProvince = availableProvinces.find(option => {
-    return normalizeAdminName(option.name) === normalizeAdminName(resolvedAddress.province);
+    return normalizeAdminName(option.name) === normalizeAdminName(address.province);
   });
 
   if (!matchedProvince) {
     return {
-      kind: 'error',
-      errorMessage: 'Provinsi dari lokasi saat ini tidak ditemukan. Silakan pilih manual.',
-      provinceOptions: availableProvinces,
+      fallback: shapeCurrentLocationError({
+        errorMessage: 'Provinsi dari lokasi saat ini tidak ditemukan. Silakan pilih manual.',
+        provinceOptions: availableProvinces,
+      }),
     };
   }
 
-  const { data: regencies, error: regencyError } = await params.fetchRegencies(
-    matchedProvince.code,
-  );
-  if (regencyError || regencies.length === 0) {
-    return {
-      kind: 'error',
-      errorMessage: 'Kota atau kabupaten dari lokasi saat ini tidak ditemukan.',
-      provinceOptions: availableProvinces,
-    };
-  }
+  return { matchedProvince };
+}
 
-  const districtSearchResults = await Promise.all(
+async function fetchDistrictsForRegencies(
+  regencies: RegionalRegency[],
+  fetchDistricts: ResolveCurrentLocationSelectionParams['fetchDistricts'],
+): Promise<DistrictSearchResult[]> {
+  return Promise.all(
     regencies.map(async regency => {
-      const { data: districts } = await params.fetchDistricts(regency.code);
+      const { data: districts } = await fetchDistricts(regency.code);
       return { regency, districts: districts || [] };
     }),
   );
+}
 
-  const exactMatchedRegency = regencies.find(option => {
-    return normalizeExactAdminName(option.name) === normalizeExactAdminName(resolvedAddress.city);
+function findCorroboratedFuzzyRegency(
+  fuzzyMatchedRegencies: RegionalRegency[],
+  districtSearchResults: DistrictSearchResult[],
+  districtName: string,
+): RegionalRegency | undefined {
+  const corroboratedRegency = districtSearchResults.find(({ regency, districts }) => {
+    return (
+      regency.code === fuzzyMatchedRegencies[0]?.code &&
+      districts.some(district => adminNamesMatch(district.name, districtName))
+    );
   });
 
+  return corroboratedRegency?.regency;
+}
+
+function disambiguateRegencyByDistrict(
+  fuzzyMatchedRegencies: RegionalRegency[],
+  districtSearchResults: DistrictSearchResult[],
+  districtName: string,
+): RegionalRegency | undefined {
+  const disambiguatedRegency = districtSearchResults.find(({ regency, districts }) => {
+    return (
+      fuzzyMatchedRegencies.some(match => match.code === regency.code) &&
+      districts.some(district => adminNamesMatch(district.name, districtName))
+    );
+  });
+
+  return disambiguatedRegency?.regency;
+}
+
+function selectRegencyFromCitySignal(
+  regencies: RegionalRegency[],
+  districtSearchResults: DistrictSearchResult[],
+  address: CurrentLocationAddress,
+): RegionalRegency | undefined {
+  const exactMatchedRegency = regencies.find(option => {
+    return normalizeExactAdminName(option.name) === normalizeExactAdminName(address.city);
+  });
+
+  if (exactMatchedRegency) {
+    return exactMatchedRegency;
+  }
+
   const fuzzyMatchedRegencies = regencies.filter(option =>
-    adminNamesMatch(option.name, resolvedAddress.city),
+    adminNamesMatch(option.name, address.city),
   );
+  const hasStrongDistrictSignal = Boolean(address.district);
 
-  let finalMatchedRegency = exactMatchedRegency;
-  const hasStrongDistrictSignal = Boolean(resolvedAddress.district);
-
-  if (!finalMatchedRegency && fuzzyMatchedRegencies.length === 1 && hasStrongDistrictSignal) {
-    const corroboratedRegency = districtSearchResults.find(({ regency, districts }) => {
-      return (
-        regency.code === fuzzyMatchedRegencies[0]?.code &&
-        districts.some(d => adminNamesMatch(d.name, resolvedAddress.district))
-      );
-    });
-
-    if (corroboratedRegency) {
-      finalMatchedRegency = corroboratedRegency.regency;
-    }
+  if (fuzzyMatchedRegencies.length === 1 && hasStrongDistrictSignal) {
+    return findCorroboratedFuzzyRegency(
+      fuzzyMatchedRegencies,
+      districtSearchResults,
+      address.district,
+    );
   }
 
-  if (!finalMatchedRegency && fuzzyMatchedRegencies.length > 1) {
-    const disambiguatedRegency = districtSearchResults.find(({ regency, districts }) => {
-      return (
-        fuzzyMatchedRegencies.some(match => match.code === regency.code) &&
-        districts.some(d => adminNamesMatch(d.name, resolvedAddress.district))
-      );
-    });
-
-    if (disambiguatedRegency) {
-      finalMatchedRegency = disambiguatedRegency.regency;
-    }
+  if (fuzzyMatchedRegencies.length > 1) {
+    return disambiguateRegencyByDistrict(
+      fuzzyMatchedRegencies,
+      districtSearchResults,
+      address.district,
+    );
   }
 
-  if (!finalMatchedRegency) {
+  return undefined;
+}
+
+async function resolveCityPhase(
+  params: ResolveCurrentLocationSelectionParams,
+  province: RegionalProvince,
+  address: CurrentLocationAddress,
+  availableProvinces: RegionalProvince[],
+): Promise<RegencyResolution> {
+  const { data: regencies, error: regencyError } = await params.fetchRegencies(province.code);
+
+  if (regencyError || regencies.length === 0) {
     return {
-      kind: 'manual',
-      stage: 'city',
-      errorMessage: 'Kota atau kabupaten tidak cocok otomatis. Silakan pilih manual.',
-      province: matchedProvince,
-      cityOptions: regencies,
+      fallback: shapeCurrentLocationError({
+        errorMessage: 'Kota atau kabupaten dari lokasi saat ini tidak ditemukan.',
+        provinceOptions: availableProvinces,
+      }),
     };
   }
 
-  const { data: districts, error: districtError } = await params.fetchDistricts(
-    finalMatchedRegency.code,
+  const districtSearchResults = await fetchDistrictsForRegencies(regencies, params.fetchDistricts);
+  const matchedRegency = selectRegencyFromCitySignal(regencies, districtSearchResults, address);
+
+  if (!matchedRegency) {
+    return { fallback: shapeManualCityFallback({ province, cityOptions: regencies }) };
+  }
+
+  return { matchedRegency };
+}
+
+function findDistrictByName(
+  districts: RegionalDistrict[],
+  address: CurrentLocationAddress,
+): RegionalDistrict | undefined {
+  if (!address.district) {
+    return undefined;
+  }
+
+  return districts.find(option => {
+    return normalizeAdminName(option.name) === normalizeAdminName(address.district);
+  });
+}
+
+async function resolveInitialPostalOptions(
+  params: ResolveCurrentLocationSelectionParams,
+  province: RegionalProvince,
+  regency: RegionalRegency,
+  district: RegionalDistrict | undefined,
+  usedLastKnown: boolean,
+): Promise<PostalOption[]> {
+  if (!district || usedLastKnown) {
+    return [];
+  }
+
+  return params.resolvePostalOptions(province, regency, district);
+}
+
+function postalOptionsIncludeDetectedCode(
+  options: PostalOption[],
+  normalizedPostalCode: string,
+): boolean {
+  return options.some(option => normalizePostalCode(option.label) === normalizedPostalCode);
+}
+
+async function resolveDistrictFromPostalCode(
+  params: ResolveCurrentLocationSelectionParams,
+  districts: RegionalDistrict[],
+  province: RegionalProvince,
+  regency: RegionalRegency,
+  normalizedPostalCode: string,
+): Promise<{ district: RegionalDistrict; postalOptions: PostalOption[] } | null> {
+  const postalMatchedDistrict = await findDistrictCandidateByPostalCode(
+    districts,
+    province,
+    regency,
+    normalizedPostalCode,
+    params.resolvePostalOptions,
   );
+
+  return postalMatchedDistrict
+    ? { district: postalMatchedDistrict.district, postalOptions: postalMatchedDistrict.options }
+    : null;
+}
+
+async function resolveDistrictPostalPhase(
+  params: ResolveCurrentLocationSelectionParams,
+  province: RegionalProvince,
+  regency: RegionalRegency,
+  address: CurrentLocationAddress,
+  usedLastKnown: boolean,
+): Promise<DistrictPostalResolution> {
+  const { data: districts, error: districtError } = await params.fetchDistricts(regency.code);
+
   if (districtError || districts.length === 0) {
     return {
-      kind: 'error',
-      errorMessage: 'Kecamatan dari lokasi saat ini tidak ditemukan.',
+      fallback: shapeCurrentLocationError({
+        errorMessage: 'Kecamatan dari lokasi saat ini tidak ditemukan.',
+      }),
     };
   }
 
-  const matchedDistrict = resolvedAddress.district
-    ? districts.find(option => {
-        return normalizeAdminName(option.name) === normalizeAdminName(resolvedAddress.district);
-      })
-    : undefined;
-  const normalizedResolvedPostalCode = normalizePostalCode(resolvedAddress.postalCode);
-
-  let finalDistrictCandidate = matchedDistrict;
-  let options =
-    finalDistrictCandidate && !usedLastKnown
-      ? await params.resolvePostalOptions(
-          matchedProvince,
-          finalMatchedRegency,
-          finalDistrictCandidate,
-        )
-      : [];
+  const normalizedResolvedPostalCode = normalizePostalCode(address.postalCode);
+  let finalDistrictCandidate = findDistrictByName(districts, address);
+  let postalOptions = await resolveInitialPostalOptions(
+    params,
+    province,
+    regency,
+    finalDistrictCandidate,
+    usedLastKnown,
+  );
 
   if (
     normalizedResolvedPostalCode &&
     (!finalDistrictCandidate ||
-      !options.some(option => normalizePostalCode(option.label) === normalizedResolvedPostalCode))
+      !postalOptionsIncludeDetectedCode(postalOptions, normalizedResolvedPostalCode))
   ) {
-    const postalMatchedDistrict = await findDistrictCandidateByPostalCode(
+    const postalMatchedDistrict = await resolveDistrictFromPostalCode(
+      params,
       districts,
-      matchedProvince,
-      finalMatchedRegency,
+      province,
+      regency,
       normalizedResolvedPostalCode,
-      params.resolvePostalOptions,
     );
 
     if (postalMatchedDistrict) {
       finalDistrictCandidate = postalMatchedDistrict.district;
-      options = postalMatchedDistrict.options;
+      postalOptions = postalMatchedDistrict.postalOptions;
     }
   }
 
   if (!finalDistrictCandidate) {
     return {
-      kind: 'manual',
-      stage: 'district',
-      errorMessage: 'Kecamatan tidak cocok otomatis. Silakan pilih manual.',
-      province: matchedProvince,
-      regency: finalMatchedRegency,
-      districtOptions: districts,
+      fallback: shapeManualDistrictFallback({
+        province,
+        regency,
+        districtOptions: districts,
+      }),
     };
   }
 
-  if (options.length === 0) {
-    options = await params.resolvePostalOptions(
-      matchedProvince,
-      finalMatchedRegency,
-      finalDistrictCandidate,
-    );
+  if (postalOptions.length === 0) {
+    postalOptions = await params.resolvePostalOptions(province, regency, finalDistrictCandidate);
   }
 
-  if (options.length === 0) {
+  if (postalOptions.length === 0) {
     return {
-      kind: 'manual',
-      stage: 'postal',
-      errorMessage: 'Kode pos untuk lokasi saat ini belum ditemukan. Silakan pilih manual.',
-      province: matchedProvince,
-      regency: finalMatchedRegency,
-      district: finalDistrictCandidate,
-      postalOptions: options,
+      fallback: shapeManualPostalFallback({
+        errorMessage: 'Kode pos untuk lokasi saat ini belum ditemukan. Silakan pilih manual.',
+        province,
+        regency,
+        district: finalDistrictCandidate,
+        postalOptions,
+      }),
     };
   }
 
-  const exactPostal = options.find(
-    option => normalizePostalCode(option.label) === normalizedResolvedPostalCode,
+  return { district: finalDistrictCandidate, postalOptions };
+}
+
+function selectDetectedPostalOption(
+  options: PostalOption[],
+  address: CurrentLocationAddress,
+): PostalOption | null {
+  const normalizedResolvedPostalCode = normalizePostalCode(address.postalCode);
+
+  return (
+    options.find(option => normalizePostalCode(option.label) === normalizedResolvedPostalCode) ??
+    null
   );
-  const selectedOption = exactPostal ?? null;
+}
+
+async function resolveFinalAreaPhase(
+  params: ResolveCurrentLocationSelectionParams,
+  province: RegionalProvince,
+  regency: RegionalRegency,
+  district: RegionalDistrict,
+  postalOptions: PostalOption[],
+  address: CurrentLocationAddress,
+): Promise<AreaResolution> {
+  const selectedOption = selectDetectedPostalOption(postalOptions, address);
 
   if (!selectedOption) {
-    return {
-      kind: 'manual',
-      stage: 'postal',
+    return shapeManualPostalFallback({
       errorMessage: 'Pilih kode pos yang paling sesuai dengan lokasi saat ini.',
-      province: matchedProvince,
-      regency: finalMatchedRegency,
-      district: finalDistrictCandidate,
-      postalOptions: options,
-    };
+      province,
+      regency,
+      district,
+      postalOptions,
+    });
   }
 
   const resolvedArea = await params.resolveAreaByPostal(
-    matchedProvince,
-    finalMatchedRegency,
-    finalDistrictCandidate,
+    province,
+    regency,
+    district,
     selectedOption.label,
   );
 
   if (!resolvedArea) {
-    return {
-      kind: 'manual',
-      stage: 'postal',
+    return shapeManualPostalFallback({
       errorMessage: 'Pilih kode pos yang paling sesuai dengan lokasi saat ini.',
-      province: matchedProvince,
-      regency: finalMatchedRegency,
-      district: finalDistrictCandidate,
-      postalOptions: options,
-    };
+      province,
+      regency,
+      district,
+      postalOptions,
+    });
   }
 
   return {
     kind: 'resolved',
-    province: matchedProvince,
-    regency: finalMatchedRegency,
-    district: finalDistrictCandidate,
-    postalOptions: options,
+    province,
+    regency,
+    district,
+    postalOptions,
     selectedPostalLabel: selectedOption.label,
     area: resolvedArea,
     hierarchy: {
-      provinceName: matchedProvince.name,
-      regencyName: finalMatchedRegency.name,
-      districtName: finalDistrictCandidate.name,
+      provinceName: province.name,
+      regencyName: regency.name,
+      districtName: district.name,
       postalCode: selectedOption.label,
     },
   };
+}
+
+export async function resolveCurrentLocationSelection(
+  params: ResolveCurrentLocationSelectionParams,
+): Promise<CurrentLocationSelectionResult> {
+  const locationModule = params.locationModule ?? Location;
+  const availableProvinces = await loadAvailableProvinces(params);
+
+  if (availableProvinces.length === 0) {
+    return shapeCurrentLocationError({
+      errorMessage: 'Daftar provinsi belum siap. Silakan coba lagi.',
+    });
+  }
+
+  const permissionFallback = await ensureLocationPermission(locationModule, availableProvinces);
+  if (permissionFallback) {
+    return permissionFallback;
+  }
+
+  const locatedAddress = await resolveLocatedAddress(params, locationModule, availableProvinces);
+  if ('kind' in locatedAddress) {
+    return locatedAddress;
+  }
+
+  const provinceResolution = resolveProvincePhase(locatedAddress.address, availableProvinces);
+  if (provinceResolution.fallback) {
+    return provinceResolution.fallback;
+  }
+
+  const cityResolution = await resolveCityPhase(
+    params,
+    provinceResolution.matchedProvince,
+    locatedAddress.address,
+    availableProvinces,
+  );
+  if (cityResolution.fallback) {
+    return cityResolution.fallback;
+  }
+
+  const districtPostalResolution = await resolveDistrictPostalPhase(
+    params,
+    provinceResolution.matchedProvince,
+    cityResolution.matchedRegency,
+    locatedAddress.address,
+    locatedAddress.usedLastKnown,
+  );
+  if (districtPostalResolution.fallback) {
+    return districtPostalResolution.fallback;
+  }
+
+  return resolveFinalAreaPhase(
+    params,
+    provinceResolution.matchedProvince,
+    cityResolution.matchedRegency,
+    districtPostalResolution.district,
+    districtPostalResolution.postalOptions,
+    locatedAddress.address,
+  );
 }

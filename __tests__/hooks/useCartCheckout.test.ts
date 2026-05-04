@@ -5,6 +5,7 @@ import type { ShippingOption } from '@/types/shipping';
 import type { CartSnapshot } from '@/types/cart';
 import { DataPersistKeys } from '@/hooks/useDataPersist';
 import { useCartCheckout } from '@/hooks/useCartCheckout';
+import { buildCheckoutFingerprint } from '@/hooks/useCartCheckout.helpers';
 
 const mockPush = jest.fn();
 const mockGetPersistData = jest.fn<(...args: unknown[]) => Promise<unknown>>();
@@ -78,6 +79,8 @@ const snapshot: CartSnapshot = {
   packageValue: 50000,
 };
 
+const selectedCartItemIds = ['cart-item-1', 'cart-item-2'];
+
 const selectedAddressWithCoords: Address = {
   ...selectedAddress,
   latitude: -6.2,
@@ -98,11 +101,59 @@ describe('useCartCheckout', () => {
     mockGetPersistData.mockResolvedValue(undefined);
   });
 
+  it('builds a stable checkout fingerprint for the same selected ids in different order', () => {
+    const firstFingerprint = buildCheckoutFingerprint({
+      userId: 'user-1',
+      selectedAddress,
+      selectedAddressId: 'address-1',
+      selectedShippingKey: 'jne-reg',
+      selectedCartItemIds: ['cart-item-2', 'cart-item-1'],
+      quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+      snapshot,
+    });
+    const secondFingerprint = buildCheckoutFingerprint({
+      userId: 'user-1',
+      selectedAddress,
+      selectedAddressId: 'address-1',
+      selectedShippingKey: 'jne-reg',
+      selectedCartItemIds: [' cart-item-1 ', 'cart-item-2'],
+      quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+      snapshot,
+    });
+
+    expect(firstFingerprint).toBe(secondFingerprint);
+  });
+
+  it('changes checkout fingerprint when the selected id set changes', () => {
+    const fullSelectionFingerprint = buildCheckoutFingerprint({
+      userId: 'user-1',
+      selectedAddress,
+      selectedAddressId: 'address-1',
+      selectedShippingKey: 'jne-reg',
+      selectedCartItemIds,
+      quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+      snapshot,
+    });
+    const subsetFingerprint = buildCheckoutFingerprint({
+      userId: 'user-1',
+      selectedAddress,
+      selectedAddressId: 'address-1',
+      selectedShippingKey: 'jne-reg',
+      selectedCartItemIds: ['cart-item-2'],
+      quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+      snapshot,
+    });
+
+    expect(fullSelectionFingerprint).not.toBe(subsetFingerprint);
+  });
+
   it('keeps persisted checkout session during hydration and restores on remount', async () => {
     const persistedSession = {
-      fingerprint: 'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'jne-reg',
       destination_area_id: 'AREA-1',
@@ -127,6 +178,7 @@ describe('useCartCheckout', () => {
           loadingSelectedAddress: false,
           selectedShippingOption,
           selectedShippingKey: shippingKey,
+          selectedCartItemIds,
           quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
           snapshot,
           isOffline: false,
@@ -158,6 +210,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption,
         selectedShippingKey: 'jne-reg',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -171,9 +224,11 @@ describe('useCartCheckout', () => {
 
   it('clears persisted session when hydrated inputs confirm mismatch', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'jne-reg',
       destination_area_id: 'AREA-1',
@@ -190,6 +245,44 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption,
         selectedShippingKey: 'sicepat-best',
+        selectedCartItemIds,
+        quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+        snapshot,
+        isOffline: false,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.activeOrderId).toBeNull();
+    });
+
+    expect(mockRemovePersistData).toHaveBeenCalledWith(DataPersistKeys.CHECKOUT_SESSION);
+  });
+
+  it('clears persisted checkout session when selected cart item ids differ', async () => {
+    mockGetPersistData.mockResolvedValue({
+      fingerprint:
+        'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
+      idempotency_key: 'idem-1',
+      order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
+      selected_address_id: 'address-1',
+      selected_shipping_key: 'jne-reg',
+      destination_area_id: 'AREA-1',
+      destination_postal_code: 12345,
+      selected_address_latitude: null,
+      selected_address_longitude: null,
+    });
+
+    const { result } = renderHook(() =>
+      useCartCheckout({
+        userId: 'user-1',
+        selectedAddress,
+        selectedAddressId: 'address-1',
+        loadingSelectedAddress: false,
+        selectedShippingOption,
+        selectedShippingKey: 'jne-reg',
+        selectedCartItemIds: ['cart-item-2'],
         quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -226,6 +319,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption,
         selectedShippingKey: 'jne-reg',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -241,19 +335,71 @@ describe('useCartCheckout', () => {
       expect.objectContaining({
         selected_address_id: 'address-1',
         selected_shipping_key: 'jne-reg',
+        selected_cart_item_ids: selectedCartItemIds,
         destination_area_id: 'AREA-1',
         destination_postal_code: 12345,
         selected_address_latitude: null,
         selected_address_longitude: null,
       }),
     );
+
+    expect(mockCreateCheckoutOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ selected_cart_item_ids: selectedCartItemIds }),
+    );
+  });
+
+  it('uses the latest selected cart item ids after rerendering', async () => {
+    mockCreateCheckoutOrder.mockResolvedValue({
+      data: {
+        order_id: 'order-new',
+        checkout_idempotency_key: 'idem-new',
+      },
+      error: null,
+    });
+    mockCreateSnapToken.mockResolvedValue({
+      data: {
+        redirectUrl: 'https://pay.example.com',
+      },
+      error: null,
+    });
+
+    const { result, rerender } = renderHook(
+      ({ selectedIds }: { selectedIds: string[] }) =>
+        useCartCheckout({
+          userId: 'user-1',
+          selectedAddress,
+          selectedAddressId: 'address-1',
+          loadingSelectedAddress: false,
+          selectedShippingOption,
+          selectedShippingKey: 'jne-reg',
+          selectedCartItemIds: selectedIds,
+          quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+          snapshot,
+          isOffline: false,
+        }),
+      {
+        initialProps: { selectedIds: ['cart-item-1'] },
+      },
+    );
+
+    rerender({ selectedIds: ['cart-item-2'] });
+
+    await act(async () => {
+      await result.current.handleStartCheckout();
+    });
+
+    expect(mockCreateCheckoutOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ selected_cart_item_ids: ['cart-item-2'] }),
+    );
   });
 
   it('resumes payment with activeOrderId and no selectedShippingOption', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'jne-reg',
       destination_area_id: 'AREA-1',
@@ -277,6 +423,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption: null,
         selectedShippingKey: null,
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -304,9 +451,11 @@ describe('useCartCheckout', () => {
 
   it('clears local checkout state and persisted session when clearing checkout session manually', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|null|null|jne-reg|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'jne-reg',
       destination_area_id: 'AREA-1',
@@ -323,6 +472,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption,
         selectedShippingKey: 'jne-reg',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -350,9 +500,11 @@ describe('useCartCheckout', () => {
 
   it('clears persisted checkout session when same address id has different coordinates', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'grab-instant',
       destination_area_id: 'AREA-1',
@@ -377,6 +529,7 @@ describe('useCartCheckout', () => {
           service_code: 'instant',
         },
         selectedShippingKey: 'grab-instant',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -392,9 +545,11 @@ describe('useCartCheckout', () => {
 
   it('clears persisted session when same address coordinates already mismatch before shipping hydration', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'grab-instant',
       destination_area_id: 'AREA-1',
@@ -415,6 +570,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption: null,
         selectedShippingKey: null,
+        selectedCartItemIds,
         quoteDestination: { areaId: null, postalCode: null },
         snapshot,
         isOffline: false,
@@ -430,9 +586,11 @@ describe('useCartCheckout', () => {
 
   it('clears persisted session when address id already mismatches before shipping hydration', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'grab-instant',
       destination_area_id: 'AREA-1',
@@ -449,6 +607,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption: null,
         selectedShippingKey: null,
+        selectedCartItemIds,
         quoteDestination: { areaId: null, postalCode: null },
         snapshot,
         isOffline: false,
@@ -464,9 +623,11 @@ describe('useCartCheckout', () => {
 
   it('keeps persisted session while same-address coordinates are still hydrating', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'grab-instant',
       destination_area_id: 'AREA-1',
@@ -487,6 +648,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: true,
         selectedShippingOption: null,
         selectedShippingKey: null,
+        selectedCartItemIds,
         quoteDestination: { areaId: null, postalCode: null },
         snapshot,
         isOffline: false,
@@ -502,9 +664,11 @@ describe('useCartCheckout', () => {
 
   it('clears persisted session while loading when same-address mismatching coordinates are already populated', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'grab-instant',
       destination_area_id: 'AREA-1',
@@ -525,6 +689,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: true,
         selectedShippingOption: null,
         selectedShippingKey: null,
+        selectedCartItemIds,
         quoteDestination: { areaId: null, postalCode: null },
         snapshot,
         isOffline: false,
@@ -540,9 +705,11 @@ describe('useCartCheckout', () => {
 
   it('clears persisted session when only destination area changes on the same address', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'grab-instant',
       destination_area_id: 'AREA-1',
@@ -559,6 +726,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption: null,
         selectedShippingKey: 'grab-instant',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-2', postalCode: 12345 },
         snapshot,
         isOffline: false,
@@ -574,9 +742,11 @@ describe('useCartCheckout', () => {
 
   it('clears persisted session when only destination postal code changes on the same address', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'grab-instant',
       destination_area_id: 'AREA-1',
@@ -593,6 +763,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption: null,
         selectedShippingKey: 'grab-instant',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: 54321 },
         snapshot,
         isOffline: false,
@@ -608,9 +779,11 @@ describe('useCartCheckout', () => {
 
   it('keeps persisted session while quote destination is only partially hydrated', async () => {
     mockGetPersistData.mockResolvedValue({
-      fingerprint: 'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000',
+      fingerprint:
+        'user-1|address-1|-6.2|106.8|grab-instant|AREA-1|12345|2|400|50000|["cart-item-1","cart-item-2"]',
       idempotency_key: 'idem-1',
       order_id: 'order-1',
+      selected_cart_item_ids: selectedCartItemIds,
       selected_address_id: 'address-1',
       selected_shipping_key: 'grab-instant',
       destination_area_id: 'AREA-1',
@@ -627,6 +800,7 @@ describe('useCartCheckout', () => {
         loadingSelectedAddress: false,
         selectedShippingOption: null,
         selectedShippingKey: 'grab-instant',
+        selectedCartItemIds,
         quoteDestination: { areaId: 'AREA-1', postalCode: null },
         snapshot,
         isOffline: false,

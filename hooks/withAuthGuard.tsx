@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAppSlice } from '@/slices';
 
+const VERIFY_MFA_ROUTE = '/(auth)/verify-mfa';
+
 export function withAuthGuard<P extends object>(
   Component: React.ComponentType<P>,
   redirectPath = '/(auth)/login',
@@ -26,20 +28,29 @@ export function withAuthGuard<P extends object>(
   }
 
   function GuardedComponent(props: P) {
-    const { checked, loggedIn } = useAppSlice();
+    const { authPhase } = useAppSlice();
     const router = useRouter();
 
     useEffect(() => {
-      if (!checked || loggedIn) return;
+      if (authPhase === 'initializing' || authPhase === 'checking-mfa') return;
+
+      const nextRoute =
+        authPhase === 'signed-out'
+          ? redirectPath
+          : authPhase === 'requires-mfa'
+            ? VERIFY_MFA_ROUTE
+            : null;
+
+      if (!nextRoute) return;
 
       const id = setTimeout(() => {
-        router.replace(redirectPath);
+        router.replace(nextRoute);
       }, 0);
 
       return () => clearTimeout(id);
-    }, [checked, loggedIn, router]);
+    }, [authPhase, redirectPath, router]);
 
-    if (!checked || !loggedIn) return null;
+    if (authPhase !== 'authenticated') return null;
 
     return (
       <AuthGuardErrorBoundary>

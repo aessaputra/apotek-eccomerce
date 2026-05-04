@@ -344,7 +344,7 @@ export const themes = {
     brandPrimary: accentBrandDark.accent4,
     brandPrimarySoft: accentBrandDark.accent3,
     brandAccent: yellow.yellow5,
-    brandAccentSoft: yellow.yellow1,
+    brandAccentSoft: yellowDark.yellow3,
 
     // Surface hierarchy (elevation model)
     // Level 1: Base surface for cards/containers
@@ -358,11 +358,11 @@ export const themes = {
 
     // Semantic colors - adjusted for dark mode
     success: '#34D399',
-    successSoft: green.green1,
+    successSoft: greenDark.green3,
     warning: '#FB923C',
-    warningSoft: yellow.yellow1,
+    warningSoft: yellowDark.yellow3,
     danger: '#FF8F8F',
-    dangerSoft: red.red1,
+    dangerSoft: redDark.red3,
 
     headerBackground: 'transparent',
 
@@ -385,7 +385,7 @@ export const themes = {
 
     // Info
     info: '#60A5FA',
-    infoSoft: blue.blue1,
+    infoSoft: blueDark.blue3,
 
     // Sheet/modal overlay - darker for dark mode
     sheetOverlay: 'rgba(0,0,0,0.7)',
@@ -413,6 +413,7 @@ export const DEFAULT_THEME_VALUES = {
   borderColor: '#E5E7EB',
   color: '#0F2F2B',
   colorPress: '#051513',
+  colorTransparent: 'rgba(15,47,43,0)',
   colorSubtle: '#4B5563',
   primary: accentBrand.accent4,
   secondary: '#0A7F4F',
@@ -429,6 +430,7 @@ export const DEFAULT_THEME_VALUES = {
   outlineColor: accentBrandAlpha.focusRing,
   backgroundFocus: '#FFFFFF',
   borderColorFocus: accentBrand.accent4,
+  error: red.red10,
   danger: red.red10,
   info: blue.blue9,
   infoSoft: blue.blue3,

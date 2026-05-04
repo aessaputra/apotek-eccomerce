@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeEach, jest } from '@jest/globals';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { useEffect } from 'react';
 import type { UnknownAction } from '@reduxjs/toolkit';
 import appReducer, { appActions } from '@/slices/app.slice';
 import type { User } from '@/types';
@@ -29,6 +30,10 @@ const mockGetOrdersOptimized = jest.fn() as jest.MockedFunction<
 jest.mock('react-redux', () => ({
   useDispatch: () => mockDispatch,
   useSelector: (selector: (state: TestRootState) => unknown) => selector(mockRootState),
+}));
+
+jest.mock('expo-router', () => ({
+  useFocusEffect: () => undefined,
 }));
 
 jest.mock('@/services', () => {
@@ -66,6 +71,8 @@ function createOrder(index: number): OrderListItem {
     courier_service: index % 2 === 0 ? 'same-day' : null,
     payment_status: 'settlement',
     status: 'processing',
+    customer_completion_stage: null,
+    customer_order_bucket: null,
     order_items: [
       {
         id: `order-item-${index}`,
@@ -314,5 +321,54 @@ describe('useOrdersPaginated', () => {
 
     expect(mockGetOrdersOptimized).toHaveBeenCalledTimes(1);
     expect(result.current.hasMore).toBe(false);
+  });
+
+  test('revalidates stale cache only once when refreshIfNeeded is called from an effect', async () => {
+    const user = createUser();
+    const staleOrders = createOrders(20);
+    const freshOrders = createOrders(20, 100);
+
+    mockRootState = {
+      app: appReducer(mockRootState.app, appActions.setUser(user)),
+    };
+    mockRootState = {
+      app: appReducer(
+        mockRootState.app,
+        appActions.upsertOrdersCachePage({
+          userId: user.id,
+          items: staleOrders,
+          offset: 0,
+          hasMore: true,
+          fetchedAt: Date.now() - ORDERS_CACHE_TTL_MS - 1000,
+          payloadBytes: 2048,
+          durationMs: 90,
+          replace: true,
+        }),
+      ),
+    };
+
+    mockGetOrdersOptimized.mockResolvedValue({
+      data: freshOrders,
+      error: null,
+      metrics: createMetrics({ fetchedAt: Date.now(), payloadBytes: 1024 }),
+    });
+
+    const useSceneLikeOrders = () => {
+      const result = useOrdersPaginated(user.id);
+
+      useEffect(() => {
+        void result.refreshIfNeeded();
+      }, [result.refreshIfNeeded]);
+
+      return result;
+    };
+
+    const { result } = renderHook(() => useSceneLikeOrders());
+
+    await waitFor(() => {
+      expect(result.current.orders[0]?.id).toBe('order-100');
+    });
+
+    expect(mockGetOrdersOptimized).toHaveBeenCalledTimes(1);
   });
 });

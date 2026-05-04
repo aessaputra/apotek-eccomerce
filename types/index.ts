@@ -6,4 +6,5 @@ export * from './geocoding';
 export * from './regional';
 export * from './payment';
 export * from './homeBanner';
+export * from './notification';
 export * from './routes.types';

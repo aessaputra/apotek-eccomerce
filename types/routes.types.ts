@@ -1,9 +1,24 @@
 import type { Href } from 'expo-router';
 
+export type AddressFormReturnTo = '/cart';
+
 // Auth routes
 export type AuthRoutes = {
-  '(auth)/login': undefined;
+  '(auth)/login': { resetSuccess?: string; error?: string } | undefined;
+  '(auth)/forgot-password': undefined;
+  '(auth)/reset-password': {
+    token_hash?: string;
+    type?: string;
+    code?: string;
+    access_token?: string;
+    refresh_token?: string;
+    error?: string;
+    error_code?: string;
+    error_description?: string;
+  };
   '(auth)/signup': undefined;
+  '(auth)/verify-email': { email: string };
+  '(auth)/verify-mfa': undefined;
 };
 
 // Home routes
@@ -29,20 +44,24 @@ export type CartRoutes = {
     selectedShippingKey?: string;
     snapshotPayload?: string;
     itemSummariesPayload?: string;
+    selectedCartItemIdsPayload?: string;
     quoteAreaId?: string;
     quotePostalCode?: string;
   };
   'cart/payment': { paymentUrl?: string; orderId?: string };
 };
 
-export type FlowRoutes = {
-  'order-success': { orderId?: string };
-};
-
 // Orders routes
 export type OrdersRoutes = {
   orders: undefined;
   'orders/index': undefined;
+  'orders/all': undefined;
+  'orders/unpaid': undefined;
+  'orders/packing': undefined;
+  'orders/shipped': undefined;
+  'orders/completed': undefined;
+  'orders/cancelled': undefined;
+  'orders/success': { orderId?: string };
   'orders/order-detail/[orderId]': { orderId: string };
   'orders/track-shipment/[orderId]': { orderId: string };
 };
@@ -52,7 +71,7 @@ export type ProfileRoutes = {
   profile: undefined;
   'profile/index': undefined;
   'profile/addresses': undefined;
-  'profile/address-form': { id?: string };
+  'profile/address-form': { id?: string; returnTo?: AddressFormReturnTo };
   'profile/address-search': { query?: string; latitude?: string; longitude?: string };
   'profile/area-picker': { selectedAreaId?: string };
   'profile/address-map': {
@@ -65,6 +84,7 @@ export type ProfileRoutes = {
     postalCode?: string;
   };
   'profile/edit-profile': undefined;
+  'profile/two-step-verification': undefined;
   'profile/details': undefined;
   'profile/support': undefined;
   'profile/order-detail/[orderId]': { orderId: string };
@@ -79,7 +99,6 @@ export type AppRoutes = AuthRoutes &
   HomeRoutes &
   ProductDetailsRoutes &
   CartRoutes &
-  FlowRoutes &
   OrdersRoutes &
   ProfileRoutes &
   GoogleAuthRoutes;
@@ -87,7 +106,7 @@ export type AppRoutes = AuthRoutes &
 export type ProfileStackParams = {
   index: undefined;
   addresses: undefined;
-  'address-form': { id?: string };
+  'address-form': { id?: string; returnTo?: AddressFormReturnTo };
   'address-search': { query?: string; latitude?: string; longitude?: string };
   'area-picker': { selectedAreaId?: string };
   'address-map': {
@@ -100,6 +119,7 @@ export type ProfileStackParams = {
     postalCode?: string;
   };
   'edit-profile': undefined;
+  'two-step-verification': undefined;
   details: undefined;
   support: undefined;
   'order-detail/[orderId]': { orderId: string };
@@ -120,6 +140,7 @@ export type CartStackParams = {
     selectedShippingKey?: string;
     snapshotPayload?: string;
     itemSummariesPayload?: string;
+    selectedCartItemIdsPayload?: string;
     quoteAreaId?: string;
     quotePostalCode?: string;
   };
@@ -128,13 +149,33 @@ export type CartStackParams = {
 
 export type OrdersStackParams = {
   index: undefined;
+  all: undefined;
+  unpaid: undefined;
+  packing: undefined;
+  shipped: undefined;
+  completed: undefined;
+  cancelled: undefined;
+  success: { orderId?: string };
   'order-detail/[orderId]': { orderId: string };
   'track-shipment/[orderId]': { orderId: string };
 };
 
 export type AuthStackParams = {
-  login: undefined;
+  login: { resetSuccess?: string; error?: string } | undefined;
+  'forgot-password': undefined;
+  'reset-password': {
+    token_hash?: string;
+    type?: string;
+    code?: string;
+    access_token?: string;
+    refresh_token?: string;
+    error?: string;
+    error_code?: string;
+    error_description?: string;
+  };
   signup: undefined;
+  'verify-email': { email: string };
+  'verify-mfa': undefined;
 };
 
 export type TypedHref = Href<AppRoutes>;

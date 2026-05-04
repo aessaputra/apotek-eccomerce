@@ -55,6 +55,7 @@ export const OrderCard = React.memo(function OrderCard({
     order.status,
     order.payment_status,
     order.expired_at,
+    order.customer_completion_stage,
   );
   const orderItems = order.order_items ?? [];
   const firstItem = orderItems[0];

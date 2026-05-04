@@ -2,7 +2,8 @@ import { supabase } from '@/utils/supabase';
 import * as Crypto from 'expo-crypto';
 import type { ShippingOption } from '@/types/shipping';
 import type { CheckoutTokenResponse } from '@/types/payment';
-import type { Database } from '@/types/supabase';
+import type { Database, Tables } from '@/types/supabase';
+import { getOrCreateCart } from './cart.service';
 
 interface CheckoutOrderParams {
   user_id: string;
@@ -11,6 +12,7 @@ interface CheckoutOrderParams {
   destination_postal_code?: number;
   shipping_option: ShippingOption;
   checkout_idempotency_key?: string;
+  selected_cart_item_ids: string[];
 }
 
 interface CheckoutOrderResult {
@@ -33,12 +35,10 @@ interface ConfirmMidtransPaymentResponse {
   message?: string;
 }
 
-interface CancelUserOrderResponse {
-  cancelled?: boolean;
-  payment_status?: Database['public']['Enums']['payment_status'];
-  order_status?: string;
-  applied?: boolean;
-  error?: string;
+interface CartLine {
+  id: string;
+  product_id: string;
+  quantity: number;
 }
 
 const NETWORK_ERROR_MESSAGE = 'Koneksi internet bermasalah. Periksa jaringan Anda, lalu coba lagi.';
@@ -124,70 +124,159 @@ function generateCheckoutIdempotencyKey(): string {
   return Crypto.randomUUID();
 }
 
+async function getCartLines(
+  cartId: string,
+  selectedCartItemIds: string[],
+): Promise<{ data: CartLine[]; error: Error | null }> {
+  const { data: selectedCartItems, error: selectedCartItemsError } = await supabase
+    .from('cart_items')
+    .select('id, product_id, quantity')
+    .eq('cart_id', cartId)
+    .in('id', selectedCartItemIds);
+
+  if (selectedCartItemsError) {
+    return { data: [], error: selectedCartItemsError as unknown as Error };
+  }
+
+  return { data: (selectedCartItems ?? []) as CartLine[], error: null };
+}
+
 export async function createCheckoutOrder(
   params: CheckoutOrderParams,
 ): Promise<{ data: CheckoutOrderResult | null; error: Error | null }> {
+  const selectedCartItemIds = params.selected_cart_item_ids.map(id => id.trim());
+
+  if (selectedCartItemIds.length === 0 || selectedCartItemIds.some(id => id.length === 0)) {
+    return {
+      data: null,
+      error: new Error('Pilih minimal satu produk untuk checkout'),
+    };
+  }
+
   const idempotencyKey =
     params.checkout_idempotency_key?.trim() || generateCheckoutIdempotencyKey();
 
-  try {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) {
+  const { data: cart, error: cartError } = await getOrCreateCart(params.user_id);
+  if (cartError || !cart) {
+    return {
+      data: null,
+      error: toUserError(cartError, 'Gagal menyiapkan keranjang checkout. Silakan coba lagi.'),
+    };
+  }
+
+  const { data: cartLines, error: cartLinesError } = await getCartLines(
+    cart.id,
+    selectedCartItemIds,
+  );
+  if (cartLinesError) {
+    return { data: null, error: cartLinesError };
+  }
+
+  if (cartLines.length === 0) {
+    return {
+      data: null,
+      error: new Error('Pilih minimal satu produk untuk checkout'),
+    };
+  }
+
+  if (!params.destination_area_id && typeof params.destination_postal_code !== 'number') {
+    return {
+      data: null,
+      error: new Error(
+        'Alamat tujuan belum lengkap. Pilih alamat dengan area pengiriman atau kode pos yang valid.',
+      ),
+    };
+  }
+
+  const productIds = cartLines.map(item => item.product_id);
+  const { data: products, error: productError } = await supabase
+    .from('products')
+    .select('id, name, price, stock, is_active')
+    .in('id', productIds);
+
+  if (productError) {
+    return { data: null, error: toUserError(productError, DATABASE_ERROR_MESSAGE) };
+  }
+
+  const productMap = new Map(
+    (
+      ((products ?? []) as Pick<
+        Tables<'products'>,
+        'id' | 'name' | 'price' | 'stock' | 'is_active'
+      >[]) ?? []
+    ).map(product => [product.id, product]),
+  );
+
+  for (const line of cartLines) {
+    const product = productMap.get(line.product_id);
+    if (!product || product.is_active === false) {
       return {
         data: null,
-        error: new Error(AUTH_SESSION_ERROR_MESSAGE),
+        error: new Error('Ada produk yang sudah tidak tersedia. Silakan perbarui keranjang.'),
       };
     }
 
-    const { data, error } = await supabase.functions.invoke('create-checkout-order', {
+    if (line.quantity > product.stock) {
+      return {
+        data: null,
+        error: new Error(`Stok produk ${product.name} tidak mencukupi.`),
+      };
+    }
+  }
+
+  const { shipping_option: shippingOption } = params;
+  const accessToken = await getValidAccessToken();
+  if (!accessToken) {
+    return {
+      data: null,
+      error: new Error(AUTH_SESSION_ERROR_MESSAGE),
+    };
+  }
+
+  const { data: order, error: orderError } = await supabase.functions.invoke(
+    'create-checkout-order',
+    {
       body: {
         shipping_address_id: params.shipping_address_id,
         destination_area_id: params.destination_area_id ?? null,
         destination_postal_code: params.destination_postal_code ?? null,
-        shipping_option: params.shipping_option,
+        selected_cart_item_ids: selectedCartItemIds,
+        shipping_option: {
+          courier_code: shippingOption.courier_code,
+          service_code: shippingOption.service_code,
+          price: shippingOption.price,
+          estimated_delivery: shippingOption.estimated_delivery,
+        },
         checkout_idempotency_key: idempotencyKey,
       },
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-    });
+    },
+  );
 
-    if (error) {
-      return {
-        data: null,
-        error: toUserError(error, 'Gagal membuat order checkout. Silakan coba lagi.'),
-      };
-    }
+  if (orderError) {
+    return { data: null, error: toUserError(orderError, DATABASE_ERROR_MESSAGE) };
+  }
 
-    const response = (data ?? {}) as Partial<CheckoutOrderResult>;
+  const aggregate = (order ?? null) as CheckoutOrderResult | null;
 
-    if (
-      typeof response.order_id !== 'string' ||
-      typeof response.total_amount !== 'number' ||
-      typeof response.item_count !== 'number' ||
-      typeof response.checkout_idempotency_key !== 'string'
-    ) {
-      return {
-        data: null,
-        error: new Error('Respons checkout tidak valid. Silakan coba lagi.'),
-      };
-    }
-
-    return {
-      data: {
-        order_id: response.order_id,
-        total_amount: response.total_amount,
-        item_count: response.item_count,
-        checkout_idempotency_key: response.checkout_idempotency_key,
-      },
-      error: null,
-    };
-  } catch (error) {
+  if (!aggregate) {
     return {
       data: null,
-      error: toUserError(error, 'Gagal membuat order checkout. Silakan coba lagi.'),
+      error: new Error('Gagal membuat pesanan checkout. Silakan coba lagi.'),
     };
   }
+
+  return {
+    data: {
+      order_id: aggregate.order_id,
+      total_amount: aggregate.total_amount,
+      item_count: aggregate.item_count,
+      checkout_idempotency_key: aggregate.checkout_idempotency_key,
+    },
+    error: null,
+  };
 }
 
 export async function createSnapToken(
@@ -262,7 +351,7 @@ export async function getOrderPaymentStatus(
   try {
     const { data, error } = await supabase
       .from('order_read_model')
-      .select('payment_status, status')
+      .select('status, payment_status')
       .eq('id', orderId)
       .single();
 
@@ -317,44 +406,6 @@ export async function confirmMidtransPayment(
   }
 }
 
-export async function cancelUserOrder(
-  orderId: string,
-): Promise<{ data: CancelUserOrderResponse | null; error: Error | null }> {
-  try {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) {
-      return {
-        data: null,
-        error: new Error(AUTH_SESSION_ERROR_MESSAGE),
-      };
-    }
-
-    const { data, error } = await supabase.functions.invoke('cancel-user-order', {
-      body: { order_id: orderId },
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (error) {
-      return {
-        data: null,
-        error: toUserError(error, 'Gagal membatalkan pesanan. Silakan coba lagi.'),
-      };
-    }
-
-    return {
-      data: (data ?? null) as CancelUserOrderResponse | null,
-      error: null,
-    };
-  } catch (error) {
-    return {
-      data: null,
-      error: toUserError(error, 'Gagal membatalkan pesanan. Silakan coba lagi.'),
-    };
-  }
-}
-
 export async function pollOrderPaymentStatus(
   orderId: string,
   maxAttempts = 12,
@@ -367,8 +418,12 @@ export async function pollOrderPaymentStatus(
     if (confirmAttempts.has(index)) {
       const { error: confirmError } = await confirmMidtransPayment(orderId);
 
-      if (confirmError) {
-        return { data: null, error: confirmError };
+      if (__DEV__ && confirmError) {
+        console.warn('[checkout.service] confirmMidtransPayment transient error during polling:', {
+          orderId,
+          attempt: index,
+          message: confirmError.message,
+        });
       }
     }
 
@@ -379,7 +434,7 @@ export async function pollOrderPaymentStatus(
     }
 
     const paymentStatus = data?.payment_status ?? '';
-    const terminalStates = ['settlement', 'capture', 'authorize', 'cancel', 'deny', 'expire'];
+    const terminalStates = ['settlement', 'cancel', 'deny', 'expire', 'failure'];
     if (terminalStates.includes(paymentStatus)) {
       return { data, error: null };
     }

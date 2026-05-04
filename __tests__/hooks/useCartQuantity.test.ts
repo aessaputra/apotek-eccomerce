@@ -67,7 +67,7 @@ describe('useCartQuantity', () => {
       ReturnType<typeof useCartQuantity>,
       { quantity: number }
     >(
-      ({ quantity }) =>
+      ({ quantity }: { quantity: number }) =>
         useCartQuantity({
           items: [createItem(quantity)],
           snapshot: createSnapshot(quantity),

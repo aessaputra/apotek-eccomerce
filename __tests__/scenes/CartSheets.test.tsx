@@ -5,6 +5,17 @@ import { AddressSelectionSheet, ShippingOptionsSheet } from '@/scenes/cart/CartS
 import type { Address } from '@/types/address';
 import type { ShippingOption } from '@/types/shipping';
 
+jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual(
+    'react-native-safe-area-context',
+  ) as typeof import('react-native-safe-area-context');
+
+  return {
+    ...actual,
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 48, left: 0 }),
+  };
+});
+
 jest.mock('@/components/elements/AddressCard', () => {
   const React = jest.requireActual('react');
   const { Pressable, Text, View } = jest.requireActual(
@@ -74,6 +85,18 @@ const shippingOption: ShippingOption = {
   estimated_delivery: '2-3 hari',
 };
 
+function getPaddingBottom(element: { props: { style?: unknown } }): number | undefined {
+  const styles = Array.isArray(element.props.style) ? element.props.style : [element.props.style];
+  const paddingStyle = styles.find(
+    (style): style is { paddingBottom: number } =>
+      typeof style === 'object' &&
+      style !== null &&
+      typeof (style as { paddingBottom?: unknown }).paddingBottom === 'number',
+  );
+
+  return paddingStyle?.paddingBottom;
+}
+
 describe('<CartSheets />', () => {
   test('renders shipping options and offline confirmation messaging', () => {
     const onSelectShippingKey = jest.fn();
@@ -101,9 +124,14 @@ describe('<CartSheets />', () => {
 
     const confirmButton = screen.getByText('Konfirmasi');
     expect(confirmButton).toBeTruthy();
+
+    const confirmFooter = screen.getByLabelText('Area konfirmasi opsi pengiriman');
+    expect(getPaddingBottom(confirmFooter)).toBe(64);
   });
 
   test('renders empty address state when no addresses exist', () => {
+    const onAddAddress = jest.fn();
+
     render(
       <AddressSelectionSheet
         open
@@ -113,11 +141,15 @@ describe('<CartSheets />', () => {
         selectedAddressId={null}
         onSelectAddress={jest.fn()}
         onEditAddress={jest.fn()}
+        onAddAddress={onAddAddress}
       />,
     );
 
     expect(screen.getByText('Pilih Alamat')).toBeTruthy();
     expect(screen.getByText('Belum ada alamat')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Tambah alamat pengiriman'));
+    expect(onAddAddress).toHaveBeenCalledTimes(1);
   });
 
   test('renders address list and forwards select and edit callbacks', () => {
@@ -133,6 +165,7 @@ describe('<CartSheets />', () => {
         selectedAddressId="address-1"
         onSelectAddress={onSelectAddress}
         onEditAddress={onEditAddress}
+        onAddAddress={jest.fn()}
       />,
     );
 

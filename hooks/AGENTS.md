@@ -11,6 +11,7 @@ Reusable stateful orchestration belongs here. Hooks connect scenes/components to
 | Order workflow logic       | `useOrder*` / `useOrders*` files                             | Detail/history/paginated order state                       |
 | Product listing logic      | `useProductsPaginated.ts` / `useAllProductsPaginated.ts`     | Paged product fetching                                     |
 | Home feed orchestration    | `useHomeData.ts`                                             | Categories, banners, latest products                       |
+| Notification state         | `useNotifications.ts`                                        | Permission sync, realtime reconnect, focus refresh         |
 | Cross-cutting guard/helper | `withAuthGuard.tsx`, `useDebounce.ts`, `useNetworkStatus.ts` | Generic orchestration helpers                              |
 
 ## CONVENTIONS
@@ -20,6 +21,8 @@ Reusable stateful orchestration belongs here. Hooks connect scenes/components to
 - Hooks may call services, Redux selectors, Zustand stores, and navigation utilities when needed.
 - Prefer hooks for reusable async state machines such as paginated fetching, refresh flows, and realtime subscriptions.
 - Keep hook responsibilities focused: screens orchestrate multiple hooks; hooks orchestrate multiple low-level calls.
+- `useCartCheckout.ts` owns checkout idempotency, persisted session fingerprints, and Snap-token routing.
+- `useNotifications.ts` uses stable refs for refresh/reconnect behavior; do not simplify without checking realtime tests.
 
 ## TESTING
 

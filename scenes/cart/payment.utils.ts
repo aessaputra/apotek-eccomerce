@@ -1,6 +1,6 @@
 import type { PaymentResult } from '@/types/payment';
 
-export const PAYMENT_SUCCESS_STATUSES = ['settlement', 'capture'];
+export const PAYMENT_SUCCESS_STATUSES = ['settlement'];
 export const PAYMENT_PENDING_STATUSES = ['pending', 'authorize'];
 export const PAYMENT_FAILED_STATUSES = ['deny', 'cancel', 'expire', 'failure'];
 export const ORDERS_ROUTE = '/orders';
@@ -121,14 +121,15 @@ export function parsePaymentNavigationStatus(url?: string): PaymentResult['statu
     return 'pending';
   }
 
-  const reachedPendingReturn = safeUrl.includes('/finish') || safeUrl.includes('/unfinish');
+  const reachedFinish =
+    safeUrl.includes('/finish') || safeUrl.includes('/unfinish') || safeUrl.includes('/error');
 
-  if (reachedPendingReturn) {
+  if (reachedFinish) {
+    if (safeUrl.includes('/error') || safeUrl.includes('/unfinish')) {
+      return 'cancel';
+    }
+
     return 'pending';
-  }
-
-  if (safeUrl.includes('/error')) {
-    return 'cancel';
   }
 
   return null;

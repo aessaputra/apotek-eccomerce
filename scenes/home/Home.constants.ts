@@ -1,0 +1,18 @@
+export const HOME_COPY = {
+  defaultUserName: 'Pelanggan',
+  userRole: 'Pelanggan',
+  heroTitle: 'Belanja obat makin mudah',
+  searchPlaceholder: 'Cari nama produk',
+  coreErrorTitle: 'Konten utama belum berhasil dimuat',
+  retryLabel: 'Coba Lagi',
+  bannerWarning: 'Banner promo belum berhasil dimuat. Konten utama tetap tersedia.',
+  categorySectionTitle: 'Kategori',
+  categoryError: 'Gagal memuat kategori. Coba lagi.',
+  categoryEmpty: 'Belum ada kategori tersedia',
+  productSectionTitle: 'Produk Terbaru',
+  productError: 'Gagal memuat produk terbaru. Coba lagi.',
+  productEmpty: 'Belum ada produk tersedia',
+  addToCartSuccessTitle: 'Produk berhasil ditambahkan',
+  addToCartSuccessFallbackProduct: 'Produk',
+  addToCartSuccessDescriptionSuffix: 'berhasil ditambahkan ke keranjang',
+} as const;

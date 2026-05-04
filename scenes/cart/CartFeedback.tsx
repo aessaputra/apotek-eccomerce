@@ -1,5 +1,5 @@
 import { RefreshCw } from '@tamagui/lucide-icons';
-import { Button as TamaguiButton, Card, Spinner, Text, XStack, YStack } from 'tamagui';
+import { Button as TamaguiButton, Card, Text, XStack, YStack } from 'tamagui';
 
 type ErrorBannerType = 'warning' | 'danger';
 
@@ -70,32 +70,6 @@ export function OfflineBanner({ hasCachedData }: OfflineBannerProps) {
         </Text>
       </YStack>
     </Card>
-  );
-}
-
-export function CartInitialLoadingOverlay() {
-  return (
-    <YStack
-      key="cart-initial-loading-overlay"
-      flex={1}
-      position="absolute"
-      top={0}
-      left={0}
-      right={0}
-      bottom={0}
-      zIndex={1000}
-      backgroundColor="$background"
-      alignItems="center"
-      justifyContent="center"
-      animation="quick"
-      enterStyle={{ opacity: 0 }}
-      exitStyle={{ opacity: 0 }}
-      opacity={1}
-      aria-label="Memuat keranjang">
-      <YStack alignItems="center" justifyContent="center" padding="$4">
-        <Spinner size="large" color="$primary" />
-      </YStack>
-    </YStack>
   );
 }
 

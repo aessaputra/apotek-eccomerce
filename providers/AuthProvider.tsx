@@ -1,8 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Platform, AppStateStatus } from 'react-native';
 import { supabase } from '@/utils/supabase';
+import { clearExpoPushToken, syncExpoPushTokenIfPermitted } from '@/services/notification.service';
 import { getCurrentUser } from '@/services/user.service';
-import { signOut as authSignOut, handleOAuthHashTokens } from '@/services/auth.service';
+import {
+  clearLocalAuthSessionForInvalidRefreshToken,
+  getMfaAssuranceLevel,
+  signOut as authSignOut,
+  handleOAuthHashTokens,
+  requiresMfaChallenge,
+} from '@/services/auth.service';
 import { useAppSlice } from '@/slices';
 import { ADMIN_REJECT_MESSAGE, BANNED_USER_MESSAGE } from '@/constants/auth';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
@@ -15,8 +22,18 @@ export interface AuthProviderProps {
 /** Max time (ms) to wait for auth init before unblocking the splash screen. */
 const INIT_TIMEOUT_MS = 15_000;
 
+const MFA_RESOLVE_TIMEOUT_MS = 10_000;
+
 export default function AuthProvider({ children }: AuthProviderProps) {
-  const { dispatch, setUser, setLoggedIn, setChecked, reset } = useAppSlice();
+  const { dispatch, setUser, setAuthPhase, reset, authPhase } = useAppSlice();
+  const lastAuthenticatedUserIdRef = useRef<string | null>(null);
+  const authResolutionGenerationRef = useRef(0);
+  const pendingAuthTimeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const authPhaseRef = useRef(authPhase);
+
+  useEffect(() => {
+    authPhaseRef.current = authPhase;
+  }, [authPhase]);
 
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
@@ -28,14 +45,47 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     setAlertOpen(true);
   }, []);
 
-  /** Dispatch auth state to Redux in one call. */
-  const dispatchAuth = useCallback(
-    (user: User | undefined, loggedIn: boolean) => {
+  const dispatchUserAndPhase = useCallback(
+    (user: User | undefined, phase: import('@/slices/app.slice').AuthPhase) => {
       dispatch(setUser(user));
-      dispatch(setLoggedIn(loggedIn));
-      dispatch(setChecked(true));
+      dispatch(setAuthPhase(phase));
     },
-    [dispatch, setUser, setLoggedIn, setChecked],
+    [dispatch, setUser, setAuthPhase],
+  );
+
+  const resolveMfaPhase = useCallback(
+    async (mountedRef: { current: boolean }): Promise<'requires-mfa' | 'authenticated'> => {
+      const timeoutResult: Awaited<ReturnType<typeof getMfaAssuranceLevel>> = {
+        data: null,
+        error: { message: 'MFA resolve timeout', name: 'MfaTimeoutError' },
+      };
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const timeoutPromise = new Promise<typeof timeoutResult>(resolve => {
+        timeoutId = setTimeout(() => {
+          if (__DEV__)
+            console.warn('[AuthProvider] MFA resolve timeout — falling back to requires-mfa');
+          resolve(timeoutResult);
+        }, MFA_RESOLVE_TIMEOUT_MS);
+      });
+
+      const { data, error } = await Promise.race([getMfaAssuranceLevel(), timeoutPromise]);
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      if (!mountedRef.current) {
+        return 'requires-mfa';
+      }
+
+      if (error) {
+        if (__DEV__) console.warn('[AuthProvider] MFA assurance level check error:', error);
+        return 'requires-mfa';
+      }
+
+      return requiresMfaChallenge(data ?? {}) ? 'requires-mfa' : 'authenticated';
+    },
+    [],
   );
 
   /**
@@ -46,12 +96,21 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     async (
       user: User,
       profile: { role: string | null; is_banned: boolean },
-      mounted: boolean,
+      mountedRef: { current: boolean },
+      event: string,
+      canDispatch: () => boolean = () => mountedRef.current,
     ): Promise<boolean> => {
+      if (!canDispatch()) {
+        return false;
+      }
+
+      const previousUserId = lastAuthenticatedUserIdRef.current;
+      lastAuthenticatedUserIdRef.current = user.id;
+
       if (profile.role === 'admin') {
         await authSignOut();
-        if (mounted) {
-          dispatchAuth(undefined, false);
+        if (canDispatch()) {
+          dispatchUserAndPhase(undefined, 'signed-out');
           showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
         }
         return false;
@@ -59,56 +118,115 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
       if (profile.is_banned) {
         await authSignOut();
-        if (mounted) {
-          dispatchAuth(undefined, false);
+        if (canDispatch()) {
+          dispatchUserAndPhase(undefined, 'signed-out');
           showAlert('Akun Dinonaktifkan', BANNED_USER_MESSAGE);
         }
         return false;
       }
 
-      if (mounted) {
-        dispatchAuth(user, true);
+      if (canDispatch()) {
+        const currentPhase = authPhaseRef.current;
+        const isRefresh = event === 'TOKEN_REFRESHED';
+        const alreadyAuthenticated = currentPhase === 'authenticated';
+        const sameUser = previousUserId === user.id;
+
+        if (isRefresh && alreadyAuthenticated && sameUser) {
+          return true;
+        }
+
+        if (currentPhase === 'requires-mfa') {
+          return true;
+        }
+
+        dispatchUserAndPhase(user, 'checking-mfa');
       }
       return true;
     },
-    [dispatchAuth, showAlert],
+    [dispatchUserAndPhase, showAlert],
   );
 
   // Initial session load (with timeout fallback for offline/slow network)
   useEffect(() => {
-    let mounted = true;
     let initTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    const mountedRef = { current: true };
+    authResolutionGenerationRef.current += 1;
+    const initGeneration = authResolutionGenerationRef.current;
+
+    function canDispatch() {
+      return mountedRef.current && authResolutionGenerationRef.current === initGeneration;
+    }
 
     async function init() {
       let dispatched = false;
 
       initTimeoutId = setTimeout(() => {
-        if (!dispatched && mounted) {
+        if (!dispatched && canDispatch()) {
           dispatched = true;
           if (__DEV__) console.warn('[AuthProvider] init timeout — proceeding as unauthenticated');
-          dispatchAuth(undefined, false);
+          dispatchUserAndPhase(undefined, 'signed-out');
         }
       }, INIT_TIMEOUT_MS);
 
       try {
         const hashResult = await handleOAuthHashTokens();
-        if (hashResult) return;
+        if (hashResult) {
+          if (hashResult.error) {
+            if (__DEV__) console.warn('[AuthProvider] OAuth callback error:', hashResult.error);
+            dispatched = true;
+            if (canDispatch()) {
+              dispatchUserAndPhase(undefined, 'signed-out');
+            }
+          } else {
+            dispatched = true;
+            const result = await getCurrentUser({ createIfMissing: true });
+            if (!result) {
+              if (canDispatch()) {
+                dispatchUserAndPhase(undefined, 'signed-out');
+              }
+            } else if (result.profile.role === 'admin' || result.profile.is_banned) {
+              await authSignOut();
+              if (canDispatch()) {
+                dispatchUserAndPhase(undefined, 'signed-out');
+                showAlert(
+                  result.profile.role === 'admin' ? 'Akses Ditolak' : 'Akun Dinonaktifkan',
+                  result.profile.role === 'admin' ? ADMIN_REJECT_MESSAGE : BANNED_USER_MESSAGE,
+                );
+              }
+            } else {
+              const isAllowed = await validateAndDispatch(
+                result.user,
+                result.profile,
+                mountedRef,
+                'SIGNED_IN',
+                canDispatch,
+              );
+              if (isAllowed && canDispatch()) {
+                const mfaPhase = await resolveMfaPhase(mountedRef);
+                if (canDispatch()) {
+                  dispatch(setAuthPhase(mfaPhase));
+                }
+              }
+            }
+          }
+          return;
+        }
 
         const result = await getCurrentUser({ createIfMissing: true });
-        if (!mounted || dispatched) return;
+        if (!canDispatch() || dispatched) return;
 
         if (!result) {
           dispatched = true;
-          dispatchAuth(undefined, false);
+          dispatchUserAndPhase(undefined, 'signed-out');
           return;
         }
 
         if (result.profile.role === 'admin') {
+          lastAuthenticatedUserIdRef.current = result.user.id;
           await authSignOut();
-          if (mounted && !dispatched) {
+          if (canDispatch() && !dispatched) {
             dispatched = true;
             dispatch(reset());
-            dispatch(setChecked(true));
             showAlert('Akses Ditolak', ADMIN_REJECT_MESSAGE);
           }
           return;
@@ -116,13 +234,27 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
         if (!dispatched) {
           dispatched = true;
-          await validateAndDispatch(result.user, result.profile, mounted);
+          const isAllowed = await validateAndDispatch(
+            result.user,
+            result.profile,
+            mountedRef,
+            'INITIAL_SESSION',
+            canDispatch,
+          );
+
+          if (isAllowed && canDispatch()) {
+            const mfaPhase = await resolveMfaPhase(mountedRef);
+            if (canDispatch()) {
+              dispatch(setAuthPhase(mfaPhase));
+            }
+          }
         }
       } catch (error) {
         if (__DEV__) console.warn('[AuthProvider] init error:', error);
-        if (mounted && !dispatched) {
+        await clearLocalAuthSessionForInvalidRefreshToken(error);
+        if (canDispatch() && !dispatched) {
           dispatched = true;
-          dispatchAuth(undefined, false);
+          dispatchUserAndPhase(undefined, 'signed-out');
         }
       } finally {
         clearTimeout(initTimeoutId);
@@ -131,19 +263,51 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
     init();
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       clearTimeout(initTimeoutId);
     };
-  }, [dispatch, setChecked, reset, showAlert, dispatchAuth, validateAndDispatch]);
+  }, [dispatch, reset, showAlert, dispatchUserAndPhase, validateAndDispatch, resolveMfaPhase]);
 
   // Auth state change listener
   useEffect(() => {
-    let mounted = true;
+    const mountedRef = { current: true };
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        if (mounted) dispatchAuth(undefined, false);
+      authResolutionGenerationRef.current += 1;
+      const authResolutionGeneration = authResolutionGenerationRef.current;
+
+      function canDispatch() {
+        return (
+          mountedRef.current && authResolutionGenerationRef.current === authResolutionGeneration
+        );
+      }
+
+      if (pendingAuthTimeoutIdRef.current) {
+        clearTimeout(pendingAuthTimeoutIdRef.current);
+        pendingAuthTimeoutIdRef.current = null;
+      }
+
+      if (event === 'SIGNED_OUT') {
+        const signedOutUserId = lastAuthenticatedUserIdRef.current;
+        lastAuthenticatedUserIdRef.current = null;
+
+        if (mountedRef.current) dispatchUserAndPhase(undefined, 'signed-out');
+
+        if (signedOutUserId) {
+          void clearExpoPushToken(signedOutUserId).then(result => {
+            if (__DEV__ && result.error) {
+              console.warn('[AuthProvider] push token clear error:', result.error);
+            }
+          });
+        }
+
+        return;
+      }
+
+      if (!session?.user) {
+        lastAuthenticatedUserIdRef.current = null;
+        if (mountedRef.current) dispatchUserAndPhase(undefined, 'signed-out');
         return;
       }
 
@@ -151,33 +315,79 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         // Defer with setTimeout(0) to avoid deadlock: exchangeCodeForSession
         // holds processLock while firing SIGNED_IN. PostgREST queries internally
         // call getSession() which tries to acquire the same lock → deadlock.
-        setTimeout(async () => {
+        pendingAuthTimeoutIdRef.current = setTimeout(async () => {
+          pendingAuthTimeoutIdRef.current = null;
+
+          if (!canDispatch()) {
+            return;
+          }
+
           try {
             const result = await getCurrentUser({
               createIfMissing: event === 'SIGNED_IN' || event === 'INITIAL_SESSION',
               session,
             });
-            if (!mounted) return;
 
-            if (!result) {
-              dispatchAuth(undefined, false);
+            if (!canDispatch()) {
               return;
             }
 
-            await validateAndDispatch(result.user, result.profile, mounted);
+            if (!result) {
+              dispatchUserAndPhase(undefined, 'signed-out');
+              return;
+            }
+
+            if (result.user.id !== session.user.id) {
+              return;
+            }
+
+            const isAllowed = await validateAndDispatch(
+              result.user,
+              result.profile,
+              mountedRef,
+              event,
+              canDispatch,
+            );
+
+            if (!isAllowed || !canDispatch()) {
+              return;
+            }
+
+            const mfaPhase = await resolveMfaPhase(mountedRef);
+
+            if (!canDispatch()) {
+              return;
+            }
+
+            dispatch(setAuthPhase(mfaPhase));
+
+            if (mfaPhase === 'authenticated') {
+              const tokenSyncResult = await syncExpoPushTokenIfPermitted(result.user.id);
+
+              if (__DEV__ && tokenSyncResult.error) {
+                console.warn('[AuthProvider] push token sync error:', tokenSyncResult.error);
+              }
+            }
           } catch (error) {
             if (__DEV__) console.error('[AuthProvider] onAuthStateChange error:', error);
-            if (mounted) dispatch(setChecked(true));
+            if (canDispatch()) dispatchUserAndPhase(undefined, 'signed-out');
           }
         }, 0);
       }
     });
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
+      authResolutionGenerationRef.current += 1;
+
+      if (pendingAuthTimeoutIdRef.current) {
+        clearTimeout(pendingAuthTimeoutIdRef.current);
+        pendingAuthTimeoutIdRef.current = null;
+      }
+
       subscription.unsubscribe();
     };
-  }, [dispatch, setChecked, dispatchAuth, validateAndDispatch]);
+  }, [dispatch, setAuthPhase, dispatchUserAndPhase, validateAndDispatch, resolveMfaPhase]);
 
   // Auto-refresh tokens when app becomes active (React Native only)
   useEffect(() => {

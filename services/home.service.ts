@@ -27,6 +27,21 @@ export type ProductImageRow = Tables<'product_images'>;
 export const PRODUCTS_PAGE_SIZE = 24;
 export const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000;
 
+export type CustomerProductRow = Pick<
+  ProductRow,
+  | 'id'
+  | 'category_id'
+  | 'created_at'
+  | 'description'
+  | 'is_active'
+  | 'name'
+  | 'price'
+  | 'slug'
+  | 'stock'
+  | 'updated_at'
+  | 'weight'
+>;
+
 const PRODUCT_LIST_SELECT = `
   id,
   name,
@@ -37,6 +52,20 @@ const PRODUCT_LIST_SELECT = `
     url,
     sort_order
   )
+`;
+
+const CUSTOMER_PRODUCT_SELECT = `
+  id,
+  category_id,
+  created_at,
+  description,
+  is_active,
+  name,
+  price,
+  slug,
+  stock,
+  updated_at,
+  weight
 `;
 
 export interface ProductListImage {
@@ -74,7 +103,7 @@ export interface GetProductsOptimizedParams {
   signal?: AbortSignal;
 }
 
-export interface ProductWithImages extends ProductRow {
+export interface ProductWithImages extends CustomerProductRow {
   images: { url: string; sort_order: number }[];
 }
 
@@ -86,12 +115,46 @@ export interface ProductDetailsData extends ProductWithImages {
 
 export type { HomeBannersByPlacement, HomeBannerItem, HomeBannerPlacement };
 
-interface CartMutationResult {
-  error: Error | null;
-}
-
 function isAbortError(error: unknown): error is Error {
-  return error instanceof Error && error.name === 'AbortError';
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') {
+      return true;
+    }
+
+    const message = error.message.trim().toLowerCase();
+    return message.includes('aborted') || message.includes('abort');
+  }
+
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeRecord = error as {
+    name?: unknown;
+    code?: unknown;
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (
+    (typeof maybeRecord.name === 'string' && maybeRecord.name === 'AbortError') ||
+    (typeof maybeRecord.code === 'string' && maybeRecord.code === 'ABORT_ERR')
+  ) {
+    return true;
+  }
+
+  const message =
+    typeof maybeRecord.message === 'string'
+      ? maybeRecord.message
+      : typeof maybeRecord.error === 'object' &&
+          maybeRecord.error !== null &&
+          'message' in maybeRecord.error &&
+          typeof (maybeRecord.error as { message?: unknown }).message === 'string'
+        ? ((maybeRecord.error as { message?: string }).message ?? '')
+        : '';
+
+  const normalizedMessage = message.trim().toLowerCase();
+  return normalizedMessage.includes('aborted') || normalizedMessage.includes('abort');
 }
 
 function getPayloadBytes(value: unknown): number {
@@ -104,6 +167,24 @@ function toUserError(error: unknown, fallback: string): Error {
   }
 
   return new Error(fallback);
+}
+
+function toAbortError(error: unknown): Error {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return error;
+  }
+
+  const message =
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+      ? ((error as { message?: string }).message ?? '')
+      : '';
+
+  const abortError = new Error(message || 'The operation was aborted.');
+  abortError.name = 'AbortError';
+  return abortError;
 }
 
 function logHomeServiceError(context: string, error: unknown): void {
@@ -132,6 +213,22 @@ function normalizeProductListRow(
       url: image.url,
       sort_order: image.sort_order,
     })),
+  };
+}
+
+function normalizeCustomerProductRow(product: CustomerProductRow): CustomerProductRow {
+  return {
+    id: product.id,
+    category_id: product.category_id,
+    created_at: product.created_at,
+    description: product.description,
+    is_active: product.is_active,
+    name: product.name,
+    price: product.price,
+    slug: product.slug,
+    stock: product.stock,
+    updated_at: product.updated_at,
+    weight: product.weight,
   };
 }
 
@@ -308,14 +405,13 @@ export async function getCategories(): Promise<CategoryRow[]> {
       .order('name', { ascending: true });
 
     if (error) {
-      if (__DEV__) console.warn('[HomeService] getCategories error:', error.message);
-      return [];
+      throw error;
     }
 
     return data || [];
   } catch (error) {
-    if (__DEV__) console.warn('[HomeService] getCategories error:', error);
-    return [];
+    logHomeServiceError('getCategories error', error);
+    throw toUserError(error, 'Failed to load categories. Please try again.');
   }
 }
 
@@ -323,25 +419,24 @@ export async function getCategories(): Promise<CategoryRow[]> {
  * Fetch latest active products
  * Limited to 10 most recent products by default
  */
-export async function getLatestProducts(limit: number = 10): Promise<ProductRow[]> {
+export async function getLatestProducts(limit: number = 10): Promise<CustomerProductRow[]> {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(CUSTOMER_PRODUCT_SELECT)
       .eq('is_active', true)
       .gt('stock', 0)
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (error) {
-      if (__DEV__) console.warn('[HomeService] getLatestProducts error:', error.message);
-      return [];
+      throw error;
     }
 
-    return data || [];
+    return ((data ?? []) as CustomerProductRow[]).map(normalizeCustomerProductRow);
   } catch (error) {
-    if (__DEV__) console.warn('[HomeService] getLatestProducts error:', error);
-    return [];
+    logHomeServiceError('getLatestProducts error', error);
+    throw toUserError(error, 'Failed to load latest products. Please try again.');
   }
 }
 
@@ -425,7 +520,7 @@ export async function getProductsOptimized(
     return {
       data: null,
       error: isAbortError(error)
-        ? error
+        ? toAbortError(error)
         : toUserError(error, 'Failed to load products. Please try again.'),
       metrics: null,
     };
@@ -496,7 +591,7 @@ export async function getAllProductsOptimized(
     return {
       data: null,
       error: isAbortError(error)
-        ? error
+        ? toAbortError(error)
         : toUserError(error, 'Failed to load products. Please try again.'),
       metrics: null,
     };
@@ -557,14 +652,24 @@ export async function getLatestProductsWithImages(
 
     // Merge products with their images
     const productsWithImages: ProductWithImages[] = products.map(product => ({
-      ...product,
+      id: product.id,
+      category_id: product.category_id,
+      created_at: product.created_at,
+      description: product.description,
+      is_active: product.is_active,
+      name: product.name,
+      price: product.price,
+      slug: product.slug,
+      stock: product.stock,
+      updated_at: product.updated_at,
+      weight: product.weight,
       images: imagesByProduct[product.id] || [],
     }));
 
     return productsWithImages;
   } catch (error) {
-    if (__DEV__) console.warn('[HomeService] getLatestProductsWithImages error:', error);
-    return [];
+    logHomeServiceError('getLatestProductsWithImages error', error);
+    throw toUserError(error, 'Failed to load latest products. Please try again.');
   }
 }
 
@@ -577,7 +682,7 @@ export async function searchProducts(query: string): Promise<ProductWithImages[]
 
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(CUSTOMER_PRODUCT_SELECT)
     .eq('is_active', true)
     .gt('stock', 0)
     .ilike('name', `%${trimmedQuery}%`)
@@ -604,7 +709,17 @@ export async function searchProducts(query: string): Promise<ProductWithImages[]
   );
 
   const productsWithImages: ProductWithImages[] = data.map(product => ({
-    ...product,
+    id: product.id,
+    category_id: product.category_id,
+    created_at: product.created_at,
+    description: product.description,
+    is_active: product.is_active,
+    name: product.name,
+    price: product.price,
+    slug: product.slug,
+    stock: product.stock,
+    updated_at: product.updated_at,
+    weight: product.weight,
     images: imagesByProduct[product.id] || [],
   }));
 
@@ -618,7 +733,7 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
   try {
     const { data: product, error: productError } = await supabase
       .from('products')
-      .select('*')
+      .select(CUSTOMER_PRODUCT_SELECT)
       .eq('id', normalizedId)
       .eq('is_active', true)
       .maybeSingle();
@@ -663,7 +778,17 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
     }
 
     return {
-      ...product,
+      id: product.id,
+      category_id: product.category_id,
+      created_at: product.created_at,
+      description: product.description,
+      is_active: product.is_active,
+      name: product.name,
+      price: product.price,
+      slug: product.slug,
+      stock: product.stock,
+      updated_at: product.updated_at,
+      weight: product.weight,
       images: (imagesResult.data || []).map(image => ({
         url: image.url,
         sort_order: image.sort_order,
@@ -675,85 +800,6 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
   } catch (error) {
     if (__DEV__) console.warn('[HomeService] getProductDetailsById error:', error);
     return null;
-  }
-}
-
-export async function addProductToCart(
-  userId: string,
-  productId: string,
-  quantityToAdd: number = 1,
-): Promise<CartMutationResult> {
-  const normalizedUserId = userId.trim();
-  const normalizedProductId = productId.trim();
-
-  if (!normalizedUserId || !normalizedProductId || quantityToAdd <= 0) {
-    return { error: new Error('Invalid cart mutation payload.') };
-  }
-
-  try {
-    const { data: existingCarts, error: existingCartsError } = await supabase
-      .from('carts')
-      .select('id')
-      .eq('user_id', normalizedUserId)
-      .limit(1);
-
-    if (existingCartsError) {
-      return { error: existingCartsError as unknown as Error };
-    }
-
-    let cartId = existingCarts?.[0]?.id ?? null;
-
-    if (!cartId) {
-      const { data: insertedCart, error: insertedCartError } = await supabase
-        .from('carts')
-        .insert({ user_id: normalizedUserId })
-        .select('id')
-        .single();
-
-      if (insertedCartError) {
-        return { error: insertedCartError as unknown as Error };
-      }
-
-      cartId = insertedCart.id;
-    }
-
-    const { data: existingItem, error: existingItemError } = await supabase
-      .from('cart_items')
-      .select('id, quantity')
-      .eq('cart_id', cartId)
-      .eq('product_id', normalizedProductId)
-      .maybeSingle();
-
-    if (existingItemError) {
-      return { error: existingItemError as unknown as Error };
-    }
-
-    if (existingItem) {
-      const { error: updateError } = await supabase
-        .from('cart_items')
-        .update({ quantity: existingItem.quantity + quantityToAdd })
-        .eq('id', existingItem.id);
-
-      if (updateError) {
-        return { error: updateError as unknown as Error };
-      }
-
-      return { error: null };
-    }
-
-    const { error: insertItemError } = await supabase.from('cart_items').insert({
-      cart_id: cartId,
-      product_id: normalizedProductId,
-      quantity: quantityToAdd,
-    });
-
-    if (insertItemError) {
-      return { error: insertItemError as unknown as Error };
-    }
-
-    return { error: null };
-  } catch (error) {
-    return { error: error as Error };
   }
 }
 

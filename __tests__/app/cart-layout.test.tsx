@@ -35,7 +35,7 @@ jest.mock('@/hooks/withAuthGuard', () => ({
 }));
 
 describe('app/cart/_layout', () => {
-  it('renders the cart index screen with a stable visible header', () => {
+  it('renders the cart index screen with the header shown and title Keranjang Saya', () => {
     recordedScreens.length = 0;
 
     const CartLayout = require('@/app/cart/_layout').default as React.ComponentType;

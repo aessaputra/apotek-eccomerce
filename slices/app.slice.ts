@@ -16,6 +16,8 @@ export interface OrdersCacheEntry {
   error: string | null;
 }
 
+export type OrdersByStatusCacheKey = 'packing' | 'shipped' | 'completed' | 'cancelled';
+
 export interface UpsertOrdersCachePagePayload {
   userId: string;
   items: OrderListItem[];
@@ -118,26 +120,36 @@ export interface OrdersByStatusCache {
   packing: Record<string, OrdersCacheEntry | undefined>;
   shipped: Record<string, OrdersCacheEntry | undefined>;
   completed: Record<string, OrdersCacheEntry | undefined>;
+  cancelled: Record<string, OrdersCacheEntry | undefined>;
 }
 
 export interface UpsertOrdersByStatusCachePagePayload extends UpsertOrdersCachePagePayload {
-  cacheKey: 'packing' | 'shipped' | 'completed';
+  cacheKey: OrdersByStatusCacheKey;
 }
 
 export interface SetOrdersByStatusCacheStatusPayload extends SetOrdersCacheStatusPayload {
-  cacheKey: 'packing' | 'shipped' | 'completed';
+  cacheKey: OrdersByStatusCacheKey;
 }
 
 export interface InvalidateOrdersByStatusCachePayload {
-  cacheKey: 'packing' | 'shipped' | 'completed';
+  cacheKey: OrdersByStatusCacheKey;
   userId: string;
 }
+
+export type AuthPhase =
+  | 'initializing'
+  | 'signed-out'
+  | 'checking-mfa'
+  | 'requires-mfa'
+  | 'authenticated';
 
 export interface AppState {
   checked: boolean;
   loggedIn: boolean;
+  pendingMfa: boolean;
+  authPhase: AuthPhase;
   user?: User;
-  cartClearedAt: number | null;
+  cartRefreshRequestedAt: number | null;
   completedOrdersTabViewedByUser: Record<string, boolean | undefined>;
   ordersCache: Record<string, OrdersCacheEntry | undefined>;
   unpaidOrdersCache: Record<string, OrdersCacheEntry | undefined>;
@@ -148,8 +160,10 @@ export interface AppState {
 const initialState: AppState = {
   checked: false,
   loggedIn: false,
+  pendingMfa: false,
+  authPhase: 'initializing',
   user: undefined,
-  cartClearedAt: null,
+  cartRefreshRequestedAt: null,
   completedOrdersTabViewedByUser: {},
   ordersCache: {},
   unpaidOrdersCache: {},
@@ -157,6 +171,7 @@ const initialState: AppState = {
     packing: {},
     shipped: {},
     completed: {},
+    cancelled: {},
   },
   productsCache: {},
 };
@@ -168,16 +183,47 @@ const slice = createSlice({
     setChecked: (state: AppState, { payload }: PayloadAction<boolean>) => {
       state.checked = payload;
     },
-    /** Also sets checked=true so callers don't need to dispatch setChecked separately. */
     setLoggedIn: (state: AppState, { payload }: PayloadAction<boolean>) => {
-      state.checked = true;
       state.loggedIn = payload;
     },
     setUser: (state: AppState, { payload }: PayloadAction<User | undefined>) => {
       state.user = payload;
     },
-    markCartCleared: (state: AppState, { payload }: PayloadAction<number>) => {
-      state.cartClearedAt = payload;
+    setPendingMfa: (state: AppState, { payload }: PayloadAction<boolean>) => {
+      state.pendingMfa = payload;
+    },
+    setAuthPhase: (state: AppState, { payload }: PayloadAction<AuthPhase>) => {
+      state.authPhase = payload;
+      switch (payload) {
+        case 'initializing':
+          state.checked = false;
+          state.loggedIn = false;
+          state.pendingMfa = false;
+          break;
+        case 'signed-out':
+          state.checked = true;
+          state.loggedIn = false;
+          state.pendingMfa = false;
+          break;
+        case 'checking-mfa':
+          state.checked = false;
+          state.loggedIn = true;
+          state.pendingMfa = false;
+          break;
+        case 'requires-mfa':
+          state.checked = true;
+          state.loggedIn = true;
+          state.pendingMfa = true;
+          break;
+        case 'authenticated':
+          state.checked = true;
+          state.loggedIn = true;
+          state.pendingMfa = false;
+          break;
+      }
+    },
+    markCartRefreshRequested: (state: AppState, { payload }: PayloadAction<number>) => {
+      state.cartRefreshRequestedAt = payload;
     },
     markCompletedOrdersTabViewed: (state: AppState, { payload }: PayloadAction<string>) => {
       state.completedOrdersTabViewedByUser[payload] = true;

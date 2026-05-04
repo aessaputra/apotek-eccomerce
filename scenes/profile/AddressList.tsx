@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
-import { SectionList, Alert, RefreshControl } from 'react-native';
+import { SectionList, RefreshControl } from 'react-native';
 import { YStack, Text, Spinner, useTheme, styled } from 'tamagui';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeOutLeft, Layout } from 'react-native-reanimated';
@@ -10,9 +10,9 @@ import Button from '@/components/elements/Button';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import SwipeableAddressRow from '@/components/elements/AddressCard/SwipeableAddressRow';
 import { useAppSlice } from '@/slices';
-import { getAddresses, deleteAddress, setDefaultAddress } from '@/services/address.service';
 import type { Address } from '@/types/address';
 import type { TypedHref } from '@/types/routes.types';
+import { useAddressList, type AddressSection } from './useAddressList';
 import {
   MIN_TOUCH_TARGET,
   BOTTOM_BAR_HEIGHT,
@@ -36,49 +36,32 @@ const SafeAreaView = styled(RNSafeAreaView, {
   backgroundColor: '$background',
 });
 
-type AddressSection = {
-  data: Address[];
-};
-
 export default function AddressList() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAppSlice();
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState<Address | null>(null);
+  const {
+    addresses,
+    sections,
+    loading,
+    refreshing,
+    refreshAddresses,
+    deleteSavedAddress,
+    setPrimaryAddress,
+  } = useAddressList(user?.id);
 
   const bottomBarHeight = BOTTOM_BAR_HEIGHT + insets.bottom;
   const scrollPaddingBottom = bottomBarHeight + 16;
   const emptyStatePaddingBottom = 100;
   const bottomCtaInset = 8;
 
-  const loadAddresses = useCallback(async () => {
-    if (!user?.id) return;
-    const { data, error } = await getAddresses(user.id);
-    if (error) {
-      Alert.alert('Error', 'Gagal memuat alamat: ' + error.message);
-    } else {
-      setAddresses(data || []);
-    }
-    setLoading(false);
-    setRefreshing(false);
-  }, [user?.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadAddresses();
-    }, [loadAddresses]),
-  );
-
   const handleRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setRefreshing(true);
-    loadAddresses();
-  }, [loadAddresses]);
+    refreshAddresses();
+  }, [refreshAddresses]);
 
   const handleDelete = useCallback((address: Address) => {
     setAddressToDelete(address);
@@ -86,27 +69,17 @@ export default function AddressList() {
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!user?.id || !addressToDelete) return;
-    const { error } = await deleteAddress(addressToDelete.id, user.id);
-    if (error) {
-      Alert.alert('Error', 'Gagal menghapus alamat: ' + error.message);
-    } else {
-      loadAddresses();
-    }
+    if (!addressToDelete) return;
+
+    await deleteSavedAddress(addressToDelete);
     setAddressToDelete(null);
-  }, [user?.id, addressToDelete, loadAddresses]);
+  }, [addressToDelete, deleteSavedAddress]);
 
   const handleSetDefault = useCallback(
     async (addressId: string) => {
-      if (!user?.id) return;
-      const { error } = await setDefaultAddress(addressId, user.id);
-      if (error) {
-        Alert.alert('Error', 'Gagal mengatur alamat utama: ' + error.message);
-      } else {
-        loadAddresses();
-      }
+      await setPrimaryAddress(addressId);
     },
-    [user?.id, loadAddresses],
+    [setPrimaryAddress],
   );
 
   const handleEdit = useCallback(
@@ -125,18 +98,6 @@ export default function AddressList() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/profile/address-form');
   }, [router]);
-
-  const orderedAddresses = useMemo(() => {
-    const defaultAddress = addresses.find(address => address.is_default);
-    const otherAddresses = addresses.filter(address => !address.is_default);
-
-    return defaultAddress ? [defaultAddress, ...otherAddresses] : otherAddresses;
-  }, [addresses]);
-
-  const sections = useMemo<AddressSection[]>(
-    () => (orderedAddresses.length > 0 ? [{ data: orderedAddresses }] : []),
-    [orderedAddresses],
-  );
 
   const listContentContainerStyle = useMemo(
     () => ({
@@ -207,7 +168,9 @@ export default function AddressList() {
     );
   }
 
+  // RefreshControl and native shadow styles require resolved color strings.
   const themePrimary = getThemeColor(theme, 'primary');
+  const bottomBarShadow = getBottomBarShadow(getThemeColor(theme, 'shadowColor'));
 
   return (
     <SafeAreaView edges={['top']}>
@@ -244,7 +207,7 @@ export default function AddressList() {
             elevation={8}
             borderTopWidth={1}
             borderTopColor="$borderColor"
-            style={getBottomBarShadow(getThemeColor(theme, 'shadowColor'))}>
+            style={bottomBarShadow}>
             <Button
               title="Tambah Alamat"
               width="100%"

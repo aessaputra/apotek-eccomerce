@@ -23,6 +23,13 @@ components/
 | Add complex composite | `components/[Feature]/` | Use only when the component needs multiple supporting files |
 | Add icon              | `icons/`                | Keep icon primitives presentation-only                      |
 
+## CHILD AGENTS
+
+- `AddressForm/AGENTS.md` — address entry composite, suggestion/result states, default-address toggle.
+- `MapPin/AGENTS.md` — native map picker, Expo Location behavior, `react-native-maps` web guard.
+
+Read the closest child file before changing those composites.
+
 ## CONVENTIONS
 
 - Use Tamagui primitives such as `XStack`, `YStack`, `Text`, `Card`, `Button`, and `styled`.

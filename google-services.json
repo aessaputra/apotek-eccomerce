@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "724497771456",
+    "project_id": "apotek-eccomerce",
+    "storage_bucket": "apotek-eccomerce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:724497771456:android:05637ca878efb0a959b625",
+        "android_client_info": {
+          "package_name": "com.apotekecommerce.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "724497771456-3k1msiuj9t785mbi4rhlrg1ujhfapau7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnv9QFDUeYjuC3z4go0rsaHUh5WoXR1Zo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "724497771456-3k1msiuj9t785mbi4rhlrg1ujhfapau7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

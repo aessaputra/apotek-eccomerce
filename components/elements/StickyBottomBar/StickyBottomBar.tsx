@@ -8,20 +8,18 @@ export interface StickyBottomBarProps {
   grandTotal: number;
   isLoading?: boolean;
   disabled?: boolean;
+  hideTotal?: boolean;
   onConfirm: () => void;
   confirmText?: string;
-  /** When true, hide the total display and stretch the CTA button full-width.
-   *  Used on review screens where the total is already shown in-scene. */
-  hideTotal?: boolean;
 }
 
 export const StickyBottomBar = ({
   grandTotal,
   isLoading = false,
   disabled = false,
+  hideTotal = false,
   onConfirm,
   confirmText = 'Konfirmasi',
-  hideTotal = false,
 }: StickyBottomBarProps) => {
   const insets = useSafeAreaInsets();
 
@@ -51,8 +49,7 @@ export const StickyBottomBar = ({
       )}
 
       <Button
-        flex={hideTotal ? undefined : 1}
-        width={hideTotal ? '100%' : undefined}
+        flex={1}
         size="$5"
         backgroundColor="$primary"
         color="$onPrimary"

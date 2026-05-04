@@ -7,15 +7,21 @@ import { createSessionFromUrl } from '@/services/auth.service';
 import { useAppSlice } from '@/slices';
 
 const AUTH_TIMEOUT_MS = 15_000;
+const OAUTH_CALLBACK_PARAM_PATTERN = /[?&](code|error|error_code)=/;
+const OAUTH_TIMEOUT_MESSAGE = 'Login Google membutuhkan waktu terlalu lama. Silakan coba lagi.';
 
 export default function GoogleAuthCallback() {
-  const { loggedIn } = useAppSlice();
+  const { authPhase } = useAppSlice();
   const [timedOut, setTimedOut] = useState(false);
   const [exchangeError, setExchangeError] = useState<string | null>(null);
+  const [exchangeSucceeded, setExchangeSucceeded] = useState(false);
   const [processing, setProcessing] = useState(false);
   const callbackUrl = Linking.useLinkingURL();
   const lastProcessedUrlRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasOAuthCallbackParams = Boolean(
+    callbackUrl && OAUTH_CALLBACK_PARAM_PATTERN.test(callbackUrl),
+  );
 
   const startTimeout = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -34,6 +40,7 @@ export default function GoogleAuthCallback() {
     async (url: string) => {
       setProcessing(true);
       setExchangeError(null);
+      setExchangeSucceeded(false);
       startTimeout();
 
       if (__DEV__) {
@@ -46,12 +53,13 @@ export default function GoogleAuthCallback() {
         console.log('[google-auth] Exchange result, error:', error ?? null);
       }
 
+      setProcessing(false);
+
       if (error) {
         setExchangeError(error.message);
-        setProcessing(false);
+      } else {
+        setExchangeSucceeded(true);
       }
-      // On success: keep processing=true — AuthProvider.onAuthStateChange
-      // will set loggedIn=true, and the auth guard handles navigation.
     },
     [startTimeout],
   );
@@ -59,17 +67,23 @@ export default function GoogleAuthCallback() {
   useEffect(() => {
     if (Platform.OS !== 'android' || !callbackUrl) return;
     if (lastProcessedUrlRef.current === callbackUrl) return;
-    if (!/[?&](code|error|error_code)=/.test(callbackUrl)) return;
+    if (!OAUTH_CALLBACK_PARAM_PATTERN.test(callbackUrl)) return;
 
     lastProcessedUrlRef.current = callbackUrl;
     void processCallbackUrl(callbackUrl);
   }, [callbackUrl, processCallbackUrl]);
 
-  if (timedOut && !loggedIn && !exchangeError && !processing) {
-    return <Redirect href="/" />;
+  if (authPhase === 'authenticated') {
+    return <Redirect href="/home" />;
   }
 
-  if (exchangeError && !loggedIn && !processing) {
+  if (authPhase === 'requires-mfa') {
+    return <Redirect href="/(auth)/verify-mfa" />;
+  }
+
+  const displayedError = exchangeError ?? (timedOut ? OAUTH_TIMEOUT_MESSAGE : null);
+
+  if (displayedError) {
     return (
       <YStack
         flex={1}
@@ -81,7 +95,7 @@ export default function GoogleAuthCallback() {
           Login gagal
         </Text>
         <Text marginTop="$2" color="$colorPress" fontSize={14} textAlign="center">
-          {exchangeError}
+          {displayedError}
         </Text>
         <Text
           marginTop="$4"
@@ -98,6 +112,10 @@ export default function GoogleAuthCallback() {
         </Text>
       </YStack>
     );
+  }
+
+  if (authPhase === 'signed-out' && !processing && !hasOAuthCallbackParams && !exchangeSucceeded) {
+    return <Redirect href="/(auth)/login" />;
   }
 
   return (

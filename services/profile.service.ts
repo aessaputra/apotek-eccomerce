@@ -56,7 +56,17 @@ async function ensureProfileInternal(
 ): Promise<ProfileRow | null> {
   // Try fetching existing profile first
   const existing = await getProfile(userId);
-  if (existing) return existing;
+  if (existing) {
+    if (existing.avatar_url || !avatarUrl) return existing;
+
+    const { data, error } = await updateProfile(userId, { avatar_url: avatarUrl });
+    if (error) {
+      if (__DEV__) console.warn('[Profile] sync Google avatar error:', error.message);
+      return existing;
+    }
+
+    return data ?? existing;
+  }
 
   if (__DEV__) console.log('[Profile] No profile found, creating for:', email);
 

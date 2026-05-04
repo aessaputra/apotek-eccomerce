@@ -20,7 +20,7 @@ const mockedUseAppSlice = jest.mocked(useAppSlice);
 
 describe('<Index />', () => {
   test('renders loading state while auth is not checked', async () => {
-    mockedUseAppSlice.mockReturnValue({ checked: false, loggedIn: false } as ReturnType<
+    mockedUseAppSlice.mockReturnValue({ authPhase: 'initializing' } as ReturnType<
       typeof useAppSlice
     >);
 
@@ -30,7 +30,7 @@ describe('<Index />', () => {
   });
 
   test('redirects unauthenticated users to login', async () => {
-    mockedUseAppSlice.mockReturnValue({ checked: true, loggedIn: false } as ReturnType<
+    mockedUseAppSlice.mockReturnValue({ authPhase: 'signed-out' } as ReturnType<
       typeof useAppSlice
     >);
 
@@ -40,9 +40,7 @@ describe('<Index />', () => {
   });
 
   test('redirects authenticated users to /home', async () => {
-    mockedUseAppSlice.mockReturnValue({ checked: true, loggedIn: true } as ReturnType<
-      typeof useAppSlice
-    >);
+    mockedUseAppSlice.mockReturnValue({ authPhase: 'signed-in' } as ReturnType<typeof useAppSlice>);
 
     render(<Index />);
 

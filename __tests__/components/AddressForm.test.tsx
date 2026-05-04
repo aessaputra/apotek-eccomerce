@@ -58,6 +58,150 @@ describe('<AddressForm />', () => {
     expect(onStreetAddressPress).toHaveBeenCalledTimes(1);
   });
 
+  it('updates and validates receiver fields from the live form', () => {
+    const onFieldSave = jest.fn();
+    const onFieldValidate = jest.fn();
+    const onStreetAddressPress = jest.fn();
+    let values = { ...initialFormValues };
+
+    const view = render(
+      <AddressForm
+        values={values}
+        errors={initialFormErrors}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={onFieldSave}
+        onFieldValidate={onFieldValidate}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={onStreetAddressPress}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByLabelText('Nama Penerima'), '  Jane Doe  ');
+    fireEvent.changeText(screen.getByLabelText('Nomor Telepon'), ' 081234567890 ');
+
+    expect(onFieldSave).toHaveBeenCalledWith('receiverName', '  Jane Doe  ');
+    expect(onFieldSave).toHaveBeenCalledWith('phoneNumber', ' 081234567890 ');
+
+    values = {
+      ...values,
+      receiverName: '  Jane Doe  ',
+      phoneNumber: ' 081234567890 ',
+    };
+    view.rerender(
+      <AddressForm
+        values={values}
+        errors={initialFormErrors}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={onFieldSave}
+        onFieldValidate={onFieldValidate}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={onStreetAddressPress}
+      />,
+    );
+
+    fireEvent(screen.getByLabelText('Nama Penerima'), 'blur');
+    values = {
+      ...values,
+      receiverName: 'Jane Doe',
+    };
+    view.rerender(
+      <AddressForm
+        values={values}
+        errors={initialFormErrors}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={onFieldSave}
+        onFieldValidate={onFieldValidate}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={onStreetAddressPress}
+      />,
+    );
+    fireEvent(screen.getByLabelText('Nomor Telepon'), 'blur');
+    values = {
+      ...values,
+      phoneNumber: '081234567890',
+    };
+    view.rerender(
+      <AddressForm
+        values={values}
+        errors={initialFormErrors}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={onFieldSave}
+        onFieldValidate={onFieldValidate}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={onStreetAddressPress}
+      />,
+    );
+
+    expect(onFieldSave).toHaveBeenCalledWith('receiverName', 'Jane Doe');
+    expect(onFieldValidate).toHaveBeenCalledWith('receiverName', 'Jane Doe');
+    expect(onFieldSave).toHaveBeenCalledWith('phoneNumber', '081234567890');
+    expect(onFieldValidate).toHaveBeenCalledWith('phoneNumber', '081234567890');
+
+    fireEvent(screen.getByLabelText('Nomor Telepon'), 'submitEditing');
+
+    expect(onStreetAddressPress).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <AddressForm
+        values={initialFormValues}
+        errors={initialFormErrors}
+        isSaving={true}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={onFieldSave}
+        onFieldValidate={onFieldValidate}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={onStreetAddressPress}
+      />,
+    );
+
+    expect(screen.getByLabelText('Nama Penerima').props.editable).toBe(false);
+    expect(screen.getByLabelText('Nomor Telepon').props.editable).toBe(false);
+  });
+
   it('saves and trims the optional address note field', () => {
     const onFieldSave = jest.fn();
 

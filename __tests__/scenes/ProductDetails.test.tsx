@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, renderWithDarkTheme, screen, waitFor } from '@/test-utils/renderWithTheme';
+import {
+  fireEvent,
+  render,
+  renderWithDarkTheme,
+  screen,
+  waitFor,
+} from '@/test-utils/renderWithTheme';
 import ProductDetails from '@/scenes/product-details/ProductDetails';
 
 const mockBack = jest.fn();
@@ -26,6 +32,9 @@ jest.mock('@/services/home.service', () => ({
   formatPrice: (value: number) => `Rp ${value}`,
   getPrimaryImageUrl: () => null,
   getProductDetailsById: (...args: unknown[]) => mockGetProductDetailsById(...args),
+}));
+
+jest.mock('@/services/cart.service', () => ({
   addProductToCart: (...args: unknown[]) => mockAddProductToCart(...args),
 }));
 
@@ -124,5 +133,47 @@ describe('<ProductDetails />', () => {
 
     expect(screen.queryByTestId('product-category-logo')).toBeNull();
     expect(screen.getByTestId('product-category-label').props.children).toBe('Pain Relief');
+  });
+
+  it('shows a success dialog and stays on the product detail scene after adding to cart', async () => {
+    mockAddProductToCart.mockResolvedValue({ error: null });
+
+    render(<ProductDetails />);
+
+    expect(await screen.findByText('Tambah Keranjang')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Tambah Keranjang'));
+    fireEvent.press(await screen.findByLabelText('Konfirmasi tambah ke keranjang'));
+
+    await waitFor(() => {
+      expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
+    });
+
+    expect(
+      await screen.findByText('Produk berhasil ditambahkan ke keranjang (1 item).'),
+    ).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('shows inline error feedback and does not open the success dialog when adding to cart fails', async () => {
+    mockAddProductToCart.mockResolvedValue({
+      error: new Error('Gagal menambahkan produk ke keranjang.'),
+    });
+
+    render(<ProductDetails />);
+
+    expect(await screen.findByText('Tambah Keranjang')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Tambah Keranjang'));
+    fireEvent.press(await screen.findByLabelText('Konfirmasi tambah ke keranjang'));
+
+    await waitFor(() => {
+      expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
+    });
+
+    expect(await screen.findByText('Gagal menambahkan produk ke keranjang.')).toBeTruthy();
+    expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
+    expect(screen.queryByText('Produk berhasil ditambahkan ke keranjang (1 item).')).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

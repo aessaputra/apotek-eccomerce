@@ -46,6 +46,11 @@ export interface CartSnapshot {
   packageValue: number;
 }
 
+export interface ItemSummary {
+  name: string;
+  quantity: number;
+}
+
 export interface CartRealtimeItem {
   id: string;
   cart_id: string;
@@ -114,15 +119,6 @@ export interface GetCartItemsParams {
   signal?: AbortSignal;
   replace?: boolean;
   includeFullSnapshot?: boolean;
-}
-
-/**
- * Lightweight item summary for route params.
- * Carries only what the Review scene needs to display product names.
- */
-export interface ItemSummary {
-  name: string;
-  quantity: number;
 }
 
 /**

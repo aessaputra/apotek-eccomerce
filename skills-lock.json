@@ -51,6 +51,21 @@
       "sourceType": "github",
       "computedHash": "45b9ef98b0fb82ba0e1aee65dfb464fa1f8494a14a557b9788d73aae87e9e618"
     },
+    "drawio-logical-diagrams": {
+      "source": "giuseppe-trisciuoglio/developer-kit",
+      "sourceType": "github",
+      "computedHash": "cc9be80cb2718b656378763bf429332922445026f3e30809c56b7229636e2ae6"
+    },
+    "eraser-diagrams": {
+      "source": "eraserlabs/eraser-io",
+      "sourceType": "github",
+      "computedHash": "6c14b60c461d8b290caa9e82dd42239b9b03c045edbdc7ded3bffea65ba8ad43"
+    },
+    "expo-cicd-workflows": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "700b20b575fcbe75ad238b41a0bd57938abe495e62dc53e05400712ab01ee7c0"
+    },
     "expo-deployment": {
       "source": "expo/skills",
       "sourceType": "github",
@@ -86,10 +101,20 @@
       "sourceType": "github",
       "computedHash": "6d4eb6b0bda3479324f508314a737ed7cac0c4ed60538bd7bf892b1977a3e09e"
     },
+    "refactor": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "87789a786b96f99ba0680e89345a975106e10e7db1071c7cdc2e76d507c449d6"
+    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "computedHash": "cb675a889c60172febe84740e7c22b600c8241c390deaff3d368c408f10dffdf"
+    },
+    "supabase-auth": {
+      "source": "nice-wolf-studio/claude-code-supabase-skills",
+      "sourceType": "github",
+      "computedHash": "8c0e53a0cb9739954966c689ac714608ae8d4d1a1c2c65321eddde1cb12ece71"
     },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
@@ -100,6 +125,18 @@
       "source": "anthropics/knowledge-work-plugins",
       "sourceType": "github",
       "computedHash": "2fe64e97a596e862cd946bb8cddbbf4e9f1e1f21ca817f586111a25af474d0f8"
+    },
+    "using-git-worktrees": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/using-git-worktrees/SKILL.md",
+      "computedHash": "52bbb4b6e80918e83e92a1514f3b3757712154c2a8a42de24919e48a794c54fc"
+    },
+    "ux-copy": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "design/skills/ux-copy/SKILL.md",
+      "computedHash": "f7addd20b733b196d870154c3e86ee3ada83e7a16b1ad910c861607f8b472735"
     },
     "vercel-react-native-skills": {
       "source": "vercel-labs/agent-skills",

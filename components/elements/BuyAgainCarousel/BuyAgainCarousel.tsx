@@ -5,6 +5,15 @@ import { RotateCcw } from '@tamagui/lucide-icons';
 import { BuyAgainCard } from '@/components/elements/BuyAgainCard';
 import type { PastPurchaseProduct } from '@/services/order.service';
 
+const HORIZONTAL_PADDING = 32;
+const CARD_GAP = 10;
+const PEEK_OFFSET = 6;
+const DESKTOP_CARD_WIDTH = 156;
+const CAROUSEL_CONTENT_CONTAINER_STYLE = {
+  paddingHorizontal: 16,
+  gap: CARD_GAP,
+} as const;
+
 const SectionHeader = styled(XStack, {
   alignItems: 'center',
   gap: '$2',
@@ -19,6 +28,28 @@ const SectionTitle = styled(Text, {
   letterSpacing: -0.3,
 });
 
+const SkeletonCard = styled(YStack, {
+  width: 140,
+  padding: '$3',
+  gap: '$2',
+  backgroundColor: '$surface',
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
+  borderRadius: '$5',
+});
+
+const SkeletonImage = styled(YStack, {
+  height: 112,
+  borderRadius: '$3',
+  backgroundColor: '$surfaceBorder',
+});
+
+const SkeletonLine = styled(YStack, {
+  height: 14,
+  borderRadius: '$2',
+  backgroundColor: '$surfaceBorder',
+});
+
 interface BuyAgainCarouselProps {
   products: PastPurchaseProduct[];
   isLoading?: boolean;
@@ -26,51 +57,32 @@ interface BuyAgainCarouselProps {
   onAddToCart: (product: PastPurchaseProduct) => void;
 }
 
+function BuyAgainSkeletonCards({ width }: { width: number }) {
+  return (
+    <>
+      {[1, 2].map(index => (
+        <SkeletonCard key={index} width={width} testID="buy-again-skeleton-item">
+          <SkeletonImage />
+          <SkeletonLine width="80%" />
+          <SkeletonLine width="50%" />
+        </SkeletonCard>
+      ))}
+    </>
+  );
+}
+
 export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
   ({ products, isLoading = false, onProductPress, onAddToCart }) => {
     const media = useMedia();
     const { width: screenWidth } = useWindowDimensions();
 
-    const HORIZONTAL_PADDING = 32;
-    const CARD_GAP = 10;
-    const PEEK_OFFSET = 6;
-    const DESKTOP_CARD_WIDTH = 156;
-
     const cardWidth = media.gtSm
       ? DESKTOP_CARD_WIDTH
       : Math.max(140, Math.floor((screenWidth - HORIZONTAL_PADDING - CARD_GAP - PEEK_OFFSET) / 2));
 
-    if (!isLoading && products.length === 0) {
+    if (products.length === 0 && !isLoading) {
       return null;
     }
-
-    const loadingCards = Array.from({ length: 2 }, (_, index) => (
-      <YStack
-        key={`buy-again-loading-${index}`}
-        width={cardWidth}
-        padding="$3"
-        backgroundColor="$surface"
-        borderWidth={1}
-        borderColor="$surfaceBorder"
-        borderRadius="$5"
-        gap="$2">
-        <YStack
-          width="100%"
-          height={120}
-          backgroundColor="$surfaceBorder"
-          borderRadius="$3"
-          opacity={0.5}
-        />
-        <YStack gap="$2">
-          <YStack height={16} width="80%" backgroundColor="$surfaceBorder" borderRadius="$2" />
-          <YStack height={16} width="55%" backgroundColor="$surfaceBorder" borderRadius="$2" />
-        </YStack>
-        <XStack alignItems="center" justifyContent="space-between" gap="$2">
-          <YStack height={14} width="35%" backgroundColor="$surfaceBorder" borderRadius="$2" />
-          <YStack width={36} height={36} backgroundColor="$surfaceBorder" borderRadius="$8" />
-        </XStack>
-      </YStack>
-    ));
 
     return (
       <YStack paddingTop="$4">
@@ -82,21 +94,20 @@ export const BuyAgainCarousel = React.memo<BuyAgainCarouselProps>(
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            gap: CARD_GAP,
-          }}>
-          {isLoading
-            ? loadingCards
-            : products.map(product => (
-                <BuyAgainCard
-                  key={product.id}
-                  product={product}
-                  width={cardWidth}
-                  onPress={onProductPress}
-                  onAddToCart={onAddToCart}
-                />
-              ))}
+          contentContainerStyle={CAROUSEL_CONTENT_CONTAINER_STYLE}>
+          {products.length > 0 ? (
+            products.map(product => (
+              <BuyAgainCard
+                key={product.id}
+                product={product}
+                width={cardWidth}
+                onPress={onProductPress}
+                onAddToCart={onAddToCart}
+              />
+            ))
+          ) : (
+            <BuyAgainSkeletonCards width={cardWidth} />
+          )}
         </ScrollView>
       </YStack>
     );

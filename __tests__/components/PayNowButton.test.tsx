@@ -2,22 +2,21 @@ import { describe, expect, test, jest, beforeEach } from '@jest/globals';
 import { render, screen, fireEvent, waitFor } from '@/test-utils/renderWithTheme';
 import { PayNowButton } from '@/components/elements/PayNowButton';
 
-const mockPush = jest.fn();
-const mockCreateSnapToken = jest.fn();
+const mockHandlePayNow = jest.fn<() => Promise<void>>();
+const mockUsePayNow = jest.fn();
 
-jest.mock('expo-router', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}));
-
-jest.mock('@/services/checkout.service', () => ({
-  createSnapToken: (...args: unknown[]) => mockCreateSnapToken(...args),
+jest.mock('@/hooks/usePayNow', () => ({
+  usePayNow: (...args: unknown[]) => mockUsePayNow(...args),
 }));
 
 describe('PayNowButton', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHandlePayNow.mockResolvedValue(undefined);
+    mockUsePayNow.mockReturnValue({
+      isProcessing: false,
+      handlePayNow: mockHandlePayNow,
+    });
   });
 
   test('renders with default text', () => {
@@ -33,85 +32,53 @@ describe('PayNowButton', () => {
   });
 
   test('shows loading state when processing', async () => {
-    (mockCreateSnapToken as jest.Mock).mockImplementation(() => new Promise(() => {}));
+    mockUsePayNow.mockReturnValue({
+      isProcessing: true,
+      handlePayNow: mockHandlePayNow,
+    });
 
     render(<PayNowButton orderId="order-123" />);
-
-    fireEvent.press(screen.getByText('Bayar Sekarang'));
 
     await waitFor(() => {
       expect(screen.getByText('Memproses...')).toBeTruthy();
     });
   });
 
-  test('navigates to payment on success', async () => {
-    (mockCreateSnapToken as jest.Mock).mockReturnValue(
-      Promise.resolve({
-        data: {
-          snapToken: 'abc123',
-          redirectUrl: 'https://app.midtrans.com/snap/v1/abc123',
-        },
-        error: null,
-      }),
-    );
-
+  test('delegates pay-now press handling to the hook', async () => {
     render(<PayNowButton orderId="order-123" />);
 
     fireEvent.press(screen.getByText('Bayar Sekarang'));
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith({
-        pathname: '/cart/payment',
-        params: {
-          paymentUrl: 'https://app.midtrans.com/snap/v1/abc123',
-          orderId: 'order-123',
-        },
-      });
+      expect(mockHandlePayNow).toHaveBeenCalledTimes(1);
     });
   });
 
-  test('calls onError callback on failure', async () => {
-    const mockOnError = jest.fn();
-    (mockCreateSnapToken as jest.Mock).mockReturnValue(
-      Promise.resolve({
-        data: null,
-        error: Object.assign(new Error('Bad request'), { status: 400 }),
-      }),
-    );
-
-    render(<PayNowButton orderId="order-123" onError={mockOnError} />);
-
-    fireEvent.press(screen.getByText('Bayar Sekarang'));
-
-    await waitFor(() => {
-      expect(mockOnError).toHaveBeenCalled();
-    });
-  });
-
-  test('calls onPaymentStart callback when clicked', async () => {
+  test('passes callbacks and disabled state through the pay-now hook', () => {
     const mockOnPaymentStart = jest.fn();
-    (mockCreateSnapToken as jest.Mock).mockImplementation(() => new Promise(() => {}));
+    const mockOnError = jest.fn();
 
-    render(<PayNowButton orderId="order-123" onPaymentStart={mockOnPaymentStart} />);
+    render(
+      <PayNowButton
+        orderId="order-123"
+        disabled
+        onPaymentStart={mockOnPaymentStart}
+        onError={mockOnError}
+      />,
+    );
 
-    fireEvent.press(screen.getByText('Bayar Sekarang'));
-
-    await waitFor(() => {
-      expect(mockOnPaymentStart).toHaveBeenCalled();
+    expect(mockUsePayNow).toHaveBeenCalledWith({
+      orderId: 'order-123',
+      disabled: true,
+      onPaymentStart: mockOnPaymentStart,
+      onPaymentComplete: undefined,
+      onError: mockOnError,
     });
   });
 
-  test('prevents double submission', async () => {
-    (mockCreateSnapToken as jest.Mock).mockImplementation(() => new Promise(() => {}));
+  test('renders disabled copy for expired orders', () => {
+    render(<PayNowButton orderId="order-123" disabled />);
 
-    render(<PayNowButton orderId="order-123" />);
-
-    const button = screen.getByText('Bayar Sekarang');
-    fireEvent.press(button);
-    fireEvent.press(button);
-
-    await waitFor(() => {
-      expect(mockCreateSnapToken).toHaveBeenCalledTimes(1);
-    });
+    expect(screen.getByText('Kadaluarsa')).toBeTruthy();
   });
 });

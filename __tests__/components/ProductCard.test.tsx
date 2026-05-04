@@ -36,6 +36,7 @@ describe('<ProductCard />', () => {
     );
 
     expect(screen.getByText('Test Product')).toBeTruthy();
+    expect(screen.queryByText('SKU-TEST-PRODUCT')).toBeNull();
   });
 
   test('renders correctly in dark theme', async () => {

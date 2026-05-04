@@ -115,7 +115,8 @@ const item: CartItemWithProduct = {
     weight: 100,
     slug: 'vitamin-c-500mg',
     is_active: true,
-  },
+    sku: 'VIT-C-500',
+  } as CartItemWithProduct['product'] & { sku: string },
   images: [{ id: 'img-1', url: 'https://example.com/product.jpg', sort_order: 0 }],
 };
 
@@ -124,6 +125,7 @@ describe('<CartItemRow />', () => {
     render(<CartItemRowComponent item={item} onQuantityChange={jest.fn()} onRemove={jest.fn()} />);
 
     expect(screen.getByText('Vitamin C 500mg')).not.toBeNull();
+    expect(screen.queryByText('VIT-C-500')).toBeNull();
     expect(
       screen.getByText(
         new Intl.NumberFormat('id-ID', {
@@ -150,6 +152,27 @@ describe('<CartItemRow />', () => {
     fireEvent.press(screen.getByLabelText('Tambah jumlah'));
 
     expect(onQuantityChange).toHaveBeenCalledWith('cart-item-1', 3);
+  });
+
+  test('renders a square product selection checkbox and toggles selection', async () => {
+    const onSelectionChange = jest.fn();
+    render(
+      <CartItemRowComponent
+        item={item}
+        isSelected={false}
+        onSelectionChange={onSelectionChange}
+        onQuantityChange={jest.fn()}
+        onRemove={jest.fn()}
+      />,
+    );
+
+    const checkbox = screen.getByTestId('cart-item-checkbox-cart-item-1');
+
+    expect(checkbox.props.role).toBe('checkbox');
+    expect(checkbox.props['aria-checked']).toBe(false);
+    fireEvent.press(checkbox);
+
+    expect(onSelectionChange).toHaveBeenCalledWith('cart-item-1', true);
   });
 
   test('opens delete dialog when quantity would go below one and confirms removal', async () => {

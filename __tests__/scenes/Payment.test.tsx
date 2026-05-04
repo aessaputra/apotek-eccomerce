@@ -1,7 +1,7 @@
 import React from 'react';
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
-import { BackHandler, Linking, Platform } from 'react-native';
+import { BackHandler, Linking } from 'react-native';
 import { render, screen } from '@/test-utils/renderWithTheme';
 import Payment, {
   isDeepLink,
@@ -16,8 +16,8 @@ const mockUseLocalSearchParams = jest.fn();
 const mockPollOrderPaymentStatus = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockRemovePersistData = jest.fn<(...args: unknown[]) => Promise<boolean>>();
 const mockDispatch = jest.fn();
-const mockMarkCartCleared = jest.fn((timestamp: number) => ({
-  type: 'MARK_CART_CLEARED',
+const mockMarkCartRefreshRequested = jest.fn((timestamp: number) => ({
+  type: 'MARK_CART_REFRESH_REQUESTED',
   payload: timestamp,
 }));
 const mockInvalidateUnpaidOrdersCache = jest.fn((userId: string) => ({
@@ -38,13 +38,6 @@ const mockBackHandlerAddEventListener = jest.fn(
     remove: mockBackHandlerRemove,
   }),
 );
-const mockSafeAreaInsets = {
-  top: 0,
-  right: 0,
-  bottom: 0,
-  left: 0,
-};
-const originalPlatformOS = Platform.OS;
 
 jest.mock('expo-router', () => ({
   __esModule: true,
@@ -59,7 +52,7 @@ jest.mock('react-native-safe-area-context', () => {
 
   return {
     ...actual,
-    useSafeAreaInsets: () => mockSafeAreaInsets,
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
   };
 });
 
@@ -92,7 +85,7 @@ jest.mock('@/slices', () => ({
   useAppSlice: () => ({
     user: { id: 'user-1' },
     dispatch: mockDispatch,
-    markCartCleared: mockMarkCartCleared,
+    markCartRefreshRequested: mockMarkCartRefreshRequested,
   }),
 }));
 
@@ -103,15 +96,6 @@ jest.mock('@/components/icons', () => ({
 
 describe('<Payment />', () => {
   beforeEach(() => {
-    Object.defineProperty(Platform, 'OS', {
-      configurable: true,
-      value: originalPlatformOS,
-    });
-    mockSafeAreaInsets.top = 0;
-    mockSafeAreaInsets.right = 0;
-    mockSafeAreaInsets.bottom = 0;
-    mockSafeAreaInsets.left = 0;
-
     jest.spyOn(Linking, 'canOpenURL').mockImplementation((url: string) => mockCanOpenURL(url));
     jest.spyOn(Linking, 'openURL').mockImplementation((url: string) => mockOpenURL(url));
     jest
@@ -126,7 +110,7 @@ describe('<Payment />', () => {
     mockPollOrderPaymentStatus.mockReset();
     mockRemovePersistData.mockReset();
     mockDispatch.mockReset();
-    mockMarkCartCleared.mockClear();
+    mockMarkCartRefreshRequested.mockClear();
     mockInvalidateUnpaidOrdersCache.mockClear();
     mockInvalidateOrdersByStatusCache.mockClear();
     mockCanOpenURL.mockReset();
@@ -139,16 +123,6 @@ describe('<Payment />', () => {
     mockCanOpenURL.mockResolvedValue(true);
     mockOpenURL.mockResolvedValue();
   });
-
-  const getFlattenedStyle = (testId: string) => {
-    const style = screen.getByTestId(testId).props.style;
-
-    if (Array.isArray(style)) {
-      return Object.assign({}, ...style);
-    }
-
-    return style ?? {};
-  };
 
   test('returns users to /orders when the payment URL is missing', () => {
     render(<Payment />);
@@ -170,24 +144,6 @@ describe('<Payment />', () => {
     expect(screen.queryByTestId('payment-webview')).toBeNull();
   });
 
-  test('reserves Android bottom inset space for the Midtrans webview container', () => {
-    Object.defineProperty(Platform, 'OS', {
-      configurable: true,
-      value: 'android',
-    });
-    mockSafeAreaInsets.bottom = 48;
-    mockUseLocalSearchParams.mockReturnValue({
-      paymentUrl: 'https://snap.midtrans.com/v1/token',
-      orderId: 'order-1',
-    });
-
-    render(<Payment />);
-
-    expect(getFlattenedStyle('payment-webview-container')).toMatchObject({
-      paddingBottom: 48,
-    });
-  });
-
   test('exports payment helper functions for critical parsing paths', () => {
     expect(isTrustedPaymentUrl('https://snap.midtrans.com/v1/abc123')).toBe(true);
     expect(isTrustedPaymentUrl('https://simulator.sandbox.midtrans.com/token')).toBe(true);
@@ -203,16 +159,11 @@ describe('<Payment />', () => {
         'https://snap.midtrans.com/finish?transaction_status=settlement',
       ),
     ).toBe('success');
-    expect(
-      parsePaymentNavigationStatus('https://snap.midtrans.com/finish?transaction_status=capture'),
-    ).toBe('success');
-    expect(parsePaymentNavigationStatus('https://snap.midtrans.com/unfinish')).toBe('pending');
+    expect(parsePaymentNavigationStatus('https://snap.midtrans.com/unfinish')).toBe('cancel');
     expect(parsePaymentNavigationStatus('https://snap.midtrans.com/finish')).toBe('pending');
-    expect(parsePaymentNavigationStatus('https://snap.midtrans.com/error')).toBe('cancel');
-    expect(parsePaymentNavigationStatus('https://snap.midtrans.com/error?foo=bar')).toBe('cancel');
   });
 
-  test('finalizes successful payments from webview navigation and redirects to success page', async () => {
+  test('finalizes successful payments and requests selected-safe cart refresh', async () => {
     mockUseLocalSearchParams.mockReturnValue({
       paymentUrl: 'https://snap.midtrans.com/v1/token',
       orderId: 'order-1',
@@ -233,7 +184,7 @@ describe('<Payment />', () => {
     await waitFor(() => {
       expect(mockPollOrderPaymentStatus).toHaveBeenCalledWith('order-1', 12, 2000);
       expect(mockRemovePersistData).toHaveBeenCalledWith('CHECKOUT_SESSION');
-      expect(mockReplace).toHaveBeenCalledWith('/order-success?orderId=order-1');
+      expect(mockReplace).toHaveBeenCalledWith('/orders/success?orderId=order-1');
     });
 
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'INVALIDATE_UNPAID', payload: 'user-1' });
@@ -249,37 +200,13 @@ describe('<Payment />', () => {
       type: 'INVALIDATE_BY_STATUS',
       payload: { cacheKey: 'completed', userId: 'user-1' },
     });
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'INVALIDATE_BY_STATUS',
+      payload: { cacheKey: 'cancelled', userId: 'user-1' },
+    });
+    expect(mockMarkCartRefreshRequested).toHaveBeenCalledTimes(1);
     expect(mockDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'MARK_CART_CLEARED' }),
-    );
-  });
-
-  test('redirects capture payments to success page after verification', async () => {
-    mockUseLocalSearchParams.mockReturnValue({
-      paymentUrl: 'https://snap.midtrans.com/v1/token',
-      orderId: 'order-1',
-    });
-    mockPollOrderPaymentStatus.mockResolvedValue({
-      data: { payment_status: 'capture' },
-      error: null,
-    });
-
-    render(<Payment />);
-
-    await act(async () => {
-      fireEvent(screen.getByTestId('payment-webview'), 'onNavigationStateChange', {
-        url: 'https://snap.midtrans.com/finish?transaction_status=capture',
-      });
-    });
-
-    await waitFor(() => {
-      expect(mockPollOrderPaymentStatus).toHaveBeenCalledWith('order-1', 12, 2000);
-      expect(mockRemovePersistData).toHaveBeenCalledWith('CHECKOUT_SESSION');
-      expect(mockReplace).toHaveBeenCalledWith('/order-success?orderId=order-1');
-    });
-
-    expect(mockDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'MARK_CART_CLEARED' }),
+      expect.objectContaining({ type: 'MARK_CART_REFRESH_REQUESTED' }),
     );
   });
 
@@ -311,6 +238,34 @@ describe('<Payment />', () => {
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'INVALIDATE_UNPAID', payload: 'user-1' });
   });
 
+  test('keeps authorize responses in processing flow instead of treating them as success', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      paymentUrl: 'https://snap.midtrans.com/v1/token',
+      orderId: 'order-1',
+    });
+    mockPollOrderPaymentStatus.mockResolvedValue({
+      data: { payment_status: 'authorize' },
+      error: null,
+    });
+
+    render(<Payment />);
+
+    await act(async () => {
+      fireEvent(screen.getByTestId('payment-webview'), 'onNavigationStateChange', {
+        url: 'https://snap.midtrans.com/finish?transaction_status=authorize',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Pembayaran sedang diproses')).toBeTruthy();
+      expect(
+        screen.getByText('Pembayaran sedang diproses. Cek status di halaman Pesanan.'),
+      ).toBeTruthy();
+    });
+
+    expect(mockReplace).not.toHaveBeenCalledWith('/orders/success?orderId=order-1');
+  });
+
   test('allows trusted Midtrans simulator URLs to render inside the webview', () => {
     mockUseLocalSearchParams.mockReturnValue({
       paymentUrl: 'https://simulator.sandbox.midtrans.com/v2/vtweb/test',
@@ -329,7 +284,7 @@ describe('<Payment />', () => {
       orderId: 'order-1',
     });
     mockPollOrderPaymentStatus.mockResolvedValue({
-      data: { payment_status: 'failure' },
+      data: { payment_status: 'cancel' },
       error: null,
     });
 
@@ -348,8 +303,12 @@ describe('<Payment />', () => {
     });
 
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'INVALIDATE_UNPAID', payload: 'user-1' });
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'INVALIDATE_BY_STATUS',
+      payload: { cacheKey: 'cancelled', userId: 'user-1' },
+    });
     expect(mockDispatch).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'MARK_CART_CLEARED' }),
+      expect.objectContaining({ type: 'MARK_CART_REFRESH_REQUESTED' }),
     );
   });
 
@@ -407,10 +366,10 @@ describe('<Payment />', () => {
 
     fireEvent.press(screen.getByText('Tutup'));
 
-    expect(screen.getByText('Tutup Halaman Pembayaran?')).toBeTruthy();
+    expect(screen.getByText('Batalkan Pembayaran?')).toBeTruthy();
 
     await act(async () => {
-      fireEvent.press(screen.getByText('Tutup & Lanjutkan Nanti'));
+      fireEvent.press(screen.getByText('Batalkan & Keluar'));
     });
 
     await waitFor(() => {

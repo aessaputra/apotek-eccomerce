@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Button as TamaguiButton, Card, Text, XStack, YStack } from 'tamagui';
+import { Card, Text, XStack, YStack } from 'tamagui';
 import Image from '@/components/elements/Image';
 import { PaymentCountdownTimer } from '@/components/elements/PaymentCountdownTimer';
 import { PayNowButton } from '@/components/elements/PayNowButton';
@@ -12,7 +12,7 @@ import { formatOrderNumber } from '@/utils/orderNumber';
 export interface UnpaidOrderCardProps {
   order: OrderListItem;
   onPress?: () => void;
-  onCancel?: (order: OrderListItem) => void;
+  onExpired?: () => void;
 }
 
 function getProductImageUrl(order: OrderListItem): string | null {
@@ -34,7 +34,7 @@ function getProductDisplayInfo(order: OrderListItem): { name: string; itemCount:
 export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
   order,
   onPress,
-  onCancel,
+  onExpired,
 }: UnpaidOrderCardProps) {
   const imageUrl = useMemo(() => getProductImageUrl(order), [order]);
   const productInfo = useMemo(() => getProductDisplayInfo(order), [order]);
@@ -45,12 +45,11 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
   const backendExpired = useMemo(() => isBackendExpired(order.expired_at), [order.expired_at]);
 
   const isExpired = backendExpired || isTimerExpired;
-  const canResumePayment = !isExpired && order.payment_status === 'pending';
-  const canCancelOrder = !isExpired && ['pending', 'authorize'].includes(order.payment_status);
 
   const handleTimerExpired = useCallback(() => {
     setIsTimerExpired(true);
-  }, []);
+    onExpired?.();
+  }, [onExpired]);
 
   return (
     <Card
@@ -64,10 +63,12 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
       <YStack gap="$3" padding="$3">
         {backendExpired ? (
           <StatusBadge variant="danger">Pembayaran Kadaluarsa</StatusBadge>
-        ) : order.payment_status === 'authorize' ? (
-          <StatusBadge variant="warning">Otorisasi Pembayaran</StatusBadge>
         ) : (
-          <PaymentCountdownTimer createdAt={order.created_at} onExpired={handleTimerExpired} />
+          <PaymentCountdownTimer
+            createdAt={order.created_at}
+            expiresAt={order.expired_at}
+            onExpired={handleTimerExpired}
+          />
         )}
 
         <XStack gap="$3" alignItems="center">
@@ -108,25 +109,7 @@ export const UnpaidOrderCard = React.memo(function UnpaidOrderCard({
         </XStack>
 
         <XStack justifyContent="flex-end">
-          {canCancelOrder && onCancel ? (
-            <TamaguiButton
-              backgroundColor="$background"
-              borderWidth={1}
-              borderColor="$danger"
-              color="$danger"
-              borderRadius="$4"
-              minHeight={36}
-              paddingHorizontal="$3"
-              marginRight="$2"
-              onPress={event => {
-                event?.stopPropagation?.();
-                onCancel(order);
-              }}
-              aria-label={`Batalkan pesanan ${orderNumber}`}>
-              Batalkan
-            </TamaguiButton>
-          ) : null}
-          {canResumePayment ? <PayNowButton orderId={order.id} orderNumber={orderNumber} /> : null}
+          <PayNowButton orderId={order.id} orderNumber={orderNumber} disabled={isExpired} />
         </XStack>
       </YStack>
     </Card>
