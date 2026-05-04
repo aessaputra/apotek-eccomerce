@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { signInWithGoogle, signInWithPassword } from '@/services/auth.service';
+import { useAppSlice } from '@/slices';
 import {
   getAuthErrorMessage,
   isCancellationError,
@@ -54,6 +55,7 @@ function getResetSuccessMessage(resetSuccess: string | undefined): string | null
 }
 
 export function useLoginForm() {
+  const { dispatch, setAuthPhase } = useAppSlice();
   const router = useRouter();
   const routeParams = useLocalSearchParams<LoginRouteSearchParams>();
   const loginMessageParams = useMemo(
@@ -137,6 +139,7 @@ export function useLoginForm() {
       });
 
       if (!signInError) {
+        dispatch(setAuthPhase('checking-mfa'));
         return;
       }
 

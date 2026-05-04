@@ -11,6 +11,9 @@ let mockRouteParams: { resetSuccess?: string; error?: string } = {};
 
 const mockSignInWithPassword = jest.fn<(...args: unknown[]) => AuthSceneResult>();
 const mockSignInWithGoogle = jest.fn<(...args: unknown[]) => AuthSceneResult>();
+const mockGetMfaAssuranceLevel = jest.fn<(...args: unknown[]) => AuthSceneResult>();
+const mockRequiresMfaChallenge = jest.fn<(aalData: Record<string, unknown>) => boolean>();
+const mockSetAuthPhase = jest.fn();
 
 jest.mock('expo-router', () => {
   const React = jest.requireActual('react') as typeof import('react');
@@ -30,6 +33,15 @@ jest.mock('expo-router', () => {
 jest.mock('@/services/auth.service', () => ({
   signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
   signInWithGoogle: (...args: unknown[]) => mockSignInWithGoogle(...args),
+  getMfaAssuranceLevel: (...args: unknown[]) => mockGetMfaAssuranceLevel(...args),
+  requiresMfaChallenge: (aalData: Record<string, unknown>) => mockRequiresMfaChallenge(aalData),
+}));
+
+jest.mock('@/slices', () => ({
+  useAppSlice: () => ({
+    dispatch: jest.fn(),
+    setAuthPhase: mockSetAuthPhase,
+  }),
 }));
 
 describe('<Login />', () => {
@@ -40,11 +52,18 @@ describe('<Login />', () => {
     mockRouteParams = {};
     mockSignInWithPassword.mockReset();
     mockSignInWithGoogle.mockReset();
+    mockGetMfaAssuranceLevel.mockReset();
+    mockRequiresMfaChallenge.mockReset();
     mockSignInWithPassword.mockImplementation(async () => ({
       data: { user: { id: 'user-1' } },
       error: null,
     }));
     mockSignInWithGoogle.mockImplementation(async () => ({ data: null, error: null }));
+    mockGetMfaAssuranceLevel.mockImplementation(async () => ({
+      data: { currentLevel: 'aal2', nextLevel: 'aal2' },
+      error: null,
+    }));
+    mockRequiresMfaChallenge.mockReturnValue(false);
   });
 
   it('shows the required-field message for an empty form', () => {
@@ -164,5 +183,21 @@ describe('<Login />', () => {
 
     expect(screen.queryByText('Klik tautan ini untuk memperbarui akun Anda.')).toBeNull();
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it('dispatches checking-mfa after successful password sign-in', async () => {
+    render(<Login />);
+
+    fireEvent.changeText(screen.getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
+    fireEvent.press(screen.getByLabelText('Masuk'));
+
+    await waitFor(() => {
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
+        email: 'user@example.com',
+        password: 'password1',
+      });
+      expect(mockSetAuthPhase).toHaveBeenCalledWith('checking-mfa');
+    });
   });
 });
