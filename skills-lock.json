@@ -70,6 +70,7 @@
     "expo-cicd-workflows": {
       "source": "expo/skills",
       "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-cicd-workflows/SKILL.md",
       "computedHash": "700b20b575fcbe75ad238b41a0bd57938abe495e62dc53e05400712ab01ee7c0"
     },
     "expo-deployment": {
