@@ -10,6 +10,7 @@ import {
   reverseGeocodeCoordinates,
   sanitizeAddressCandidate,
 } from '@/services/googlePlaces.service';
+import { mapReverseGeocodeResultToAddress } from '@/services/googlePlaces.mappers';
 
 jest.mock('@/utils/config', () => ({
   __esModule: true,
@@ -680,6 +681,80 @@ describe('googlePlaces.service', () => {
       const result = convertPlaceDetailsToAddress(details);
 
       expect(result.streetAddress).toBe('Jalan Raya Serang');
+    });
+
+    test('prioritizes adminArea2 over locality for Indonesian addresses', () => {
+      const details = {
+        placeId: 'ChIJ123',
+        name: 'Test',
+        formattedAddress: 'Test Address',
+        coordinates: { latitude: 0, longitude: 0 },
+        addressComponents: [
+          { longName: 'Serpong', shortName: 'Serpong', types: ['locality'] },
+          {
+            longName: 'Kota Tangerang Selatan',
+            shortName: 'Tangerang Selatan',
+            types: ['administrative_area_level_2'],
+          },
+        ],
+      };
+
+      const result = convertPlaceDetailsToAddress(details);
+
+      expect(result.city).toBe('Kota Tangerang Selatan');
+      expect(result.district).toBe('Serpong');
+    });
+  });
+
+  describe('mapReverseGeocodeResultToAddress', () => {
+    test('uses country-aware mapping for Indonesia', () => {
+      const result = mapReverseGeocodeResultToAddress({
+        place_id: 'ChIJ123',
+        formatted_address: 'Serpong, Kota Tangerang Selatan, Banten',
+        address_components: [
+          { long_name: 'Serpong', short_name: 'Serpong', types: ['locality'] },
+          {
+            long_name: 'Kota Tangerang Selatan',
+            short_name: 'Tangerang Selatan',
+            types: ['administrative_area_level_2'],
+          },
+          { long_name: 'Banten', short_name: 'Banten', types: ['administrative_area_level_1'] },
+          { long_name: 'Indonesia', short_name: 'ID', types: ['country', 'political'] },
+        ],
+        types: [],
+        geometry: {
+          location: { lat: -6.3, lng: 106.65 },
+        },
+      });
+
+      expect(result.city).toBe('Kota Tangerang Selatan');
+      expect(result.district).toBe('Serpong');
+      expect(result.countryCode).toBe('ID');
+    });
+
+    test('uses country-aware mapping for non-Indonesian addresses', () => {
+      const result = mapReverseGeocodeResultToAddress({
+        place_id: 'ChIJ456',
+        formatted_address: '1600 Amphitheatre Parkway, Mountain View, CA',
+        address_components: [
+          { long_name: 'Mountain View', short_name: 'Mountain View', types: ['locality'] },
+          {
+            long_name: 'Santa Clara County',
+            short_name: 'Santa Clara County',
+            types: ['administrative_area_level_2'],
+          },
+          { long_name: 'California', short_name: 'CA', types: ['administrative_area_level_1'] },
+          { long_name: 'United States', short_name: 'US', types: ['country', 'political'] },
+        ],
+        types: [],
+        geometry: {
+          location: { lat: 37.42, lng: -122.08 },
+        },
+      });
+
+      expect(result.city).toBe('Mountain View');
+      expect(result.district).toBe('');
+      expect(result.countryCode).toBe('US');
     });
   });
 
