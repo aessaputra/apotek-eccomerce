@@ -1,5 +1,6 @@
 {
   "cli": {
+    "version": ">= 16.0.1",
     "appVersionSource": "remote"
   },
   "build": {
@@ -15,33 +16,43 @@
       "channel": "base"
     },
     "development": {
-      "environment": "development",
       "extends": "base",
-      "channel": "development",
+      "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
+      "channel": "development",
       "ios": {
         "simulator": true,
         "buildConfiguration": "Debug"
       },
       "android": {
-        "buildType": "app-bundle",
         "gradleCommand": ":app:assembleDebug"
+      }
+    },
+    "preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "environment": "preview",
+      "channel": "preview",
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {
       "extends": "base",
+      "autoIncrement": true,
       "channel": "production",
       "environment": "production",
       "ios": {
         "buildConfiguration": "Release"
       },
       "android": {
-        "buildType": "app-bundle",
-        "gradleCommand": ":app:bundleRelease"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       }
     }
-  },
-  "submit": {
-    "production": {}
   }
 }
