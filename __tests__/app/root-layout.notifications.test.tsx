@@ -50,7 +50,7 @@ jest.mock('expo-splash-screen', () => ({
 jest.mock('expo-notifications', () => ({
   addNotificationResponseReceivedListener: (listener: (response: unknown) => void) =>
     mockAddNotificationResponseReceivedListener(listener),
-  getLastNotificationResponseAsync: () => mockGetLastNotificationResponseAsync(),
+  getLastNotificationResponse: () => mockGetLastNotificationResponseAsync(),
 }));
 
 jest.mock('expo-linking', () => ({
@@ -111,7 +111,12 @@ describe('RootLayout notification lifecycle', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: true }));
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'authenticated',
+      checked: true,
+      loggedIn: true,
+      pendingMfa: false,
+    }));
     mockUseSegments.mockImplementation(() => []);
     mockUseLinkingURL.mockImplementation(() => null);
     mockGetInitialURL.mockImplementation(async () => null);
@@ -120,7 +125,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetExpoNotificationsModuleAsync.mockImplementation(async () => ({
       addNotificationResponseReceivedListener: (listener: (response: unknown) => void) =>
         mockAddNotificationResponseReceivedListener(listener),
-      getLastNotificationResponseAsync: () => mockGetLastNotificationResponseAsync(),
+      getLastNotificationResponse: () => mockGetLastNotificationResponseAsync(),
     }));
     mockLoadImages.mockImplementation(async () => undefined);
     mockLoadFonts.mockImplementation(async () => undefined);
@@ -281,7 +286,12 @@ describe('RootLayout notification lifecycle', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(auth)/reset-password?code=recovery-code');
     expect(mockReplace).toHaveBeenCalledTimes(1);
 
-    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: false }));
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'signed-out',
+      checked: true,
+      loggedIn: false,
+      pendingMfa: false,
+    }));
     mockUseSegments.mockImplementation(() => ['(auth)', 'login']);
 
     rerender(<RootLayout />);
@@ -313,7 +323,12 @@ describe('RootLayout notification lifecycle', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(auth)/reset-password?code=recovery-code');
     expect(mockReplace).toHaveBeenCalledTimes(1);
 
-    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: true }));
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'authenticated',
+      checked: true,
+      loggedIn: true,
+      pendingMfa: false,
+    }));
     mockUseSegments.mockImplementation(() => ['(tabs)', 'home']);
 
     rerender(<RootLayout />);
@@ -532,6 +547,38 @@ describe('RootLayout notification lifecycle', () => {
     });
   });
 
+  it('blocks notification navigation while logged-in users are pending MFA', async () => {
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'requires-mfa',
+      checked: true,
+      loggedIn: true,
+      pendingMfa: true,
+    }));
+    mockGetLastNotificationResponseAsync.mockImplementation(async () =>
+      createNotificationResponse({
+        type: 'order_completed',
+        cta_route: 'orders/order-detail/[orderId]',
+        data: { orderId: 'order-99' },
+      }),
+    );
+
+    render(<RootLayout />);
+
+    await waitFor(() => {
+      expect(mockGetLastNotificationResponseAsync).toHaveBeenCalled();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalledWith({
+      pathname: '/orders/order-detail/[orderId]',
+      params: { orderId: 'order-99' },
+    });
+    expect(mockNavigate).not.toHaveBeenCalledWith('/notifications');
+  });
+
   it('routes live notification taps after Google OAuth settles even if the last linking URL is retained', async () => {
     mockUseSegments.mockImplementation(() => ['(tabs)', 'home']);
     mockUseLinkingURL.mockImplementation(() => 'apotek-ecommerce://google-auth?code=oauth-code');
@@ -610,7 +657,12 @@ describe('RootLayout auth redirects', () => {
   });
 
   it('navigates logged-in login route users to /home', async () => {
-    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: true }));
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'authenticated',
+      checked: true,
+      loggedIn: true,
+      pendingMfa: false,
+    }));
     mockUseSegments.mockImplementation(() => ['(auth)', 'login']);
 
     render(<RootLayout />);
@@ -630,7 +682,12 @@ describe('RootLayout auth redirects', () => {
   });
 
   it('does not navigate logged-in reset-password route users to /home', async () => {
-    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: true }));
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'authenticated',
+      checked: true,
+      loggedIn: true,
+      pendingMfa: false,
+    }));
     mockUseSegments.mockImplementation(() => ['(auth)', 'reset-password']);
 
     render(<RootLayout />);
@@ -648,7 +705,12 @@ describe('RootLayout auth redirects', () => {
   });
 
   it('replaces logged-out protected cart users with the login route', async () => {
-    mockUseAppSlice.mockImplementation(() => ({ checked: true, loggedIn: false }));
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'signed-out',
+      checked: true,
+      loggedIn: false,
+      pendingMfa: false,
+    }));
     mockUseSegments.mockImplementation(() => ['cart']);
 
     render(<RootLayout />);
@@ -664,6 +726,54 @@ describe('RootLayout auth redirects', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
     });
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+  });
+
+  it('redirects logged-in pending-MFA protected route users to verify MFA', async () => {
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'requires-mfa',
+      checked: true,
+      loggedIn: true,
+      pendingMfa: true,
+    }));
+    mockUseSegments.mockImplementation(() => ['cart']);
+
+    render(<RootLayout />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/verify-mfa');
+    });
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+  });
+
+  it('keeps logged-in pending-MFA users on reset-password exception routes', async () => {
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'requires-mfa',
+      checked: true,
+      loggedIn: true,
+      pendingMfa: true,
+    }));
+    mockUseSegments.mockImplementation(() => ['(auth)', 'reset-password']);
+
+    render(<RootLayout />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockReplace).not.toHaveBeenCalledWith('/(auth)/verify-mfa');
     expect(mockNavigate).not.toHaveBeenCalledWith('/home');
   });
 });

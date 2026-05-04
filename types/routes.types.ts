@@ -18,6 +18,7 @@ export type AuthRoutes = {
   };
   '(auth)/signup': undefined;
   '(auth)/verify-email': { email: string };
+  '(auth)/verify-mfa': undefined;
 };
 
 // Home routes
@@ -83,6 +84,7 @@ export type ProfileRoutes = {
     postalCode?: string;
   };
   'profile/edit-profile': undefined;
+  'profile/two-step-verification': undefined;
   'profile/details': undefined;
   'profile/support': undefined;
   'profile/order-detail/[orderId]': { orderId: string };
@@ -117,6 +119,7 @@ export type ProfileStackParams = {
     postalCode?: string;
   };
   'edit-profile': undefined;
+  'two-step-verification': undefined;
   details: undefined;
   support: undefined;
   'order-detail/[orderId]': { orderId: string };
@@ -172,6 +175,7 @@ export type AuthStackParams = {
   };
   signup: undefined;
   'verify-email': { email: string };
+  'verify-mfa': undefined;
 };
 
 export type TypedHref = Href<AppRoutes>;

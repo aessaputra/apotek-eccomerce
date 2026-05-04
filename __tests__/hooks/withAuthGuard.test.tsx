@@ -30,8 +30,8 @@ describe('withAuthGuard', () => {
     jest.useRealTimers();
   });
 
-  test('renders wrapped component when auth is checked and logged in', () => {
-    mockUseAppSlice.mockReturnValue({ checked: true, loggedIn: true });
+  test('renders wrapped component when auth is fully authenticated', () => {
+    mockUseAppSlice.mockReturnValue({ authPhase: 'authenticated' });
     const Guarded = withAuthGuard(ProtectedScreen);
 
     const { getByTestId } = render(<Guarded />);
@@ -40,8 +40,8 @@ describe('withAuthGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  test('does not render wrapped component while auth check is pending', () => {
-    mockUseAppSlice.mockReturnValue({ checked: false, loggedIn: false });
+  test('does not render wrapped component while auth is initializing', () => {
+    mockUseAppSlice.mockReturnValue({ authPhase: 'initializing' });
     const Guarded = withAuthGuard(ProtectedScreen);
 
     const { queryByTestId } = render(<Guarded />);
@@ -50,8 +50,18 @@ describe('withAuthGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  test('redirects when auth check is complete and user is logged out', () => {
-    mockUseAppSlice.mockReturnValue({ checked: true, loggedIn: false });
+  test('does not render wrapped component while checking MFA', () => {
+    mockUseAppSlice.mockReturnValue({ authPhase: 'checking-mfa' });
+    const Guarded = withAuthGuard(ProtectedScreen);
+
+    const { queryByTestId } = render(<Guarded />);
+
+    expect(queryByTestId('protected-screen')).toBeNull();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test('redirects when auth phase is signed-out', () => {
+    mockUseAppSlice.mockReturnValue({ authPhase: 'signed-out' });
     const Guarded = withAuthGuard(ProtectedScreen);
 
     const { queryByTestId } = render(<Guarded />);
@@ -66,7 +76,7 @@ describe('withAuthGuard', () => {
   });
 
   test('uses custom redirect path', () => {
-    mockUseAppSlice.mockReturnValue({ checked: true, loggedIn: false });
+    mockUseAppSlice.mockReturnValue({ authPhase: 'signed-out' });
     const Guarded = withAuthGuard(ProtectedScreen, '/custom-login');
 
     render(<Guarded />);
@@ -76,5 +86,20 @@ describe('withAuthGuard', () => {
     });
 
     expect(mockReplace).toHaveBeenCalledWith('/custom-login');
+  });
+
+  test('blocks protected content and redirects to verify MFA when a challenge is pending', () => {
+    mockUseAppSlice.mockReturnValue({ authPhase: 'requires-mfa' });
+    const Guarded = withAuthGuard(ProtectedScreen);
+
+    const { queryByTestId } = render(<Guarded />);
+
+    expect(queryByTestId('protected-screen')).toBeNull();
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(mockReplace).toHaveBeenCalledWith('/(auth)/verify-mfa');
   });
 });

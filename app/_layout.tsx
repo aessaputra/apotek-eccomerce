@@ -114,15 +114,14 @@ function isNotificationBlockingAuthCallbackUrl(url: string | null) {
 
 function Router() {
   const colorScheme = useColorScheme();
-  const { checked, loggedIn } = useAppSlice();
+  const { authPhase } = useAppSlice();
   const segments = useSegments();
   const router = useRouter();
   const linkingUrl = Linking.useLinkingURL();
   const [assetsReady, setAssetsReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
   const assetsReadyRef = useRef(false);
-  const checkedRef = useRef(checked);
-  const loggedInRef = useRef(loggedIn);
+  const authPhaseRef = useRef(authPhase);
   const isNotificationBlockingAuthCallbackRouteRef = useRef(false);
   const handledPasswordRecoveryRouteRef = useRef<string | null>(null);
   const pendingNotificationResponseRef = useRef<NotificationResponse | null>(null);
@@ -136,7 +135,7 @@ function Router() {
   const isCallback = currentGroup === 'google-auth';
   const isRecoveryAuthRoute = inAuthGroup && currentAuthRoute === 'reset-password';
   const hasSettledPostAuthTabRoute =
-    loggedIn &&
+    authPhase === 'authenticated' &&
     currentGroup === '(tabs)' &&
     (!currentTabRoute || POST_AUTH_NOTIFICATION_ALLOWED_TAB_ROUTES.has(currentTabRoute));
   const isNotificationBlockingAuthCallbackDeepLink =
@@ -153,12 +152,8 @@ function Router() {
   }, [assetsReady]);
 
   useEffect(() => {
-    checkedRef.current = checked;
-  }, [checked]);
-
-  useEffect(() => {
-    loggedInRef.current = loggedIn;
-  }, [loggedIn]);
+    authPhaseRef.current = authPhase;
+  }, [authPhase]);
 
   useEffect(() => {
     isNotificationBlockingAuthCallbackRouteRef.current = isNotificationBlockingAuthCallbackFlow;
@@ -181,7 +176,7 @@ function Router() {
 
       pendingNotificationResponseRef.current = response;
 
-      if (!assetsReadyRef.current || !checkedRef.current || !loggedInRef.current) {
+      if (!assetsReadyRef.current || authPhaseRef.current !== 'authenticated') {
         return;
       }
 
@@ -221,19 +216,29 @@ function Router() {
   }, []);
 
   useEffect(() => {
-    if (assetsReady && checked) {
+    if (assetsReady && authPhase !== 'initializing' && authPhase !== 'checking-mfa') {
       SplashScreen.hideAsync();
+    }
+  }, [assetsReady, authPhase]);
+
+  useEffect(() => {
+    if (authPhase === 'checking-mfa' || authPhase === 'requires-mfa') {
+      setOpen(false);
+      return;
+    }
+
+    if (assetsReady && (authPhase === 'authenticated' || authPhase === 'signed-out')) {
       setOpen(shouldShowWelcomeSheet);
     }
-  }, [assetsReady, checked, shouldShowWelcomeSheet]);
+  }, [assetsReady, authPhase, shouldShowWelcomeSheet]);
 
   useEffect(() => {
     navigateFromNotificationResponse(pendingNotificationResponseRef.current);
 
-    if (checked && !loggedIn) {
+    if (authPhase !== 'authenticated') {
       pendingNotificationResponseRef.current = null;
     }
-  }, [checked, loggedIn, navigateFromNotificationResponse]);
+  }, [authPhase, navigateFromNotificationResponse]);
 
   useEffect(() => {
     if (!hasNativeNotificationSupport()) {
@@ -265,7 +270,9 @@ function Router() {
           return;
         }
 
-        const lastNotificationResponse = await Notifications.getLastNotificationResponseAsync();
+        const lastNotificationResponse = await Promise.resolve(
+          Notifications.getLastNotificationResponse(),
+        );
 
         if (cancelled || !lastNotificationResponse) {
           return;
@@ -286,7 +293,7 @@ function Router() {
   }, [navigateFromNotificationResponse]);
 
   useEffect(() => {
-    if (!checked) return;
+    if (authPhase === 'initializing' || authPhase === 'checking-mfa') return;
 
     if (passwordRecoveryRouteFromUrl && isRecoveryAuthRoute) {
       handledPasswordRecoveryRouteRef.current = passwordRecoveryRouteFromUrl;
@@ -298,11 +305,21 @@ function Router() {
       return;
     }
 
-    if (loggedIn) {
+    if (authPhase === 'requires-mfa') {
+      if (!isRecoveryAuthRoute && !isCallback && currentAuthRoute !== 'verify-mfa') {
+        setTimeout(() => router.replace('/(auth)/verify-mfa'), 0);
+      }
+      return;
+    }
+
+    if (authPhase === 'authenticated') {
       if ((inAuthGroup && !isRecoveryAuthRoute) || isCallback) {
         setTimeout(() => router.navigate('/home'), 0);
       }
-    } else {
+      return;
+    }
+
+    if (authPhase === 'signed-out') {
       const inProtectedRoute = !!currentGroup && PROTECTED_ROUTE_GROUPS.includes(currentGroup);
 
       if (inProtectedRoute) {
@@ -310,14 +327,13 @@ function Router() {
       }
     }
   }, [
-    checked,
+    authPhase,
     currentAuthRoute,
     currentGroup,
     inAuthGroup,
     isHandledPasswordRecoveryReplay,
     isCallback,
     isRecoveryAuthRoute,
-    loggedIn,
     passwordRecoveryRouteFromUrl,
     router,
   ]);
