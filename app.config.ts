@@ -3,6 +3,58 @@ import path from 'path';
 import { config as loadEnv } from 'dotenv';
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
+type AppEnvironment = 'development' | 'preview' | 'production';
+
+const resolveAppEnvironment = (): AppEnvironment => {
+  const environment = process.env.ENV ?? process.env.EAS_BUILD_PROFILE;
+
+  if (environment === 'preview' || environment === 'production') {
+    return environment;
+  }
+
+  return 'development';
+};
+
+const resolveAndroidPackage = (environment: AppEnvironment): string => {
+  if (process.env.EXPO_ANDROID_PACKAGE) {
+    return process.env.EXPO_ANDROID_PACKAGE;
+  }
+
+  if (environment === 'preview') {
+    return 'com.apotekecommerce.preview';
+  }
+
+  if (environment === 'production') {
+    return 'com.apotekecommerce';
+  }
+
+  return 'com.apotekecommerce.dev';
+};
+
+const resolveIosBundleIdentifier = (environment: AppEnvironment): string => {
+  if (process.env.EXPO_IOS_BUNDLE_IDENTIFIER) {
+    return process.env.EXPO_IOS_BUNDLE_IDENTIFIER;
+  }
+
+  if (environment === 'preview') {
+    return 'com.apotekecommerce.preview';
+  }
+
+  if (environment === 'production') {
+    return 'com.apotekecommerce';
+  }
+
+  return 'com.apotekecommerce.dev';
+};
+
+const hasGoogleServicesClient = (filePath: string, androidPackage: string): boolean => {
+  if (!fs.existsSync(filePath)) {
+    return false;
+  }
+
+  return fs.readFileSync(filePath, 'utf8').includes(`"package_name": "${androidPackage}"`);
+};
+
 // Expo CLI only loads .env by default, not .env.dev. When running `npx expo start`
 // (without npm run dev), load .env.dev so EXPO_PROJECT_ID and other vars are set.
 if (!process.env.EXPO_PROJECT_ID) {
@@ -12,7 +64,12 @@ if (!process.env.EXPO_PROJECT_ID) {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const expoProjectId = process.env.EXPO_PROJECT_ID;
   const googleServicesFilePath = path.resolve(process.cwd(), 'google-services.json');
-  const hasGoogleServicesFile = fs.existsSync(googleServicesFilePath);
+  const appEnvironment = resolveAppEnvironment();
+  const androidPackage = resolveAndroidPackage(appEnvironment);
+  const shouldIncludeGoogleServicesFile = hasGoogleServicesClient(
+    googleServicesFilePath,
+    androidPackage,
+  );
 
   if (!expoProjectId) {
     throw new Error(
@@ -27,7 +84,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: './assets/images/logo.png', // App icon untuk semua platform
     ios: {
       ...config.ios,
-      bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? 'com.apotekecommerce',
+      bundleIdentifier: resolveIosBundleIdentifier(appEnvironment),
       infoPlist: {
         ...(process.env.ENV !== 'production'
           ? {
@@ -51,8 +108,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       ...config.android,
-      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.apotekecommerce',
-      ...(hasGoogleServicesFile ? { googleServicesFile: './google-services.json' } : {}),
+      package: androidPackage,
+      ...(shouldIncludeGoogleServicesFile ? { googleServicesFile: './google-services.json' } : {}),
       // Use 'resize' mode for consistent keyboard handling with KeyboardAvoidingView.
       // This allows the container to resize when keyboard appears, enabling
       // bottom action buttons to stay above keyboard.
@@ -75,7 +132,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       ...config.extra,
       eas: { projectId: expoProjectId },
-      env: process.env.ENV ?? 'development',
+      env: appEnvironment,
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       regionalApiUrl: process.env.EXPO_PUBLIC_REGIONAL_API_URL ?? 'https://wilayah.id/api',
       postalDataUrl:
