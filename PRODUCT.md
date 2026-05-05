@@ -4,6 +4,12 @@
 
 ---
 
+## Register
+
+product
+
+---
+
 ## 1. Mission & Vision
 
 **Mission:**
@@ -17,6 +23,13 @@ To become Indonesia's leading mobile-first pharmacy e-commerce platform that bri
 2. **Speed & Convenience** — The medicine ordering process must be faster than a physical pharmacy visit.
 3. **Transparency** — Order status, shipping costs, and product availability must always be clearly visible.
 4. **Accessibility** — The platform must be easy to use for everyone, including first-time users.
+
+**Impeccable Design Context:**
+- **Default register:** Product. Design should serve customer shopping, checkout, order tracking, account, and support workflows.
+- **Brand personality:** Friendly local pharmacy, approachable, dependable, and caring.
+- **Anti-reference:** Avoid discount-marketplace patterns where flash-sale energy, dense cards, urgency tactics, or cluttered promotions overpower medicine safety and trust.
+- **Accessibility baseline:** WCAG 2.2 AA, including strong contrast, visible focus states, clear error recovery, non-color-only status cues, and generous touch targets.
+- **Design posture:** Trusted neighborhood pharmacy on the phone, with plain Indonesian copy, low-anxiety hierarchy, readable product information, and checkout recovery paths that are easy to find.
 
 ---
 
