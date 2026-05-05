@@ -16,20 +16,21 @@ CI and preview automation. Root commands are in `package.json`; this folder owns
 - Test CI uses Node `20.x`, `npm ci`, `npm run format:check`, `npm run lint`, then `npm run test`.
 - `preview.yml` requires `EXPO_TOKEN`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_KEY` GitHub secrets.
 - PR previews use `expo/expo-github-action/preview@v8` with `eas update --auto`, which comments preview/QR on the PR.
-- Push updates run `eas update --branch <current_branch>` after sanitizing double quotes in the commit message.
+- Push updates map Git branch `dev` to EAS Update branch `preview`, and `main` / `release/**` to EAS Update branch `production`, after sanitizing double quotes in the commit message.
 
 ## ENV MAPPING
 
-| Branch               | Env example         |
-| -------------------- | ------------------- |
-| `main`, `release/**` | `.env.prod.example` |
-| other branches / PR  | `.env.dev.example`  |
+| Branch               | Env example            |
+| -------------------- | ---------------------- |
+| `main`, `release/**` | `.env.prod.example`    |
+| `dev` / PR previews  | `.env.preview.example` |
+| other branches       | `.env.preview.example` |
 
 Current repo has `.env.dev.example`, `.env.preview.example`, and `.env.prod.example`.
 
 ## CI QUIRKS
 
-- `preview.yml` extracts `EXPO_PROJECT_ID` and `EXPO_SLUG` with `grep`/`cut`; keep those keys present in every mapped env example.
+- `preview.yml` extracts Expo app identity values with `grep`/`cut`; keep `ENV`, `EXPO_PROJECT_ID`, `EXPO_SLUG`, `EXPO_NAME`, `EXPO_IOS_BUNDLE_IDENTIFIER`, and `EXPO_ANDROID_PACKAGE` present in every mapped env example.
 - `preview.yml` installs `lightningcss-linux-x64-gnu --save-optional` after `npm ci`; preserve this Linux/Tamagui workaround.
 - `EXPO_TOKEN` must belong to the Expo account that owns `app.json` `owner` / the EAS project.
 
