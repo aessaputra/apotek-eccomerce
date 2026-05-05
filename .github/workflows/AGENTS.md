@@ -14,9 +14,12 @@ CI and preview automation. Root commands are in `package.json`; this folder owns
 
 - `test.yml` runs on all PRs and pushes to `dev`, `main`, and `release/**`.
 - Test CI uses Node `20.x`, `npm ci`, `npm run format:check`, `npm run lint`, then `npm run test`.
+- `preview.yml` is named **EAS Update CI** and has a built-in quality gate before publishing OTA updates.
 - `preview.yml` requires `EXPO_TOKEN`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_KEY` GitHub secrets.
+- `preview.yml` runs format check, lint, and Jest before any EAS Update step; do not bypass this gate.
 - PR previews use `expo/expo-github-action/preview@v8` with `eas update --auto`, which comments preview/QR on the PR.
 - Push updates map Git branch `dev` to EAS Update branch `preview`, and `main` / `release/**` to EAS Update branch `production`, after sanitizing double quotes in the commit message.
+- Concurrency is enabled per event/ref so superseded OTA jobs are cancelled when newer commits arrive.
 
 ## ENV MAPPING
 

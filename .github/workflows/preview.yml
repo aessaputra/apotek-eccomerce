@@ -1,4 +1,4 @@
-name: Preview Channel CI
+name: EAS Update CI
 
 on:
   pull_request:
@@ -6,9 +6,48 @@ on:
   push:
     branches: ['dev', 'main', 'release/**']
 
+concurrency:
+  group: eas-update-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  checks:
+    name: Quality gate before EAS Update
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        node-version: [20.x]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          cache-dependency-path: package-lock.json
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install lightningcss Linux binary
+        run: npm install lightningcss-linux-x64-gnu --save-optional
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
+
   update:
-    name: Publish Preview Channel on Push / Pull-Request
+    name: Publish EAS Update on Push / Pull-Request
+    needs: checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
