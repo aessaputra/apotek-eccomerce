@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import * as ReactNative from 'react-native';
-import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
+import { act, fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import Home from '@/scenes/home/Home';
 import type { UseHomeDataReturn } from '@/hooks';
 import type { ProductWithImages } from '@/services/home.service';
@@ -76,10 +76,22 @@ jest.mock('@/components/elements/ProductCard', () => {
 
   return {
     __esModule: true,
-    default: ({ item, onAddToCart }: { item: { name: string }; onAddToCart?: () => void }) => (
+    default: ({
+      item,
+      onAddToCart,
+      isAddingToCart,
+    }: {
+      item: { name: string };
+      onAddToCart?: () => void;
+      isAddingToCart?: boolean;
+    }) => (
       <View>
         <Text>{item.name}</Text>
-        <Button title={`Add ${item.name}`} onPress={onAddToCart} />
+        <Button
+          title={isAddingToCart ? `Menambahkan ${item.name}` : `Tambah ${item.name} ke keranjang`}
+          onPress={onAddToCart}
+          disabled={isAddingToCart}
+        />
       </View>
     ),
     ProductCardSkeleton: ({ count }: { count?: number }) => (
@@ -106,6 +118,12 @@ function createHomeData(): UseHomeDataReturn {
   const productWithSku: ProductWithImages & { sku: string } = {
     ...product,
     sku: 'SKU-PRODUCT-1',
+  };
+  const secondProduct: ProductWithImages = {
+    ...product,
+    id: 'product-2',
+    name: 'Product 2',
+    slug: 'product-2',
   };
 
   return {
@@ -140,7 +158,7 @@ function createHomeData(): UseHomeDataReturn {
       },
     },
     categories: [{ id: 'cat-1', name: 'Vitamin', slug: 'vitamin', logo_url: null, created_at: '' }],
-    products: [productWithSku],
+    products: [productWithSku, secondProduct],
     isLoadingBanners: false,
     isLoadingCategories: false,
     isLoadingProducts: false,
@@ -248,7 +266,7 @@ describe('<Home />', () => {
   it('shows a success dialog after a product is added to cart successfully', async () => {
     render(<Home />);
 
-    fireEvent.press(screen.getByText('Add Product 1'));
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
 
     expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
     expect(await screen.findByText('Produk berhasil ditambahkan')).toBeTruthy();
@@ -260,11 +278,52 @@ describe('<Home />', () => {
 
     render(<Home />);
 
-    fireEvent.press(screen.getByText('Add Product 1'));
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
 
     expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
-    expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
-    expect(screen.queryByText('Product 1 berhasil ditambahkan ke keranjang')).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
+      expect(screen.queryByText('Product 1 berhasil ditambahkan ke keranjang')).toBeNull();
+    });
+  });
+
+  it('shows a user-facing error when adding to cart fails', async () => {
+    mockAddProductToCart.mockResolvedValue({ error: new Error('Stok produk habis') });
+
+    render(<Home />);
+
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
+
+    expect(await screen.findByText('Produk belum masuk keranjang')).toBeTruthy();
+    expect(screen.getByText('Gagal menambahkan produk ke keranjang. Coba lagi.')).toBeTruthy();
+  });
+
+  it('shows per-product pending feedback, prevents duplicate product requests, and allows other products', async () => {
+    const addToCartResolvers = new Map<string, (value: { error: Error | null }) => void>();
+    mockAddProductToCart.mockImplementation(
+      (_userId, productId) =>
+        new Promise(resolve => {
+          addToCartResolvers.set(productId, resolve);
+        }),
+    );
+
+    render(<Home />);
+
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
+
+    expect(await screen.findByText('Menambahkan Product 1')).toBeTruthy();
+    fireEvent.press(screen.getByText('Menambahkan Product 1'));
+    fireEvent.press(screen.getByText('Tambah Product 2 ke keranjang'));
+
+    expect(mockAddProductToCart).toHaveBeenCalledTimes(2);
+    expect(mockAddProductToCart).toHaveBeenNthCalledWith(1, 'user-1', 'product-1', 1);
+    expect(mockAddProductToCart).toHaveBeenNthCalledWith(2, 'user-1', 'product-2', 1);
+    expect(await screen.findByText('Menambahkan Product 2')).toBeTruthy();
+    await act(async () => {
+      addToCartResolvers.get('product-1')?.({ error: null });
+      addToCartResolvers.get('product-2')?.({ error: null });
+    });
+    expect(await screen.findByText('Produk berhasil ditambahkan')).toBeTruthy();
   });
 
   it('renders a retryable core error state when home content fails to load', () => {

@@ -34,6 +34,7 @@ type HomeProductSectionProps = {
   productWidth: ProductCardProps['width'];
   productPeekOffset: number;
   iconColor: ProductCardProps['iconColor'];
+  addingProductIds: readonly string[];
   onProductPress: (productId: string, productName: string) => void;
   onAddToCart: (productId: string, productName: string) => void | Promise<void>;
 };
@@ -50,6 +51,7 @@ type HomeProductItemProps = {
   item: HomeProduct;
   width: ProductCardProps['width'];
   iconColor: ProductCardProps['iconColor'];
+  isAddingToCart: boolean;
   onProductPress: HomeProductSectionProps['onProductPress'];
   onAddToCart: HomeProductSectionProps['onAddToCart'];
 };
@@ -80,6 +82,7 @@ const HomeProductItem = memo(function HomeProductItem({
   item,
   width,
   iconColor,
+  isAddingToCart,
   onProductPress,
   onAddToCart,
 }: HomeProductItemProps) {
@@ -98,6 +101,7 @@ const HomeProductItem = memo(function HomeProductItem({
       iconColor={iconColor}
       onPress={handlePress}
       onAddToCart={handleAddToCart}
+      isAddingToCart={isAddingToCart}
     />
   );
 });
@@ -126,11 +130,11 @@ export function HomeCategorySection({
       {isLoadingCategories && categories.length === 0 ? (
         <CategorySkeleton isLargeScreen={isLargeScreen} count={categorySkeletonCount} />
       ) : error && categories.length === 0 ? (
-        <Text fontSize={13} color="$colorSubtle">
+        <Text fontSize={13} color="$colorSubtle" accessibilityLiveRegion="polite">
           {HOME_COPY.categoryError}
         </Text>
       ) : categories.length === 0 ? (
-        <Text fontSize={13} color="$colorSubtle">
+        <Text fontSize={13} color="$colorSubtle" accessibilityLiveRegion="polite">
           {HOME_COPY.categoryEmpty}
         </Text>
       ) : isLargeScreen ? (
@@ -176,6 +180,7 @@ export function HomeProductSection({
   productWidth,
   productPeekOffset,
   iconColor,
+  addingProductIds,
   onProductPress,
   onAddToCart,
 }: HomeProductSectionProps) {
@@ -188,15 +193,18 @@ export function HomeProductSection({
     <YStack gap="$2.5">
       <SectionTitle>{HOME_COPY.productSectionTitle}</SectionTitle>
       {isLoadingProducts && products.length === 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={productScrollContentStyle}>
           <ProductCardSkeleton width={productWidth} count={productSkeletonCount} />
         </ScrollView>
       ) : error && products.length === 0 ? (
-        <Text fontSize={13} color="$colorSubtle">
+        <Text fontSize={13} color="$colorSubtle" accessibilityLiveRegion="polite">
           {HOME_COPY.productError}
         </Text>
       ) : products.length === 0 ? (
-        <Text fontSize={13} color="$colorSubtle">
+        <Text fontSize={13} color="$colorSubtle" accessibilityLiveRegion="polite">
           {HOME_COPY.productEmpty}
         </Text>
       ) : (
@@ -211,6 +219,7 @@ export function HomeProductSection({
                 item={item}
                 width={productWidth}
                 iconColor={iconColor}
+                isAddingToCart={addingProductIds.includes(item.id)}
                 onProductPress={onProductPress}
                 onAddToCart={onAddToCart}
               />
