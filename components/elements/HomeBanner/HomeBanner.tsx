@@ -18,6 +18,8 @@ export interface HomeBannerSkeletonProps {
   placement?: HomeBannerPlacement;
 }
 
+export const HOME_BANNER_CONTENT_OVERLAY_BACKGROUND = '$colorTransparent';
+
 function getAspectRatio(placement: HomeBannerPlacement): number {
   return placement === 'home_banner_top' ? 3 / 1 : 2 / 1;
 }
@@ -190,7 +192,9 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
         <YStack flex={1} backgroundColor={theme.fallbackBg} />
       )}
 
-      <ContentOverlay backgroundColor={showsImage ? '$sheetOverlay' : '$colorTransparent'}>
+      <ContentOverlay
+        testID={`home-banner-content-${banner.placementKey}`}
+        backgroundColor={HOME_BANNER_CONTENT_OVERLAY_BACKGROUND}>
         {banner.title ? (
           <Text
             color={showsImage ? theme.titleColor : '$color'}

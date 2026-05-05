@@ -1,6 +1,9 @@
 import { test, expect, jest } from '@jest/globals';
 import { fireEvent, render, renderWithDarkTheme, screen } from '@/test-utils/renderWithTheme';
-import HomeBanner, { HomeBannerSkeleton } from '@/components/elements/HomeBanner/HomeBanner';
+import HomeBanner, {
+  HOME_BANNER_CONTENT_OVERLAY_BACKGROUND,
+  HomeBannerSkeleton,
+} from '@/components/elements/HomeBanner/HomeBanner';
 import type { HomeBannerItem } from '@/types/homeBanner';
 
 const mockBanner: HomeBannerItem = {
@@ -47,6 +50,22 @@ describe('<HomeBanner />', () => {
 
       expect(screen.getByTestId('home-banner-image-home_banner_top')).toBeTruthy();
       expect(screen.getByText('Test Banner Title')).toBeTruthy();
+    });
+
+    test('does not use modal sheet overlay over image banners', async () => {
+      render(
+        <HomeBanner
+          banner={{
+            ...mockBanner,
+            mediaPath: 'banners/home_banner_top/test-banner.webp',
+            mediaUrl: 'https://example.com/test-banner.webp',
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('home-banner-content-home_banner_top')).toBeTruthy();
+      expect(HOME_BANNER_CONTENT_OVERLAY_BACKGROUND).toBe('$colorTransparent');
+      expect(HOME_BANNER_CONTENT_OVERLAY_BACKGROUND).not.toBe('$sheetOverlay');
     });
 
     test('renders branding intent without CTA', async () => {
