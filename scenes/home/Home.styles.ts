@@ -1,4 +1,5 @@
 import { Card, Text, YStack, styled } from 'tamagui';
+import { HOME_CONTENT_MAX_WIDTH } from './Home.constants';
 
 export const ScreenRoot = styled(YStack, {
   flex: 1,
@@ -7,22 +8,22 @@ export const ScreenRoot = styled(YStack, {
 
 export const ContentStack = styled(YStack, {
   width: '100%',
-  maxWidth: 560,
+  maxWidth: HOME_CONTENT_MAX_WIDTH.base,
   alignSelf: 'center',
   gap: '$4',
 
   $gtSm: {
-    maxWidth: 720,
+    maxWidth: HOME_CONTENT_MAX_WIDTH.gtSm,
     gap: '$4.5',
   },
 
   $gtMd: {
-    maxWidth: 920,
+    maxWidth: HOME_CONTENT_MAX_WIDTH.gtMd,
     gap: '$5',
   },
 
   $gtLg: {
-    maxWidth: 1080,
+    maxWidth: HOME_CONTENT_MAX_WIDTH.gtLg,
   },
 });
 
@@ -42,6 +43,8 @@ export const SurfaceIconButton = styled(Card, {
   alignItems: 'center',
   justifyContent: 'center',
   pressStyle: { opacity: 0.9 },
+  hoverStyle: { borderColor: '$primary', backgroundColor: '$surfaceSubtle' },
+  focusStyle: { borderColor: '$primary' },
 });
 
 export const SearchShell = styled(Card, {
@@ -56,6 +59,8 @@ export const SearchShell = styled(Card, {
   paddingRight: '$3',
   gap: '$2',
   pressStyle: { opacity: 0.92 },
+  hoverStyle: { borderColor: '$primary', backgroundColor: '$surfaceSubtle' },
+  focusStyle: { borderColor: '$primary' },
 });
 
 export const ErrorCallout = styled(Card, {
