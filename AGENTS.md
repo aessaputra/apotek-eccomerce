@@ -23,7 +23,7 @@ Expo SDK 54 pharmacy e-commerce app built with React Native 0.81.5, React 19.1, 
 ├── types/              # Domain, route, generated Supabase types — see types/AGENTS.md
 ├── __tests__/          # Centralized Jest tests — see __tests__/AGENTS.md
 ├── .github/workflows/  # CI and EAS Update workflows — see .github/workflows/AGENTS.md
-└── android/            # Checked-in native Android project — see android/AGENTS.md
+└── android/            # Local native Android project notes — see android/AGENTS.md
 ```
 
 ## CHILD AGENTS
@@ -158,5 +158,5 @@ npm run dev:deploy:web               # EAS Hosting development deploy
 
 - Node 20.x is required; EAS base pins Node 20.19.4; `.npmrc` enables `legacy-peer-deps=true`; env examples present: `.env.dev.example`, `.env.prod.example`.
 - `google-services.json` is present at repo root and conditionally wired by `app.config.ts`.
-- Native Android Gradle uses development namespace/applicationId `com.apotekecommerce.dev`; `app.config.ts` default package is `com.apotekecommerce`.
+- Local Android Gradle uses development namespace `com.apotekecommerce.dev`; remote EAS builds use CNG from `app.config.ts`, where env can override `android.package`.
 - `android/gradle.properties` still contains deprecated `expo.edgeToEdgeEnabled=true`; prefer `edgeToEdgeEnabled` / `react.edgeToEdgeEnabled` going forward.
