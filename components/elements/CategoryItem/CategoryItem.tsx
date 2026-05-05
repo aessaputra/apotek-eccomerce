@@ -198,8 +198,10 @@ function CategoryItem({
       paddingVertical={sizeConfig.verticalPadding}
       onPress={onPress}
       role={onPress ? 'button' : undefined}
-      aria-label={onPress ? `${category.name} category` : undefined}
-      aria-describedby={onPress ? `Explore ${category.name} products` : undefined}>
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `Jelajahi kategori ${category.name}` : undefined}
+      accessibilityHint={onPress ? 'Buka daftar produk dalam kategori ini' : undefined}
+      aria-label={onPress ? `Jelajahi kategori ${category.name}` : undefined}>
       <XStack alignItems="center" justifyContent="flex-start" gap="$2.5" minHeight={44}>
         {category.logo_url ? (
           <Card

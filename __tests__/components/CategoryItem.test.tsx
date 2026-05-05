@@ -17,7 +17,7 @@ describe('<CategoryItem />', () => {
     render(<CategoryItem category={category} onPress={onPress} />);
 
     expect(screen.getByText('Vitamin')).not.toBeNull();
-    fireEvent.press(screen.getByLabelText('Vitamin category'));
+    fireEvent.press(screen.getByLabelText('Jelajahi kategori Vitamin'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
