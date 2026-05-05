@@ -79,6 +79,14 @@ describe('<HomeBanner />', () => {
       expect(onCTAPress).toHaveBeenCalledTimes(1);
       expect(onCTAPress).toHaveBeenCalledWith(mockBanner.cta);
     });
+
+    test('does not group CTA banners into a single accessible container', async () => {
+      render(<HomeBanner banner={mockBanner} />);
+
+      const container = screen.getByTestId('home-banner-home_banner_top');
+      expect(container.props.accessible).toBe(false);
+      expect(screen.getByLabelText('Learn More')).toBeTruthy();
+    });
   });
 
   describe('Image-Only Banner Mode', () => {
@@ -98,6 +106,7 @@ describe('<HomeBanner />', () => {
       );
 
       expect(screen.getByTestId('home-banner-home_banner_top')).toBeTruthy();
+      expect(screen.getByTestId('home-banner-home_banner_top').props.accessible).toBe(true);
       expect(screen.getByTestId('home-banner-image-home_banner_top')).toBeTruthy();
       expect(screen.queryByText('Test Banner Title')).toBeNull();
       expect(screen.queryByText('Learn More')).toBeNull();
