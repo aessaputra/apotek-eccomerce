@@ -99,6 +99,7 @@ jobs:
           EXPO_SLUG: ${{ steps.expo-env.outputs.slug }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
+          EXPO_PUBLIC_GOOGLE_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_API_KEY }}
         uses: expo/expo-github-action/preview@v8
         with:
           command: eas update --auto
@@ -111,6 +112,7 @@ jobs:
           EXPO_SLUG: ${{ steps.expo-env.outputs.slug }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
+          EXPO_PUBLIC_GOOGLE_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_API_KEY }}
           UPDATE_MSG: ${{ github.event.head_commit.message }}
         run: |
           SAFE_MSG="${UPDATE_MSG//\"/\'}"
