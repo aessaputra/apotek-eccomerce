@@ -82,10 +82,31 @@ describe('<ProductCard />', () => {
       />,
     );
 
-    const addButton = screen.getByLabelText(/Add Test Product to cart/i);
+    const addButton = screen.getByLabelText(/Tambah Test Product ke keranjang/i);
     fireEvent(addButton, 'press', { stopPropagation: jest.fn() });
 
     expect(onAddToCart).toHaveBeenCalledTimes(1);
+  });
+
+  test('disables and announces busy state while adding to cart', async () => {
+    const onAddToCart = jest.fn();
+    render(
+      <ProductCard
+        item={mockProduct}
+        width={150}
+        iconColor="$primary"
+        onPress={() => {}}
+        onAddToCart={onAddToCart}
+        isAddingToCart
+      />,
+    );
+
+    const addButton = screen.getByLabelText(/Menambahkan Test Product ke keranjang/i);
+    fireEvent(addButton, 'press', { stopPropagation: jest.fn() });
+
+    expect(addButton.props.accessibilityState).toEqual({ disabled: true, busy: true });
+    expect(addButton.props.disabled).toBe(true);
+    expect(onAddToCart).not.toHaveBeenCalled();
   });
 });
 

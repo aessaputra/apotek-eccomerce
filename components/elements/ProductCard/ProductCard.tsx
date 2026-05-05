@@ -1,7 +1,8 @@
 import { memo } from 'react';
-import { Card, Text, XStack, YStack } from 'tamagui';
+import { Card, Spinner, Text, XStack, YStack } from 'tamagui';
 import Image from '@/components/elements/Image';
 import { CartIcon, PillIcon } from '@/components/icons';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import { formatPrice } from '@/services/home.service';
 
 export interface ProductCardItem {
@@ -18,6 +19,7 @@ export interface ProductCardProps {
   iconColor: string;
   onPress?: () => void;
   onAddToCart?: () => void;
+  isAddingToCart?: boolean;
 }
 
 export interface ProductCardSkeletonProps {
@@ -64,15 +66,27 @@ export const ProductCardSkeleton = memo(function ProductCardSkeleton({
   );
 });
 
-function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCardProps) {
+function ProductCard({
+  item,
+  width,
+  iconColor,
+  onPress,
+  onAddToCart,
+  isAddingToCart = false,
+}: ProductCardProps) {
   const imageUrl =
     [...item.images].sort((left, right) => left.sort_order - right.sort_order)[0]?.url ?? null;
   const accentColor = item.category_id ? '$warningSoft' : '$infoSoft';
 
   const handleAddToCart = (event: { stopPropagation: () => void }) => {
     event.stopPropagation();
+    if (isAddingToCart) return;
     onAddToCart?.();
   };
+
+  const addToCartLabel = isAddingToCart
+    ? `Menambahkan ${item.name} ke keranjang`
+    : `Tambah ${item.name} ke keranjang`;
 
   return (
     <Card
@@ -86,8 +100,10 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
       pressStyle={{ opacity: 0.95, scale: 0.98 }}
       onPress={onPress}
       role="button"
-      aria-label={`${item.name} product`}
-      aria-describedby={`View details for ${item.name}`}>
+      accessibilityRole="button"
+      accessibilityLabel={`Lihat detail ${item.name}`}
+      accessibilityHint="Buka halaman detail produk"
+      aria-label={`Lihat detail ${item.name}`}>
       <YStack width="100%" height={120} alignItems="center" justifyContent="center">
         <YStack
           height="100%"
@@ -123,18 +139,29 @@ function ProductCard({ item, width, iconColor, onPress, onAddToCart }: ProductCa
           {formatPrice(item.price)}
         </Text>
         <XStack
-          width={36}
-          height={36}
+          width={MIN_TOUCH_TARGET}
+          height={MIN_TOUCH_TARGET}
           borderRadius="$8"
-          backgroundColor="$primary"
+          backgroundColor={isAddingToCart ? '$colorDisabled' : '$primary'}
           alignItems="center"
           justifyContent="center"
+          opacity={isAddingToCart ? 0.7 : 1}
           pressStyle={{ opacity: 0.9, scale: 0.95 }}
           onPress={handleAddToCart}
           role="button"
-          aria-label={`Add ${item.name} to cart`}
-          aria-describedby="Adds product to shopping cart">
-          <CartIcon size={18} color="$onPrimary" />
+          accessibilityRole="button"
+          accessibilityLabel={addToCartLabel}
+          accessibilityHint="Menambahkan satu produk ke keranjang belanja"
+          accessibilityState={{ disabled: isAddingToCart, busy: isAddingToCart }}
+          aria-label={addToCartLabel}
+          aria-busy={isAddingToCart}
+          aria-disabled={isAddingToCart}
+          disabled={isAddingToCart}>
+          {isAddingToCart ? (
+            <Spinner size="small" color="$onPrimary" />
+          ) : (
+            <CartIcon size={18} color="$onPrimary" />
+          )}
         </XStack>
       </XStack>
     </Card>
