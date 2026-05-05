@@ -5,6 +5,18 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 type AppEnvironment = 'development' | 'preview' | 'production';
 
+type GoogleServicesClient = {
+  client_info?: {
+    android_client_info?: {
+      package_name?: string;
+    };
+  };
+};
+
+type GoogleServicesConfig = {
+  client?: GoogleServicesClient[];
+};
+
 const resolveAppEnvironment = (): AppEnvironment => {
   const environment = process.env.ENV ?? process.env.EAS_BUILD_PROFILE;
 
@@ -47,12 +59,59 @@ const resolveIosBundleIdentifier = (environment: AppEnvironment): string => {
   return 'com.apotekecommerce.dev';
 };
 
+const resolveLocalFilePath = (fileName: string): string => path.resolve(process.cwd(), fileName);
+
+const resolveExistingLocalFile = (fileNames: string[]): string | undefined =>
+  fileNames.map(resolveLocalFilePath).find(filePath => fs.existsSync(filePath));
+
+const resolveGoogleServicesJsonPath = (environment: AppEnvironment): string | undefined => {
+  if (process.env.GOOGLE_SERVICES_JSON) {
+    return path.resolve(process.cwd(), process.env.GOOGLE_SERVICES_JSON);
+  }
+
+  const localFileNames: Record<AppEnvironment, string[]> = {
+    development: ['google-services.dev.json', 'google-services.json'],
+    preview: ['google-services.preview.json'],
+    production: ['google-services.prod.json'],
+  };
+
+  return resolveExistingLocalFile(localFileNames[environment]);
+};
+
+const resolveGoogleServicesPlistPath = (environment: AppEnvironment): string | undefined => {
+  if (process.env.GOOGLE_SERVICES_PLIST) {
+    return path.resolve(process.cwd(), process.env.GOOGLE_SERVICES_PLIST);
+  }
+
+  const localFileNames: Record<AppEnvironment, string[]> = {
+    development: ['GoogleService-Info.dev.plist', 'GoogleService-Info.plist'],
+    preview: ['GoogleService-Info.preview.plist'],
+    production: ['GoogleService-Info.prod.plist'],
+  };
+
+  return resolveExistingLocalFile(localFileNames[environment]);
+};
+
 const hasGoogleServicesClient = (filePath: string, androidPackage: string): boolean => {
   if (!fs.existsSync(filePath)) {
     return false;
   }
 
-  return fs.readFileSync(filePath, 'utf8').includes(`"package_name": "${androidPackage}"`);
+  const config = JSON.parse(fs.readFileSync(filePath, 'utf8')) as GoogleServicesConfig;
+
+  return (
+    config.client?.some(
+      client => client.client_info?.android_client_info?.package_name === androidPackage,
+    ) ?? false
+  );
+};
+
+const assertGoogleServicesClient = (filePath: string, androidPackage: string): void => {
+  if (!hasGoogleServicesClient(filePath, androidPackage)) {
+    throw new Error(
+      `Firebase Android config ${filePath} must include package_name "${androidPackage}" for this build profile. Register the matching Firebase Android app and use its google-services.json.`,
+    );
+  }
 };
 
 // Expo CLI only loads .env by default, not .env.dev. When running `npx expo start`
@@ -63,13 +122,14 @@ if (!process.env.EXPO_PROJECT_ID) {
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const expoProjectId = process.env.EXPO_PROJECT_ID;
-  const googleServicesFilePath = path.resolve(process.cwd(), 'google-services.json');
   const appEnvironment = resolveAppEnvironment();
   const androidPackage = resolveAndroidPackage(appEnvironment);
-  const shouldIncludeGoogleServicesFile = hasGoogleServicesClient(
-    googleServicesFilePath,
-    androidPackage,
-  );
+  const googleServicesJsonPath = resolveGoogleServicesJsonPath(appEnvironment);
+  const googleServicesPlistPath = resolveGoogleServicesPlistPath(appEnvironment);
+
+  if (googleServicesJsonPath) {
+    assertGoogleServicesClient(googleServicesJsonPath, androidPackage);
+  }
 
   if (!expoProjectId) {
     throw new Error(
@@ -85,6 +145,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...config.ios,
       bundleIdentifier: resolveIosBundleIdentifier(appEnvironment),
+      ...(googleServicesPlistPath ? { googleServicesFile: googleServicesPlistPath } : {}),
       infoPlist: {
         ...(process.env.ENV !== 'production'
           ? {
@@ -109,7 +170,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...config.android,
       package: androidPackage,
-      ...(shouldIncludeGoogleServicesFile ? { googleServicesFile: './google-services.json' } : {}),
+      ...(googleServicesJsonPath ? { googleServicesFile: googleServicesJsonPath } : {}),
       // Use 'resize' mode for consistent keyboard handling with KeyboardAvoidingView.
       // This allows the container to resize when keyboard appears, enabling
       // bottom action buttons to stay above keyboard.

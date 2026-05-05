@@ -13,6 +13,8 @@ expo-env.d.ts
 /android/*
 !/android/AGENTS.md
 /ios
+google-services.*.json
+GoogleService-Info*.plist
 *.orig.*
 *.jks
 *.keystore
