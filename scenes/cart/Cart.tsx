@@ -145,6 +145,7 @@ export default function Cart() {
   );
 
   const selectedItemCount = activeSelectedCartItemIds.length;
+  const selectedItemSelectionKey = activeSelectedCartItemIds.join('|');
   const allVisibleItemsSelected = items.length > 0 && selectedItemCount === items.length;
   const selectAllCopy = allVisibleItemsSelected ? 'Batalkan semua' : 'Pilih semua';
   const emptySelectionMessage =
@@ -488,7 +489,12 @@ export default function Cart() {
                 {selectedItemCount} produk dipilih
               </Text>
               {emptySelectionMessage ? (
-                <Text color="$warning" fontSize="$2" fontWeight="600">
+                <Text
+                  color="$warning"
+                  fontSize="$2"
+                  fontWeight="600"
+                  role="alert"
+                  aria-live="polite">
                   {emptySelectionMessage}
                 </Text>
               ) : (
@@ -509,6 +515,8 @@ export default function Cart() {
               fontWeight="700"
               pressStyle={{ opacity: 0.85, scale: 0.98 }}
               onPress={handleToggleSelectAll}
+              role="checkbox"
+              aria-checked={allVisibleItemsSelected}
               aria-label={selectAllCopy}>
               {selectAllCopy}
             </Button>
@@ -518,6 +526,7 @@ export default function Cart() {
     ),
     [
       cartActionError,
+      allVisibleItemsSelected,
       emptySelectionMessage,
       error,
       handleCartRefresh,
@@ -628,6 +637,7 @@ export default function Cart() {
             updateCellsBatchingPeriod={50}
             windowSize={5}
             removeClippedSubviews={Platform.OS === 'android'}
+            extraData={selectedItemSelectionKey}
             contentContainerStyle={listContentContainerStyle}
             ListHeaderComponent={listHeaderComponent}
             ListEmptyComponent={listEmptyComponent}
@@ -675,7 +685,12 @@ export default function Cart() {
                   bottom={BOTTOM_BAR_HEIGHT + insets.bottom + 8}
                   justifyContent="center"
                   pointerEvents="none">
-                  <Text fontSize="$2" color="$warning" fontWeight="600">
+                  <Text
+                    fontSize="$2"
+                    color="$warning"
+                    fontWeight="600"
+                    role="alert"
+                    aria-live="polite">
                     Checkout tidak tersedia offline
                   </Text>
                 </XStack>
