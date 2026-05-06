@@ -20,6 +20,24 @@ describe('auth.errors', () => {
     );
   });
 
+  test('maps unmapped auth messages to a safe Indonesian fallback', () => {
+    expect(getAuthErrorMessage({ message: 'Provider unavailable' })).toBe(
+      'Akses akun belum berhasil. Silakan coba lagi.',
+    );
+    expect(getAuthErrorMessage('Unexpected backend error')).toBe(
+      'Akses akun belum berhasil. Silakan coba lagi.',
+    );
+    expect(getAuthErrorMessage('Unexpected backend error', 'Belum berhasil membuat akun.')).toBe(
+      'Belum berhasil membuat akun.',
+    );
+  });
+
+  test('keeps auth lock copy aligned with Masuk terminology', () => {
+    expect(getAuthErrorMessage({ name: 'AuthLockedError' })).toBe(
+      'Sesi masuk sedang berjalan. Coba lagi sebentar.',
+    );
+  });
+
   test('uses a privacy-safe generic success message for forgot password', () => {
     expect(AUTH_FORGOT_PASSWORD_GENERIC_SUCCESS_MESSAGE).toBe(
       'Jika email terdaftar, tautan reset password telah dikirim.',
