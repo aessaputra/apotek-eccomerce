@@ -28,8 +28,8 @@ describe('<QuantitySelector />', () => {
     const onChange = jest.fn();
     render(<QuantitySelector value={2} min={1} max={5} onChange={onChange} />);
 
-    fireEvent.press(screen.getByText('+'));
-    fireEvent.press(screen.getByText('-'));
+    fireEvent.press(screen.getByLabelText('Tambah jumlah, saat ini 2'));
+    fireEvent.press(screen.getByLabelText('Kurangi jumlah, saat ini 2'));
 
     expect(onChange).toHaveBeenCalledWith(3);
     expect(onChange).toHaveBeenCalledWith(1);
@@ -39,8 +39,9 @@ describe('<QuantitySelector />', () => {
     const onChange = jest.fn();
     render(<QuantitySelector value={2} min={1} max={5} onChange={onChange} />);
 
-    fireEvent.press(screen.getByText('2'));
+    fireEvent.press(screen.getByLabelText('Ubah jumlah produk, saat ini 2'));
     const input = screen.getByDisplayValue('2');
+    expect(input.props['aria-label']).toBe('Masukkan jumlah produk');
 
     fireEvent.changeText(input, '9');
     fireEvent(input, 'submitEditing');
@@ -52,7 +53,8 @@ describe('<QuantitySelector />', () => {
     const onChange = jest.fn();
     render(<QuantitySelector value={1} min={1} max={5} onChange={onChange} disabled />);
 
-    fireEvent.press(screen.getByText('+'));
+    expect(screen.getByLabelText('Kurangi jumlah, saat ini 1').props['aria-disabled']).toBe(true);
+    fireEvent.press(screen.getByLabelText('Tambah jumlah, saat ini 1'));
     expect(onChange).not.toHaveBeenCalled();
 
     renderWithDarkTheme(<QuantitySelector value={3} min={1} max={5} onChange={jest.fn()} />);
@@ -65,11 +67,11 @@ describe('<QuantitySelector />', () => {
     );
 
     findAncestorWithStyle(
-      screen.getByText('-'),
+      screen.getByLabelText('Kurangi jumlah, saat ini 12'),
       style => style?.width === 48 && style.height === 48,
     );
     findAncestorWithStyle(
-      screen.getByText('+'),
+      screen.getByLabelText('Tambah jumlah, saat ini 12'),
       style => style?.width === 48 && style.height === 48,
     );
     findAncestorWithStyle(
@@ -80,11 +82,11 @@ describe('<QuantitySelector />', () => {
     rerender(<QuantitySelector value={12} min={1} max={99} onChange={jest.fn()} size="sm" />);
 
     findAncestorWithStyle(
-      screen.getByText('-'),
+      screen.getByLabelText('Kurangi jumlah, saat ini 12'),
       style => style?.width === 48 && style.height === 48,
     );
     findAncestorWithStyle(
-      screen.getByText('+'),
+      screen.getByLabelText('Tambah jumlah, saat ini 12'),
       style => style?.width === 48 && style.height === 48,
     );
     findAncestorWithStyle(

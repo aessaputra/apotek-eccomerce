@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, GetProps, Input, Text, XStack, styled } from 'tamagui';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 
 const QuantityContainer = styled(XStack, {
   alignItems: 'center',
@@ -12,8 +13,8 @@ const QuantityContainer = styled(XStack, {
 });
 
 const QuantityButton = styled(Button, {
-  width: 24,
-  height: 24,
+  width: MIN_TOUCH_TARGET,
+  height: MIN_TOUCH_TARGET,
   borderRadius: '$10',
   borderWidth: 1,
   borderColor: '$surfaceBorder',
@@ -95,6 +96,9 @@ function QuantitySelector({
 
   const canDecrease = !disabled && nextValue > lowerBound;
   const canIncrease = !disabled && nextValue < upperBound;
+  const decreaseLabel = `Kurangi jumlah, saat ini ${nextValue}`;
+  const increaseLabel = `Tambah jumlah, saat ini ${nextValue}`;
+  const valueLabel = `Ubah jumlah produk, saat ini ${nextValue}`;
 
   const handleDecrease = useCallback(() => {
     if (!canDecrease) return;
@@ -140,7 +144,10 @@ function QuantitySelector({
         width={metrics.buttonSize}
         height={metrics.buttonSize}
         onPress={handleDecrease}
-        disabled={!canDecrease}>
+        disabled={!canDecrease}
+        role="button"
+        aria-label={decreaseLabel}
+        aria-disabled={!canDecrease}>
         <Text
           fontSize={metrics.buttonFontSize}
           lineHeight={metrics.buttonLineHeight}
@@ -173,13 +180,21 @@ function QuantitySelector({
           textAlign="center"
           paddingHorizontal={0}
           paddingVertical={0}
+          role="spinbutton"
+          aria-label="Masukkan jumlah produk"
+          aria-valuemin={lowerBound}
+          aria-valuemax={upperBound}
+          aria-valuenow={nextValue}
         />
       ) : (
         <QuantityValueCard
           minWidth={metrics.valueMinWidth}
           height={metrics.valueHeight}
           paddingHorizontal={size === 'sm' ? '$1.5' : '$2'}
-          onPress={handleStartEditing}>
+          onPress={handleStartEditing}
+          role="button"
+          aria-label={valueLabel}
+          aria-disabled={disabled}>
           <Text fontSize={metrics.valueFontSize} color="$color" fontWeight="700">
             {nextValue}
           </Text>
@@ -190,7 +205,10 @@ function QuantitySelector({
         width={metrics.buttonSize}
         height={metrics.buttonSize}
         onPress={handleIncrease}
-        disabled={!canIncrease}>
+        disabled={!canIncrease}
+        role="button"
+        aria-label={increaseLabel}
+        aria-disabled={!canIncrease}>
         <Text
           fontSize={metrics.buttonFontSize}
           lineHeight={metrics.buttonLineHeight}
