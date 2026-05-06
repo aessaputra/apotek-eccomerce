@@ -1,4 +1,5 @@
-import { useCallback, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { Alert, Platform, type AlertButton } from 'react-native';
 import { AlertDialog, Button, YStack } from 'tamagui';
 
 export interface AppAlertDialogProps {
@@ -21,6 +22,9 @@ export interface AppAlertDialogProps {
   icon?: ReactNode;
   /** When true, visually hides the title but keeps it for accessibility */
   hideTitle?: boolean;
+  /** Force native platform alert (true) or Tamagui-rendered dialog (false).
+   *  Defaults to native on iOS/Android and non-native on web/tests. */
+  native?: boolean;
 }
 
 export default function AppAlertDialog({
@@ -41,9 +45,13 @@ export default function AppAlertDialog({
   cancelLabel,
   icon,
   hideTitle = false,
+  native: nativeProp,
 }: AppAlertDialogProps) {
   const resolvedConfirmText = confirmLabel ?? confirmText ?? 'OK';
   const resolvedCancelText = cancelLabel ?? cancelText;
+  const isTestEnvironment = process.env.NODE_ENV === 'test';
+  const resolvedNative = nativeProp ?? (Platform.OS !== 'web' && !isTestEnvironment);
+  const hasShownRef = useRef(false);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -54,20 +62,61 @@ export default function AppAlertDialog({
     [onOpenChange, open],
   );
 
-  const handleConfirm = () => {
+  const handleConfirm = useCallback(() => {
     onConfirm?.();
-  };
+    handleOpenChange(false);
+  }, [onConfirm, handleOpenChange]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     onCancel?.();
-  };
+    handleOpenChange(false);
+  }, [onCancel, handleOpenChange]);
 
-  if (!open) {
+  useEffect(() => {
+    if (!resolvedNative) return;
+
+    if (open && !hasShownRef.current) {
+      hasShownRef.current = true;
+
+      const buttons: AlertButton[] = [
+        {
+          text: resolvedConfirmText,
+          onPress: handleConfirm,
+          style: 'default',
+        },
+      ];
+
+      if (resolvedCancelText) {
+        buttons.unshift({
+          text: resolvedCancelText,
+          onPress: handleCancel,
+          style: 'cancel',
+        });
+      }
+
+      Alert.alert(title, description, buttons, { cancelable: false });
+    }
+
+    if (!open) {
+      hasShownRef.current = false;
+    }
+  }, [
+    resolvedNative,
+    open,
+    title,
+    description,
+    resolvedConfirmText,
+    resolvedCancelText,
+    handleConfirm,
+    handleCancel,
+  ]);
+
+  if (!open || resolvedNative) {
     return null;
   }
 
   return (
-    <AlertDialog modal native={false} open={open} onOpenChange={handleOpenChange}>
+    <AlertDialog modal open={open} onOpenChange={handleOpenChange}>
       <AlertDialog.Portal>
         <AlertDialog.Overlay
           key="overlay"
