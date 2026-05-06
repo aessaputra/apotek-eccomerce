@@ -15,11 +15,9 @@ describe('<OAuthButton />', () => {
     expect(button).not.toBeNull();
   });
 
-  test('shows loading spinner when isLoading is true', async () => {
+  test('shows a specific loading label when isLoading is true', async () => {
     render(<OAuthButton provider="google" isLoading />);
-    // Saat loading, text seharusnya tidak muncul (diganti spinner)
-    const text = screen.queryByText(/Google/i);
-    expect(text).toBeNull();
+    expect(screen.getByText('Membuka Google...')).not.toBeNull();
   });
 
   test('calls onPress handler when pressed', async () => {
@@ -33,14 +31,14 @@ describe('<OAuthButton />', () => {
   test('does not call onPress when loading', async () => {
     const onPressMock = jest.fn();
     render(<OAuthButton provider="google" onPress={onPressMock} isLoading />);
-    const button = screen.getByLabelText('Masuk dengan Google');
+    const button = screen.getByLabelText('Membuka Google...');
     fireEvent.press(button);
     expect(onPressMock).not.toHaveBeenCalled();
   });
 
   test('applies correct opacity when loading', async () => {
     render(<OAuthButton provider="google" isLoading />);
-    const button = screen.getByLabelText('Masuk dengan Google');
+    const button = screen.getByLabelText('Membuka Google...');
     // Verify opacity is reduced when loading (should be < 1)
     const flatStyle = Array.isArray(button.props.style)
       ? Object.assign({}, ...button.props.style)
@@ -76,7 +74,7 @@ describe('<OAuthButton />', () => {
 
   test('sets disabled accessibility state when loading', async () => {
     render(<OAuthButton provider="google" isLoading />);
-    const button = screen.getByLabelText('Masuk dengan Google');
-    expect(button.props.accessibilityState).toEqual({ disabled: true });
+    const button = screen.getByLabelText('Membuka Google...');
+    expect(button.props.accessibilityState).toEqual({ disabled: true, busy: true });
   });
 });
