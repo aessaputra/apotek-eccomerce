@@ -185,25 +185,34 @@ export const CartItemRow = memo(function CartItemRow({
             ) : null}
           </YStack>
 
-          <YStack flex={1} minWidth={0} gap="$2.5" justifyContent="space-between">
-            <XStack alignItems="flex-start" gap="$2.5">
-              <YStack flex={1} minWidth={0} paddingTop="$0.5" gap="$0.5">
-                <Text
-                  fontSize="$3"
-                  fontWeight="700"
-                  color="$color"
-                  lineHeight={21}
-                  numberOfLines={2}
-                  ellipsizeMode="tail"
-                  flexShrink={1}>
-                  {item.product.name}
-                </Text>
-              </YStack>
+          <XStack flex={1} minWidth={0} gap="$2.5" justifyContent="space-between">
+            <YStack flex={1} minWidth={0} paddingTop="$0.5" gap="$0.5">
+              <Text
+                fontSize="$3"
+                fontWeight="700"
+                color="$color"
+                lineHeight={21}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+                flexShrink={1}>
+                {item.product.name}
+              </Text>
+              <Text
+                fontSize="$3"
+                fontWeight="700"
+                color="$primary"
+                lineHeight={20}
+                letterSpacing={-0.1}
+                numberOfLines={1}
+                ellipsizeMode="tail">
+                {formatPrice(unitPrice)}
+              </Text>
+            </YStack>
 
+            <YStack flexShrink={0} alignItems="flex-end" justifyContent="space-between">
               <XStack
                 width={MIN_TOUCH_TARGET}
                 height={MIN_TOUCH_TARGET}
-                marginTop="$0.5"
                 flexShrink={0}
                 alignItems="center"
                 justifyContent="center"
@@ -228,25 +237,6 @@ export const CartItemRow = memo(function CartItemRow({
                   ) : null}
                 </XStack>
               </XStack>
-            </XStack>
-
-            <XStack
-              justifyContent="space-between"
-              alignItems="center"
-              gap="$2"
-              flexWrap="wrap-reverse">
-              <YStack minWidth={112} flex={1} justifyContent="center">
-                <Text
-                  fontSize="$3"
-                  fontWeight="700"
-                  color="$primary"
-                  lineHeight={21}
-                  letterSpacing={-0.1}
-                  numberOfLines={1}
-                  ellipsizeMode="tail">
-                  {formatPrice(unitPrice)}
-                </Text>
-              </YStack>
 
               <QuantitySelector
                 value={item.quantity}
@@ -256,8 +246,8 @@ export const CartItemRow = memo(function CartItemRow({
                 size="sm"
                 disableAnimation
               />
-            </XStack>
-          </YStack>
+            </YStack>
+          </XStack>
         </XStack>
       </Swipeable>
 
