@@ -2,13 +2,20 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Toast, ToastProvider, ToastViewport, useToastState } from '@tamagui/toast';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { Provider as ReduxProvider } from 'react-redux';
 import { TamaguiProvider } from 'tamagui';
+import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { themes } from '@/themes';
 import store from '@/utils/store';
 import tamaguiConfig from '@/tamagui.config';
 import 'react-native-reanimated';
+
+const TOAST_BOTTOM_GAP = 16;
 
 const BrandNavigationTheme = {
   ...DefaultTheme,
@@ -52,6 +59,7 @@ function CurrentToast() {
       exitStyle={{ opacity: 0, y: 12, scale: 0.96 }}
       opacity={1}
       scale={1}
+      type={currentToast.type ?? 'foreground'}
       y={0}
       viewportName={currentToast.viewportName}
       backgroundColor="$surface"
@@ -77,6 +85,20 @@ function CurrentToast() {
   );
 }
 
+function AppToastViewport() {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <ToastViewport
+      bottom={TAB_BAR_HEIGHT + insets.bottom + TOAST_BOTTOM_GAP}
+      label="Notifikasi aplikasi ({hotkey})"
+      left="$4"
+      portalToRoot
+      right="$4"
+    />
+  );
+}
+
 export default function Provider({ children }: Readonly<{ children: React.ReactNode }>) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -91,7 +113,7 @@ export default function Provider({ children }: Readonly<{ children: React.ReactN
                 {children}
               </ThemeProvider>
               <CurrentToast />
-              <ToastViewport bottom="$7" left="$4" right="$4" />
+              <AppToastViewport />
             </ToastProvider>
           </TamaguiProvider>
         </ReduxProvider>
