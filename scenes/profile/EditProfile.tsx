@@ -36,6 +36,9 @@ const FormContent = styled(YStack, {
   flexGrow: 1,
 });
 
+const NAME_HELPER_TEXT = 'Isi nama lengkap sesuai identitas akun, 2-100 karakter.';
+const PHONE_HELPER_TEXT = 'Gunakan nomor aktif untuk konfirmasi pesanan, 8-15 digit.';
+
 export default function EditProfile() {
   const router = useRouter();
   const headerHeight = useHeaderHeight();
@@ -233,6 +236,12 @@ export default function EditProfile() {
                   editable={true}
                   onUpload={handleAvatarUpload}
                   uploading={uploadingAvatar}
+                  accessibilityLabel="Ubah foto profil"
+                  accessibilityHint={
+                    uploadingAvatar
+                      ? 'Foto profil sedang diunggah.'
+                      : 'Ketuk untuk memilih foto profil baru dari galeri.'
+                  }
                 />
               </YStack>
 
@@ -274,7 +283,7 @@ export default function EditProfile() {
                             setError(null);
                           }
                         }}
-                        onBlur={() => setFullNameError(validateName(fullName))}
+                        onBlur={() => setFullNameError(validateName(fullName.trimEnd()))}
                         autoCapitalize="words"
                         autoCorrect={false}
                         placeholder="Nama lengkap"
@@ -282,11 +291,11 @@ export default function EditProfile() {
                         blurOnSubmit={false}
                         onSubmitEditing={() => phoneInputRef.current?.focus()}
                         aria-label="Input nama lengkap"
-                        aria-describedby="Wajib diisi, gunakan 2-100 karakter"
+                        aria-describedby={NAME_HELPER_TEXT}
                         error={fullNameError}
                       />
                       <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
-                        Gunakan 2-100 karakter.
+                        {NAME_HELPER_TEXT}
                       </Text>
                     </YStack>
 
@@ -305,18 +314,18 @@ export default function EditProfile() {
                             setError(null);
                           }
                         }}
-                        onBlur={() => setPhoneNumberError(validatePhone(phoneNumber))}
+                        onBlur={() => setPhoneNumberError(validatePhone(phoneNumber.trim()))}
                         autoCapitalize="none"
                         keyboardType="phone-pad"
                         placeholder="08xx xxxx xxxx"
                         returnKeyType="done"
                         onSubmitEditing={handleSaveProfile}
                         aria-label="Input nomor telepon"
-                        aria-describedby="Wajib diisi, 8-15 digit angka"
+                        aria-describedby={PHONE_HELPER_TEXT}
                         error={phoneNumberError}
                       />
                       <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
-                        Wajib diisi, 8-15 digit angka.
+                        {PHONE_HELPER_TEXT}
                       </Text>
                     </YStack>
 

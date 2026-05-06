@@ -70,17 +70,23 @@ jest.mock('@/components/elements/Avatar', () => {
     name,
     onUpload,
     uploading,
+    accessibilityLabel,
+    accessibilityHint,
   }: {
     name: string;
     onUpload?: (uri: string) => Promise<void>;
     uploading?: boolean;
+    accessibilityLabel?: string;
+    accessibilityHint?: string;
   }) {
     return (
       <View>
         <Text>{`Avatar ${name}`}</Text>
         <Text>{uploading ? 'Avatar uploading' : 'Avatar idle'}</Text>
         <Pressable
-          accessibilityLabel="Upload avatar"
+          accessibilityLabel={accessibilityLabel ?? 'Upload avatar'}
+          accessibilityHint={accessibilityHint}
+          accessibilityState={{ disabled: Boolean(uploading), busy: Boolean(uploading) }}
           onPress={() => onUpload?.('file:///avatar.jpg')}>
           <Text>Upload Avatar</Text>
         </Pressable>
@@ -212,8 +218,12 @@ describe('<EditProfile />', () => {
   it('saves valid profile edits and dispatches the updated user', async () => {
     render(<EditProfile />);
 
-    expect(screen.getByText('Gunakan 2-100 karakter.')).not.toBeNull();
-    expect(screen.getByText('Wajib diisi, 8-15 digit angka.')).not.toBeNull();
+    expect(
+      screen.getByText('Isi nama lengkap sesuai identitas akun, 2-100 karakter.'),
+    ).not.toBeNull();
+    expect(
+      screen.getByText('Gunakan nomor aktif untuk konfirmasi pesanan, 8-15 digit.'),
+    ).not.toBeNull();
 
     fireEvent.changeText(screen.getByLabelText('Input nama lengkap'), 'Siti Updated');
     fireEvent.changeText(screen.getByLabelText('Input nomor telepon'), '089876543210');
@@ -265,7 +275,7 @@ describe('<EditProfile />', () => {
     });
     render(<EditProfile />);
 
-    fireEvent.press(screen.getByLabelText('Upload avatar'));
+    fireEvent.press(screen.getByLabelText('Ubah foto profil'));
 
     await waitFor(() => {
       expect(mockUploadAvatar).toHaveBeenCalledWith('user-1', 'file:///avatar.jpg');
@@ -283,7 +293,7 @@ describe('<EditProfile />', () => {
     mockUploadAvatar.mockResolvedValueOnce({ url: null, error: null });
     render(<EditProfile />);
 
-    fireEvent.press(screen.getByLabelText('Upload avatar'));
+    fireEvent.press(screen.getByLabelText('Ubah foto profil'));
 
     expect(await screen.findByText('Gagal mengupload avatar')).not.toBeNull();
   });
@@ -295,7 +305,7 @@ describe('<EditProfile />', () => {
     });
     render(<EditProfile />);
 
-    fireEvent.press(screen.getByLabelText('Upload avatar'));
+    fireEvent.press(screen.getByLabelText('Ubah foto profil'));
 
     expect(await screen.findByText('Avatar gagal disimpan')).not.toBeNull();
   });
