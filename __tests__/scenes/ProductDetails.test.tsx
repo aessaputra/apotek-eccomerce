@@ -38,6 +38,29 @@ jest.mock('@/services/cart.service', () => ({
   addProductToCart: (...args: unknown[]) => mockAddProductToCart(...args),
 }));
 
+jest.mock('@/components/elements/AppAlertDialog', () => {
+  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
+
+  return {
+    __esModule: true,
+    default: ({
+      open,
+      title,
+      description,
+    }: {
+      open: boolean;
+      title: string;
+      description: string;
+    }) =>
+      open ? (
+        <>
+          <Text>{title}</Text>
+          <Text>{description}</Text>
+        </>
+      ) : null,
+  };
+});
+
 jest.mock('@/components/elements/QuantitySelector', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
 
@@ -135,6 +158,14 @@ describe('<ProductDetails />', () => {
     expect(screen.getByTestId('product-category-label').props.children).toBe('Pain Relief');
   });
 
+  it('shows error state when product fetch throws', async () => {
+    mockGetProductDetailsById.mockRejectedValue(new Error('Network error'));
+
+    render(<ProductDetails />);
+
+    expect(await screen.findByText('Gagal memuat detail produk. Silakan coba lagi.')).toBeTruthy();
+  });
+
   it('shows a success dialog and stays on the product detail scene after adding to cart', async () => {
     mockAddProductToCart.mockResolvedValue({ error: null });
 
@@ -175,5 +206,44 @@ describe('<ProductDetails />', () => {
     expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
     expect(screen.queryByText('Produk berhasil ditambahkan ke keranjang (1 item).')).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('labels the favorite button with its action and selected state', async () => {
+    render(<ProductDetails />);
+
+    const favoriteButton = await screen.findByLabelText('Tambah ke favorit');
+    expect(favoriteButton.props.accessibilityRole).toBe('button');
+    expect(favoriteButton.props.accessibilityState?.selected).toBe(false);
+  });
+
+  it('announces sheet header as a header for accessibility', async () => {
+    render(<ProductDetails />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tambah Keranjang')).not.toBeNull();
+    });
+
+    fireEvent.press(screen.getByText('Tambah Keranjang'));
+
+    const sheetHeader = await screen.findByText('Tambah ke Keranjang');
+    expect(sheetHeader.props.accessibilityRole).toBe('header');
+  });
+
+  it('marks action feedback with an assertive live region', async () => {
+    mockAddProductToCart.mockResolvedValue({
+      error: new Error('Stok habis.'),
+    });
+
+    render(<ProductDetails />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tambah Keranjang')).not.toBeNull();
+    });
+
+    fireEvent.press(screen.getByText('Tambah Keranjang'));
+    fireEvent.press(await screen.findByLabelText('Konfirmasi tambah ke keranjang'));
+
+    const feedback = await screen.findByText('Stok habis.');
+    expect(feedback.props.accessibilityLiveRegion).toBe('assertive');
   });
 });
