@@ -125,22 +125,35 @@ describe('<ProductCardSkeleton />', () => {
 
   test('renders with custom count', async () => {
     render(<ProductCardSkeleton width={150} count={5} />);
-    const items = screen.getAllByTestId('product-skeleton-item');
+    const items = screen.getAllByTestId('product-skeleton-item', { includeHiddenElements: true });
 
     expect(items).toHaveLength(5);
   });
 
   test('renders default 3 items when count not specified', async () => {
     render(<ProductCardSkeleton width={150} />);
-    const items = screen.getAllByTestId('product-skeleton-item');
+    const items = screen.getAllByTestId('product-skeleton-item', { includeHiddenElements: true });
 
     expect(items).toHaveLength(3);
   });
 
   test('renders correct count for mobile layout', async () => {
     render(<ProductCardSkeleton width={150} count={2} />);
-    const items = screen.getAllByTestId('product-skeleton-item');
+    const items = screen.getAllByTestId('product-skeleton-item', { includeHiddenElements: true });
 
     expect(items).toHaveLength(2);
+  });
+
+  test('hides skeleton cards and preserves the final add-button rhythm', async () => {
+    render(<ProductCardSkeleton width={150} count={1} />);
+    const item = screen.getByTestId('product-skeleton-item', { includeHiddenElements: true });
+    const button = screen.getByTestId('product-skeleton-button', { includeHiddenElements: true });
+
+    expect(item.props.accessible).toBe(false);
+    expect(item.props.accessibilityElementsHidden).toBe(true);
+    expect(item.props.importantForAccessibility).toBe('no-hide-descendants');
+    expect(item.props['aria-hidden']).toBe(true);
+
+    expect(button).toBeTruthy();
   });
 });

@@ -37,7 +37,12 @@ const SkeletonCard = memo(function SkeletonCard({ width }: { width: number }) {
       backgroundColor="$surface"
       borderWidth={1}
       borderColor="$surfaceBorder"
-      borderRadius="$4">
+      borderRadius="$5"
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      aria-hidden={true}
+      pointerEvents="none">
       <YStack width="100%" height={120} alignItems="center" justifyContent="center">
         <YStack
           height="100%"
@@ -47,8 +52,20 @@ const SkeletonCard = memo(function SkeletonCard({ width }: { width: number }) {
           backgroundColor="$surfaceBorder"
         />
       </YStack>
-      <YStack width="80%" height={16} borderRadius="$2" backgroundColor="$surfaceBorder" />
-      <YStack width="50%" height={12} borderRadius="$2" backgroundColor="$surfaceBorder" />
+      <YStack height={36} flexShrink={0} justifyContent="flex-start" gap="$1.5">
+        <YStack width="88%" height={14} borderRadius="$2" backgroundColor="$surfaceBorder" />
+        <YStack width="64%" height={14} borderRadius="$2" backgroundColor="$surfaceBorder" />
+      </YStack>
+      <XStack alignItems="center" justifyContent="space-between" gap="$2">
+        <YStack flex={1} height={12} borderRadius="$2" backgroundColor="$surfaceBorder" />
+        <YStack
+          testID="product-skeleton-button"
+          width={MIN_TOUCH_TARGET}
+          height={MIN_TOUCH_TARGET}
+          borderRadius="$8"
+          backgroundColor="$surfaceBorder"
+        />
+      </XStack>
     </Card>
   );
 });
@@ -58,7 +75,7 @@ export const ProductCardSkeleton = memo(function ProductCardSkeleton({
   count = 3,
 }: ProductCardSkeletonProps) {
   return (
-    <XStack gap="$2.5" pr="$2">
+    <XStack gap="$2.5">
       {Array.from({ length: count }, (_, i) => i + 1).map(i => (
         <SkeletonCard key={i} width={width} />
       ))}
