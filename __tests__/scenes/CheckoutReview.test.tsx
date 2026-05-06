@@ -198,7 +198,7 @@ describe('<CheckoutReview />', () => {
     render(<CheckoutReview />);
 
     expect(
-      screen.getByText('Tinjau Kembali detail pesanan Anda sebelum Melanjutkan pembayaran'),
+      screen.getByText('Tinjau kembali detail pesanan Anda sebelum melanjutkan pembayaran.'),
     ).toBeTruthy();
   });
 
