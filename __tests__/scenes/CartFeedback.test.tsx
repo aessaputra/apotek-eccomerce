@@ -49,9 +49,8 @@ describe('<CartFeedback />', () => {
     expect(screen.getByText('Gagal mengambil keranjang')).toBeTruthy();
     expect(screen.getByText('Gagal memperbarui jumlah')).toBeTruthy();
 
-    const retryButtons = screen.getAllByLabelText('Muat ulang keranjang');
-    fireEvent.press(retryButtons[0]!);
-    fireEvent.press(retryButtons[1]!);
+    fireEvent.press(screen.getByLabelText('Muat ulang keranjang'));
+    fireEvent.press(screen.getByLabelText('Tutup pesan gagal memperbarui keranjang'));
 
     expect(onRetryFetch).toHaveBeenCalledTimes(1);
     expect(onDismissCartActionError).toHaveBeenCalledTimes(1);
