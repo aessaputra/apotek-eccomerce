@@ -19,6 +19,10 @@ export interface AvatarProps {
   editable?: boolean;
   /** Loading state untuk upload */
   uploading?: boolean;
+  /** Accessibility label when the avatar is editable */
+  accessibilityLabel?: string;
+  /** Accessibility hint when the avatar is editable */
+  accessibilityHint?: string;
 }
 
 /**
@@ -32,6 +36,8 @@ export default function Avatar({
   onUpload,
   editable = false,
   uploading = false,
+  accessibilityLabel,
+  accessibilityHint,
 }: AvatarProps) {
   const theme = useTheme();
   const [localUri, setLocalUri] = useState<string | null>(null);
@@ -93,13 +99,29 @@ export default function Avatar({
 
   const displayUri = localUri || avatarUrl;
   const showInitials = !displayUri;
+  const disabled = !editable || uploading;
+  const avatarAccessibilityLabel = accessibilityLabel ?? `Foto profil ${name}`;
+  const avatarAccessibilityHint =
+    accessibilityHint ??
+    (editable
+      ? uploading
+        ? 'Foto profil sedang diunggah.'
+        : 'Ketuk untuk memilih foto profil baru dari galeri.'
+      : undefined);
 
   return (
     <YStack alignSelf="center">
       <TouchableOpacity
         onPress={editable ? handleImagePick : undefined}
-        disabled={!editable || uploading}
-        activeOpacity={editable ? 0.8 : 1}>
+        disabled={disabled}
+        activeOpacity={editable ? 0.8 : 1}
+        accessible
+        accessibilityRole={editable ? 'button' : 'image'}
+        accessibilityLabel={avatarAccessibilityLabel}
+        accessibilityHint={avatarAccessibilityHint}
+        accessibilityState={editable ? { disabled, busy: uploading } : undefined}
+        aria-label={avatarAccessibilityLabel}
+        aria-disabled={editable ? disabled : undefined}>
         <YStack
           width={size}
           height={size}
@@ -161,7 +183,7 @@ export default function Avatar({
               borderColor={bgColor}>
               {uploading ? (
                 <Text fontSize={size * 0.2} color={bgColor}>
-                  ...
+                  Mengunggah
                 </Text>
               ) : (
                 <Text fontSize={size * 0.2} color={bgColor}>
