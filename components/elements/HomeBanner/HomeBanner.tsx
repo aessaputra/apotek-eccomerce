@@ -100,8 +100,24 @@ export const HomeBannerSkeleton = memo(function HomeBannerSkeleton({
 }: HomeBannerSkeletonProps) {
   const aspectRatio = getAspectRatio(placement);
   return (
-    <BannerContainer testID="home-banner-skeleton" aspectRatio={aspectRatio}>
-      <YStack flex={1} backgroundColor="$surface" justifyContent="flex-end" padding="$3.5" gap="$2">
+    <BannerContainer
+      testID="home-banner-skeleton"
+      aspectRatio={aspectRatio}
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      aria-hidden={true}>
+      <YStack
+        flex={1}
+        backgroundColor="$surface"
+        justifyContent="flex-end"
+        padding="$3.5"
+        gap="$2"
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        aria-hidden={true}
+        pointerEvents="none">
         {showIllustration ? (
           <SkeletonBlock width="100%" height="100%" position="absolute" top={0} left={0} />
         ) : null}

@@ -303,13 +303,21 @@ describe('<HomeBanner />', () => {
     test('renders skeleton state', async () => {
       render(<HomeBannerSkeleton />);
 
-      expect(screen.getByTestId('home-banner-skeleton')).toBeTruthy();
+      const skeleton = screen.getByTestId('home-banner-skeleton', { includeHiddenElements: true });
+
+      expect(skeleton).toBeTruthy();
+      expect(skeleton.props.accessible).toBe(false);
+      expect(skeleton.props.accessibilityElementsHidden).toBe(true);
+      expect(skeleton.props.importantForAccessibility).toBe('no-hide-descendants');
+      expect(skeleton.props['aria-hidden']).toBe(true);
     });
 
     test('renders skeleton without illustration placeholder', async () => {
       render(<HomeBannerSkeleton showIllustration={false} />);
 
-      expect(screen.getByTestId('home-banner-skeleton')).toBeTruthy();
+      expect(
+        screen.getByTestId('home-banner-skeleton', { includeHiddenElements: true }),
+      ).toBeTruthy();
     });
   });
 });
