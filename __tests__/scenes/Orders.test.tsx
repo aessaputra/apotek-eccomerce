@@ -1,12 +1,13 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
-import { act, fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
+import { act, render, waitFor } from '@/test-utils/renderWithTheme';
 import OrdersDefault, { AllOrders as AllOrdersExport } from '@/scenes/orders';
 import AllOrdersScene from '@/scenes/orders/AllOrders';
 import type { UseOrdersLandingDataReturn } from '@/hooks/useOrdersLandingData';
 import type { PastPurchaseProduct } from '@/services';
 
 const mockPush = jest.fn();
+const mockToastShow = jest.fn();
 const mockAddProductToCart = jest.fn();
 const mockOrderStatusTabs = jest.fn();
 const mockBuyAgainCarousel = jest.fn();
@@ -80,6 +81,12 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+jest.mock('@tamagui/toast', () => ({
+  useToastController: () => ({
+    show: mockToastShow,
+  }),
+}));
+
 jest.mock('@/services', () => ({
   addProductToCart: (...args: unknown[]) => mockAddProductToCart(...args),
 }));
@@ -107,6 +114,7 @@ jest.mock('@/components/elements/BuyAgainCarousel', () => ({
 describe('<Orders />', () => {
   beforeEach(() => {
     mockPush.mockReset();
+    mockToastShow.mockClear();
     mockAddProductToCart.mockReset();
     mockOrderStatusTabs.mockClear();
     mockBuyAgainCarousel.mockClear();
@@ -270,7 +278,7 @@ describe('<Orders />', () => {
     expect(buyAgainCarouselProps.products).toEqual([firstProduct, secondProduct]);
   });
 
-  test('shows a success dialog after buy again adds a product to cart', async () => {
+  test('shows a success toast after buy again adds a product to cart', async () => {
     const product = createPastProduct();
 
     mockUseOrdersLandingData.mockReturnValue({
@@ -300,16 +308,86 @@ describe('<Orders />', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Vitamin C berhasil ditambahkan ke keranjang')).toBeTruthy();
+      expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+        message: 'Vitamin C sudah ada di keranjang.',
+        type: 'background',
+      });
     });
 
     expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
+  });
 
-    fireEvent.press(screen.getByText('OK'));
+  test('shows a fallback toast when buy again add-to-cart fails', async () => {
+    const product = createPastProduct();
+
+    mockUseOrdersLandingData.mockReturnValue({
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0, cancelled: 0 },
+      pastProducts: [product],
+      isLoadingCounts: false,
+      isLoadingPastProducts: false,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(() => Promise.resolve()),
+    });
+    mockUseAppSlice.mockReturnValue({
+      user: { id: 'user-1' },
+    });
+    mockAddProductToCart.mockResolvedValue({ error: new Error('Supabase timeout') });
+
+    render(<OrdersDefault />);
 
     await waitFor(() => {
-      expect(screen.queryByText('Vitamin C berhasil ditambahkan ke keranjang')).toBeNull();
+      expect(mockBuyAgainCarousel).toHaveBeenCalled();
     });
+
+    const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
+
+    await act(async () => {
+      await buyAgainCarouselProps.onAddToCart(product);
+    });
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        'Koneksi bermasalah. Periksa internet Anda lalu coba lagi.',
+        { type: 'foreground' },
+      );
+    });
+  });
+
+  test('shows a login toast before buy again adds products for guests', async () => {
+    const product = createPastProduct();
+
+    mockUseOrdersLandingData.mockReturnValue({
+      counts: { unpaid: 0, packing: 0, shipped: 0, completed: 0, cancelled: 0 },
+      pastProducts: [product],
+      isLoadingCounts: false,
+      isLoadingPastProducts: false,
+      isRefreshing: false,
+      error: null,
+      refresh: jest.fn(() => Promise.resolve()),
+    });
+    mockUseAppSlice.mockReturnValue({ user: null });
+
+    render(<OrdersDefault />);
+
+    await waitFor(() => {
+      expect(mockBuyAgainCarousel).toHaveBeenCalled();
+    });
+
+    const buyAgainCarouselProps = getLatestBuyAgainCarouselProps();
+
+    await act(async () => {
+      await buyAgainCarouselProps.onAddToCart(product);
+    });
+
+    expect(mockAddProductToCart).not.toHaveBeenCalled();
+    expect(mockToastShow).toHaveBeenCalledWith(
+      'Silakan masuk untuk menambahkan produk ke keranjang.',
+      {
+        message: 'Masuk diperlukan agar keranjang Anda tersimpan.',
+        type: 'foreground',
+      },
+    );
   });
 
   test('navigates buy again product presses to product details with the product id', async () => {
