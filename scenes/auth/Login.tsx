@@ -84,7 +84,7 @@ export default function Login() {
                   Masuk
                 </Text>
                 <Text fontSize={15} color="$colorHover" lineHeight={22}>
-                  Gunakan akun Anda untuk mengakses layanan kesehatan dan belanja obat dengan aman.
+                  Lanjutkan belanja kebutuhan kesehatan Anda.
                 </Text>
               </YStack>
 
@@ -116,11 +116,14 @@ export default function Login() {
 
                 <YStack gap="$4">
                   {/* Email Input dengan enhanced focus states */}
-                  <YStack gap="$1.5">
+                  <YStack gap="$2">
+                    <Text fontSize={14} fontWeight="600" color="$color" letterSpacing={0.2}>
+                      Email
+                    </Text>
                     <EmailInput
                       value={loginForm.email}
                       onChangeText={loginForm.handleEmailChange}
-                      placeholder="Email"
+                      placeholder="nama@email.com"
                       error={loginForm.emailError}
                       disabled={loginForm.loading}
                       keyboardType="email-address"
@@ -129,11 +132,14 @@ export default function Login() {
                   </YStack>
 
                   {/* Password Input dengan visibility toggle */}
-                  <YStack gap="$1.5">
+                  <YStack gap="$2">
+                    <Text fontSize={14} fontWeight="600" color="$color" letterSpacing={0.2}>
+                      Password
+                    </Text>
                     <PasswordInput
                       value={loginForm.password}
                       onChangeText={loginForm.handlePasswordChange}
-                      placeholder="Password"
+                      placeholder="Masukkan password"
                       error={false}
                       disabled={loginForm.loading}
                     />
@@ -142,14 +148,14 @@ export default function Login() {
                   <XStack justifyContent="flex-end">
                     <Pressable
                       onPress={loginForm.handleForgotPasswordPress}
-                      aria-label="Lupa Password?"
+                      aria-label="Lupa password?"
                       role="button">
                       <Text
                         fontSize={14}
                         fontWeight="700"
                         color="$primary"
                         textDecorationLine="underline">
-                        Lupa Password?
+                        Lupa password?
                       </Text>
                     </Pressable>
                   </XStack>
@@ -280,7 +286,7 @@ function LoginSuccessMessage({ message, onDismiss, successColor }: LoginSuccessM
               onPress={onDismiss}
               backgroundColor="$colorTransparent"
               padding={4}
-              aria-label="Dismiss success"
+              aria-label="Tutup pesan berhasil"
               role="button">
               <CloseIcon size={14} color={successColor} />
             </Button>

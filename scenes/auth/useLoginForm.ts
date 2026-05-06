@@ -16,10 +16,9 @@ import {
 } from './authForm.helpers';
 
 const REQUIRED_LOGIN_FIELDS_MESSAGE = 'Email dan password wajib diisi.';
-const INVALID_EMAIL_MESSAGE = 'Format email tidak valid.';
-const LOGIN_EXCEPTION_MESSAGE = 'Terjadi kesalahan saat login. Silakan coba lagi.';
-const GOOGLE_LOGIN_EXCEPTION_MESSAGE =
-  'Terjadi kesalahan saat login dengan Google. Silakan coba lagi.';
+const INVALID_EMAIL_MESSAGE = 'Masukkan email yang valid, contoh: nama@email.com.';
+const LOGIN_EXCEPTION_MESSAGE = 'Belum berhasil masuk. Silakan coba lagi.';
+const GOOGLE_LOGIN_EXCEPTION_MESSAGE = 'Belum berhasil masuk dengan Google. Silakan coba lagi.';
 
 type LoginRouteSearchParams = {
   resetSuccess?: string | string[];
@@ -143,7 +142,7 @@ export function useLoginForm() {
         return;
       }
 
-      setError(getAuthErrorMessage(signInError));
+      setError(getAuthErrorMessage(signInError, LOGIN_EXCEPTION_MESSAGE));
 
       if (isEmailNotVerifiedError(signInError)) {
         router.push({
@@ -177,7 +176,7 @@ export function useLoginForm() {
         return;
       }
 
-      setError(getAuthErrorMessage(googleError));
+      setError(getAuthErrorMessage(googleError, GOOGLE_LOGIN_EXCEPTION_MESSAGE));
     } catch (thrown: unknown) {
       if (__DEV__) {
         console.log('[Login] handleGoogleLogin exception:', thrown);
