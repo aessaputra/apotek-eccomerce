@@ -1,4 +1,5 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
+import { useToastController } from '@tamagui/toast';
 import { FlatList, Platform, RefreshControl, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -127,10 +128,10 @@ export default function AllProducts() {
   const router = useRouter();
   const media = useMedia();
   const theme = useTheme();
+  const toast = useToastController();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { user } = useAppSlice();
-  const [cartFeedback, setCartFeedback] = useState<string | null>(null);
 
   const {
     products,
@@ -183,22 +184,19 @@ export default function AllProducts() {
   const handleAddToCart = useCallback(
     async (productId: string) => {
       if (!user?.id) {
-        setCartFeedback('Silakan login untuk menambahkan produk ke keranjang.');
-        setTimeout(() => setCartFeedback(null), 3000);
+        toast.show('Silakan login untuk menambahkan produk ke keranjang.');
         return;
       }
 
       const { error: cartError } = await addProductToCart(user.id, productId, 1);
 
       if (cartError) {
-        setCartFeedback(cartError.message || 'Gagal menambahkan produk ke keranjang.');
+        toast.show(cartError.message || 'Gagal menambahkan produk ke keranjang.');
       } else {
-        setCartFeedback('Produk berhasil ditambahkan ke keranjang.');
+        toast.show('Produk berhasil ditambahkan ke keranjang.');
       }
-
-      setTimeout(() => setCartFeedback(null), 3000);
     },
-    [user?.id],
+    [toast, user?.id],
   );
 
   const renderItem = useCallback(
@@ -263,15 +261,7 @@ export default function AllProducts() {
             tintColor={getThemeColor(theme, 'primary')}
           />
         }
-        ListHeaderComponent={
-          <ContentStack pt={topPadding} px={horizontalPadding} pb="$3">
-            {cartFeedback ? (
-              <Text fontSize={13} color="$primary" pt="$2">
-                {cartFeedback}
-              </Text>
-            ) : null}
-          </ContentStack>
-        }
+        ListHeaderComponent={<ContentStack pt={topPadding} px={horizontalPadding} pb="$3" />}
         ListEmptyComponent={
           error ? (
             <ErrorState message={error} />

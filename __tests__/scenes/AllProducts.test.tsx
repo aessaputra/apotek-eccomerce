@@ -1,10 +1,27 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, screen } from '@/test-utils/renderWithTheme';
+import { fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import AllProducts from '@/scenes/AllProducts/AllProducts';
 import type { UseAllProductsPaginatedReturn } from '@/hooks';
 
 const mockPush = jest.fn();
+const mockToastShow = jest.fn();
+const mockAddProductToCart =
+  jest.fn<
+    (userId: string, productId: string, quantity: number) => Promise<{ error: Error | null }>
+  >();
 const mockUseAllProductsPaginated = jest.fn<() => UseAllProductsPaginatedReturn>();
+let mockUser: { id: string; full_name: string; avatar_url: string | null; email: string } | null = {
+  id: 'u1',
+  full_name: 'Test',
+  avatar_url: null,
+  email: 'test@test.com',
+};
+
+jest.mock('@tamagui/toast', () => ({
+  useToastController: () => ({
+    show: mockToastShow,
+  }),
+}));
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -28,23 +45,27 @@ jest.mock('@/hooks', () => ({
   useAllProductsPaginated: () => mockUseAllProductsPaginated(),
 }));
 
+jest.mock('@/services', () => ({
+  addProductToCart: (userId: string, productId: string, quantity: number) =>
+    mockAddProductToCart(userId, productId, quantity),
+}));
+
 jest.mock('@/slices', () => ({
   useAppSlice: () => ({
-    user: {
-      id: 'u1',
-      full_name: 'Test',
-      avatar_url: null,
-      email: 'test@test.com',
-    },
+    user: mockUser,
   }),
 }));
 
 jest.mock('@/components/elements/ProductCard', () => {
-  const { Text } = jest.requireActual('react-native') as typeof import('react-native');
+  const { Pressable, Text } = jest.requireActual('react-native') as typeof import('react-native');
 
   return {
     __esModule: true,
-    default: ({ item }: { item: { name: string } }) => <Text>{item.name}</Text>,
+    default: ({ item, onAddToCart }: { item: { name: string }; onAddToCart: () => void }) => (
+      <Pressable accessibilityRole="button" onPress={onAddToCart}>
+        <Text>{item.name}</Text>
+      </Pressable>
+    ),
   };
 });
 
@@ -80,6 +101,15 @@ function createAllProductsData(): UseAllProductsPaginatedReturn {
 describe('<AllProducts />', () => {
   beforeEach(() => {
     mockPush.mockClear();
+    mockToastShow.mockClear();
+    mockAddProductToCart.mockReset();
+    mockAddProductToCart.mockImplementation(async () => ({ error: null }));
+    mockUser = {
+      id: 'u1',
+      full_name: 'Test',
+      avatar_url: null,
+      email: 'test@test.com',
+    };
     mockUseAllProductsPaginated.mockReset();
     mockUseAllProductsPaginated.mockReturnValue(createAllProductsData());
   });
@@ -114,5 +144,43 @@ describe('<AllProducts />', () => {
 
     expect(screen.getByText('Tidak ada produk')).toBeTruthy();
     expect(screen.getByText('Belum ada produk aktif tersedia.')).toBeTruthy();
+  });
+
+  it('shows a toast after adding a product to the cart', async () => {
+    render(<AllProducts />);
+
+    fireEvent.press(screen.getByText('Paracetamol'));
+
+    await waitFor(() => {
+      expect(mockAddProductToCart).toHaveBeenCalledWith('u1', 'product-1', 1);
+      expect(mockToastShow).toHaveBeenCalledWith('Produk berhasil ditambahkan ke keranjang.');
+    });
+  });
+
+  it('shows a toast when add-to-cart fails', async () => {
+    mockAddProductToCart.mockImplementation(async () => ({
+      error: new Error('Stok produk tidak cukup.'),
+    }));
+
+    render(<AllProducts />);
+
+    fireEvent.press(screen.getByText('Paracetamol'));
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith('Stok produk tidak cukup.');
+    });
+  });
+
+  it('shows a login toast before adding products for guests', () => {
+    mockUser = null;
+
+    render(<AllProducts />);
+
+    fireEvent.press(screen.getByText('Paracetamol'));
+
+    expect(mockAddProductToCart).not.toHaveBeenCalled();
+    expect(mockToastShow).toHaveBeenCalledWith(
+      'Silakan login untuk menambahkan produk ke keranjang.',
+    );
   });
 });
