@@ -131,7 +131,7 @@ export default function Home() {
         ? 6
         : 4
     : 2;
-  const productSkeletonCount = 2;
+  const productSkeletonCount = media.gtLg ? 6 : media.gtMd ? 5 : media.gtSm ? 4 : 3;
 
   const handleOpenCart = () => {
     router.push('/cart');
@@ -341,7 +341,15 @@ export default function Home() {
           </YStack>
 
           {isLoadingBanners && !banners.home_banner_top ? (
-            <HomeBannerSkeleton />
+            <YStack
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel={HOME_COPY.bannerTopLoadingLabel}
+              accessibilityLiveRegion="polite"
+              accessibilityState={{ busy: true }}
+              aria-busy={true}>
+              <HomeBannerSkeleton />
+            </YStack>
           ) : (
             <HomeBanner banner={banners.home_banner_top} onCTAPress={handleBannerCTAPress} />
           )}
@@ -412,7 +420,15 @@ export default function Home() {
           />
 
           {isLoadingBanners && !banners.home_banner_bottom ? (
-            <HomeBannerSkeleton placement="home_banner_bottom" />
+            <YStack
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel={HOME_COPY.bannerBottomLoadingLabel}
+              accessibilityLiveRegion="polite"
+              accessibilityState={{ busy: true }}
+              aria-busy={true}>
+              <HomeBannerSkeleton placement="home_banner_bottom" />
+            </YStack>
           ) : (
             <HomeBanner banner={banners.home_banner_bottom} onCTAPress={handleBannerCTAPress} />
           )}

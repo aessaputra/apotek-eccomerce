@@ -63,8 +63,20 @@ jest.mock('@/components/elements/CategoryItem', () => {
   return {
     __esModule: true,
     default: ({ category }: { category: { name: string } }) => <Text>{category.name}</Text>,
-    CategorySkeleton: ({ count }: { count?: number }) => (
-      <Text>Category Skeleton {count ?? 8}</Text>
+    CategorySkeleton: ({
+      count,
+      gap,
+      layout,
+      width,
+      peekOffset,
+    }: {
+      count?: number;
+      gap?: string;
+      layout?: string;
+      width?: number;
+      peekOffset?: number;
+    }) => (
+      <Text>{`Category Skeleton ${count ?? 8} gap:${gap ?? 'none'} layout:${layout ?? 'none'} width:${width ?? 'none'} peek:${peekOffset ?? 'none'}`}</Text>
     ),
   };
 });
@@ -245,7 +257,11 @@ describe('<Home />', () => {
 
     render(<Home />);
 
-    expect(screen.getAllByTestId('home-banner-skeleton')).toHaveLength(2);
+    expect(
+      screen.getAllByTestId('home-banner-skeleton', { includeHiddenElements: true }),
+    ).toHaveLength(2);
+    expect(screen.getByLabelText('Memuat banner utama')).toBeTruthy();
+    expect(screen.getByLabelText('Memuat banner beranda berikutnya')).toBeTruthy();
   });
 
   it('renders category and product skeletons with viewport-aligned counts while loading', () => {
@@ -259,8 +275,14 @@ describe('<Home />', () => {
 
     render(<Home />);
 
-    expect(screen.getByText('Category Skeleton 2')).toBeTruthy();
-    expect(screen.getByText('Product Skeleton 2')).toBeTruthy();
+    expect(
+      screen.getByText('Category Skeleton 2 gap:$3 layout:scroll width:254 peek:7', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+    expect(screen.getByText('Product Skeleton 3', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByLabelText('Memuat kategori')).toBeTruthy();
+    expect(screen.getByLabelText('Memuat produk terbaru')).toBeTruthy();
   });
 
   it('shows a success dialog after a product is added to cart successfully', async () => {

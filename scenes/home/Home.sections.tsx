@@ -128,7 +128,22 @@ export function HomeCategorySection({
     <YStack gap="$2.5">
       <SectionTitle>{HOME_COPY.categorySectionTitle}</SectionTitle>
       {isLoadingCategories && categories.length === 0 ? (
-        <CategorySkeleton isLargeScreen={isLargeScreen} count={categorySkeletonCount} />
+        <YStack
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={HOME_COPY.categoryLoadingLabel}
+          accessibilityLiveRegion="polite"
+          accessibilityState={{ busy: true }}
+          aria-busy={true}>
+          <CategorySkeleton
+            isLargeScreen={isLargeScreen}
+            count={categorySkeletonCount}
+            gap={categoryGap}
+            layout={categoryLayout}
+            width={isLargeScreen ? undefined : mobileCategoryWidth}
+            peekOffset={categoryPeekOffset}
+          />
+        </YStack>
       ) : error && categories.length === 0 ? (
         <Text fontSize={13} color="$colorSubtle" accessibilityLiveRegion="polite">
           {HOME_COPY.categoryError}
@@ -193,12 +208,20 @@ export function HomeProductSection({
     <YStack gap="$2.5">
       <SectionTitle>{HOME_COPY.productSectionTitle}</SectionTitle>
       {isLoadingProducts && products.length === 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={productScrollContentStyle}>
-          <ProductCardSkeleton width={productWidth} count={productSkeletonCount} />
-        </ScrollView>
+        <YStack
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={HOME_COPY.productLoadingLabel}
+          accessibilityLiveRegion="polite"
+          accessibilityState={{ busy: true }}
+          aria-busy={true}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={productScrollContentStyle}>
+            <ProductCardSkeleton width={productWidth} count={productSkeletonCount} />
+          </ScrollView>
+        </YStack>
       ) : error && products.length === 0 ? (
         <Text fontSize={13} color="$colorSubtle" accessibilityLiveRegion="polite">
           {HOME_COPY.productError}
