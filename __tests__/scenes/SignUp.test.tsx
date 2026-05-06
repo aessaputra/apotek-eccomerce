@@ -39,10 +39,17 @@ describe('<SignUp />', () => {
     }));
   });
 
+  it('shows the clarified register title and subtitle copy', () => {
+    render(<SignUp />);
+
+    expect(screen.getByText('Daftar akun')).toBeTruthy();
+    expect(screen.getByText('Mulai pengalaman belanja kesehatan yang lebih praktis.')).toBeTruthy();
+  });
+
   it('shows the required-field message for an empty form', () => {
     render(<SignUp />);
 
-    fireEvent.press(screen.getByLabelText('Buat Akun'));
+    fireEvent.press(screen.getByLabelText('Buat akun'));
 
     expect(screen.getByText('Email dan password wajib diisi.')).toBeTruthy();
     expect(mockSignUp).not.toHaveBeenCalled();
@@ -53,9 +60,9 @@ describe('<SignUp />', () => {
 
     fireEvent.changeText(screen.getByTestId('email-input'), 'not-an-email');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
-    fireEvent.press(screen.getByLabelText('Buat Akun'));
+    fireEvent.press(screen.getByLabelText('Buat akun'));
 
-    expect(screen.getByText('Format email tidak valid.')).toBeTruthy();
+    expect(screen.getByText('Masukkan email yang valid, contoh: nama@email.com.')).toBeTruthy();
     expect(mockSignUp).not.toHaveBeenCalled();
   });
 
@@ -64,7 +71,7 @@ describe('<SignUp />', () => {
 
     fireEvent.changeText(screen.getByTestId('email-input'), 'user@example.com');
     fireEvent.changeText(screen.getByTestId('password-input'), 'a1');
-    fireEvent.press(screen.getByLabelText('Buat Akun'));
+    fireEvent.press(screen.getByLabelText('Buat akun'));
 
     expect(screen.getByText('Password minimal 6 karakter.')).toBeTruthy();
     expect(mockSignUp).not.toHaveBeenCalled();
@@ -78,7 +85,7 @@ describe('<SignUp />', () => {
 
     fireEvent.changeText(screen.getByTestId('email-input'), 'user@example.com');
     fireEvent.changeText(screen.getByTestId('password-input'), password);
-    fireEvent.press(screen.getByLabelText('Buat Akun'));
+    fireEvent.press(screen.getByLabelText('Buat akun'));
 
     expect(screen.getByText('Password harus mengandung huruf dan angka.')).toBeTruthy();
     expect(mockSignUp).not.toHaveBeenCalled();
@@ -96,17 +103,36 @@ describe('<SignUp />', () => {
 
     fireEvent.changeText(screen.getByTestId('email-input'), 'registered@example.com');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
-    fireEvent.press(screen.getByLabelText('Buat Akun'));
+    fireEvent.press(screen.getByLabelText('Buat akun'));
 
     await waitFor(() => {
       expect(
-        screen.getByText('Email sudah terdaftar. Silakan login atau gunakan email lain.'),
+        screen.getByText('Email sudah terdaftar. Masuk atau gunakan email lain.'),
       ).toBeTruthy();
       expect(mockSignUp).toHaveBeenCalledWith({
         email: 'registered@example.com',
         password: 'password1',
       });
     });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('shows a register-specific fallback for unmapped service errors', async () => {
+    mockSignUp.mockImplementationOnce(async () => ({
+      data: null,
+      error: {
+        message: 'Provider unavailable',
+        name: 'UnknownSignUpError',
+      },
+    }));
+    render(<SignUp />);
+
+    fireEvent.changeText(screen.getByTestId('email-input'), 'new@example.com');
+    fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
+    fireEvent.press(screen.getByLabelText('Buat akun'));
+
+    expect(await screen.findByText('Belum berhasil membuat akun. Silakan coba lagi.')).toBeTruthy();
+    expect(screen.queryByText('Provider unavailable')).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
   });
 
@@ -135,7 +161,7 @@ describe('<SignUp />', () => {
 
     fireEvent.changeText(screen.getByTestId('email-input'), '  new@example.com  ');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
-    fireEvent.press(screen.getByLabelText('Buat Akun'));
+    fireEvent.press(screen.getByLabelText('Buat akun'));
 
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith({
@@ -161,7 +187,7 @@ describe('<SignUp />', () => {
 
     fireEvent.changeText(screen.getByTestId('email-input'), '  session@example.com  ');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
-    fireEvent.press(screen.getByLabelText('Buat Akun'));
+    fireEvent.press(screen.getByLabelText('Buat akun'));
 
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith({
