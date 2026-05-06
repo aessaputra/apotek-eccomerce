@@ -15,6 +15,7 @@ import Animated, {
 import { RectButton } from 'react-native-gesture-handler';
 import { formatPrice } from '@/services/home.service';
 import { getThemeColor } from '@/utils/theme';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 
 const CART_ITEM_CHECKBOX_SIZE = 26;
 const CART_ITEM_CHECK_ICON_SIZE = 16;
@@ -25,17 +26,18 @@ export interface CartItemRowProps {
   onRemove: (cartItemId: string) => void;
   isSelected?: boolean;
   onSelectionChange?: (cartItemId: string, nextSelected: boolean) => void;
-  isUpdating?: boolean;
 }
 
 function DeleteAction({
   progress,
   onDelete,
+  accessibilityLabel,
   backgroundColor,
   iconColor,
 }: {
   progress: SharedValue<number>;
   onDelete: () => void;
+  accessibilityLabel: string;
   backgroundColor: string;
   iconColor: string;
 }) {
@@ -57,7 +59,10 @@ function DeleteAction({
           justifyContent: 'center',
           alignItems: 'center',
         }}
-        onPress={onDelete}>
+        onPress={onDelete}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint="Membuka konfirmasi hapus produk">
         <Trash2 size={24} color={iconColor} />
       </RectButton>
     </Animated.View>
@@ -69,8 +74,7 @@ function areCartItemRowPropsEqual(prevProps: CartItemRowProps, nextProps: CartIt
     prevProps.onQuantityChange !== nextProps.onQuantityChange ||
     prevProps.onRemove !== nextProps.onRemove ||
     prevProps.onSelectionChange !== nextProps.onSelectionChange ||
-    prevProps.isSelected !== nextProps.isSelected ||
-    prevProps.isUpdating !== nextProps.isUpdating
+    prevProps.isSelected !== nextProps.isSelected
   ) {
     return false;
   }
@@ -125,11 +129,12 @@ export const CartItemRow = memo(function CartItemRow({
       <DeleteAction
         progress={progress}
         onDelete={handleSwipeDelete}
+        accessibilityLabel={`Hapus ${item.product.name} dari keranjang`}
         backgroundColor={dangerColor}
         iconColor={onDangerColor}
       />
     ),
-    [dangerColor, handleSwipeDelete, onDangerColor],
+    [dangerColor, handleSwipeDelete, item.product.name, onDangerColor],
   );
 
   const handleConfirmDelete = useCallback(() => {
@@ -174,6 +179,8 @@ export const CartItemRow = memo(function CartItemRow({
                 source={{ uri: imageUrl }}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
+                role="img"
+                aria-label={`Foto produk ${item.product.name}`}
               />
             ) : null}
           </YStack>
@@ -196,25 +203,32 @@ export const CartItemRow = memo(function CartItemRow({
               </YStack>
 
               <XStack
-                width={CART_ITEM_CHECKBOX_SIZE}
-                height={CART_ITEM_CHECKBOX_SIZE}
+                width={MIN_TOUCH_TARGET}
+                height={MIN_TOUCH_TARGET}
                 marginTop="$0.5"
                 flexShrink={0}
                 alignItems="center"
                 justifyContent="center"
-                borderRadius="$2"
-                backgroundColor={isSelected ? '$primary' : '$surfaceSubtle'}
-                borderWidth={1.5}
-                borderColor={isSelected ? '$primary' : '$surfaceBorder'}
                 pressStyle={{ opacity: 0.85, scale: 0.96 }}
-                focusStyle={{ borderColor: '$primary' }}
-                hitSlop={9}
+                focusStyle={{ outlineColor: '$primary' }}
                 onPress={handleToggleSelection}
                 role="checkbox"
                 aria-checked={isSelected}
                 aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${item.product.name}`}
                 testID={`cart-item-checkbox-${item.id}`}>
-                {isSelected ? <Check size={CART_ITEM_CHECK_ICON_SIZE} color="$onPrimary" /> : null}
+                <XStack
+                  width={CART_ITEM_CHECKBOX_SIZE}
+                  height={CART_ITEM_CHECKBOX_SIZE}
+                  alignItems="center"
+                  justifyContent="center"
+                  borderRadius="$2"
+                  backgroundColor={isSelected ? '$primary' : '$surfaceSubtle'}
+                  borderWidth={1.5}
+                  borderColor={isSelected ? '$primary' : '$surfaceBorder'}>
+                  {isSelected ? (
+                    <Check size={CART_ITEM_CHECK_ICON_SIZE} color="$onPrimary" />
+                  ) : null}
+                </XStack>
               </XStack>
             </XStack>
 
