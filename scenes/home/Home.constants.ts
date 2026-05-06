@@ -20,11 +20,6 @@ export const HOME_COPY = {
   productLoadingLabel: 'Memuat produk terbaru',
   productError: 'Gagal memuat produk terbaru. Coba lagi.',
   productEmpty: 'Belum ada produk tersedia',
-  addToCartErrorTitle: 'Produk belum masuk keranjang',
-  addToCartErrorFallback: 'Gagal menambahkan produk ke keranjang. Coba lagi.',
-  addToCartSuccessTitle: 'Produk berhasil ditambahkan',
-  addToCartSuccessFallbackProduct: 'Produk',
-  addToCartSuccessDescriptionSuffix: 'berhasil ditambahkan ke keranjang',
 } as const;
 
 export const HOME_SPACE_TOKEN_TO_PX = {

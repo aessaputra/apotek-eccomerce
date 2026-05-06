@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, RefreshControl, useWindowDimensions } from 'react-native';
+import { useToastController } from '@tamagui/toast';
+import { RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -13,8 +14,7 @@ import {
   useMedia,
   useTheme,
 } from 'tamagui';
-import { CartIcon, CheckCircleIcon, SearchIcon } from '@/components/icons';
-import AppAlertDialog from '@/components/elements/AppAlertDialog';
+import { CartIcon, SearchIcon } from '@/components/icons';
 import HomeBanner, { HomeBannerSkeleton } from '@/components/elements/HomeBanner';
 import { HOME_BANNER_CTA_ROUTE_MAP } from '@/constants/homeBanner.constants';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
@@ -22,6 +22,11 @@ import { useAppSlice } from '@/slices';
 import { useHomeData, useCartPaginated } from '@/hooks';
 import { addProductToCart } from '@/services';
 import type { HomeBannerCTA } from '@/types/homeBanner';
+import {
+  showAddToCartFailureToast,
+  showAddToCartLoginToast,
+  showAddToCartSuccessToast,
+} from '@/utils/cartToastFeedback';
 import { getThemeColor } from '@/utils/theme';
 import {
   HOME_CONTENT_MAX_WIDTH,
@@ -42,6 +47,7 @@ export default function Home() {
   const router = useRouter();
   const media = useMedia();
   const theme = useTheme();
+  const toast = useToastController();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { user } = useAppSlice();
@@ -59,14 +65,11 @@ export default function Home() {
   } = useHomeData();
 
   const { snapshot: cartSnapshot } = useCartPaginated({ userId: user?.id });
-  const [cartSuccessProductName, setCartSuccessProductName] = useState<string | null>(null);
   const pendingAddToCartProductIdsRef = useRef(new Set<string>());
   const [addingProductIds, setAddingProductIds] = useState<readonly string[]>([]);
-  const [addToCartError, setAddToCartError] = useState<string | null>(null);
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
-  const successDialogColor = '$primary';
   const layoutMetrics = useMemo(() => {
     const horizontalPadding: HomeSpaceToken = media.gtLg
       ? '$6'
@@ -163,7 +166,12 @@ export default function Home() {
 
   const handleAddToCart = useCallback(
     async (productId: string, productName: string) => {
-      if (!user?.id || pendingAddToCartProductIdsRef.current.has(productId)) return;
+      if (!user?.id) {
+        showAddToCartLoginToast(toast);
+        return;
+      }
+
+      if (pendingAddToCartProductIdsRef.current.has(productId)) return;
 
       pendingAddToCartProductIdsRef.current.add(productId);
       setAddingProductIds(currentProductIds =>
@@ -171,26 +179,18 @@ export default function Home() {
           ? currentProductIds
           : [...currentProductIds, productId],
       );
-      setAddToCartError(null);
 
       try {
         const { error } = await addProductToCart(user.id, productId, 1);
 
         if (error) {
-          const errorMessage = HOME_COPY.addToCartErrorFallback;
-          setAddToCartError(errorMessage);
-          AccessibilityInfo.announceForAccessibility(errorMessage);
+          showAddToCartFailureToast(toast, error);
           return;
         }
 
-        setCartSuccessProductName(productName);
-        AccessibilityInfo.announceForAccessibility(
-          `${productName} ${HOME_COPY.addToCartSuccessDescriptionSuffix}`,
-        );
+        showAddToCartSuccessToast(toast, productName);
       } catch {
-        const errorMessage = HOME_COPY.addToCartErrorFallback;
-        setAddToCartError(errorMessage);
-        AccessibilityInfo.announceForAccessibility(errorMessage);
+        showAddToCartFailureToast(toast);
       } finally {
         pendingAddToCartProductIdsRef.current.delete(productId);
         setAddingProductIds(currentProductIds =>
@@ -198,14 +198,8 @@ export default function Home() {
         );
       }
     },
-    [user?.id],
+    [toast, user?.id],
   );
-
-  const handleCartSuccessDialogOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      setCartSuccessProductName(null);
-    }
-  }, []);
 
   const handleRetryCoreContent = useCallback(() => {
     void refresh();
@@ -393,19 +387,6 @@ export default function Home() {
             onCategoryPress={handleCategoryPress}
           />
 
-          {addToCartError && (
-            <ErrorCallout role="alert" accessibilityLiveRegion="polite">
-              <YStack gap="$1.5">
-                <Text color="$danger" fontSize={15} fontWeight="700">
-                  {HOME_COPY.addToCartErrorTitle}
-                </Text>
-                <Text color="$colorSubtle" fontSize={13}>
-                  {addToCartError}
-                </Text>
-              </YStack>
-            </ErrorCallout>
-          )}
-
           <HomeProductSection
             products={products}
             error={error}
@@ -434,20 +415,6 @@ export default function Home() {
           )}
         </ContentStack>
       </ScrollView>
-
-      <AppAlertDialog
-        open={cartSuccessProductName !== null}
-        onOpenChange={handleCartSuccessDialogOpenChange}
-        title={HOME_COPY.addToCartSuccessTitle}
-        description={`${cartSuccessProductName ?? HOME_COPY.addToCartSuccessFallbackProduct} ${
-          HOME_COPY.addToCartSuccessDescriptionSuffix
-        }`}
-        confirmText="OK"
-        confirmColor={successDialogColor}
-        confirmTextColor="$white"
-        hideTitle
-        icon={<CheckCircleIcon size={48} color={successDialogColor} />}
-      />
     </ScreenRoot>
   );
 }

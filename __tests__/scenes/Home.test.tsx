@@ -8,7 +8,9 @@ import type { ProductWithImages } from '@/services/home.service';
 type AddToCartResult = Promise<{ error: Error | null }>;
 
 const mockPush = jest.fn();
+const mockToastShow = jest.fn();
 const mockUseHomeData = jest.fn<() => UseHomeDataReturn>();
+const mockUseAppSlice = jest.fn();
 const mockUseWindowDimensions = jest.fn(() => ({
   width: 390,
   height: 844,
@@ -22,6 +24,12 @@ const mockAddProductToCart = jest.fn<
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: mockPush,
+  }),
+}));
+
+jest.mock('@tamagui/toast', () => ({
+  useToastController: () => ({
+    show: mockToastShow,
   }),
 }));
 
@@ -47,14 +55,7 @@ jest.mock('@/services', () => ({
 }));
 
 jest.mock('@/slices', () => ({
-  useAppSlice: () => ({
-    user: {
-      id: 'user-1',
-      full_name: 'John Doe',
-      avatar_url: null,
-      email: 'john@example.com',
-    },
-  }),
+  useAppSlice: () => mockUseAppSlice(),
 }));
 
 jest.mock('@/components/elements/CategoryItem', () => {
@@ -185,9 +186,19 @@ describe('<Home />', () => {
   beforeEach(() => {
     jest.spyOn(ReactNative, 'useWindowDimensions').mockImplementation(mockUseWindowDimensions);
     mockPush.mockClear();
+    mockToastShow.mockClear();
     mockUseHomeData.mockReset();
     mockUseHomeData.mockReturnValue(createHomeData());
     mockAddProductToCart.mockClear();
+    mockUseAppSlice.mockReset();
+    mockUseAppSlice.mockReturnValue({
+      user: {
+        id: 'user-1',
+        full_name: 'John Doe',
+        avatar_url: null,
+        email: 'john@example.com',
+      },
+    });
     mockUseWindowDimensions.mockReturnValue({
       width: 390,
       height: 844,
@@ -285,17 +296,21 @@ describe('<Home />', () => {
     expect(screen.getByLabelText('Memuat produk terbaru')).toBeTruthy();
   });
 
-  it('shows a success dialog after a product is added to cart successfully', async () => {
+  it('shows a success toast after a product is added to cart successfully', async () => {
     render(<Home />);
 
     fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
 
     expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
-    expect(await screen.findByText('Produk berhasil ditambahkan')).toBeTruthy();
-    expect(screen.getByText('Product 1 berhasil ditambahkan ke keranjang')).toBeTruthy();
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+        message: 'Product 1 sudah ada di keranjang.',
+        type: 'background',
+      });
+    });
   });
 
-  it('does not show the success dialog when adding to cart fails', async () => {
+  it('does not show the success toast when adding to cart fails', async () => {
     mockAddProductToCart.mockResolvedValue({ error: new Error('cart failed') });
 
     render(<Home />);
@@ -304,20 +319,43 @@ describe('<Home />', () => {
 
     expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
     await waitFor(() => {
-      expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
-      expect(screen.queryByText('Product 1 berhasil ditambahkan ke keranjang')).toBeNull();
+      expect(mockToastShow).not.toHaveBeenCalledWith(
+        'Produk ditambahkan ke keranjang.',
+        expect.objectContaining({ message: 'Product 1 sudah ada di keranjang.' }),
+      );
     });
   });
 
-  it('shows a user-facing error when adding to cart fails', async () => {
+  it('shows a user-facing toast when adding to cart fails', async () => {
     mockAddProductToCart.mockResolvedValue({ error: new Error('Stok produk habis') });
 
     render(<Home />);
 
     fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
 
-    expect(await screen.findByText('Produk belum masuk keranjang')).toBeTruthy();
-    expect(screen.getByText('Gagal menambahkan produk ke keranjang. Coba lagi.')).toBeTruthy();
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        'Stok produk belum cukup. Periksa jumlah atau pilih produk lain.',
+        { type: 'foreground' },
+      );
+    });
+  });
+
+  it('shows a login toast before adding products for guests', () => {
+    mockUseAppSlice.mockReturnValue({ user: null });
+
+    render(<Home />);
+
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
+
+    expect(mockAddProductToCart).not.toHaveBeenCalled();
+    expect(mockToastShow).toHaveBeenCalledWith(
+      'Silakan masuk untuk menambahkan produk ke keranjang.',
+      {
+        message: 'Masuk diperlukan agar keranjang Anda tersimpan.',
+        type: 'foreground',
+      },
+    );
   });
 
   it('shows per-product pending feedback, prevents duplicate product requests, and allows other products', async () => {
@@ -345,7 +383,16 @@ describe('<Home />', () => {
       addToCartResolvers.get('product-1')?.({ error: null });
       addToCartResolvers.get('product-2')?.({ error: null });
     });
-    expect(await screen.findByText('Produk berhasil ditambahkan')).toBeTruthy();
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+        message: 'Product 1 sudah ada di keranjang.',
+        type: 'background',
+      });
+      expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+        message: 'Product 2 sudah ada di keranjang.',
+        type: 'background',
+      });
+    });
   });
 
   it('renders a retryable core error state when home content fails to load', () => {
