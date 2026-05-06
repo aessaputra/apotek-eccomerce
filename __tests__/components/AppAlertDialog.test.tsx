@@ -16,14 +16,26 @@ describe('<AppAlertDialog />', () => {
     onOpenChange: jest.fn(),
     title: 'Test Title',
     description: 'Test Description',
-    native: false,
   };
 
   test('renders title and description when open', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
     render(<AppAlertDialog {...defaultProps} />);
 
     expect(screen.getByText('Test Title')).toBeTruthy();
     expect(screen.getByText('Test Description')).toBeTruthy();
+    expect(alertSpy).not.toHaveBeenCalled();
+
+    alertSpy.mockRestore();
+  });
+
+  test('renders a branded Tamagui dialog by default', async () => {
+    render(<AppAlertDialog {...defaultProps} cancelText="Batal" />);
+
+    expect(screen.getByTestId('app-alert-dialog-content')).toBeTruthy();
+    expect(screen.getByTestId('app-alert-dialog-confirm-button')).toBeTruthy();
+    expect(screen.getByTestId('app-alert-dialog-cancel-button')).toBeTruthy();
   });
 
   test('does not render content when closed', async () => {

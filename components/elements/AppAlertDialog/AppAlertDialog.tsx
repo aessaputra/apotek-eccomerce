@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { Alert, Platform, type AlertButton } from 'react-native';
-import { AlertDialog, Button, YStack } from 'tamagui';
+import { Alert, type AlertButton } from 'react-native';
+import { AlertDialog, Button, XStack, YStack } from 'tamagui';
 
 export interface AppAlertDialogProps {
   open: boolean;
@@ -23,7 +23,7 @@ export interface AppAlertDialogProps {
   /** When true, visually hides the title but keeps it for accessibility */
   hideTitle?: boolean;
   /** Force native platform alert (true) or Tamagui-rendered dialog (false).
-   *  Defaults to native on iOS/Android and non-native on web/tests. */
+   *  Defaults to Tamagui-rendered so app dialogs keep branded styling. */
   native?: boolean;
 }
 
@@ -49,8 +49,7 @@ export default function AppAlertDialog({
 }: AppAlertDialogProps) {
   const resolvedConfirmText = confirmLabel ?? confirmText ?? 'OK';
   const resolvedCancelText = cancelLabel ?? cancelText;
-  const isTestEnvironment = process.env.NODE_ENV === 'test';
-  const resolvedNative = nativeProp ?? (Platform.OS !== 'web' && !isTestEnvironment);
+  const resolvedNative = nativeProp ?? false;
   const hasShownRef = useRef(false);
 
   const handleOpenChange = useCallback(
@@ -120,32 +119,49 @@ export default function AppAlertDialog({
       <AlertDialog.Portal>
         <AlertDialog.Overlay
           key="overlay"
+          testID="app-alert-dialog-overlay"
           animation="quick"
-          opacity={0.5}
           backgroundColor="$sheetOverlay"
+          opacity={0.74}
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
         />
         <AlertDialog.Content
           key="content"
+          testID="app-alert-dialog-content"
           bordered
           elevate
-          backgroundColor="$surfaceSubtle"
+          backgroundColor="$surface"
+          borderColor="$surfaceBorder"
+          borderRadius="$6"
           width="90%"
           maxWidth="$20"
           animation={['quick', { opacity: { overshootClamping: true } }]}
           animateOnly={['transform', 'opacity']}
           enterStyle={{ y: -20, opacity: 0, scale: 0.96 }}
           exitStyle={{ y: 10, opacity: 0, scale: 0.98 }}
-          padding="$4">
+          padding="$5"
+          gap="$4">
           {icon ? (
-            <YStack alignItems="center" marginBottom="$3">
+            <XStack
+              alignSelf="center"
+              width={64}
+              height={64}
+              borderRadius="$10"
+              backgroundColor="$surfaceSubtle"
+              borderWidth={1}
+              borderColor="$surfaceBorder"
+              alignItems="center"
+              justifyContent="center">
               {icon}
-            </YStack>
+            </XStack>
           ) : null}
           <AlertDialog.Title
             fontSize="$6"
             fontWeight="700"
+            color="$color"
+            lineHeight={26}
+            textAlign={icon ? 'center' : 'left'}
             {...(hideTitle
               ? {
                   position: 'absolute',
@@ -160,20 +176,26 @@ export default function AppAlertDialog({
           <AlertDialog.Description
             fontSize="$3"
             color="$colorSubtle"
-            marginTop={hideTitle || icon ? '$0' : '$2'}
+            lineHeight={20}
             textAlign={icon ? 'center' : 'left'}>
             {description}
           </AlertDialog.Description>
 
-          <YStack gap="$2" width="100%" marginTop="$3">
+          <YStack gap="$2.5" width="100%">
             {resolvedCancelText ? (
               <AlertDialog.Cancel asChild>
                 <Button
+                  testID="app-alert-dialog-cancel-button"
                   width="100%"
+                  minHeight={48}
+                  borderRadius="$4"
                   backgroundColor={cancelColor}
                   borderWidth={1}
-                  borderColor="$borderColor"
+                  borderColor="$surfaceBorder"
                   color={cancelTextColor}
+                  fontWeight="600"
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                  focusStyle={{ borderColor: '$primary' }}
                   onPress={handleCancel}>
                   {resolvedCancelText}
                 </Button>
@@ -181,11 +203,17 @@ export default function AppAlertDialog({
             ) : null}
             <AlertDialog.Action asChild>
               <Button
+                testID="app-alert-dialog-confirm-button"
                 width="100%"
+                minHeight={48}
+                borderRadius="$4"
                 backgroundColor={confirmColor}
                 borderWidth={1}
                 borderColor={confirmBorderColor}
                 color={confirmTextColor}
+                fontWeight="700"
+                pressStyle={{ opacity: 0.9, scale: 0.98 }}
+                focusStyle={{ borderColor: '$primary' }}
                 onPress={handleConfirm}>
                 {resolvedConfirmText}
               </Button>
