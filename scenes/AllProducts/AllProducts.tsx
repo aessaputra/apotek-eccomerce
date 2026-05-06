@@ -9,6 +9,11 @@ import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useAllProductsPaginated } from '@/hooks';
 import { addProductToCart, type ProductListItem } from '@/services';
 import { useAppSlice } from '@/slices';
+import {
+  showAddToCartFailureToast,
+  showAddToCartLoginToast,
+  showAddToCartSuccessToast,
+} from '@/utils/cartToastFeedback';
 import { getThemeColor } from '@/utils/theme';
 
 const ScreenRoot = styled(YStack, {
@@ -184,16 +189,20 @@ export default function AllProducts() {
   const handleAddToCart = useCallback(
     async (productId: string) => {
       if (!user?.id) {
-        toast.show('Silakan login untuk menambahkan produk ke keranjang.');
+        showAddToCartLoginToast(toast);
         return;
       }
 
-      const { error: cartError } = await addProductToCart(user.id, productId, 1);
+      try {
+        const { error: cartError } = await addProductToCart(user.id, productId, 1);
 
-      if (cartError) {
-        toast.show(cartError.message || 'Gagal menambahkan produk ke keranjang.');
-      } else {
-        toast.show('Produk berhasil ditambahkan ke keranjang.');
+        if (cartError) {
+          showAddToCartFailureToast(toast, cartError);
+        } else {
+          showAddToCartSuccessToast(toast);
+        }
+      } catch {
+        showAddToCartFailureToast(toast);
       }
     },
     [toast, user?.id],

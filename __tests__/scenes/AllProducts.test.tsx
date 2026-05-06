@@ -153,7 +153,10 @@ describe('<AllProducts />', () => {
 
     await waitFor(() => {
       expect(mockAddProductToCart).toHaveBeenCalledWith('u1', 'product-1', 1);
-      expect(mockToastShow).toHaveBeenCalledWith('Produk berhasil ditambahkan ke keranjang.');
+      expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+        message: undefined,
+        type: 'background',
+      });
     });
   });
 
@@ -167,7 +170,10 @@ describe('<AllProducts />', () => {
     fireEvent.press(screen.getByText('Paracetamol'));
 
     await waitFor(() => {
-      expect(mockToastShow).toHaveBeenCalledWith('Stok produk tidak cukup.');
+      expect(mockToastShow).toHaveBeenCalledWith(
+        'Stok produk belum cukup. Periksa jumlah atau pilih produk lain.',
+        { type: 'foreground' },
+      );
     });
   });
 
@@ -180,7 +186,8 @@ describe('<AllProducts />', () => {
 
     expect(mockAddProductToCart).not.toHaveBeenCalled();
     expect(mockToastShow).toHaveBeenCalledWith(
-      'Silakan login untuk menambahkan produk ke keranjang.',
+      'Silakan masuk untuk menambahkan produk ke keranjang.',
+      { message: 'Masuk diperlukan agar keranjang Anda tersimpan.', type: 'foreground' },
     );
   });
 });
