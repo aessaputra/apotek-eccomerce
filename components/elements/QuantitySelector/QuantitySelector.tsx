@@ -75,20 +75,20 @@ function QuantitySelector({
     () =>
       size === 'sm'
         ? {
-            buttonSize: 20,
-            valueMinWidth: 24,
-            valueHeight: 20,
-            valueFontSize: 11,
-            buttonFontSize: 12,
-            buttonLineHeight: 12,
+            buttonSize: 48,
+            valueMinWidth: 48,
+            valueHeight: 48,
+            valueFontSize: 14,
+            buttonFontSize: 18,
+            buttonLineHeight: 18,
           }
         : {
-            buttonSize: 32,
-            valueMinWidth: 40,
-            valueHeight: 32,
-            valueFontSize: 14,
-            buttonFontSize: 16,
-            buttonLineHeight: 16,
+            buttonSize: 48,
+            valueMinWidth: 56,
+            valueHeight: 48,
+            valueFontSize: 16,
+            buttonFontSize: 20,
+            buttonLineHeight: 20,
           },
     [size],
   );
@@ -180,12 +180,7 @@ function QuantitySelector({
           height={metrics.valueHeight}
           paddingHorizontal={size === 'sm' ? '$1.5' : '$2'}
           onPress={handleStartEditing}>
-          <Text
-            fontSize={metrics.valueFontSize}
-            color="$color"
-            fontWeight="700"
-            animation="quick"
-            key={nextValue}>
+          <Text fontSize={metrics.valueFontSize} color="$color" fontWeight="700">
             {nextValue}
           </Text>
         </QuantityValueCard>
