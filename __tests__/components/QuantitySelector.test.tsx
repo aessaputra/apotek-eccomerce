@@ -61,7 +61,7 @@ describe('<QuantitySelector />', () => {
     expect(screen.getAllByText('3').length).toBeGreaterThan(0);
   });
 
-  test('uses 48px touch targets and aligned value card for both sizes', () => {
+  test('uses full-size controls by default and compact visual controls with hit slop when small', () => {
     const { rerender } = render(
       <QuantitySelector value={12} min={1} max={99} onChange={jest.fn()} />,
     );
@@ -81,17 +81,29 @@ describe('<QuantitySelector />', () => {
 
     rerender(<QuantitySelector value={12} min={1} max={99} onChange={jest.fn()} size="sm" />);
 
+    expect(screen.getByLabelText('Kurangi jumlah, saat ini 12').props.hitSlop).toEqual({
+      top: 6,
+      right: 6,
+      bottom: 6,
+      left: 6,
+    });
+    expect(screen.getByLabelText('Tambah jumlah, saat ini 12').props.hitSlop).toEqual({
+      top: 6,
+      right: 6,
+      bottom: 6,
+      left: 6,
+    });
     findAncestorWithStyle(
       screen.getByLabelText('Kurangi jumlah, saat ini 12'),
-      style => style?.width === 48 && style.height === 48,
+      style => style?.width === 36 && style.height === 36,
     );
     findAncestorWithStyle(
       screen.getByLabelText('Tambah jumlah, saat ini 12'),
-      style => style?.width === 48 && style.height === 48,
+      style => style?.width === 36 && style.height === 36,
     );
     findAncestorWithStyle(
       screen.getByText('12'),
-      style => style?.minWidth === 48 && style.height === 48,
+      style => style?.minWidth === 40 && style.height === 36,
     );
   });
 

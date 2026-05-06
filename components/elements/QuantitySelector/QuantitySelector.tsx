@@ -2,6 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, GetProps, Input, Text, XStack, styled } from 'tamagui';
 import { MIN_TOUCH_TARGET } from '@/constants/ui';
 
+const COMPACT_CONTROL_SIZE = 36;
+const COMPACT_VALUE_WIDTH = 40;
+const COMPACT_HIT_SLOP = {
+  top: (MIN_TOUCH_TARGET - COMPACT_CONTROL_SIZE) / 2,
+  right: (MIN_TOUCH_TARGET - COMPACT_CONTROL_SIZE) / 2,
+  bottom: (MIN_TOUCH_TARGET - COMPACT_CONTROL_SIZE) / 2,
+  left: (MIN_TOUCH_TARGET - COMPACT_CONTROL_SIZE) / 2,
+} as const;
+
 const QuantityContainer = styled(XStack, {
   alignItems: 'center',
   gap: '$1',
@@ -76,12 +85,15 @@ function QuantitySelector({
     () =>
       size === 'sm'
         ? {
-            buttonSize: 48,
-            valueMinWidth: 48,
-            valueHeight: 48,
+            buttonSize: COMPACT_CONTROL_SIZE,
+            valueMinWidth: COMPACT_VALUE_WIDTH,
+            valueHeight: COMPACT_CONTROL_SIZE,
             valueFontSize: 14,
-            buttonFontSize: 18,
-            buttonLineHeight: 18,
+            buttonFontSize: 16,
+            buttonLineHeight: 16,
+            containerGap: '$0.5',
+            containerPadding: '$0.5',
+            hitSlop: COMPACT_HIT_SLOP,
           }
         : {
             buttonSize: 48,
@@ -90,6 +102,9 @@ function QuantitySelector({
             valueFontSize: 16,
             buttonFontSize: 20,
             buttonLineHeight: 20,
+            containerGap: '$1',
+            containerPadding: '$1',
+            hitSlop: undefined,
           },
     [size],
   );
@@ -139,6 +154,8 @@ function QuantitySelector({
     <QuantityContainer
       animation={disableAnimation ? undefined : 'quick'}
       enterStyle={disableAnimation ? undefined : { opacity: 0, y: 8 }}
+      gap={metrics.containerGap}
+      padding={metrics.containerPadding}
       {...stackProps}>
       <QuantityButton
         width={metrics.buttonSize}
@@ -147,7 +164,8 @@ function QuantitySelector({
         disabled={!canDecrease}
         role="button"
         aria-label={decreaseLabel}
-        aria-disabled={!canDecrease}>
+        aria-disabled={!canDecrease}
+        hitSlop={metrics.hitSlop}>
         <Text
           fontSize={metrics.buttonFontSize}
           lineHeight={metrics.buttonLineHeight}
@@ -185,6 +203,7 @@ function QuantitySelector({
           aria-valuemin={lowerBound}
           aria-valuemax={upperBound}
           aria-valuenow={nextValue}
+          hitSlop={metrics.hitSlop}
         />
       ) : (
         <QuantityValueCard
@@ -194,7 +213,8 @@ function QuantitySelector({
           onPress={handleStartEditing}
           role="button"
           aria-label={valueLabel}
-          aria-disabled={disabled}>
+          aria-disabled={disabled}
+          hitSlop={metrics.hitSlop}>
           <Text fontSize={metrics.valueFontSize} color="$color" fontWeight="700">
             {nextValue}
           </Text>
@@ -208,7 +228,8 @@ function QuantitySelector({
         disabled={!canIncrease}
         role="button"
         aria-label={increaseLabel}
-        aria-disabled={!canIncrease}>
+        aria-disabled={!canIncrease}
+        hitSlop={metrics.hitSlop}>
         <Text
           fontSize={metrics.buttonFontSize}
           lineHeight={metrics.buttonLineHeight}
