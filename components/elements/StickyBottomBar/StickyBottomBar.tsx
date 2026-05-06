@@ -1,8 +1,8 @@
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { XStack, YStack, Text, Button, Spinner } from 'tamagui';
-import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
-import { formatPrice } from '@/services/home.service';
+import { BOTTOM_BAR_HEIGHT, MIN_TOUCH_TARGET } from '@/constants/ui';
+import { formatRupiah } from '@/utils/currency';
 
 export interface StickyBottomBarProps {
   grandTotal: number;
@@ -22,6 +22,7 @@ export const StickyBottomBar = ({
   confirmText = 'Konfirmasi',
 }: StickyBottomBarProps) => {
   const insets = useSafeAreaInsets();
+  const formattedGrandTotal = formatRupiah(grandTotal);
 
   return (
     <XStack
@@ -36,14 +37,20 @@ export const StickyBottomBar = ({
       borderTopWidth={1}
       borderTopColor="$surfaceBorder"
       alignItems="center"
-      gap="$3">
+      gap="$3"
+      role="toolbar"
+      aria-label="Ringkasan dan aksi checkout">
       {hideTotal ? null : (
         <YStack flex={1}>
           <Text fontSize="$2" color="$colorSubtle">
             Total
           </Text>
-          <Text fontSize="$6" fontWeight="800" color="$color">
-            {formatPrice(grandTotal)}
+          <Text
+            fontSize="$6"
+            fontWeight="800"
+            color="$color"
+            aria-label={`Total belanja ${formattedGrandTotal}`}>
+            {formattedGrandTotal}
           </Text>
         </YStack>
       )}
@@ -51,6 +58,7 @@ export const StickyBottomBar = ({
       <Button
         flex={1}
         size="$5"
+        minHeight={MIN_TOUCH_TARGET}
         backgroundColor="$primary"
         color="$onPrimary"
         borderRadius="$4"
@@ -59,6 +67,10 @@ export const StickyBottomBar = ({
         disabled={disabled || isLoading}
         opacity={disabled || isLoading ? 0.6 : 1}
         onPress={onConfirm}
+        role="button"
+        aria-label={confirmText}
+        aria-disabled={disabled || isLoading}
+        aria-busy={isLoading}
         icon={isLoading ? <Spinner color="$onPrimary" /> : undefined}>
         {confirmText}
       </Button>
