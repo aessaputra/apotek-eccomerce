@@ -18,6 +18,7 @@ import type {
   HomeBannerPlacement,
   HomeBannerRow,
 } from '@/types/homeBanner';
+import { formatRupiah } from '@/utils/currency';
 import { classifyError, isRetryableError } from '@/utils/error';
 import { withRetry } from '@/utils/retry';
 
@@ -808,7 +809,7 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
  * Example: 56000 -> "Rp 56.000"
  */
 export function formatPrice(price: number): string {
-  return `Rp ${price.toLocaleString('id-ID')}`;
+  return formatRupiah(price);
 }
 
 /**
