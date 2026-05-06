@@ -215,6 +215,11 @@ describe('<AddressList />', () => {
       expect(mockGetAddresses).toHaveBeenCalledWith('user-1');
     });
 
+    await waitFor(() => {
+      expect(screen.getByText('Alamat Utama')).not.toBeNull();
+      expect(screen.getByText('Alamat Kedua')).not.toBeNull();
+    });
+
     const list = screen.UNSAFE_getByType(SectionList<Address, { data: Address[] }>);
     expect(list.props.sections[0].data.map((address: Address) => address.id)).toEqual([
       'address-default',
