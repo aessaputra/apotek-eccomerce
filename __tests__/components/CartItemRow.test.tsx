@@ -19,12 +19,14 @@ jest.mock('@/components/elements/QuantitySelector/QuantitySelector', () => {
       value,
       onChange,
       disabled,
+      size,
     }: {
       value: number;
       onChange: (nextValue: number) => void;
       disabled?: boolean;
+      size?: 'sm' | 'md';
     }) => (
-      <View>
+      <View testID={`quantity-selector-${size ?? 'md'}`}>
         <Pressable
           accessibilityLabel="Kurangi jumlah"
           disabled={disabled}
@@ -125,6 +127,7 @@ describe('<CartItemRow />', () => {
     render(<CartItemRowComponent item={item} onQuantityChange={jest.fn()} onRemove={jest.fn()} />);
 
     expect(screen.getByText('Vitamin C 500mg')).not.toBeNull();
+    expect(screen.getByText('Harga')).not.toBeNull();
     expect(screen.queryByText('VIT-C-500')).toBeNull();
     expect(
       screen.getByText(
@@ -141,6 +144,12 @@ describe('<CartItemRow />', () => {
       <CartItemRowComponent item={item} onQuantityChange={jest.fn()} onRemove={jest.fn()} />,
     );
     expect(screen.getAllByText('Vitamin C 500mg').length).toBeGreaterThan(0);
+  });
+
+  test('uses compact quantity selector in the cart row', async () => {
+    render(<CartItemRowComponent item={item} onQuantityChange={jest.fn()} onRemove={jest.fn()} />);
+
+    expect(screen.getByTestId('quantity-selector-sm')).not.toBeNull();
   });
 
   test('changes quantity when selector increments', async () => {

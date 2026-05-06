@@ -185,20 +185,18 @@ export const CartItemRow = memo(function CartItemRow({
             ) : null}
           </YStack>
 
-          <YStack flex={1} minWidth={0} gap="$2" justifyContent="space-between">
-            <XStack alignItems="flex-start" gap="$2">
-              <YStack flex={1} minWidth={0} gap="$1" paddingTop="$0.5">
+          <YStack flex={1} minWidth={0} gap="$2.5" justifyContent="space-between">
+            <XStack alignItems="flex-start" gap="$2.5">
+              <YStack flex={1} minWidth={0} paddingTop="$0.5">
                 <Text
                   fontSize="$3"
                   fontWeight="600"
                   color="$color"
+                  lineHeight={20}
                   numberOfLines={2}
                   ellipsizeMode="tail"
                   flexShrink={1}>
                   {item.product.name}
-                </Text>
-                <Text fontSize="$2" color="$colorSubtle" numberOfLines={1} ellipsizeMode="tail">
-                  {formatPrice(unitPrice)}
                 </Text>
               </YStack>
 
@@ -232,7 +230,26 @@ export const CartItemRow = memo(function CartItemRow({
               </XStack>
             </XStack>
 
-            <XStack justifyContent="flex-end" alignItems="center">
+            <XStack
+              justifyContent="space-between"
+              alignItems="center"
+              gap="$2"
+              flexWrap="wrap-reverse">
+              <YStack minWidth={96} flex={1} gap="$0.5">
+                <Text fontSize="$1" color="$colorSubtle" lineHeight={14}>
+                  Harga
+                </Text>
+                <Text
+                  fontSize="$3"
+                  fontWeight="700"
+                  color="$primary"
+                  lineHeight={20}
+                  numberOfLines={1}
+                  ellipsizeMode="tail">
+                  {formatPrice(unitPrice)}
+                </Text>
+              </YStack>
+
               <QuantitySelector
                 value={item.quantity}
                 min={0}
