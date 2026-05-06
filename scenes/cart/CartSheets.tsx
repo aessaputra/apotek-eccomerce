@@ -16,7 +16,11 @@ import type { Address } from '@/types/address';
 import type { ShippingOption } from '@/types/shipping';
 import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import { resolveBadgeText } from '@/utils/address';
-import { formatRupiah, SHEET_ANIMATION_CONFIG } from '@/scenes/cart/cart.constants';
+import {
+  formatRupiah,
+  SHEET_ANIMATION_CONFIG,
+  SHEET_SNAP_POINTS,
+} from '@/scenes/cart/cart.constants';
 
 const COURIER_CARD_PRESS_STYLE = {
   scale: 0.98,
@@ -24,7 +28,6 @@ const COURIER_CARD_PRESS_STYLE = {
 } as const;
 
 const COURIER_CARD_ANIMATE_ONLY = ['transform', 'opacity'];
-const SHEET_SNAP_POINTS: number[] = [60];
 const SHIPPING_CONFIRM_FOOTER_MIN_BOTTOM_PADDING = 24;
 const SHIPPING_CONFIRM_FOOTER_SAFE_AREA_OFFSET = 16;
 
@@ -50,6 +53,7 @@ const CourierOptionCard = React.memo(function CourierOptionCard({
       onPress={handlePress}
       role="button"
       aria-label={`${option.courier_name} ${option.service_name} ${formatRupiah(option.price)}`}
+      aria-checked={isSelected}
       animation="quick"
       animateOnly={COURIER_CARD_ANIMATE_ONLY}
       pressStyle={COURIER_CARD_PRESS_STYLE}
@@ -192,7 +196,9 @@ export function ShippingOptionsSheet({
               color="$surface"
               disabled={isOffline}
               opacity={isOffline ? 0.6 : 1}
+              role="button"
               aria-label="Konfirmasi opsi pengiriman"
+              aria-disabled={isOffline}
               onPress={onConfirm}>
               Konfirmasi
             </TamaguiButton>
