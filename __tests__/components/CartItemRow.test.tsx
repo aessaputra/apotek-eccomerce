@@ -127,7 +127,7 @@ describe('<CartItemRow />', () => {
     render(<CartItemRowComponent item={item} onQuantityChange={jest.fn()} onRemove={jest.fn()} />);
 
     expect(screen.getByText('Vitamin C 500mg')).not.toBeNull();
-    expect(screen.getByText('Harga')).not.toBeNull();
+    expect(screen.queryByText('Harga')).toBeNull();
     expect(screen.queryByText('VIT-C-500')).toBeNull();
     expect(
       screen.getByText(
