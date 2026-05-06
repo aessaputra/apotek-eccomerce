@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { BackHandler, Linking } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, BackHandler, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -30,11 +30,13 @@ export {
 export default function Payment() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const webViewRef = useRef<WebView>(null);
   const { user, dispatch, markCartRefreshRequested } = useAppSlice();
   const { removePersistData } = useDataPersist();
   const { paymentUrl, orderId } = useLocalSearchParams<RouteParams<'cart/payment'>>();
   const resolvedPaymentUrl = useMemo(() => resolveRouteParam(paymentUrl), [paymentUrl]);
   const resolvedOrderId = useMemo(() => resolveRouteParam(orderId), [orderId]);
+  const [webViewLoadError, setWebViewLoadError] = useState<string | null>(null);
 
   const isValidPaymentUrl = useMemo(
     () => isTrustedPaymentUrl(resolvedPaymentUrl),
@@ -85,6 +87,10 @@ export default function Payment() {
     [],
   );
 
+  const announcePaymentStatus = useCallback((message: string) => {
+    AccessibilityInfo.announceForAccessibility(message);
+  }, []);
+
   const handleShouldStartLoadWithRequest = useCallback(
     (request: { url?: string }) => {
       const url = request.url || '';
@@ -96,11 +102,15 @@ export default function Payment() {
               return Linking.openURL(url);
             }
 
-            setPaymentError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
+            const deepLinkError = 'Aplikasi pembayaran tidak dapat dibuka di perangkat ini.';
+            setPaymentError(deepLinkError);
+            announcePaymentStatus(deepLinkError);
             return Promise.resolve();
           })
           .catch(() => {
-            setPaymentError('Aplikasi pembayaran tidak dapat dibuka di perangkat ini.');
+            const deepLinkError = 'Aplikasi pembayaran tidak dapat dibuka di perangkat ini.';
+            setPaymentError(deepLinkError);
+            announcePaymentStatus(deepLinkError);
           });
         return false;
       }
@@ -116,14 +126,33 @@ export default function Payment() {
       }
 
       if (!isTrustedPaymentUrl(url)) {
-        setPaymentError('Navigasi ke halaman tidak dikenal diblokir untuk keamanan.');
+        const securityError = 'Navigasi ke halaman tidak dikenal diblokir untuk keamanan.';
+        setPaymentError(securityError);
+        announcePaymentStatus(securityError);
         return false;
       }
 
       return true;
     },
-    [finalizePaymentFlow, handlePaymentNavigation, setPaymentError],
+    [announcePaymentStatus, finalizePaymentFlow, handlePaymentNavigation, setPaymentError],
   );
+
+  const handleWebViewLoadStart = useCallback(() => {
+    setWebViewLoadError(null);
+    setWebviewLoading(true);
+    announcePaymentStatus('Memuat halaman pembayaran.');
+  }, [announcePaymentStatus, setWebviewLoading]);
+
+  const handleWebViewLoadProgress = useCallback(
+    (event: { nativeEvent: { progress: number } }) => {
+      setWebviewLoading(event.nativeEvent.progress < 1);
+    },
+    [setWebviewLoading],
+  );
+
+  const handleWebViewLoadEnd = useCallback(() => {
+    setWebviewLoading(false);
+  }, [setWebviewLoading]);
 
   const handleNavigationStateChange = useCallback(
     (navState: { url?: string }) => {
@@ -136,14 +165,32 @@ export default function Payment() {
   );
 
   const handleWebViewError = useCallback(() => {
-    setPaymentError('Koneksi pembayaran terputus. Kami akan cek status order Anda.');
-    void finalizePaymentFlow('pending');
-  }, [finalizePaymentFlow, setPaymentError]);
+    const errorMessage =
+      'Koneksi pembayaran terputus. Muat ulang halaman atau cek status pembayaran.';
+    setWebViewLoadError(errorMessage);
+    setPaymentError(errorMessage);
+    announcePaymentStatus(errorMessage);
+  }, [announcePaymentStatus, setPaymentError]);
 
   const handleWebViewHttpError = useCallback(() => {
-    setPaymentError('Halaman pembayaran tidak dapat dimuat. Kami cek status pembayaran Anda.');
+    const errorMessage =
+      'Halaman pembayaran tidak dapat dimuat. Muat ulang halaman atau cek status pembayaran.';
+    setWebViewLoadError(errorMessage);
+    setPaymentError(errorMessage);
+    announcePaymentStatus(errorMessage);
+  }, [announcePaymentStatus, setPaymentError]);
+
+  const handleRetryWebViewLoad = useCallback(() => {
+    setWebViewLoadError(null);
+    setPaymentError(null);
+    setWebviewLoading(true);
+    webViewRef.current?.reload();
+    announcePaymentStatus('Mencoba memuat ulang halaman pembayaran.');
+  }, [announcePaymentStatus, setPaymentError, setWebviewLoading]);
+
+  const handleCheckPaymentStatus = useCallback(() => {
     void finalizePaymentFlow('pending');
-  }, [finalizePaymentFlow, setPaymentError]);
+  }, [finalizePaymentFlow]);
 
   if (!resolvedPaymentUrl || !isValidPaymentUrl) {
     return (
@@ -166,7 +213,7 @@ export default function Payment() {
           backgroundColor="$primary"
           color="$onPrimary"
           borderRadius="$3"
-          minHeight={44}
+          minHeight={48}
           onPress={() => router.replace(ORDERS_ROUTE)}
           aria-label="Kembali ke pesanan">
           Kembali ke Pesanan
@@ -196,7 +243,7 @@ export default function Payment() {
             backgroundColor="transparent"
             color="$primary"
             borderRadius="$3"
-            minHeight={36}
+            minHeight={48}
             paddingHorizontal="$2"
             icon={<CloseIcon size={16} color="$primary" />}
             onPress={() => setConfirmCloseDialogOpen(true)}
@@ -207,7 +254,14 @@ export default function Payment() {
       )}
 
       {postPaymentState === 'verifying' || isPolling ? (
-        <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$4">
+        <YStack
+          flex={1}
+          alignItems="center"
+          justifyContent="center"
+          gap="$3"
+          padding="$4"
+          role="alert"
+          aria-live="polite">
           <Spinner size="large" color="$primary" />
           <Text textAlign="center" color="$color" fontWeight="700" fontSize="$5">
             {paymentResult === 'success'
@@ -219,7 +273,14 @@ export default function Payment() {
           </Text>
         </YStack>
       ) : postPaymentState === 'timeout' ? (
-        <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$4">
+        <YStack
+          flex={1}
+          alignItems="center"
+          justifyContent="center"
+          gap="$3"
+          padding="$4"
+          role="alert"
+          aria-live="polite">
           <Text textAlign="center" color="$color" fontWeight="700" fontSize="$5">
             Pembayaran sedang diproses
           </Text>
@@ -230,7 +291,7 @@ export default function Payment() {
             backgroundColor="$primary"
             color="$onPrimary"
             borderRadius="$3"
-            minHeight={44}
+            minHeight={48}
             marginTop="$1"
             onPress={() => router.replace(ORDERS_ROUTE)}
             aria-label="Lihat pesanan">
@@ -240,17 +301,20 @@ export default function Payment() {
       ) : (
         <YStack flex={1} position="relative">
           <WebView
+            ref={webViewRef}
             source={{ uri: resolvedPaymentUrl }}
             style={{ flex: 1 }}
-            onLoadStart={() => setWebviewLoading(true)}
-            onLoadEnd={() => setWebviewLoading(false)}
+            startInLoadingState
+            onLoadStart={handleWebViewLoadStart}
+            onLoadProgress={handleWebViewLoadProgress}
+            onLoadEnd={handleWebViewLoadEnd}
             onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
             onNavigationStateChange={handleNavigationStateChange}
             onError={handleWebViewError}
             onHttpError={handleWebViewHttpError}
           />
 
-          {webviewLoading && (
+          {webviewLoading && !webViewLoadError ? (
             <YStack
               position="absolute"
               top={0}
@@ -261,13 +325,58 @@ export default function Payment() {
               justifyContent="center"
               backgroundColor="$background"
               gap="$3"
-              padding="$4">
+              padding="$4"
+              role="alert"
+              aria-live="polite">
               <Spinner size="large" color="$primary" />
               <Text textAlign="center" color="$colorPress">
                 Memuat halaman pembayaran...
               </Text>
             </YStack>
-          )}
+          ) : null}
+
+          {webViewLoadError ? (
+            <YStack
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              bottom={0}
+              alignItems="center"
+              justifyContent="center"
+              backgroundColor="$background"
+              gap="$3"
+              padding="$4"
+              role="alert"
+              aria-live="assertive">
+              <Text textAlign="center" color="$danger" fontWeight="700" fontSize="$5">
+                Halaman pembayaran bermasalah
+              </Text>
+              <Text textAlign="center" color="$colorPress" fontSize="$3">
+                {webViewLoadError}
+              </Text>
+              <TamaguiButton
+                backgroundColor="$primary"
+                color="$onPrimary"
+                borderRadius="$3"
+                minHeight={48}
+                onPress={handleRetryWebViewLoad}
+                aria-label="Muat ulang halaman pembayaran">
+                Muat Ulang
+              </TamaguiButton>
+              <TamaguiButton
+                backgroundColor="transparent"
+                color="$primary"
+                borderColor="$primary"
+                borderWidth={1}
+                borderRadius="$3"
+                minHeight={48}
+                onPress={handleCheckPaymentStatus}
+                aria-label="Cek status pembayaran">
+                Cek Status Pembayaran
+              </TamaguiButton>
+            </YStack>
+          ) : null}
         </YStack>
       )}
 
@@ -291,7 +400,7 @@ export default function Payment() {
       ) : null}
 
       {paymentError ? (
-        <YStack px="$4" pb="$3" bg="$background">
+        <YStack px="$4" pb="$3" bg="$background" role="alert" aria-live="assertive">
           <Text color="$danger" textAlign="center" fontSize="$3">
             {paymentError}
           </Text>

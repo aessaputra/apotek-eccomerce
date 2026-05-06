@@ -32,6 +32,7 @@ const mockInvalidateOrdersByStatusCache = jest.fn(
 );
 const mockCanOpenURL = jest.fn<(...args: unknown[]) => Promise<boolean>>();
 const mockOpenURL = jest.fn<(...args: unknown[]) => Promise<void>>();
+const mockWebViewReload = jest.fn();
 const mockBackHandlerRemove = jest.fn();
 const mockBackHandlerAddEventListener = jest.fn(
   (_eventName: 'hardwareBackPress', _handler: () => boolean | null | undefined) => ({
@@ -57,11 +58,19 @@ jest.mock('react-native-safe-area-context', () => {
 });
 
 jest.mock('react-native-webview', () => {
-  const React = jest.requireActual('react');
+  const ReactActual = jest.requireActual('react') as typeof import('react');
   const { View } = jest.requireActual('react-native') as typeof import('react-native');
 
+  const WebView = ReactActual.forwardRef(
+    (props: Record<string, unknown>, ref: React.Ref<unknown>) => {
+      ReactActual.useImperativeHandle(ref, () => ({ reload: mockWebViewReload }), []);
+
+      return <View testID="payment-webview" {...props} />;
+    },
+  );
+
   return {
-    WebView: (props: Record<string, unknown>) => <View testID="payment-webview" {...props} />,
+    WebView,
   };
 });
 
@@ -115,6 +124,7 @@ describe('<Payment />', () => {
     mockInvalidateOrdersByStatusCache.mockClear();
     mockCanOpenURL.mockReset();
     mockOpenURL.mockReset();
+    mockWebViewReload.mockReset();
     mockBackHandlerAddEventListener.mockClear();
     mockBackHandlerRemove.mockClear();
 
@@ -330,6 +340,55 @@ describe('<Payment />', () => {
       screen.getByText('Navigasi ke halaman tidak dikenal diblokir untuk keamanan.'),
     ).toBeTruthy();
     expect(mockPollOrderPaymentStatus).not.toHaveBeenCalled();
+  });
+
+  test('shows recoverable payment page loading errors', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      paymentUrl: 'https://snap.midtrans.com/v1/token',
+      orderId: 'order-1',
+    });
+
+    render(<Payment />);
+
+    await act(async () => {
+      fireEvent(screen.getByTestId('payment-webview'), 'onError');
+    });
+
+    expect(screen.getByText('Halaman pembayaran bermasalah')).toBeTruthy();
+    expect(screen.getByLabelText('Muat ulang halaman pembayaran')).toBeTruthy();
+    expect(screen.getByLabelText('Cek status pembayaran')).toBeTruthy();
+    expect(mockPollOrderPaymentStatus).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByLabelText('Muat ulang halaman pembayaran'));
+
+    expect(mockWebViewReload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Halaman pembayaran bermasalah')).toBeNull();
+  });
+
+  test('lets users check payment status after payment page load errors', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      paymentUrl: 'https://snap.midtrans.com/v1/token',
+      orderId: 'order-1',
+    });
+    mockPollOrderPaymentStatus.mockResolvedValue({
+      data: null,
+      error: new Error('Status pembayaran masih diproses'),
+    });
+
+    render(<Payment />);
+
+    await act(async () => {
+      fireEvent(screen.getByTestId('payment-webview'), 'onError');
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Cek status pembayaran'));
+    });
+
+    await waitFor(() => {
+      expect(mockPollOrderPaymentStatus).toHaveBeenCalledWith('order-1', 12, 2000);
+      expect(screen.getByText('Pembayaran sedang diproses')).toBeTruthy();
+    });
   });
 
   test('opens supported deep links through native Linking', async () => {
