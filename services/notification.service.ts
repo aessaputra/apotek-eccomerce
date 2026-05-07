@@ -1,10 +1,12 @@
 import { supabase } from '@/utils/supabase';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 import type { NotificationRow } from '@/types/notification';
 import { isNotificationType } from '@/types/notification';
 import type { Tables, TablesUpdate } from '@/types/supabase';
 import type { ProfileRow } from '@/types/user';
 import {
+  addExpoPushTokenListenerAsync,
   bootstrapAndroidNotificationChannelAsync,
   hasExpoNotificationMethodsAsync,
   hasExpoPushTokenRuntimeSupport,
@@ -12,11 +14,71 @@ import {
   isPhysicalNotificationDeviceAsync,
   resolveNotificationProjectId,
 } from '@/utils/notifications';
+import LargeSecureStore from '@/utils/LargeSecureStore';
 
 type ExpoNotificationsModule = typeof import('expo-notifications');
+type ExpoPushToken = Parameters<ExpoNotificationsModule['addPushTokenListener']>[0] extends (
+  event: infer Event,
+) => void
+  ? Event
+  : { data: string };
 
 type NotificationTableRow = Tables<'notifications'>;
 type NotificationRealtimeRecord = Partial<NotificationTableRow>;
+type ProfilePushTokenRow = {
+  id?: string;
+  user_id: string;
+  device_id: string;
+  expo_push_token: string;
+  platform: 'android' | 'ios' | 'web' | 'native' | string;
+  last_seen_at: string;
+  revoked_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+type ProfilePushTokenUpsert = Pick<
+  ProfilePushTokenRow,
+  'user_id' | 'device_id' | 'expo_push_token' | 'platform' | 'last_seen_at' | 'revoked_at'
+>;
+type ProfilePushTokenClient = {
+  from(table: 'profile_push_tokens'): {
+    upsert(
+      values: ProfilePushTokenUpsert,
+      options: { onConflict: string },
+    ): {
+      select(columns: string): {
+        maybeSingle(): Promise<{ data: ProfilePushTokenRow | null; error: unknown }>;
+      };
+    };
+    update(values: Partial<Pick<ProfilePushTokenRow, 'last_seen_at' | 'revoked_at'>>): {
+      eq(column: string, value: string): ProfilePushTokenUpdateQuery;
+    };
+  };
+};
+type ProfilePushTokenUpdateQuery = {
+  eq(column: string, value: string): ProfilePushTokenUpdateQuery;
+  select(columns: string): {
+    maybeSingle(): Promise<{ data: ProfilePushTokenRow | null; error: unknown }>;
+  };
+};
+type NotificationPageCursor = string | null;
+
+export const NOTIFICATIONS_PAGE_SIZE = 20;
+export const NOTIFICATION_DEVICE_ID_STORAGE_KEY = 'notifications:device-id';
+
+export interface FetchNotificationsOptions {
+  signal?: AbortSignal;
+  cursor?: NotificationPageCursor;
+  pageSize?: number;
+}
+
+export interface NotificationPage {
+  items: NotificationRow[];
+  hasMore: boolean;
+  nextCursor: NotificationPageCursor;
+}
+
+const notificationStorage = new LargeSecureStore();
 
 export type NotificationPermissionStatus =
   | Awaited<ReturnType<ExpoNotificationsModule['getPermissionsAsync']>>['status']
@@ -110,6 +172,66 @@ function normalizeExpoPushToken(token: string): string {
   return normalized;
 }
 
+function getProfilePushTokenClient(): ProfilePushTokenClient {
+  return supabase as unknown as ProfilePushTokenClient;
+}
+
+function createDeviceId(): string {
+  const cryptoModule = globalThis.crypto;
+
+  if (typeof cryptoModule.randomUUID === 'function') {
+    return cryptoModule.randomUUID();
+  }
+
+  const randomValues = new Uint8Array(16);
+  cryptoModule.getRandomValues(randomValues);
+  const randomHex = Array.from(randomValues, value => value.toString(16).padStart(2, '0')).join('');
+
+  return `device-${Date.now().toString(36)}-${randomHex}`;
+}
+
+export async function getNotificationDeviceId(): Promise<string> {
+  const storedDeviceId = (
+    await notificationStorage.getItem(NOTIFICATION_DEVICE_ID_STORAGE_KEY)
+  )?.trim();
+
+  if (storedDeviceId) {
+    return storedDeviceId;
+  }
+
+  const deviceId = createDeviceId().trim();
+  await notificationStorage.setItem(NOTIFICATION_DEVICE_ID_STORAGE_KEY, deviceId);
+
+  return deviceId;
+}
+
+function normalizeFetchOptions(
+  optionsOrSignal?: FetchNotificationsOptions | AbortSignal,
+): Required<Pick<FetchNotificationsOptions, 'pageSize'>> &
+  Pick<FetchNotificationsOptions, 'signal' | 'cursor'> {
+  if (optionsOrSignal instanceof AbortSignal) {
+    return { signal: optionsOrSignal, cursor: null, pageSize: NOTIFICATIONS_PAGE_SIZE };
+  }
+
+  const pageSize = Math.max(1, optionsOrSignal?.pageSize ?? NOTIFICATIONS_PAGE_SIZE);
+
+  return {
+    signal: optionsOrSignal?.signal,
+    cursor: optionsOrSignal?.cursor ?? null,
+    pageSize,
+  };
+}
+
+function getOffsetFromCursor(cursor: NotificationPageCursor): number {
+  if (!cursor) {
+    return 0;
+  }
+
+  const parsedCursor = Number.parseInt(cursor, 10);
+
+  return Number.isFinite(parsedCursor) && parsedCursor > 0 ? parsedCursor : 0;
+}
+
 function normalizeNotificationRow(row: NotificationTableRow): NotificationRow {
   if (!isNotificationType(row.type)) {
     throw new Error(`Unsupported notification type received: ${row.type}`);
@@ -166,32 +288,55 @@ function createTokenSyncResult(
   };
 }
 
-async function getProfileTokenState(
+async function mirrorLegacyProfileToken(
   userId: string,
-): Promise<NotificationServiceResult<Pick<ProfileRow, 'id' | 'expo_push_token'>>> {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, expo_push_token')
-      .eq('id', userId)
-      .maybeSingle();
+  expoPushToken: string,
+  now: string,
+): Promise<NotificationServiceResult<ProfileRow | null>> {
+  const updatePayload: TablesUpdate<'profiles'> = {
+    expo_push_token: expoPushToken,
+    expo_push_token_updated_at: now,
+    updated_at: now,
+  };
 
-    if (error) {
-      return { data: null, error: error as unknown as Error };
-    }
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updatePayload)
+    .eq('id', userId)
+    .select('*')
+    .maybeSingle();
 
-    return {
-      data: data
-        ? {
-            id: data.id,
-            expo_push_token: data.expo_push_token,
-          }
-        : null,
-      error: null,
-    };
-  } catch (error) {
-    return { data: null, error: toError(error) };
+  if (error) {
+    return { data: null, error: error as unknown as Error };
   }
+
+  return { data: data ? (data as ProfileRow) : null, error: null };
+}
+
+async function clearLegacyProfileTokenIfCurrent(
+  userId: string,
+  expoPushToken: string,
+  now: string,
+): Promise<NotificationServiceResult<ProfileRow | null>> {
+  const updatePayload: TablesUpdate<'profiles'> = {
+    expo_push_token: null,
+    expo_push_token_updated_at: null,
+    updated_at: now,
+  };
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updatePayload)
+    .eq('id', userId)
+    .eq('expo_push_token', expoPushToken)
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    return { data: null, error: error as unknown as Error };
+  }
+
+  return { data: data ? (data as ProfileRow) : null, error: null };
 }
 
 async function syncExpoPushTokenWithPermissionState(
@@ -239,12 +384,6 @@ async function syncExpoPushTokenWithPermissionState(
 
     await bootstrapAndroidNotificationChannelAsync();
 
-    const { data: profile, error: profileError } = await getProfileTokenState(normalizedUserId);
-
-    if (profileError) {
-      return { data: null, error: profileError };
-    }
-
     const Notifications = await getExpoNotificationsModuleAsync();
 
     const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
@@ -253,13 +392,6 @@ async function syncExpoPushTokenWithPermissionState(
     if (!token) {
       return {
         data: createTokenSyncResult('token_unavailable', permissionStatus, didPrompt),
-        error: null,
-      };
-    }
-
-    if (profile?.expo_push_token === token) {
-      return {
-        data: createTokenSyncResult('unchanged', permissionStatus, didPrompt, token),
         error: null,
       };
     }
@@ -281,21 +413,37 @@ async function syncExpoPushTokenWithPermissionState(
 
 export async function fetchNotifications(
   userId: string,
-  signal?: AbortSignal,
-): Promise<NotificationServiceResult<NotificationRow[]>> {
+  optionsOrSignal?: FetchNotificationsOptions | AbortSignal,
+): Promise<NotificationServiceResult<NotificationPage>> {
   try {
     const normalizedUserId = normalizeRequiredIdentifier(userId, 'userId');
+    const { signal, cursor, pageSize } = normalizeFetchOptions(optionsOrSignal);
+    const offset = getOffsetFromCursor(cursor ?? null);
+    const rangeEnd = offset + pageSize;
 
     let query = supabase.from('notifications').select('*').eq('user_id', normalizedUserId);
     query = withAbortSignal(query, signal);
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, rangeEnd);
 
     if (error) {
       return { data: null, error: error as unknown as Error };
     }
 
-    return { data: normalizeNotificationRows((data ?? []) as NotificationTableRow[]), error: null };
+    const rows = normalizeNotificationRows((data ?? []) as NotificationTableRow[]);
+    const items = rows.slice(0, pageSize);
+    const hasMore = rows.length > pageSize;
+
+    return {
+      data: {
+        items,
+        hasMore,
+        nextCursor: hasMore ? String(offset + items.length) : null,
+      },
+      error: null,
+    };
   } catch (error) {
     return { data: null, error: toError(error) };
   }
@@ -533,22 +681,25 @@ export async function requestExpoPushTokenAndSync(
 export async function updateExpoPushToken(
   userId: string,
   expoPushToken: string,
-): Promise<NotificationServiceResult<ProfileRow>> {
+): Promise<NotificationServiceResult<ProfilePushTokenRow>> {
   try {
     const normalizedUserId = normalizeRequiredIdentifier(userId, 'userId');
     const normalizedExpoPushToken = normalizeExpoPushToken(expoPushToken);
+    const deviceId = await getNotificationDeviceId();
     const now = new Date().toISOString();
 
-    const updatePayload: TablesUpdate<'profiles'> = {
+    const upsertPayload: ProfilePushTokenUpsert = {
+      user_id: normalizedUserId,
+      device_id: deviceId,
       expo_push_token: normalizedExpoPushToken,
-      expo_push_token_updated_at: now,
-      updated_at: now,
+      platform: Platform.OS,
+      last_seen_at: now,
+      revoked_at: null,
     };
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updatePayload)
-      .eq('id', normalizedUserId)
+    const { data, error } = await getProfilePushTokenClient()
+      .from('profile_push_tokens')
+      .upsert(upsertPayload, { onConflict: 'user_id,device_id' })
       .select('*')
       .maybeSingle();
 
@@ -557,10 +708,20 @@ export async function updateExpoPushToken(
     }
 
     if (!data) {
-      return { data: null, error: new Error('Profile not found for push token update.') };
+      return { data: null, error: new Error('Push token row not found after update.') };
     }
 
-    return { data: data as ProfileRow, error: null };
+    const { error: legacyError } = await mirrorLegacyProfileToken(
+      normalizedUserId,
+      normalizedExpoPushToken,
+      now,
+    );
+
+    if (legacyError) {
+      return { data: null, error: legacyError };
+    }
+
+    return { data, error: null };
   } catch (error) {
     return { data: null, error: toError(error) };
   }
@@ -568,36 +729,93 @@ export async function updateExpoPushToken(
 
 export async function clearExpoPushToken(
   userId: string,
-): Promise<NotificationServiceResult<ProfileRow>> {
+  expoPushToken?: string | null,
+): Promise<NotificationServiceResult<ProfilePushTokenRow | null>> {
   try {
     const normalizedUserId = normalizeRequiredIdentifier(userId, 'userId');
+    const normalizedExpoPushToken = expoPushToken ? normalizeExpoPushToken(expoPushToken) : null;
+    const deviceId = await getNotificationDeviceId();
     const now = new Date().toISOString();
 
-    const updatePayload: TablesUpdate<'profiles'> = {
-      expo_push_token: null,
-      expo_push_token_updated_at: null,
-      updated_at: now,
-    };
+    let revokeQuery = getProfilePushTokenClient()
+      .from('profile_push_tokens')
+      .update({ revoked_at: now, last_seen_at: now })
+      .eq('user_id', normalizedUserId)
+      .eq('device_id', deviceId);
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updatePayload)
-      .eq('id', normalizedUserId)
-      .select('*')
-      .maybeSingle();
+    if (normalizedExpoPushToken) {
+      revokeQuery = revokeQuery.eq('expo_push_token', normalizedExpoPushToken);
+    }
+
+    const { data, error } = await revokeQuery.select('*').maybeSingle();
 
     if (error) {
       return { data: null, error: error as unknown as Error };
     }
 
-    if (!data) {
-      return { data: null, error: null };
+    const tokenForLegacyCleanup = normalizedExpoPushToken ?? data?.expo_push_token ?? null;
+
+    if (tokenForLegacyCleanup) {
+      const { error: legacyError } = await clearLegacyProfileTokenIfCurrent(
+        normalizedUserId,
+        tokenForLegacyCleanup,
+        now,
+      );
+
+      if (legacyError) {
+        return { data: null, error: legacyError };
+      }
     }
 
-    return { data: data as ProfileRow, error: null };
+    return { data, error: null };
   } catch (error) {
     return { data: null, error: toError(error) };
   }
+}
+
+export function subscribeToExpoPushTokenUpdates(
+  userId: string,
+  onSync?: (result: NotificationServiceResult<ProfilePushTokenRow>) => void,
+): () => void {
+  const normalizedUserId = userId.trim();
+
+  if (!normalizedUserId) {
+    return () => {};
+  }
+
+  let isActive = true;
+  let subscription: { remove: () => void } | null = null;
+
+  void addExpoPushTokenListenerAsync((event: ExpoPushToken) => {
+    const token = event.data.trim();
+
+    if (!token) {
+      return;
+    }
+
+    void updateExpoPushToken(normalizedUserId, token).then(result => {
+      if (isActive) {
+        onSync?.(result);
+      }
+    });
+  })
+    .then(nextSubscription => {
+      if (!isActive) {
+        nextSubscription?.remove();
+        return;
+      }
+
+      subscription = nextSubscription;
+    })
+    .catch(error => {
+      if (__DEV__) console.warn('[notification.service] push token listener unavailable:', error);
+    });
+
+  return () => {
+    isActive = false;
+    subscription?.remove();
+    subscription = null;
+  };
 }
 
 export function subscribeToNotificationChanges(

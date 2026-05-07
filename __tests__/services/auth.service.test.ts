@@ -41,6 +41,8 @@ interface MfaThrowNormalizationCase {
 const mockSignInWithPassword = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockSignUp = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockSignOut = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockGetUser = jest.fn<(...args: unknown[]) => AuthServiceResult>();
+const mockClearExpoPushToken = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockVerifyOtp = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockResetPasswordForEmail = jest.fn<(...args: unknown[]) => AuthServiceResult>();
 const mockUpdateUser = jest.fn<(...args: unknown[]) => AuthServiceResult>();
@@ -90,6 +92,7 @@ jest.mock('@/utils/supabase', () => ({
       signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
       signUp: (...args: unknown[]) => mockSignUp(...args),
       signOut: (...args: unknown[]) => mockSignOut(...args),
+      getUser: (...args: unknown[]) => mockGetUser(...args),
       verifyOtp: (...args: unknown[]) => mockVerifyOtp(...args),
       resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
@@ -108,6 +111,10 @@ jest.mock('@/utils/supabase', () => ({
       },
     },
   },
+}));
+
+jest.mock('@/services/notification.service', () => ({
+  clearExpoPushToken: (...args: unknown[]) => mockClearExpoPushToken(...args),
 }));
 
 jest.mock('@/utils/config', () => ({
@@ -130,6 +137,8 @@ describe('auth.service', () => {
     mockSignInWithPassword.mockReset();
     mockSignUp.mockReset();
     mockSignOut.mockReset();
+    mockGetUser.mockReset();
+    mockClearExpoPushToken.mockReset();
     mockVerifyOtp.mockReset();
     mockResetPasswordForEmail.mockReset();
     mockUpdateUser.mockReset();
@@ -144,6 +153,8 @@ describe('auth.service', () => {
     mockUnenroll.mockReset();
     mockMakeRedirectUri.mockReset();
     mockFetch.mockReset();
+    mockGetUser.mockImplementation(async () => ({ data: { user: null }, error: null }));
+    mockClearExpoPushToken.mockImplementation(async () => ({ data: null, error: null }));
     global.fetch = mockFetch as typeof fetch;
     mockMakeRedirectUri.mockImplementation(({ path, isTripleSlashed }) =>
       isTripleSlashed
@@ -186,12 +197,17 @@ describe('auth.service', () => {
     expect(result).toBe(supabaseResult);
   });
 
-  it('forwards signOut to Supabase auth', async () => {
+  it('clears the current device push token before forwarding signOut to Supabase auth', async () => {
     const supabaseResult = { error: null };
+    mockGetUser.mockImplementationOnce(async () => ({
+      data: { user: { id: 'user-1' } },
+      error: null,
+    }));
     mockSignOut.mockImplementationOnce(async () => supabaseResult);
 
     const result = await signOut();
 
+    expect(mockClearExpoPushToken).toHaveBeenCalledWith('user-1');
     expect(mockSignOut).toHaveBeenCalledWith();
     expect(result).toBe(supabaseResult);
   });
@@ -202,6 +218,7 @@ describe('auth.service', () => {
 
     const result = await signOut({ scope: 'local' });
 
+    expect(mockClearExpoPushToken).not.toHaveBeenCalled();
     expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(result).toBe(supabaseResult);
   });

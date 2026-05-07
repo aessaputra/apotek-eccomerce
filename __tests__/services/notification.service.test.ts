@@ -4,6 +4,7 @@ import {
   fetchNotifications,
   markNotificationAsRead,
   requestExpoPushTokenAndSync,
+  subscribeToExpoPushTokenUpdates,
   syncExpoPushTokenIfPermitted,
   updateExpoPushToken,
 } from '@/services/notification.service';
@@ -17,6 +18,9 @@ const mockFrom = jest.fn<(table: unknown) => unknown>();
 const mockGetPermissionsAsync = jest.fn<() => Promise<PermissionResponse>>();
 const mockRequestPermissionsAsync = jest.fn<() => Promise<PermissionResponse>>();
 const mockGetExpoPushTokenAsync = jest.fn<() => Promise<{ data: string }>>();
+const mockAddPushTokenListener =
+  jest.fn<(listener: (event: { data: string }) => void) => { remove: () => void }>();
+const mockPushTokenListenerRemove = jest.fn();
 const mockBootstrapAndroidNotificationChannelAsync = jest.fn<() => Promise<void>>();
 const mockHasExpoNotificationMethodsAsync = jest.fn<() => Promise<boolean>>();
 const mockHasExpoPushTokenRuntimeSupport = jest.fn<() => boolean>();
@@ -25,11 +29,13 @@ const mockGetExpoNotificationsModuleAsync = jest.fn<
     getPermissionsAsync: () => Promise<PermissionResponse>;
     requestPermissionsAsync: () => Promise<PermissionResponse>;
     getExpoPushTokenAsync: () => Promise<{ data: string }>;
+    addPushTokenListener: (listener: (event: { data: string }) => void) => { remove: () => void };
   }>
 >();
 const mockHasNativeNotificationSupport = jest.fn<() => boolean>();
 const mockIsPhysicalNotificationDeviceAsync = jest.fn<() => Promise<boolean>>();
 const mockResolveNotificationProjectId = jest.fn<() => string | null>();
+const mockStorage = new Map<string, string>();
 
 jest.mock('@/utils/supabase', () => ({
   supabase: {
@@ -44,6 +50,8 @@ jest.mock('expo-notifications', () => ({
 }));
 
 jest.mock('@/utils/notifications', () => ({
+  addExpoPushTokenListenerAsync: (listener: (event: { data: string }) => void) =>
+    Promise.resolve(mockAddPushTokenListener(listener)),
   bootstrapAndroidNotificationChannelAsync: () => mockBootstrapAndroidNotificationChannelAsync(),
   getExpoNotificationsModuleAsync: () => mockGetExpoNotificationsModuleAsync(),
   hasExpoNotificationMethodsAsync: () => mockHasExpoNotificationMethodsAsync(),
@@ -51,6 +59,25 @@ jest.mock('@/utils/notifications', () => ({
   hasNativeNotificationSupport: () => mockHasNativeNotificationSupport(),
   isPhysicalNotificationDeviceAsync: () => mockIsPhysicalNotificationDeviceAsync(),
   resolveNotificationProjectId: () => mockResolveNotificationProjectId(),
+}));
+
+jest.mock('@/utils/LargeSecureStore', () => ({
+  __esModule: true,
+  default: class MockLargeSecureStore {
+    getItem(key: string) {
+      return Promise.resolve(mockStorage.get(key) ?? null);
+    }
+
+    setItem(key: string, value: string) {
+      mockStorage.set(key, value);
+      return Promise.resolve();
+    }
+
+    removeItem(key: string) {
+      mockStorage.delete(key);
+      return Promise.resolve();
+    }
+  },
 }));
 
 function createNotificationRow(overrides: Partial<Record<string, unknown>> = {}) {
@@ -75,7 +102,25 @@ function createListQuery(rows: unknown[]) {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     abortSignal: jest.fn().mockReturnThis(),
-    order: jest.fn(async () => ({ data: rows, error: null })),
+    order: jest.fn().mockReturnThis(),
+    range: jest.fn(async () => ({ data: rows, error: null })),
+  };
+}
+
+function createPushTokenUpsertQuery(row: unknown) {
+  return {
+    upsert: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn(async () => ({ data: row, error: null })),
+  };
+}
+
+function createPushTokenRevokeQuery(row: unknown) {
+  return {
+    update: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn(async () => ({ data: row, error: null })),
   };
 }
 
@@ -99,29 +144,11 @@ function createProfileUpdateQuery(row: unknown) {
   };
 }
 
-function createProfileUpdateErrorQuery(error: Error) {
-  return {
-    update: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn(async () => ({ data: null, error })),
-  };
-}
-
-function createProfileTokenQuery(token: string | null) {
-  return {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn(async () => ({
-      data: { id: 'user-1', expo_push_token: token },
-      error: null,
-    })),
-  };
-}
-
 describe('notification.service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockStorage.clear();
+    mockStorage.set('notifications:device-id', 'device-1');
     jest.setSystemTime(new Date('2026-04-23T15:30:00.000Z'));
     mockHasExpoPushTokenRuntimeSupport.mockReturnValue(true);
     mockHasExpoNotificationMethodsAsync.mockImplementation(async () => true);
@@ -129,10 +156,12 @@ describe('notification.service', () => {
     mockIsPhysicalNotificationDeviceAsync.mockImplementation(async () => true);
     mockResolveNotificationProjectId.mockReturnValue('project-123');
     mockBootstrapAndroidNotificationChannelAsync.mockImplementation(async () => undefined);
+    mockAddPushTokenListener.mockImplementation(() => ({ remove: mockPushTokenListenerRemove }));
     mockGetExpoNotificationsModuleAsync.mockImplementation(async () => ({
       getPermissionsAsync: () => mockGetPermissionsAsync(),
       requestPermissionsAsync: () => mockRequestPermissionsAsync(),
       getExpoPushTokenAsync: () => mockGetExpoPushTokenAsync(),
+      addPushTokenListener: listener => mockAddPushTokenListener(listener),
     }));
   });
 
@@ -148,9 +177,27 @@ describe('notification.service', () => {
     const result = await fetchNotifications('user-1');
 
     expect(result.error).toBeNull();
-    expect(result.data).toEqual(rows);
+    expect(result.data).toEqual({ items: rows, hasMore: false, nextCursor: null });
     expect(listQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
     expect(listQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(listQuery.range).toHaveBeenCalledWith(0, 20);
+  });
+
+  it('returns pagination metadata and fetches one extra row to detect more pages', async () => {
+    const rows = Array.from({ length: 21 }, (_, index) =>
+      createNotificationRow({ id: `notification-${index + 1}` }),
+    );
+    const listQuery = createListQuery(rows);
+
+    mockFrom.mockReturnValueOnce(listQuery);
+
+    const result = await fetchNotifications('user-1', { cursor: '20' });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.items).toHaveLength(20);
+    expect(result.data?.hasMore).toBe(true);
+    expect(result.data?.nextCursor).toBe('40');
+    expect(listQuery.range).toHaveBeenCalledWith(20, 40);
   });
 
   it('marks one notification as read without dropping the ownership filter', async () => {
@@ -249,8 +296,20 @@ describe('notification.service', () => {
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it('skips profile updates when the Expo token is unchanged', async () => {
-    const profileQuery = createProfileTokenQuery('ExponentPushToken[current]');
+  it('upserts the current device token row even when the legacy profile token already matches', async () => {
+    const tokenRow = {
+      user_id: 'user-1',
+      device_id: 'device-1',
+      expo_push_token: 'ExponentPushToken[current]',
+      platform: 'ios',
+      last_seen_at: '2026-04-23T15:30:00.000Z',
+      revoked_at: null,
+    };
+    const tokenQuery = createPushTokenUpsertQuery(tokenRow);
+    const profileQuery = createProfileUpdateQuery({
+      id: 'user-1',
+      expo_push_token: 'ExponentPushToken[current]',
+    });
 
     mockRequestPermissionsAsync.mockImplementation(async () => ({
       granted: true,
@@ -259,7 +318,7 @@ describe('notification.service', () => {
     mockGetExpoPushTokenAsync.mockImplementation(async () => ({
       data: 'ExponentPushToken[current]',
     }));
-    mockFrom.mockReturnValueOnce(profileQuery);
+    mockFrom.mockReturnValueOnce(tokenQuery).mockReturnValueOnce(profileQuery);
 
     const result = await requestExpoPushTokenAndSync('user-1');
 
@@ -267,103 +326,176 @@ describe('notification.service', () => {
     expect(result.data).toEqual({
       didPrompt: true,
       permissionStatus: 'granted',
-      status: 'unchanged',
+      status: 'updated',
       token: 'ExponentPushToken[current]',
     });
-    expect(mockFrom).toHaveBeenCalledTimes(1);
-    expect(profileQuery.select).toHaveBeenCalledWith('id, expo_push_token');
+    expect(mockFrom).toHaveBeenNthCalledWith(1, 'profile_push_tokens');
+    expect(tokenQuery.upsert).toHaveBeenCalledWith(
+      {
+        user_id: 'user-1',
+        device_id: 'device-1',
+        expo_push_token: 'ExponentPushToken[current]',
+        platform: expect.any(String),
+        last_seen_at: '2026-04-23T15:30:00.000Z',
+        revoked_at: null,
+      },
+      { onConflict: 'user_id,device_id' },
+    );
   });
 
-  it('updates the profile token lifecycle columns when a new Expo token is stored', async () => {
-    const updatedProfile = {
-      id: 'user-1',
-      avatar_url: null,
-      created_at: '2026-04-20T00:00:00.000Z',
+  it('updates the current device token row and mirrors the legacy profile column', async () => {
+    const updatedTokenRow = {
+      user_id: 'user-1',
+      device_id: 'device-1',
       expo_push_token: 'ExponentPushToken[new-token]',
-      expo_push_token_updated_at: '2026-04-23T15:30:00.000Z',
-      full_name: 'User One',
-      is_banned: false,
-      phone_number: null,
-      role: 'customer',
-      updated_at: '2026-04-23T15:30:00.000Z',
+      platform: 'ios',
+      last_seen_at: '2026-04-23T15:30:00.000Z',
+      revoked_at: null,
     };
-    const updateQuery = createProfileUpdateQuery(updatedProfile);
+    const tokenQuery = createPushTokenUpsertQuery(updatedTokenRow);
+    const profileQuery = createProfileUpdateQuery({ id: 'user-1' });
 
-    mockFrom.mockReturnValueOnce(updateQuery);
+    mockFrom.mockReturnValueOnce(tokenQuery).mockReturnValueOnce(profileQuery);
 
     const result = await updateExpoPushToken('user-1', 'ExponentPushToken[new-token]');
 
     expect(result.error).toBeNull();
-    expect(result.data).toEqual(updatedProfile);
-    expect(updateQuery.update).toHaveBeenCalledWith({
+    expect(result.data).toEqual(updatedTokenRow);
+    expect(tokenQuery.upsert).toHaveBeenCalledWith(
+      {
+        user_id: 'user-1',
+        device_id: 'device-1',
+        expo_push_token: 'ExponentPushToken[new-token]',
+        platform: expect.any(String),
+        last_seen_at: '2026-04-23T15:30:00.000Z',
+        revoked_at: null,
+      },
+      { onConflict: 'user_id,device_id' },
+    );
+    expect(profileQuery.update).toHaveBeenCalledWith({
       expo_push_token: 'ExponentPushToken[new-token]',
       expo_push_token_updated_at: '2026-04-23T15:30:00.000Z',
       updated_at: '2026-04-23T15:30:00.000Z',
     });
-    expect(updateQuery.eq).toHaveBeenCalledWith('id', 'user-1');
   });
 
-  it('clears the stored Expo token on logout or account reset', async () => {
-    const clearedProfile = {
-      id: 'user-1',
-      avatar_url: null,
-      created_at: '2026-04-20T00:00:00.000Z',
-      expo_push_token: null,
-      expo_push_token_updated_at: null,
-      full_name: 'User One',
-      is_banned: false,
-      phone_number: null,
-      role: 'customer',
-      updated_at: '2026-04-23T15:30:00.000Z',
+  it('revokes only the current device token and clears legacy token only when it matches', async () => {
+    const revokedTokenRow = {
+      user_id: 'user-1',
+      device_id: 'device-1',
+      expo_push_token: 'ExponentPushToken[current]',
+      platform: 'ios',
+      last_seen_at: '2026-04-23T15:30:00.000Z',
+      revoked_at: '2026-04-23T15:30:00.000Z',
     };
-    const updateQuery = createProfileUpdateQuery(clearedProfile);
+    const revokeQuery = createPushTokenRevokeQuery(revokedTokenRow);
+    const profileQuery = createProfileUpdateQuery({ id: 'user-1', expo_push_token: null });
 
-    mockFrom.mockReturnValueOnce(updateQuery);
+    mockFrom.mockReturnValueOnce(revokeQuery).mockReturnValueOnce(profileQuery);
 
-    const result = await clearExpoPushToken('user-1');
+    const result = await clearExpoPushToken('user-1', 'ExponentPushToken[current]');
 
     expect(result.error).toBeNull();
-    expect(result.data).toEqual(clearedProfile);
-    expect(updateQuery.update).toHaveBeenCalledWith({
+    expect(result.data).toEqual(revokedTokenRow);
+    expect(revokeQuery.update).toHaveBeenCalledWith({
+      revoked_at: '2026-04-23T15:30:00.000Z',
+      last_seen_at: '2026-04-23T15:30:00.000Z',
+    });
+    expect(revokeQuery.eq).toHaveBeenNthCalledWith(1, 'user_id', 'user-1');
+    expect(revokeQuery.eq).toHaveBeenNthCalledWith(2, 'device_id', 'device-1');
+    expect(revokeQuery.eq).toHaveBeenNthCalledWith(
+      3,
+      'expo_push_token',
+      'ExponentPushToken[current]',
+    );
+    expect(profileQuery.update).toHaveBeenCalledWith({
       expo_push_token: null,
       expo_push_token_updated_at: null,
       updated_at: '2026-04-23T15:30:00.000Z',
     });
-    expect(updateQuery.eq).toHaveBeenCalledWith('id', 'user-1');
+    expect(profileQuery.eq).toHaveBeenNthCalledWith(1, 'id', 'user-1');
+    expect(profileQuery.eq).toHaveBeenNthCalledWith(
+      2,
+      'expo_push_token',
+      'ExponentPushToken[current]',
+    );
   });
 
-  it('treats a missing profile as a successful no-op when clearing the Expo token', async () => {
-    const updateQuery = createProfileUpdateQuery(null);
+  it('does not clear the legacy profile token when the current device token is unknown', async () => {
+    const revokeQuery = createPushTokenRevokeQuery(null);
 
-    mockFrom.mockReturnValueOnce(updateQuery);
+    mockFrom.mockReturnValueOnce(revokeQuery);
 
     const result = await clearExpoPushToken('user-1');
 
     expect(result.error).toBeNull();
     expect(result.data).toBeNull();
-    expect(updateQuery.update).toHaveBeenCalledWith({
-      expo_push_token: null,
-      expo_push_token_updated_at: null,
-      updated_at: '2026-04-23T15:30:00.000Z',
+    expect(revokeQuery.update).toHaveBeenCalledWith({
+      revoked_at: '2026-04-23T15:30:00.000Z',
+      last_seen_at: '2026-04-23T15:30:00.000Z',
     });
-    expect(updateQuery.eq).toHaveBeenCalledWith('id', 'user-1');
+    expect(mockFrom).toHaveBeenCalledTimes(1);
   });
 
-  it('returns Supabase errors when clearing the Expo token fails', async () => {
+  it('returns Supabase errors when revoking the current device token fails', async () => {
     const databaseError = new Error('database unavailable');
-    const updateQuery = createProfileUpdateErrorQuery(databaseError);
+    const revokeQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn(async () => ({ data: null, error: databaseError })),
+    };
 
-    mockFrom.mockReturnValueOnce(updateQuery);
+    mockFrom.mockReturnValueOnce(revokeQuery);
 
     const result = await clearExpoPushToken('user-1');
 
     expect(result.data).toBeNull();
     expect(result.error).toBe(databaseError);
-    expect(updateQuery.update).toHaveBeenCalledWith({
-      expo_push_token: null,
-      expo_push_token_updated_at: null,
-      updated_at: '2026-04-23T15:30:00.000Z',
+    expect(revokeQuery.update).toHaveBeenCalledWith({
+      revoked_at: '2026-04-23T15:30:00.000Z',
+      last_seen_at: '2026-04-23T15:30:00.000Z',
     });
-    expect(updateQuery.eq).toHaveBeenCalledWith('id', 'user-1');
+  });
+
+  it('registers an Expo push token listener and syncs rotated tokens for the user', async () => {
+    const tokenQuery = createPushTokenUpsertQuery({
+      user_id: 'user-1',
+      device_id: 'device-1',
+      expo_push_token: 'ExponentPushToken[rotated]',
+      platform: 'ios',
+      last_seen_at: '2026-04-23T15:30:00.000Z',
+      revoked_at: null,
+    });
+    const profileQuery = createProfileUpdateQuery({ id: 'user-1' });
+    const onSync = jest.fn();
+
+    mockFrom.mockReturnValueOnce(tokenQuery).mockReturnValueOnce(profileQuery);
+
+    const cleanup = subscribeToExpoPushTokenUpdates('user-1', onSync);
+
+    await Promise.resolve();
+    const listener = mockAddPushTokenListener.mock.calls[0]?.[0];
+    expect(listener).toBeDefined();
+
+    listener?.({ data: 'ExponentPushToken[rotated]' });
+
+    for (let index = 0; index < 6; index += 1) {
+      await Promise.resolve();
+    }
+
+    expect(tokenQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: 'user-1',
+        device_id: 'device-1',
+        expo_push_token: 'ExponentPushToken[rotated]',
+        revoked_at: null,
+      }),
+      { onConflict: 'user_id,device_id' },
+    );
+    expect(onSync).toHaveBeenCalledWith({ data: expect.any(Object), error: null });
+
+    cleanup();
+    expect(mockPushTokenListenerRemove).toHaveBeenCalled();
   });
 });
