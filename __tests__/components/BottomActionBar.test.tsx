@@ -14,7 +14,7 @@ describe('<BottomActionBar />', () => {
         buttonTitle="Lanjut Checkout"
         onPress={onPress}
         aria-label="Checkout sekarang"
-        aria-describedby="Melanjutkan ke pembayaran"
+        accessibilityHint="Melanjutkan ke pembayaran"
       />,
     );
 
@@ -36,7 +36,7 @@ describe('<BottomActionBar />', () => {
         buttonTitle="Bayar Sekarang"
         onPress={onPress}
         aria-label="Bayar sekarang"
-        aria-describedby="Menyelesaikan pesanan"
+        accessibilityHint="Menyelesaikan pesanan"
       />,
     );
 
@@ -50,7 +50,7 @@ describe('<BottomActionBar />', () => {
         onPress={() => {}}
         includeBottomInset={false}
         aria-label="Simpan"
-        aria-describedby="Simpan data"
+        accessibilityHint="Simpan data"
       />,
     );
 
@@ -76,7 +76,7 @@ describe('<BottomActionBar />', () => {
         buttonTitle="Simpan"
         onPress={() => {}}
         aria-label="Simpan"
-        aria-describedby="Simpan data"
+        accessibilityHint="Simpan data"
       />,
     );
 
