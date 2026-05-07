@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useToastController } from '@tamagui/toast';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RouteParams } from '@/types/routes.types';
@@ -16,14 +17,7 @@ import {
   useMedia,
   useTheme,
 } from 'tamagui';
-import AppAlertDialog from '@/components/elements/AppAlertDialog';
-import {
-  AlertCircleIcon,
-  CartIcon,
-  CheckCircleIcon,
-  HeartIcon,
-  PillIcon,
-} from '@/components/icons';
+import { AlertCircleIcon, CartIcon, HeartIcon, PillIcon } from '@/components/icons';
 import { addProductToCart } from '@/services/cart.service';
 import {
   formatPrice,
@@ -37,6 +31,11 @@ import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import QuantitySelector from '@/components/elements/QuantitySelector';
 import ProductImageGallery from '@/components/elements/ProductImageGallery';
+import {
+  showAddToCartFailureToast,
+  showAddToCartLoginToast,
+  showAddToCartSuccessToast,
+} from '@/utils/cartToastFeedback';
 
 const ScreenRoot = styled(YStack, {
   flex: 1,
@@ -235,14 +234,13 @@ export default function ProductDetails() {
   const params = useLocalSearchParams<RouteParams<'product-details'>>();
   const media = useMedia();
   const theme = useTheme();
+  const toast = useToastController();
   const { user } = useAppSlice();
   const insets = useSafeAreaInsets();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
-  const [successDialogMessage, setSuccessDialogMessage] = useState<string | null>(null);
   const [product, setProduct] = useState<ProductDetailsData | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -298,45 +296,37 @@ export default function ProductDetails() {
 
   const handleAddToCart = useCallback(async () => {
     if (!product) {
-      setActionFeedback('Produk tidak tersedia.');
+      showAddToCartFailureToast(toast, new Error('Produk tidak tersedia.'));
       return false;
     }
 
     if (!user?.id) {
-      setActionFeedback('Silakan login untuk menambahkan produk ke keranjang.');
+      showAddToCartLoginToast(toast);
       return false;
     }
 
     if (product.stock <= 0) {
-      setActionFeedback('Stok produk habis untuk saat ini.');
+      showAddToCartFailureToast(toast, new Error('Stok produk habis untuk saat ini.'));
       return false;
     }
 
-    setActionFeedback(null);
     setIsAddingToCart(true);
 
     const { error: cartError } = await addProductToCart(user.id, product.id, quantity);
     setIsAddingToCart(false);
 
     if (cartError) {
-      setActionFeedback(cartError.message || 'Gagal menambahkan produk ke keranjang.');
+      showAddToCartFailureToast(toast, cartError);
       return false;
     }
 
-    setSuccessDialogMessage(`Produk berhasil ditambahkan ke keranjang (${quantity} item).`);
+    showAddToCartSuccessToast(toast, product.name);
     setIsSheetOpen(false);
     return true;
-  }, [product, quantity, user?.id]);
+  }, [product, quantity, toast, user?.id]);
 
   const handleQuantityChange = useCallback((nextQuantity: number) => {
     setQuantity(nextQuantity);
-    setActionFeedback(null);
-  }, []);
-
-  const handleSuccessDialogOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      setSuccessDialogMessage(null);
-    }
   }, []);
 
   const handleToggleFavorite = useCallback(() => {
@@ -349,7 +339,6 @@ export default function ProductDetails() {
 
   const handleOpenSheet = useCallback(() => {
     if ((product?.stock ?? 0) <= 0) return;
-    setActionFeedback(null);
     setIsSheetOpen(true);
   }, [product?.stock]);
 
@@ -387,9 +376,7 @@ export default function ProductDetails() {
   const formattedTotalPrice = formatPrice(product.price * quantity);
   const isOutOfStock = product.stock <= 0;
   const maxQuantity = Math.max(product.stock, 1);
-  const feedbackExtraPadding = actionFeedback ? 22 : 0;
-  const contentBottomPadding = bottomBarHeight + feedbackExtraPadding;
-  const successDialogColor = getThemeColor(theme, 'primary');
+  const contentBottomPadding = bottomBarHeight;
 
   return (
     <ScreenRoot>
@@ -477,18 +464,6 @@ export default function ProductDetails() {
         pb={bottomPaddingInset}
         style={getBottomBarShadow(getThemeColor(theme, 'shadowColor'))}>
         <BottomActionBarContent>
-          {actionFeedback ? (
-            <Text
-              fontSize="$2"
-              color="$danger"
-              textAlign="center"
-              numberOfLines={2}
-              mb="$2"
-              accessibilityLiveRegion="assertive">
-              {actionFeedback}
-            </Text>
-          ) : null}
-
           <XStack alignItems="stretch" justifyContent="space-between" gap="$3">
             <YStack
               flex={1}
@@ -651,18 +626,6 @@ export default function ProductDetails() {
           </YStack>
         </Sheet.Frame>
       </Sheet>
-
-      <AppAlertDialog
-        open={successDialogMessage !== null}
-        onOpenChange={handleSuccessDialogOpenChange}
-        title="Produk berhasil ditambahkan"
-        description={successDialogMessage ?? 'Produk berhasil ditambahkan ke keranjang.'}
-        confirmText="OK"
-        confirmColor={successDialogColor}
-        confirmTextColor="$white"
-        hideTitle
-        icon={<CheckCircleIcon size={48} color={successDialogColor} />}
-      />
     </ScreenRoot>
   );
 }
