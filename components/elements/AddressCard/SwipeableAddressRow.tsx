@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import type { AccessibilityActionEvent, AccessibilityActionInfo } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { XStack, YStack, Button, styled } from 'tamagui';
+import { XStack, Button, styled } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 
 import AddressCard from './AddressCard';
@@ -33,23 +33,6 @@ const SwipeContainer = styled(XStack, {
   height: '100%',
   alignItems: 'center',
   pb: '$3',
-});
-
-const KeyboardActionRow = styled(XStack, {
-  justifyContent: 'flex-end',
-  alignItems: 'center',
-  gap: '$1',
-  mt: '$-2',
-  mb: '$3',
-  px: '$1',
-  flexWrap: 'wrap',
-});
-
-const KeyboardActionButton = styled(Button, {
-  minHeight: MIN_TOUCH_TARGET,
-  minWidth: MIN_TOUCH_TARGET,
-  px: '$2.5',
-  br: '$3',
 });
 
 export default function SwipeableAddressRow({
@@ -146,45 +129,13 @@ export default function SwipeableAddressRow({
       renderRightActions={renderRightActions}
       rightThreshold={SWIPE_ACTION_WIDTH / 3}
       containerStyle={SWIPEABLE_CONTAINER_STYLE}>
-      <YStack>
-        <AddressCard
-          address={address}
-          isDefault={isDefault}
-          onPress={onPress}
-          accessibilityActions={accessibilityActions}
-          onAccessibilityAction={handleAccessibilityAction}
-        />
-        <KeyboardActionRow role="toolbar" aria-label="Aksi alamat">
-          {!isDefault && onSetDefault && (
-            <KeyboardActionButton
-              chromeless
-              color="$primary"
-              role="button"
-              aria-label={`Jadikan alamat ${address.receiver_name} sebagai alamat utama`}
-              onPress={handleSetDefault}>
-              Jadikan utama
-            </KeyboardActionButton>
-          )}
-
-          <KeyboardActionButton
-            chromeless
-            color="$info"
-            role="button"
-            aria-label={`Ubah alamat ${address.receiver_name}`}
-            onPress={handleEdit}>
-            Ubah
-          </KeyboardActionButton>
-
-          <KeyboardActionButton
-            chromeless
-            color="$danger"
-            role="button"
-            aria-label={`Hapus alamat ${address.receiver_name}`}
-            onPress={handleDelete}>
-            Hapus
-          </KeyboardActionButton>
-        </KeyboardActionRow>
-      </YStack>
+      <AddressCard
+        address={address}
+        isDefault={isDefault}
+        onPress={onPress}
+        accessibilityActions={accessibilityActions}
+        onAccessibilityAction={handleAccessibilityAction}
+      />
     </Swipeable>
   );
 }

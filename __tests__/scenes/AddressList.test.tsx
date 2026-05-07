@@ -213,30 +213,9 @@ describe('<AddressList />', () => {
     expect(screen.getAllByLabelText('Edit alamat')).toHaveLength(2);
     expect(screen.getAllByLabelText('Hapus alamat')).toHaveLength(2);
     expect(screen.getAllByLabelText('Jadikan alamat utama')).toHaveLength(1);
-    expect(screen.getByLabelText('Ubah alamat Alamat Utama')).not.toBeNull();
-    expect(screen.getByLabelText('Hapus alamat Alamat Utama')).not.toBeNull();
-    expect(
-      screen.getByLabelText('Jadikan alamat Alamat Kedua sebagai alamat utama'),
-    ).not.toBeNull();
-  });
-
-  it('exposes visible keyboard-accessible fallback actions for swipe controls', async () => {
-    render(<AddressList />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Alamat Kedua')).not.toBeNull();
-    });
-
-    fireEvent.press(screen.getByLabelText('Ubah alamat Alamat Kedua'));
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/profile/address-form',
-      params: { id: 'address-other' },
-    });
-
-    fireEvent.press(screen.getByLabelText('Jadikan alamat Alamat Kedua sebagai alamat utama'));
-    await waitFor(() => {
-      expect(mockSetDefaultAddress).toHaveBeenCalledWith('address-other', 'user-1');
-    });
+    expect(screen.queryByLabelText('Ubah alamat Alamat Utama')).toBeNull();
+    expect(screen.queryByLabelText('Hapus alamat Alamat Utama')).toBeNull();
+    expect(screen.queryByLabelText('Jadikan alamat Alamat Kedua sebagai alamat utama')).toBeNull();
   });
 
   it('exposes edit and delete swipe actions through screen-reader accessibility actions', async () => {
