@@ -105,6 +105,12 @@
       "sourceType": "github",
       "computedHash": "3cd0ba91f359f9f84cd40f36f356287994a0e952520fac6e03ef7952d0397879"
     },
+    "push-notification-setup": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "skillPath": "skills/push-notification-setup/SKILL.md",
+      "computedHash": "baf3344068129864322db66803fc5e8ed44319ebcec7172b348e1a27b3682445"
+    },
     "react-native": {
       "source": "vercel-labs/json-render",
       "sourceType": "github",
