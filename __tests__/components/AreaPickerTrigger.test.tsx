@@ -8,7 +8,7 @@ describe('<AreaPickerTrigger />', () => {
       <AreaPickerTrigger areaName="" areaId="" onPress={jest.fn()} error={null} disabled={false} />,
     );
 
-    expect(screen.getByText('Pilih provinsi, kota, kecamatan, kode pos')).not.toBeNull();
+    expect(screen.getByText('Provinsi, kota, kecamatan, kode pos')).not.toBeNull();
 
     renderWithDarkTheme(
       <AreaPickerTrigger
@@ -46,7 +46,7 @@ describe('<AreaPickerTrigger />', () => {
     const onPress = jest.fn();
     render(<AreaPickerTrigger areaName="" areaId="" onPress={onPress} disabled={false} />);
 
-    fireEvent.press(screen.getByText('Pilih provinsi, kota, kecamatan, kode pos'));
+    fireEvent.press(screen.getByText('Provinsi, kota, kecamatan, kode pos'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
@@ -153,18 +153,15 @@ describe('<AreaPickerTrigger />', () => {
     expect(errorText.props.id).toBe(describedById);
   });
 
-  test('uses aria-describedby pointing to helper text when no error', () => {
+  test('does not set aria-describedby when no error text is present', () => {
     render(
       <AreaPickerTrigger areaName="" areaId="" onPress={jest.fn()} error={null} disabled={false} />,
     );
 
     const trigger = screen.getByLabelText('Pilih area pengiriman');
-    const describedById = trigger.props['aria-describedby'];
-    expect(describedById).toBeTruthy();
-
-    const helperText = screen.getByText(
-      'Pilih provinsi, kota, kecamatan, dan kode pos untuk pengiriman',
-    );
-    expect(helperText.props.id).toBe(describedById);
+    expect(trigger.props['aria-describedby']).toBeUndefined();
+    expect(
+      screen.queryByText('Pilih provinsi, kota, kecamatan, dan kode pos untuk pengiriman'),
+    ).toBeNull();
   });
 });

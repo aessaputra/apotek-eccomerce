@@ -39,7 +39,6 @@ function AreaPickerTrigger({
     : 'Pilih area pengiriman';
 
   const errorId = useId();
-  const helperId = useId();
 
   const getBorderColor = () => {
     if (error) return '$danger';
@@ -55,7 +54,7 @@ function AreaPickerTrigger({
         aria-expanded={false}
         aria-disabled={disabled}
         aria-invalid={!!error}
-        aria-describedby={error ? errorId : helperId}
+        aria-describedby={error ? errorId : undefined}
         accessibilityValue={hasFullSelection ? { text: selectionSummary } : undefined}
         backgroundColor="$background"
         borderWidth={hasFullSelection ? 0 : 1.5}
@@ -93,7 +92,7 @@ function AreaPickerTrigger({
               <Text fontSize="$4" color="$colorMuted" fontWeight="400">
                 {hasPartialSelection
                   ? 'Area tersimpan, silakan pilih ulang untuk menyegarkan detail'
-                  : 'Pilih provinsi, kota, kecamatan, kode pos'}
+                  : 'Provinsi, kota, kecamatan, kode pos'}
               </Text>
             )}
           </YStack>
@@ -107,11 +106,7 @@ function AreaPickerTrigger({
         <Text id={errorId} fontSize="$2" color="$danger" marginTop="$1">
           {error}
         </Text>
-      ) : (
-        <Text id={helperId} fontSize="$2" color="$colorMuted" marginTop="$1">
-          Pilih provinsi, kota, kecamatan, dan kode pos untuk pengiriman
-        </Text>
-      )}
+      ) : null}
     </YStack>
   );
 }
