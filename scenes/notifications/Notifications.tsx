@@ -154,6 +154,25 @@ const ErrorState = React.memo(function ErrorState({
   );
 });
 
+const LoadingMoreFooter = React.memo(function LoadingMoreFooter({
+  isLoadingMore,
+}: {
+  isLoadingMore: boolean;
+}) {
+  if (!isLoadingMore) {
+    return <YStack height="$6" />;
+  }
+
+  return (
+    <YStack paddingVertical="$4" alignItems="center" gap="$2">
+      <Spinner size="small" color="$primary" />
+      <Text fontSize="$3" color="$colorSubtle">
+        Memuat notifikasi lainnya...
+      </Text>
+    </YStack>
+  );
+});
+
 const NotificationPermissionBanner = React.memo(function NotificationPermissionBanner({
   permissionStatus,
   onRequest,
@@ -199,11 +218,9 @@ const NotificationPermissionBanner = React.memo(function NotificationPermissionB
           backgroundColor="$primary"
           color="$onPrimary"
           disabled={permissionStatus.isRequesting}
-          accessibilityLabel={copy.buttonLabel}
-          accessibilityState={{
-            disabled: permissionStatus.isRequesting,
-            busy: permissionStatus.isRequesting,
-          }}
+          aria-label={copy.buttonLabel}
+          aria-disabled={permissionStatus.isRequesting}
+          aria-busy={permissionStatus.isRequesting}
           onPress={handlePress}>
           {copy.buttonLabel}
         </Button>
@@ -227,7 +244,7 @@ const NotificationListItem = React.memo(function NotificationListItem({
     onPress(item);
   }, [item, onPress]);
 
-  const accessibilityLabel = `${item.title}. ${isUnread ? 'Belum dibaca' : 'Sudah dibaca'}. ${item.body}`;
+  const accessibilityLabel = `${item.title}. ${isUnread ? 'Belum dibaca' : 'Sudah dibaca'}. ${item.body}. ${isUnread ? 'Ketuk untuk menandai dibaca dan membuka detail terkait.' : 'Ketuk untuk membuka detail terkait.'}`;
   const accessibilityHint = isUnread
     ? 'Ketuk untuk menandai dibaca dan membuka detail terkait.'
     : 'Ketuk untuk membuka detail terkait.';
@@ -241,7 +258,9 @@ const NotificationListItem = React.memo(function NotificationListItem({
       role="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: isBusy, busy: isBusy }}
+      aria-label={accessibilityLabel}
+      aria-disabled={isBusy}
+      aria-busy={isBusy}
       testID={`notification-item-${item.id}`}>
       <XStack padding="$4" gap="$3" alignItems="flex-start">
         <YStack flex={1} gap="$2">
@@ -300,8 +319,11 @@ export default function Notifications() {
     error,
     isLoading,
     isRefreshing,
+    isLoadingMore,
+    hasMore,
     permissionStatus,
     refresh,
+    loadMore,
     markAsRead,
     requestPermission,
   } = useNotificationsContext();
@@ -320,6 +342,12 @@ export default function Notifications() {
     }
     void requestPermission();
   }, [permissionStatus.status, requestPermission]);
+
+  const handleEndReached = useCallback(() => {
+    if (hasMore && !isLoadingMore) {
+      void loadMore();
+    }
+  }, [hasMore, isLoadingMore, loadMore]);
 
   const handleNotificationPress = useCallback(
     async (item: NotificationRow) => {
@@ -375,6 +403,8 @@ export default function Notifications() {
         maxToRenderPerBatch={10}
         removeClippedSubviews={true}
         extraData={activeNotificationId}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.4}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -409,7 +439,7 @@ export default function Notifications() {
           </YStack>
         }
         ListEmptyComponent={<EmptyState />}
-        ListFooterComponent={<YStack height="$6" />}
+        ListFooterComponent={<LoadingMoreFooter isLoadingMore={isLoadingMore} />}
         contentContainerStyle={{ flexGrow: 1 }}
       />
     </YStack>
