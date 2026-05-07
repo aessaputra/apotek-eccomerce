@@ -100,6 +100,12 @@
       "skillPath": "plugins/luxor-frontend-essentials/skills/jest-react-testing/SKILL.md",
       "computedHash": "2f938ce10a81d8583b679d7ce75eb935fffbad5aab4e5d9681285bc3c9b83224"
     },
+    "naming-analyzer": {
+      "source": "softaworks/agent-toolkit",
+      "sourceType": "github",
+      "skillPath": "skills/naming-analyzer/SKILL.md",
+      "computedHash": "bf61ae4fe1e1fa8710d0cddce471b0a271219f3a3bd8b6286f62def6b4f8b366"
+    },
     "native-data-fetching": {
       "source": "expo/skills",
       "sourceType": "github",
