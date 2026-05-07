@@ -29,7 +29,7 @@ interface MenuItemProps {
   icon: ComponentType<IconProps>;
   onPress: () => void;
   'aria-label': string;
-  'aria-describedby': string;
+  accessibilityHint: string;
 }
 
 const MenuItem = memo(function MenuItem({
@@ -38,7 +38,7 @@ const MenuItem = memo(function MenuItem({
   icon: Icon,
   onPress,
   'aria-label': ariaLabel,
-  'aria-describedby': ariaDescribedBy,
+  accessibilityHint,
 }: MenuItemProps) {
   return (
     <Card
@@ -55,7 +55,7 @@ const MenuItem = memo(function MenuItem({
         onPress();
       }}
       aria-label={ariaLabel}
-      aria-describedby={ariaDescribedBy}>
+      accessibilityHint={accessibilityHint}>
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap="$3" flex={1}>
           <Icon size={22} color="$colorPress" />
@@ -175,28 +175,28 @@ export default function Profile() {
           icon={UserIcon}
           onPress={() => router.push('/profile/edit-profile')}
           aria-label="Profile Saya"
-          aria-describedby="Edit informasi profil Anda"
+          accessibilityHint="Edit informasi profil Anda"
         />
         <MenuItem
           label="Alamat"
           icon={MapPinIcon}
           onPress={() => router.push('/profile/addresses')}
           aria-label="Alamat pengiriman"
-          aria-describedby="Kelola alamat pengiriman Anda"
+          accessibilityHint="Kelola alamat pengiriman Anda"
         />
         <MenuItem
           label="Verifikasi 2 Langkah"
           icon={LockIcon}
           onPress={() => router.push('/profile/two-step-verification')}
           aria-label="Verifikasi 2 Langkah"
-          aria-describedby="Kelola pengaturan verifikasi dua langkah"
+          accessibilityHint="Kelola pengaturan verifikasi dua langkah"
         />
         <MenuItem
           label="Dukungan"
           icon={CircleHelpIcon}
           onPress={() => router.push('/profile/support')}
           aria-label="Dukungan"
-          aria-describedby="Hubungi tim dukungan"
+          accessibilityHint="Hubungi tim dukungan"
         />
 
         {/* Sign Out - red button, full-width touch target ≥44px */}
@@ -216,7 +216,7 @@ export default function Profile() {
           }}
           {...(Platform.OS === 'web' ? { style: { cursor: 'pointer' } } : {})}
           aria-label="Keluar dari akun"
-          aria-describedby="Keluar dari aplikasi dan kembali ke halaman login">
+          accessibilityHint="Keluar dari aplikasi dan kembali ke halaman login">
           <Text fontSize="$5" color="$danger" fontWeight="600" textAlign="center">
             Keluar
           </Text>

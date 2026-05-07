@@ -152,7 +152,7 @@ export default function AddressList() {
           onPress={handleAddAddress}
           elevation={2}
           aria-label="Tambah alamat pengiriman baru"
-          aria-describedby="Membuka form untuk menambahkan alamat pengiriman baru"
+          accessibilityHint="Membuka form untuk menambahkan alamat pengiriman baru"
         />
       </YStack>
     );
@@ -218,7 +218,7 @@ export default function AddressList() {
               titleStyle={PRIMARY_BUTTON_TITLE_STYLE}
               onPress={handleAddAddress}
               aria-label="Tambah alamat pengiriman baru"
-              aria-describedby="Membuka form untuk menambahkan alamat pengiriman baru"
+              accessibilityHint="Membuka form untuk menambahkan alamat pengiriman baru"
             />
           </YStack>
         )}

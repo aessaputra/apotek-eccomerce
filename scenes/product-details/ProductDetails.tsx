@@ -617,7 +617,7 @@ export default function ProductDetails() {
 
               <SheetConfirmButton
                 aria-label="Konfirmasi tambah ke keranjang"
-                aria-describedby="Menambahkan produk ke keranjang"
+                accessibilityHint="Menambahkan produk ke keranjang"
                 onPress={handleConfirmFromSheet}
                 disabled={isAddingToCart || isOutOfStock}>
                 <CartIcon size={22} color={getThemeColor(theme, 'white')} />

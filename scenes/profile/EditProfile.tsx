@@ -228,7 +228,7 @@ export default function EditProfile() {
                 alignItems="center"
                 gap="$3"
                 aria-label="Foto profil"
-                aria-describedby="Ketuk untuk mengubah foto profil">
+                accessibilityHint="Ketuk untuk mengubah foto profil">
                 <Avatar
                   avatarUrl={user.avatar_url}
                   name={user.full_name || user.name || user.email}
@@ -291,12 +291,9 @@ export default function EditProfile() {
                         blurOnSubmit={false}
                         onSubmitEditing={() => phoneInputRef.current?.focus()}
                         aria-label="Input nama lengkap"
-                        aria-describedby={NAME_HELPER_TEXT}
+                        helperText={NAME_HELPER_TEXT}
                         error={fullNameError}
                       />
-                      <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
-                        {NAME_HELPER_TEXT}
-                      </Text>
                     </YStack>
 
                     <YStack gap="$2">
@@ -321,12 +318,9 @@ export default function EditProfile() {
                         returnKeyType="done"
                         onSubmitEditing={handleSaveProfile}
                         aria-label="Input nomor telepon"
-                        aria-describedby={PHONE_HELPER_TEXT}
+                        helperText={PHONE_HELPER_TEXT}
                         error={phoneNumberError}
                       />
-                      <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
-                        {PHONE_HELPER_TEXT}
-                      </Text>
                     </YStack>
 
                     <YStack gap="$2">
@@ -359,7 +353,7 @@ export default function EditProfile() {
             extraBottomOffset={extraBottomOffset}
             keyboardAnchored={Platform.OS === 'android'}
             aria-label="Simpan perubahan profil"
-            aria-describedby="Menyimpan pembaruan informasi profil"
+            accessibilityHint="Menyimpan pembaruan informasi profil"
           />
         </YStack>
       </KeyboardAvoidingWrapper>
