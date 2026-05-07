@@ -5,12 +5,15 @@ import Provider from '@/providers/Provider';
 
 const mockUseToastState = jest.fn();
 const mockToastViewportProps = jest.fn();
+const mockToastProviderProps = jest.fn();
 
 jest.mock('@tamagui/toast', () => {
   const React = jest.requireActual('react') as typeof import('react');
   const { Text, View } = jest.requireActual('react-native') as typeof import('react-native');
 
-  function ToastProvider({ children }: { children: React.ReactNode }) {
+  function ToastProvider({ children, ...props }: { children: React.ReactNode }) {
+    mockToastProviderProps(props);
+
     return <View testID="toast-provider">{children}</View>;
   }
 
@@ -69,6 +72,7 @@ jest.mock('react-native-safe-area-context', () => {
 
 describe('<Provider /> toast host', () => {
   beforeEach(() => {
+    mockToastProviderProps.mockClear();
     mockToastViewportProps.mockClear();
     mockUseToastState.mockReset();
     mockUseToastState.mockReturnValue({
@@ -92,6 +96,14 @@ describe('<Provider /> toast host', () => {
     expect(screen.getByText('Produk ditambahkan ke keranjang.')).toBeTruthy();
     expect(screen.getByText('Paracetamol sudah ada di keranjang.')).toBeTruthy();
     expect(screen.getByTestId('toast-viewport')).toBeTruthy();
+    expect(mockToastProviderProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        duration: 3000,
+        label: 'Notifikasi',
+        native: 'mobile',
+        swipeDirection: 'horizontal',
+      }),
+    );
     expect(mockToastViewportProps).toHaveBeenCalledWith(
       expect.objectContaining({
         bottom: 120,

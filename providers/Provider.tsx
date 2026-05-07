@@ -108,7 +108,11 @@ export default function Provider({ children }: Readonly<{ children: React.ReactN
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ReduxProvider store={store}>
           <TamaguiProvider config={tamaguiConfig} defaultTheme={isDark ? 'brand_dark' : 'brand'}>
-            <ToastProvider label="Notifikasi" duration={3000} swipeDirection="horizontal">
+            <ToastProvider
+              label="Notifikasi"
+              duration={3000}
+              swipeDirection="horizontal"
+              native="mobile">
               <ThemeProvider value={isDark ? BrandNavigationDarkTheme : BrandNavigationTheme}>
                 {children}
               </ThemeProvider>
