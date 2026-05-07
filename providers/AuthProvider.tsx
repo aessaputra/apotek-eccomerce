@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Platform, AppStateStatus } from 'react-native';
 import { supabase } from '@/utils/supabase';
-import { clearExpoPushToken, syncExpoPushTokenIfPermitted } from '@/services/notification.service';
+import {
+  subscribeToExpoPushTokenUpdates,
+  syncExpoPushTokenIfPermitted,
+} from '@/services/notification.service';
 import { getCurrentUser } from '@/services/user.service';
 import {
   clearLocalAuthSessionForInvalidRefreshToken,
@@ -27,6 +30,9 @@ const MFA_RESOLVE_TIMEOUT_MS = 10_000;
 export default function AuthProvider({ children }: AuthProviderProps) {
   const { dispatch, setUser, setAuthPhase, reset, authPhase } = useAppSlice();
   const lastAuthenticatedUserIdRef = useRef<string | null>(null);
+  const lastExpoPushTokenRef = useRef<string | null>(null);
+  const pushTokenSubscriptionCleanupRef = useRef<(() => void) | null>(null);
+  const pushTokenSubscriptionUserIdRef = useRef<string | null>(null);
   const authResolutionGenerationRef = useRef(0);
   const pendingAuthTimeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authPhaseRef = useRef(authPhase);
@@ -51,6 +57,44 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       dispatch(setAuthPhase(phase));
     },
     [dispatch, setUser, setAuthPhase],
+  );
+
+  const stopPushTokenSubscription = useCallback(() => {
+    pushTokenSubscriptionCleanupRef.current?.();
+    pushTokenSubscriptionCleanupRef.current = null;
+    pushTokenSubscriptionUserIdRef.current = null;
+  }, []);
+
+  const syncAndSubscribePushToken = useCallback(
+    async (userId: string) => {
+      const tokenSyncResult = await syncExpoPushTokenIfPermitted(userId);
+
+      if (tokenSyncResult.data?.token) {
+        lastExpoPushTokenRef.current = tokenSyncResult.data.token;
+      }
+
+      if (__DEV__ && tokenSyncResult.error) {
+        console.warn('[AuthProvider] push token sync error:', tokenSyncResult.error);
+      }
+
+      if (pushTokenSubscriptionUserIdRef.current !== userId) {
+        stopPushTokenSubscription();
+        pushTokenSubscriptionUserIdRef.current = userId;
+        pushTokenSubscriptionCleanupRef.current = subscribeToExpoPushTokenUpdates(
+          userId,
+          result => {
+            if (result.data?.expo_push_token) {
+              lastExpoPushTokenRef.current = result.data.expo_push_token;
+            }
+
+            if (__DEV__ && result.error) {
+              console.warn('[AuthProvider] push token listener sync error:', result.error);
+            }
+          },
+        );
+      }
+    },
+    [stopPushTokenSubscription],
   );
 
   const resolveMfaPhase = useCallback(
@@ -205,6 +249,9 @@ export default function AuthProvider({ children }: AuthProviderProps) {
                 const mfaPhase = await resolveMfaPhase(mountedRef);
                 if (canDispatch()) {
                   dispatch(setAuthPhase(mfaPhase));
+                  if (mfaPhase === 'authenticated') {
+                    await syncAndSubscribePushToken(result.user.id);
+                  }
                 }
               }
             }
@@ -246,6 +293,9 @@ export default function AuthProvider({ children }: AuthProviderProps) {
             const mfaPhase = await resolveMfaPhase(mountedRef);
             if (canDispatch()) {
               dispatch(setAuthPhase(mfaPhase));
+              if (mfaPhase === 'authenticated') {
+                await syncAndSubscribePushToken(result.user.id);
+              }
             }
           }
         }
@@ -266,7 +316,16 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       mountedRef.current = false;
       clearTimeout(initTimeoutId);
     };
-  }, [dispatch, reset, showAlert, dispatchUserAndPhase, validateAndDispatch, resolveMfaPhase]);
+  }, [
+    dispatch,
+    reset,
+    showAlert,
+    setAuthPhase,
+    dispatchUserAndPhase,
+    validateAndDispatch,
+    resolveMfaPhase,
+    syncAndSubscribePushToken,
+  ]);
 
   // Auth state change listener
   useEffect(() => {
@@ -289,24 +348,19 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (event === 'SIGNED_OUT') {
-        const signedOutUserId = lastAuthenticatedUserIdRef.current;
         lastAuthenticatedUserIdRef.current = null;
+        lastExpoPushTokenRef.current = null;
+        stopPushTokenSubscription();
 
         if (mountedRef.current) dispatchUserAndPhase(undefined, 'signed-out');
-
-        if (signedOutUserId) {
-          void clearExpoPushToken(signedOutUserId).then(result => {
-            if (__DEV__ && result.error) {
-              console.warn('[AuthProvider] push token clear error:', result.error);
-            }
-          });
-        }
 
         return;
       }
 
       if (!session?.user) {
         lastAuthenticatedUserIdRef.current = null;
+        lastExpoPushTokenRef.current = null;
+        stopPushTokenSubscription();
         if (mountedRef.current) dispatchUserAndPhase(undefined, 'signed-out');
         return;
       }
@@ -362,11 +416,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
             dispatch(setAuthPhase(mfaPhase));
 
             if (mfaPhase === 'authenticated') {
-              const tokenSyncResult = await syncExpoPushTokenIfPermitted(result.user.id);
-
-              if (__DEV__ && tokenSyncResult.error) {
-                console.warn('[AuthProvider] push token sync error:', tokenSyncResult.error);
-              }
+              await syncAndSubscribePushToken(result.user.id);
             }
           } catch (error) {
             if (__DEV__) console.error('[AuthProvider] onAuthStateChange error:', error);
@@ -386,8 +436,17 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       }
 
       subscription.unsubscribe();
+      stopPushTokenSubscription();
     };
-  }, [dispatch, setAuthPhase, dispatchUserAndPhase, validateAndDispatch, resolveMfaPhase]);
+  }, [
+    dispatch,
+    setAuthPhase,
+    dispatchUserAndPhase,
+    validateAndDispatch,
+    resolveMfaPhase,
+    stopPushTokenSubscription,
+    syncAndSubscribePushToken,
+  ]);
 
   // Auto-refresh tokens when app becomes active (React Native only)
   useEffect(() => {
