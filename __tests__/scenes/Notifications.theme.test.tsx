@@ -14,8 +14,8 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
-jest.mock('@/hooks/useNotifications', () => ({
-  useNotifications: (...args: unknown[]) => mockUseNotifications(...args),
+jest.mock('@/providers', () => ({
+  useNotificationsContext: () => mockUseNotifications(),
 }));
 
 jest.mock('@/slices', () => ({
@@ -84,7 +84,7 @@ describe('<Notifications /> Theme', () => {
     ).toBeTruthy();
   });
 
-  test('does not render duplicate permission reminder copy in dark theme after the prompt was already shown', async () => {
+  test('renders inline permission banner in dark theme when permission is requestable', () => {
     mockUseNotifications.mockReturnValue(
       createHookState({
         items: [createNotification('01')],
@@ -104,10 +104,9 @@ describe('<Notifications /> Theme', () => {
 
     renderWithDarkTheme(<Notifications />);
 
-    expect(screen.queryByText('Nanti')).toBeNull();
-    expect(screen.queryByTestId('notifications-permission-reminder')).toBeNull();
-    expect(screen.queryByText('Aktifkan notifikasi')).toBeNull();
-    expect(screen.queryByText('Aktifkan Sekarang')).toBeNull();
+    expect(screen.getByTestId('notifications-permission-banner')).toBeTruthy();
+    expect(screen.getByText('Aktifkan notifikasi')).toBeTruthy();
+    expect(screen.getByText('Aktifkan Sekarang')).toBeTruthy();
     expect(screen.getByText('Gagal mengaktifkan notifikasi.')).toBeTruthy();
   });
 });

@@ -16,8 +16,8 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
-jest.mock('@/hooks/useNotifications', () => ({
-  useNotifications: (...args: unknown[]) => mockUseNotifications(...args),
+jest.mock('@/providers', () => ({
+  useNotificationsContext: () => mockUseNotifications(),
 }));
 
 jest.mock('@/slices', () => ({
@@ -80,12 +80,6 @@ describe('<Notifications />', () => {
     jest.spyOn(Linking, 'openSettings').mockResolvedValue();
   });
 
-  test('loads notifications for the signed-in user', () => {
-    render(<Notifications />);
-
-    expect(mockUseNotifications).toHaveBeenCalledWith({ userId: 'user-1' });
-  });
-
   test('renders loading state', () => {
     mockUseNotifications.mockReturnValue(
       createHookState({
@@ -119,66 +113,37 @@ describe('<Notifications />', () => {
     expect(refresh).toHaveBeenCalled();
   });
 
-  test('auto-opens the permission dialog once when permission becomes requestable without rendering a duplicate inline reminder', async () => {
-    let hookState = createHookState();
-    mockUseNotifications.mockImplementation(() => hookState);
+  test('renders inline permission banner when permission is requestable', () => {
+    mockUseNotifications.mockReturnValue(
+      createHookState({
+        permissionStatus: {
+          status: 'idle',
+          syncStatus: 'permission_not_granted',
+          canRequest: true,
+          isSupported: true,
+          didPrompt: false,
+          isRequesting: false,
+          error: null,
+        },
+      }),
+    );
 
-    const { rerender } = render(<Notifications />);
+    render(<Notifications />);
 
-    expect(screen.queryByText('Nanti')).toBeNull();
-    expect(screen.queryByTestId('notifications-permission-reminder')).toBeNull();
-
-    hookState = createHookState({
-      permissionStatus: {
-        status: 'idle',
-        syncStatus: 'permission_not_granted',
-        canRequest: true,
-        isSupported: true,
-        didPrompt: false,
-        isRequesting: false,
-        error: null,
-      },
-    });
-
-    rerender(<Notifications />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Nanti')).not.toBeNull();
-    });
-
-    expect(screen.queryByTestId('notifications-permission-reminder')).toBeNull();
-
-    fireEvent.press(screen.getByText('Nanti'));
-
-    await waitFor(() => {
-      expect(screen.queryByText('Nanti')).toBeNull();
-    });
-
-    expect(screen.queryByTestId('notifications-permission-reminder')).toBeNull();
-
-    hookState = createHookState();
-    rerender(<Notifications />);
-
-    expect(screen.queryByTestId('notifications-permission-reminder')).toBeNull();
-
-    hookState = createHookState({
-      permissionStatus: {
-        status: 'idle',
-        syncStatus: 'permission_not_granted',
-        canRequest: true,
-        isSupported: true,
-        didPrompt: true,
-        isRequesting: false,
-        error: null,
-      },
-    });
-    rerender(<Notifications />);
-
-    expect(screen.queryByText('Nanti')).toBeNull();
-    expect(screen.queryByTestId('notifications-permission-reminder')).toBeNull();
+    expect(screen.getByTestId('notifications-permission-banner')).not.toBeNull();
+    expect(screen.getByText('Aktifkan notifikasi')).not.toBeNull();
+    expect(screen.getByText('Aktifkan Sekarang')).not.toBeNull();
   });
 
-  test('requests permission from the dialog confirm action', async () => {
+  test('does not render permission banner when permission is not requestable', () => {
+    mockUseNotifications.mockReturnValue(createHookState());
+
+    render(<Notifications />);
+
+    expect(screen.queryByTestId('notifications-permission-banner')).toBeNull();
+  });
+
+  test('requests permission from the banner CTA', async () => {
     const requestPermission = jest.fn(async () => true);
     mockUseNotifications.mockReturnValue(
       createHookState({
@@ -197,10 +162,6 @@ describe('<Notifications />', () => {
 
     render(<Notifications />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Aktifkan Sekarang')).not.toBeNull();
-    });
-
     fireEvent.press(screen.getByText('Aktifkan Sekarang'));
 
     await waitFor(() => {
@@ -208,7 +169,7 @@ describe('<Notifications />', () => {
     });
   });
 
-  test('opens device settings from the permission dialog after notification permission is denied', async () => {
+  test('opens device settings from the banner CTA when permission is denied', async () => {
     const openSettingsSpy = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
     const requestPermission = jest.fn(async () => true);
 
@@ -229,11 +190,7 @@ describe('<Notifications />', () => {
 
     render(<Notifications />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Buka Pengaturan')).not.toBeNull();
-    });
-
-    expect(screen.queryByTestId('notifications-permission-reminder')).toBeNull();
+    expect(screen.getByTestId('notifications-permission-banner')).not.toBeNull();
 
     fireEvent.press(screen.getByText('Buka Pengaturan'));
 
@@ -285,7 +242,11 @@ describe('<Notifications />', () => {
     expect(screen.getByText('Belum dibaca')).not.toBeNull();
     expect(screen.getByText('Sudah dibaca')).not.toBeNull();
 
-    fireEvent.press(screen.getByTestId('notification-item-01'));
+    const item = screen.getByTestId('notification-item-01');
+    expect(item.props.accessibilityLabel).toContain('Belum dibaca');
+    expect(item.props.accessibilityHint).toContain('menandai dibaca');
+
+    fireEvent.press(item);
 
     await waitFor(() => {
       expect(markAsRead).toHaveBeenCalledWith('01');

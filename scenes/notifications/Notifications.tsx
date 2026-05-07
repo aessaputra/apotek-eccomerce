@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlatList, Linking, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button, Card, Spinner, Text, XStack, YStack, styled, useTheme } from 'tamagui';
-import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { AlertCircleIcon, BellIcon, CheckCircleIcon, ChevronRightIcon } from '@/components/icons';
-import { useNotifications, type NotificationsPermissionState } from '@/hooks/useNotifications';
+import { useNotificationsContext } from '@/providers';
 import { useAppSlice } from '@/slices';
 import {
   buildNotificationTypedHref,
@@ -72,7 +71,7 @@ const StatusBadge = styled(YStack, {
   } as const,
 });
 
-function getPermissionCopy(permissionStatus: NotificationsPermissionState): {
+function getPermissionCopy(permissionStatus: { status: string; canRequest: boolean }): {
   title: string;
   description: string;
   buttonLabel: string;
@@ -155,6 +154,64 @@ const ErrorState = React.memo(function ErrorState({
   );
 });
 
+const NotificationPermissionBanner = React.memo(function NotificationPermissionBanner({
+  permissionStatus,
+  onRequest,
+}: {
+  permissionStatus: { status: string; canRequest: boolean; isRequesting: boolean };
+  onRequest: () => void;
+}) {
+  const handlePress = useCallback(() => {
+    if (permissionStatus.status === 'denied') {
+      void Linking.openSettings();
+      return;
+    }
+    onRequest();
+  }, [permissionStatus.status, onRequest]);
+
+  if (!permissionStatus.canRequest) {
+    return null;
+  }
+
+  const copy = getPermissionCopy(permissionStatus);
+
+  return (
+    <Card
+      testID="notifications-permission-banner"
+      bordered
+      size="$4"
+      marginHorizontal="$4"
+      marginTop="$4"
+      backgroundColor="$infoSoft"
+      borderColor="$info">
+      <XStack padding="$4" gap="$3" alignItems="center">
+        <BellIcon size={24} color="$info" />
+        <YStack flex={1} gap="$1">
+          <Text fontSize="$4" fontWeight="700" color="$color">
+            {copy.title}
+          </Text>
+          <Text fontSize="$3" color="$colorSubtle">
+            {copy.description}
+          </Text>
+        </YStack>
+        <Button
+          size="$3"
+          backgroundColor="$primary"
+          color="$onPrimary"
+          disabled={permissionStatus.isRequesting}
+          accessibilityLabel={copy.buttonLabel}
+          accessibilityState={{
+            disabled: permissionStatus.isRequesting,
+            busy: permissionStatus.isRequesting,
+          }}
+          onPress={handlePress}>
+          {copy.buttonLabel}
+        </Button>
+      </XStack>
+    </Card>
+  );
+});
+
 const NotificationListItem = React.memo(function NotificationListItem({
   item,
   isBusy,
@@ -170,6 +227,11 @@ const NotificationListItem = React.memo(function NotificationListItem({
     onPress(item);
   }, [item, onPress]);
 
+  const accessibilityLabel = `${item.title}. ${isUnread ? 'Belum dibaca' : 'Sudah dibaca'}. ${item.body}`;
+  const accessibilityHint = isUnread
+    ? 'Ketuk untuk menandai dibaca dan membuka detail terkait.'
+    : 'Ketuk untuk membuka detail terkait.';
+
   return (
     <NotificationCard
       unread={isUnread}
@@ -177,25 +239,25 @@ const NotificationListItem = React.memo(function NotificationListItem({
       onPress={isBusy ? undefined : handlePress}
       pressStyle={{ opacity: 0.92, scale: 0.98 }}
       role="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: isBusy, busy: isBusy }}
       testID={`notification-item-${item.id}`}>
       <XStack padding="$4" gap="$3" alignItems="flex-start">
-        <YStack
-          width={6}
-          alignSelf="stretch"
-          borderRadius="$10"
-          backgroundColor={isUnread ? '$primary' : '$surfaceBorder'}
-        />
-
         <YStack flex={1} gap="$2">
-          <XStack alignItems="flex-start" justifyContent="space-between" gap="$3">
-            <YStack flex={1} gap="$1">
+          <XStack alignItems="center" justifyContent="space-between" gap="$3">
+            <XStack flex={1} alignItems="center" gap="$2">
+              <YStack
+                width={10}
+                height={10}
+                borderRadius={100}
+                backgroundColor="$primary"
+                opacity={isUnread ? 1 : 0}
+              />
               <Text fontSize="$5" fontWeight={isUnread ? '700' : '600'} color="$color">
                 {item.title}
               </Text>
-              <Text fontSize="$3" color="$colorMuted">
-                {formatOrderDateTime(item.created_at)}
-              </Text>
-            </YStack>
+            </XStack>
 
             <StatusBadge unread={isUnread}>
               <Text fontSize="$2" fontWeight="700" color={isUnread ? '$onPrimary' : '$colorSubtle'}>
@@ -203,6 +265,10 @@ const NotificationListItem = React.memo(function NotificationListItem({
               </Text>
             </StatusBadge>
           </XStack>
+
+          <Text fontSize="$3" color="$colorMuted">
+            {formatOrderDateTime(item.created_at)}
+          </Text>
 
           <Text fontSize="$4" color="$colorSubtle" lineHeight="$4">
             {item.body}
@@ -228,8 +294,6 @@ export default function Notifications() {
   const theme = useTheme();
   const { user } = useAppSlice();
   const [activeNotificationId, setActiveNotificationId] = useState<string | null>(null);
-  const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
-  const hasAutoOpenedPermissionDialogRef = useRef(false);
   const {
     items,
     status,
@@ -240,46 +304,22 @@ export default function Notifications() {
     refresh,
     markAsRead,
     requestPermission,
-  } = useNotifications({ userId: user?.id });
+  } = useNotificationsContext();
 
   const refreshTintColor = getThemeColor(theme, 'primary');
-  const showPermissionPrompt = permissionStatus.canRequest;
   const hasItems = items.length > 0;
-  const permissionCopy = getPermissionCopy(permissionStatus);
-
-  useEffect(() => {
-    if (!permissionStatus.canRequest) {
-      setPermissionDialogOpen(false);
-      return;
-    }
-
-    if (
-      (!permissionStatus.didPrompt || permissionStatus.status === 'denied') &&
-      !hasAutoOpenedPermissionDialogRef.current
-    ) {
-      hasAutoOpenedPermissionDialogRef.current = true;
-      setPermissionDialogOpen(true);
-    }
-  }, [permissionStatus.canRequest, permissionStatus.didPrompt, permissionStatus.status]);
 
   const handleRefresh = useCallback(() => {
     void refresh();
   }, [refresh]);
 
   const handleRequestPermission = useCallback(() => {
-    setPermissionDialogOpen(false);
-
     if (permissionStatus.status === 'denied') {
       void Linking.openSettings();
       return;
     }
-
     void requestPermission();
   }, [permissionStatus.status, requestPermission]);
-
-  const handlePermissionDialogOpenChange = useCallback((open: boolean) => {
-    setPermissionDialogOpen(open);
-  }, []);
 
   const handleNotificationPress = useCallback(
     async (item: NotificationRow) => {
@@ -330,6 +370,11 @@ export default function Notifications() {
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={8}
+        windowSize={11}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        extraData={activeNotificationId}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -339,6 +384,11 @@ export default function Notifications() {
         }
         ListHeaderComponent={
           <YStack>
+            <NotificationPermissionBanner
+              permissionStatus={permissionStatus}
+              onRequest={handleRequestPermission}
+            />
+
             {error && hasItems ? (
               <ErrorMessage
                 message={error}
@@ -359,17 +409,8 @@ export default function Notifications() {
           </YStack>
         }
         ListEmptyComponent={<EmptyState />}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
-      />
-
-      <AppAlertDialog
-        open={showPermissionPrompt && permissionDialogOpen}
-        onOpenChange={handlePermissionDialogOpenChange}
-        title={permissionCopy.title}
-        description={permissionCopy.description}
-        cancelText="Nanti"
-        confirmText={permissionCopy.buttonLabel}
-        onConfirm={handleRequestPermission}
+        ListFooterComponent={<YStack height="$6" />}
+        contentContainerStyle={{ flexGrow: 1 }}
       />
     </YStack>
   );
