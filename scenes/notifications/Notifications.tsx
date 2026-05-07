@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { FlatList, Linking, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button, Card, Spinner, Text, XStack, YStack, styled, useTheme } from 'tamagui';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { AlertCircleIcon, BellIcon, CheckCircleIcon, ChevronRightIcon } from '@/components/icons';
 import { useNotificationsContext } from '@/providers';
@@ -78,17 +79,15 @@ function getPermissionCopy(permissionStatus: { status: string; canRequest: boole
 } {
   if (permissionStatus.status === 'denied') {
     return {
-      title: 'Aktifkan notifikasi',
-      description:
-        'Izin notifikasi belum aktif. Nyalakan agar update pembayaran dan pesanan masuk lebih cepat.',
+      title: 'Notifikasi belum aktif',
+      description: 'Buka pengaturan untuk menyalakan izin notifikasi.',
       buttonLabel: 'Buka Pengaturan',
     };
   }
 
   return {
     title: 'Aktifkan notifikasi',
-    description:
-      'Izinkan notifikasi agar update pembayaran, pengiriman, dan pesanan terbaru bisa langsung masuk ke perangkat Anda.',
+    description: 'Dapatkan update pesanan dan pembayaran tepat waktu.',
     buttonLabel: 'Aktifkan Sekarang',
   };
 }
@@ -203,20 +202,36 @@ const NotificationPermissionBanner = React.memo(function NotificationPermissionB
       marginTop="$4"
       backgroundColor="$infoSoft"
       borderColor="$info">
-      <XStack padding="$4" gap="$3" alignItems="center">
-        <BellIcon size={24} color="$info" />
-        <YStack flex={1} gap="$1">
-          <Text fontSize="$4" fontWeight="700" color="$color">
-            {copy.title}
-          </Text>
-          <Text fontSize="$3" color="$colorSubtle">
-            {copy.description}
-          </Text>
-        </YStack>
+      <YStack padding="$4" gap="$3">
+        <XStack gap="$3" alignItems="flex-start">
+          <YStack
+            width={MIN_TOUCH_TARGET}
+            height={MIN_TOUCH_TARGET}
+            borderRadius="$6"
+            backgroundColor="$surface"
+            borderWidth={1}
+            borderColor="$info"
+            alignItems="center"
+            justifyContent="center"
+            flexShrink={0}>
+            <BellIcon size={24} color="$info" />
+          </YStack>
+          <YStack flex={1} minWidth={0} flexShrink={1} gap="$1">
+            <Text fontSize="$4" fontWeight="700" color="$color">
+              {copy.title}
+            </Text>
+            <Text fontSize="$3" color="$colorSubtle">
+              {copy.description}
+            </Text>
+          </YStack>
+        </XStack>
         <Button
-          size="$3"
+          size="$4"
+          width="100%"
+          minHeight={MIN_TOUCH_TARGET}
           backgroundColor="$primary"
           color="$onPrimary"
+          fontWeight="600"
           disabled={permissionStatus.isRequesting}
           aria-label={copy.buttonLabel}
           aria-disabled={permissionStatus.isRequesting}
@@ -224,7 +239,7 @@ const NotificationPermissionBanner = React.memo(function NotificationPermissionB
           onPress={handlePress}>
           {copy.buttonLabel}
         </Button>
-      </XStack>
+      </YStack>
     </Card>
   );
 });

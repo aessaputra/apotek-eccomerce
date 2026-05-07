@@ -141,6 +141,7 @@ describe('<Notifications />', () => {
 
     expect(screen.getByTestId('notifications-permission-banner')).not.toBeNull();
     expect(screen.getByText('Aktifkan notifikasi')).not.toBeNull();
+    expect(screen.getByText('Dapatkan update pesanan dan pembayaran tepat waktu.')).not.toBeNull();
     expect(screen.getByText('Aktifkan Sekarang')).not.toBeNull();
   });
 
@@ -200,6 +201,8 @@ describe('<Notifications />', () => {
     render(<Notifications />);
 
     expect(screen.getByTestId('notifications-permission-banner')).not.toBeNull();
+    expect(screen.getByText('Notifikasi belum aktif')).not.toBeNull();
+    expect(screen.getByText('Buka pengaturan untuk menyalakan izin notifikasi.')).not.toBeNull();
 
     fireEvent.press(screen.getByText('Buka Pengaturan'));
 
