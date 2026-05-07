@@ -4,7 +4,12 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   roots: ['<rootDir>'],
   testMatch: ['**/__tests__/**/*.test.{ts,tsx}', '**/?(*.)+(spec|test).{ts,tsx}'],
-  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.agent/', '<rootDir>/.agents/'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/.agent/',
+    '<rootDir>/.agents/',
+    '<rootDir>/.worktrees/',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
@@ -24,5 +29,6 @@ module.exports = {
     '!**/__tests__/**',
     '!**/coverage/**',
     '!**/node_modules/**',
+    '!**/.worktrees/**',
   ],
 };
