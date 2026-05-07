@@ -168,7 +168,6 @@ export default function AppAlertDialog({
                   width: 1,
                   height: 1,
                   overflow: 'hidden',
-                  opacity: 0,
                 }
               : {})}>
             {title}

@@ -113,7 +113,9 @@ describe('<AppAlertDialog />', () => {
   test('hides title visually but keeps it accessible when hideTitle is true', async () => {
     render(<AppAlertDialog {...defaultProps} hideTitle />);
 
-    expect(screen.getByText('Test Title')).toBeTruthy();
+    const hiddenTitle = screen.getByText('Test Title');
+    expect(hiddenTitle).toBeTruthy();
+    expect(hiddenTitle.props.opacity).toBeUndefined();
     expect(screen.getByText('Test Description')).toBeTruthy();
   });
 
