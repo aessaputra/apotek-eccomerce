@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
-import { render, screen } from '@/test-utils/renderWithTheme';
+import { StyleSheet } from 'react-native';
+import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
 import {
   getPostalCodesByDistrict,
   getRegionalDistrictsByRegency,
@@ -9,7 +10,9 @@ import {
   searchBiteshipArea,
 } from '@/services';
 import AreaPickerScreen from '@/scenes/profile/AreaPicker';
+import AreaPickerSelectionSummary from '@/scenes/profile/AreaPickerSelectionSummary';
 import { useAreaPickerFlow } from '@/scenes/profile/useAreaPickerFlow';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import { setPendingAreaSelection } from '@/utils/areaPickerSession';
 import {
   adminNamesMatch,
@@ -111,6 +114,43 @@ describe('<AreaPickerScreen />', () => {
     await waitFor(() => {
       expect(screen.getByText('BANTEN')).toBeTruthy();
     });
+  });
+});
+
+describe('<AreaPickerSelectionSummary />', () => {
+  test('uses accessible 48px controls for selected-location actions', () => {
+    const onReset = jest.fn();
+    const onNavigateToStage = jest.fn();
+
+    render(
+      <AreaPickerSelectionSummary
+        stage="city"
+        selectedProvince={bantenProvince}
+        selectedCity={serangCity}
+        selectedDistrict={null}
+        selectedPostalOption={null}
+        onReset={onReset}
+        onNavigateToStage={onNavigateToStage}
+      />,
+    );
+
+    const resetButton = screen.getByLabelText('Atur ulang pilihan lokasi');
+    const provinceButton = screen.getByLabelText('Ubah provinsi Banten');
+    const cityButton = screen.getByLabelText('Ubah kota Kota Serang');
+    const resetButtonStyle = StyleSheet.flatten(resetButton.props.style);
+    const provinceButtonStyle = StyleSheet.flatten(provinceButton.props.style);
+    const cityButtonStyle = StyleSheet.flatten(cityButton.props.style);
+
+    expect(resetButtonStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+    expect(resetButtonStyle.minWidth).toBe(MIN_TOUCH_TARGET);
+    expect(provinceButtonStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+    expect(cityButtonStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+
+    fireEvent.press(resetButton);
+    fireEvent.press(provinceButton);
+
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(onNavigateToStage).toHaveBeenCalledWith('province');
   });
 });
 
