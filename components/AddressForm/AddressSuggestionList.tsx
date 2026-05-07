@@ -1,5 +1,6 @@
 import { Spinner, Text, YStack, XStack } from 'tamagui';
 import { MapPin, Search, SearchX, AlertCircle } from '@tamagui/lucide-icons';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import type { AddressSuggestion } from '@/types/geocoding';
 
 const INITIAL_RECOMMENDATION_LIMIT = 6;
@@ -163,6 +164,10 @@ function AddressSuggestionList({
             paddingHorizontal="$2"
             gap="$3"
             alignItems="flex-start"
+            minHeight={MIN_TOUCH_TARGET}
+            role="button"
+            aria-label={`Pilih alamat ${suggestion.primaryText}, ${suggestion.secondaryText}`}
+            aria-disabled={isSelecting}
             pressStyle={{ opacity: 0.7, backgroundColor: '$backgroundHover' }}
             borderRadius="$3"
             disabled={isSelecting}
@@ -171,10 +176,10 @@ function AddressSuggestionList({
               <MapPin size={18} color="$colorMuted" />
             </YStack>
             <YStack flex={1} gap="$0.5">
-              <Text fontSize="$4" color="$color" fontWeight="600" numberOfLines={2}>
+              <Text fontSize="$4" color="$color" fontWeight="600" flexShrink={1}>
                 {suggestion.primaryText}
               </Text>
-              <Text fontSize="$3" color="$colorSubtle" numberOfLines={2}>
+              <Text fontSize="$3" color="$colorSubtle" flexShrink={1}>
                 {suggestion.secondaryText}
               </Text>
             </YStack>

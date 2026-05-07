@@ -1,6 +1,8 @@
 import { test, expect } from '@jest/globals';
+import { StyleSheet } from 'react-native';
 import { render, screen, fireEvent } from '@/test-utils/renderWithTheme';
 import AddressCard from '@/components/elements/AddressCard';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import type { Address } from '@/types/address';
 
 const mockAddress: Address = {
@@ -51,5 +53,45 @@ describe('<AddressCard />', () => {
     const card = screen.getByLabelText('Alamat John Doe');
     fireEvent.press(card);
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  test('shows edit button when onEdit is provided', async () => {
+    const onEdit = jest.fn();
+    render(<AddressCard address={mockAddress} onEdit={onEdit} />);
+    const editButton = screen.getByLabelText('Ubah alamat John Doe');
+    expect(editButton).not.toBeNull();
+  });
+
+  test('does not show edit button when onEdit is not provided', async () => {
+    render(<AddressCard address={mockAddress} />);
+    expect(screen.queryByLabelText('Ubah alamat John Doe')).toBeNull();
+  });
+
+  test('calls onEdit when edit button is pressed', async () => {
+    const onEdit = jest.fn();
+    render(<AddressCard address={mockAddress} onEdit={onEdit} />);
+    const editButton = screen.getByLabelText('Ubah alamat John Doe');
+    fireEvent.press(editButton);
+    expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+
+  test('edit button press does not trigger card onPress', async () => {
+    const onPress = jest.fn();
+    const onEdit = jest.fn();
+    render(<AddressCard address={mockAddress} onPress={onPress} onEdit={onEdit} />);
+    const editButton = screen.getByLabelText('Ubah alamat John Doe');
+    fireEvent.press(editButton);
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  test('edit button has proper touch target size', async () => {
+    const onEdit = jest.fn();
+    render(<AddressCard address={mockAddress} onEdit={onEdit} />);
+    const editButton = screen.getByLabelText('Ubah alamat John Doe');
+    const editButtonStyle = StyleSheet.flatten(editButton.props.style);
+
+    expect(editButtonStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+    expect(editButtonStyle.minWidth).toBe(MIN_TOUCH_TARGET);
   });
 });

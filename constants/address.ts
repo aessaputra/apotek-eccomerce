@@ -1,6 +1,3 @@
-/** Default address left accent border width in pixels. */
-export const DEFAULT_ACCENT_BORDER_WIDTH = 4;
-
 /** Background tint opacity for the default address card (4% of primary). */
 export const DEFAULT_BG_TINT_OPACITY = 0.04;
 

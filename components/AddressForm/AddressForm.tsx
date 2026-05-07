@@ -37,6 +37,7 @@ function AddressForm({
   onStreetAddressPress,
 }: AddressFormProps) {
   const streetAddressErrorId = useId();
+  const streetAddressHelperId = useId();
 
   const handleReceiverNameChange = useCallback(
     (text: string) => {
@@ -89,6 +90,7 @@ function AddressForm({
         <FormInput
           ref={refs.receiverNameRef}
           required
+          label="Nama Penerima"
           value={values.receiverName}
           onChangeText={handleReceiverNameChange}
           onBlur={handleReceiverNameBlur}
@@ -103,6 +105,7 @@ function AddressForm({
         <FormInput
           ref={refs.phoneNumberRef}
           required
+          label="Nomor Telepon"
           value={values.phoneNumber}
           onChangeText={handlePhoneNumberChange}
           onBlur={handlePhoneNumberBlur}
@@ -127,6 +130,9 @@ function AddressForm({
 
       <YStack gap="$3">
         <YStack gap="$1">
+          <Text fontSize="$3" color="$color" marginBottom="$1.5" fontWeight="500">
+            Alamat Jalan
+          </Text>
           <YStack
             backgroundColor="$background"
             borderWidth={1.5}
@@ -142,9 +148,7 @@ function AddressForm({
             aria-disabled={isSaving}
             aria-invalid={!!errors.streetAddress}
             aria-label={values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
-            aria-describedby={
-              errors.streetAddress ? streetAddressErrorId : 'Membuka pencarian alamat pengiriman'
-            }
+            aria-describedby={errors.streetAddress ? streetAddressErrorId : streetAddressHelperId}
             pressStyle={{ opacity: 0.9, scale: 0.995 }}
             animation="quick"
             onPress={isSaving ? undefined : handleOpenStreetSearch}>
@@ -154,7 +158,7 @@ function AddressForm({
                 fontSize="$4"
                 color={values.streetAddress ? '$color' : '$colorMuted'}
                 fontWeight="400"
-                numberOfLines={2}>
+                flexShrink={1}>
                 {values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
               </Text>
               <ChevronRight size={20} color="$colorMuted" />
@@ -165,11 +169,16 @@ function AddressForm({
             <Text id={streetAddressErrorId} fontSize="$2" color="$danger" marginTop="$1">
               {errors.streetAddress}
             </Text>
-          ) : null}
+          ) : (
+            <Text id={streetAddressHelperId} fontSize="$2" color="$colorMuted" marginTop="$1">
+              Membuka pencarian alamat pengiriman
+            </Text>
+          )}
         </YStack>
 
         <FormInput
           ref={refs.addressNoteRef}
+          label="Detail Lainnya"
           value={values.addressNote}
           onChangeText={handleAddressNoteChange}
           onBlur={handleAddressNoteBlur}
@@ -178,7 +187,7 @@ function AddressForm({
           editable={!isSaving}
           returnKeyType="done"
           aria-label="Detail lainnya"
-          aria-describedby="Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)"
+          helperText="Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)"
         />
       </YStack>
     </YStack>

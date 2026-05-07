@@ -1,6 +1,8 @@
-import { YStack, XStack, Text, Card, styled } from 'tamagui';
+import { YStack, XStack, Text, Card, Button, styled } from 'tamagui';
+import type { AccessibilityActionEvent, AccessibilityActionInfo } from 'react-native';
 import type { Address } from '@/types/address';
-import { DEFAULT_ACCENT_BORDER_WIDTH, PRESS_OPACITY } from '@/constants/address';
+import { PRESS_OPACITY } from '@/constants/address';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import { formatAddress } from '@/utils/address';
 
 export interface AddressCardProps {
@@ -10,6 +12,8 @@ export interface AddressCardProps {
   onPress?: () => void;
   onEdit?: () => void;
   badgeText?: string | null;
+  accessibilityActions?: AccessibilityActionInfo[];
+  onAccessibilityAction?: (event: AccessibilityActionEvent) => void;
 }
 
 const StyledCard = styled(Card, {
@@ -24,8 +28,6 @@ const StyledCard = styled(Card, {
       true: {
         backgroundColor: '$surface',
         borderColor: '$primary',
-        borderLeftWidth: DEFAULT_ACCENT_BORDER_WIDTH,
-        borderLeftColor: '$primary',
       },
       false: {
         backgroundColor: '$surface',
@@ -49,6 +51,8 @@ export default function AddressCard({
   onPress,
   onEdit,
   badgeText,
+  accessibilityActions,
+  onAccessibilityAction,
 }: AddressCardProps) {
   const formattedAddress = formatAddress(address);
 
@@ -62,33 +66,42 @@ export default function AddressCard({
       disabled={!onPress}
       role={onPress ? 'button' : 'none'}
       aria-label={onPress ? `Alamat ${address.receiver_name}` : undefined}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={onAccessibilityAction}
       pressStyle={{ opacity: PRESS_OPACITY }}>
       <YStack gap="$2">
         <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
           <YStack flex={1} minWidth={0} gap="$1">
-            <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={1}>
+            <Text fontSize="$4" fontWeight="700" color="$color">
               {address.receiver_name}
             </Text>
-            <Text fontSize="$3" color="$colorSubtle" numberOfLines={1}>
+            <Text fontSize="$3" color="$colorSubtle">
               {address.phone_number}
             </Text>
           </YStack>
 
           {onEdit && (
-            <Text
-              fontSize="$3"
+            <Button
+              minHeight={MIN_TOUCH_TARGET}
+              minWidth={MIN_TOUCH_TARGET}
+              backgroundColor="$colorTransparent"
               color="$primary"
               fontWeight="600"
-              onPress={e => {
-                e.stopPropagation();
+              fontSize="$3"
+              p={0}
+              role="button"
+              aria-label={`Ubah alamat ${address.receiver_name}`}
+              pressStyle={{ opacity: 0.8 }}
+              onPress={event => {
+                event?.stopPropagation?.();
                 onEdit();
               }}>
               Ubah
-            </Text>
+            </Button>
           )}
         </XStack>
 
-        <Text fontSize="$3" color="$colorSubtle" numberOfLines={3}>
+        <Text fontSize="$3" color="$colorSubtle">
           {formattedAddress}
         </Text>
 
