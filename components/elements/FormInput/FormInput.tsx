@@ -1,5 +1,6 @@
-import { forwardRef, useState, useId } from 'react';
+import { forwardRef, useMemo, useState, useId } from 'react';
 import { TextInput } from 'react-native';
+import type { TextStyle } from 'react-native';
 import { Input, XStack, YStack, Text, styled, useTheme } from 'tamagui';
 import { XCircleIcon } from '@/components/icons';
 import { FORM_FIELD } from '@/constants/ui';
@@ -102,6 +103,14 @@ const StyledInput = styled(Input, {
   color: '$color',
 });
 
+const singleLineInputBaseStyle: TextStyle = {
+  flex: 1,
+  height: '100%',
+  padding: 0,
+  margin: 0,
+  fontSize: 16,
+};
+
 const FormInput = forwardRef<TextInput, FormInputProps>(
   (
     {
@@ -147,6 +156,15 @@ const FormInput = forwardRef<TextInput, FormInputProps>(
     const surfaceColor = getThemeColor(theme, 'surface');
     const placeholderColor = getThemeColor(theme, 'placeholderColor');
     const textColor = getThemeColor(theme, 'color');
+    const inputFontFamily = theme.bodyFont?.val || fonts.poppins.regular;
+    const singleLineInputStyle = useMemo<TextStyle>(
+      () => ({
+        ...singleLineInputBaseStyle,
+        fontFamily: inputFontFamily,
+        color: textColor,
+      }),
+      [inputFontFamily, textColor],
+    );
 
     const handleFocus = () => {
       setIsFocused(true);
@@ -211,15 +229,7 @@ const FormInput = forwardRef<TextInput, FormInputProps>(
             opacity={isDisabled ? 0.6 : 1}>
             <TextInput
               ref={ref}
-              style={{
-                flex: 1,
-                height: '100%',
-                padding: 0,
-                margin: 0,
-                fontSize: 16,
-                fontFamily: theme.bodyFont?.val || fonts.poppins.regular,
-                color: textColor,
-              }}
+              style={singleLineInputStyle}
               placeholder={placeholder}
               placeholderTextColor={placeholderColor}
               value={value}

@@ -93,14 +93,26 @@ export function useAddressList(userId: string | undefined): UseAddressListResult
     [orderedAddresses],
   );
 
-  return {
-    addresses,
-    orderedAddresses,
-    sections,
-    loading,
-    refreshing,
-    refreshAddresses,
-    deleteSavedAddress,
-    setPrimaryAddress,
-  };
+  return useMemo(
+    () => ({
+      addresses,
+      orderedAddresses,
+      sections,
+      loading,
+      refreshing,
+      refreshAddresses,
+      deleteSavedAddress,
+      setPrimaryAddress,
+    }),
+    [
+      addresses,
+      deleteSavedAddress,
+      loading,
+      orderedAddresses,
+      refreshAddresses,
+      refreshing,
+      sections,
+      setPrimaryAddress,
+    ],
+  );
 }
