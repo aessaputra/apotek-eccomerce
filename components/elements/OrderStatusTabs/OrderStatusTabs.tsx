@@ -39,15 +39,15 @@ const TABS: TabConfig[] = [
 ];
 
 const TABS_CONTENT_CONTAINER_STYLE = {
-  paddingHorizontal: 16,
-  gap: 8,
+  paddingHorizontal: 12,
+  gap: 6,
 } as const;
 const TAB_PRESS_STYLE = { opacity: 0.7 } as const;
 const ACTIVE_ACCESSIBILITY_STATE = { selected: true } as const;
 const INACTIVE_ACCESSIBILITY_STATE = { selected: false } as const;
-const TAB_ICON_SIZE = 28;
-const TAB_MIN_WIDTH = 92;
-const ALL_TAB_MIN_WIDTH = 116;
+const TAB_ICON_SIZE = 24;
+const TAB_WIDTH = 64;
+const ALL_TAB_WIDTH = 80;
 
 interface OrderStatusTabsProps {
   activeTab?: OrderTab | null;
@@ -70,9 +70,9 @@ const TabButton = styled(YStack, {
   justifyContent: 'center',
   gap: '$1',
   paddingVertical: '$2',
-  paddingHorizontal: '$3',
+  paddingHorizontal: '$2',
   borderRadius: '$3',
-  minWidth: TAB_MIN_WIDTH,
+  width: TAB_WIDTH,
   minHeight: MIN_TOUCH_TARGET,
   position: 'relative',
 
@@ -93,8 +93,8 @@ const TabButton = styled(YStack, {
 });
 
 const TabIcon = styled(YStack, {
-  width: 32,
-  height: 32,
+  width: 28,
+  height: 28,
   alignItems: 'center',
   justifyContent: 'center',
 
@@ -116,7 +116,9 @@ const TabIcon = styled(YStack, {
 
 const TabLabel = styled(Text, {
   fontSize: '$2',
+  lineHeight: 14,
   textAlign: 'center',
+  width: '100%',
 
   variants: {
     active: {
@@ -172,7 +174,7 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
   return (
     <TabButton
       active={isActive}
-      minWidth={tab.key === 'all' ? ALL_TAB_MIN_WIDTH : TAB_MIN_WIDTH}
+      width={tab.key === 'all' ? ALL_TAB_WIDTH : TAB_WIDTH}
       onPress={handlePress}
       pressStyle={TAB_PRESS_STYLE}
       accessibilityRole="tab"
@@ -182,7 +184,9 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
       <TabIcon active={isActive}>
         <IconComponent size={TAB_ICON_SIZE} color={isActive ? '$primary' : '$colorSubtle'} />
       </TabIcon>
-      <TabLabel active={isActive}>{tab.label}</TabLabel>
+      <TabLabel active={isActive} numberOfLines={2}>
+        {tab.label}
+      </TabLabel>
       {count !== undefined && count > 0 && (
         <Badge>
           <BadgeText>{count > 99 ? '99+' : count}</BadgeText>

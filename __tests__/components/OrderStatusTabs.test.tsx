@@ -82,8 +82,8 @@ describe('<OrderStatusTabs />', () => {
     expect(scrollView.props.horizontal).toBe(true);
     expect(scrollView.props.showsHorizontalScrollIndicator).toBe(false);
     expect(scrollView.props.contentContainerStyle).toEqual({
-      paddingHorizontal: 16,
-      gap: 8,
+      paddingHorizontal: 12,
+      gap: 6,
     });
   });
 });
