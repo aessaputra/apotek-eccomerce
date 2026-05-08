@@ -37,7 +37,6 @@ function AddressForm({
   onStreetAddressPress,
 }: AddressFormProps) {
   const streetAddressErrorId = useId();
-  const streetAddressHelperId = useId();
 
   const handleReceiverNameChange = useCallback(
     (text: string) => {
@@ -130,9 +129,6 @@ function AddressForm({
 
       <YStack gap="$3">
         <YStack gap="$1">
-          <Text fontSize="$3" color="$color" marginBottom="$1.5" fontWeight="500">
-            Alamat Jalan
-          </Text>
           <YStack
             backgroundColor="$background"
             borderWidth={1.5}
@@ -148,7 +144,7 @@ function AddressForm({
             aria-disabled={isSaving}
             aria-invalid={!!errors.streetAddress}
             aria-label={values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
-            aria-describedby={errors.streetAddress ? streetAddressErrorId : streetAddressHelperId}
+            aria-describedby={errors.streetAddress ? streetAddressErrorId : undefined}
             pressStyle={{ opacity: 0.9, scale: 0.995 }}
             animation="quick"
             onPress={isSaving ? undefined : handleOpenStreetSearch}>
@@ -169,11 +165,7 @@ function AddressForm({
             <Text id={streetAddressErrorId} fontSize="$2" color="$danger" marginTop="$1">
               {errors.streetAddress}
             </Text>
-          ) : (
-            <Text id={streetAddressHelperId} fontSize="$2" color="$colorMuted" marginTop="$1">
-              Membuka pencarian alamat pengiriman
-            </Text>
-          )}
+          ) : null}
         </YStack>
 
         <FormInput

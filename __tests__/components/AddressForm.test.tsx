@@ -4,7 +4,7 @@ import AddressForm from '@/components/AddressForm/AddressForm';
 import { initialFormErrors, initialFormValues } from '@/utils/addressValidation';
 
 describe('<AddressForm />', () => {
-  it('renders visible labels for all form fields', () => {
+  it('renders visible labels only for text-entry fields', () => {
     render(
       <AddressForm
         values={initialFormValues}
@@ -28,7 +28,7 @@ describe('<AddressForm />', () => {
 
     expect(screen.getByText('Nama Penerima', { exact: false })).toBeTruthy();
     expect(screen.getByText('Nomor Telepon', { exact: false })).toBeTruthy();
-    expect(screen.getByText('Alamat Jalan')).toBeTruthy();
+    expect(screen.queryByText('Alamat Jalan')).toBeNull();
     expect(screen.getByText('Detail Lainnya')).toBeTruthy();
   });
 
@@ -86,8 +86,8 @@ describe('<AddressForm />', () => {
     expect(onStreetAddressPress).toHaveBeenCalledTimes(1);
   });
 
-  it('describes street address and note helpers with real ids and allows wrapping text', () => {
-    render(
+  it('only describes street address with an error and keeps note helper wiring', () => {
+    const view = render(
       <AddressForm
         values={initialFormValues}
         errors={initialFormErrors}
@@ -109,16 +109,41 @@ describe('<AddressForm />', () => {
     );
 
     const streetAddressTrigger = screen.getByLabelText('Nama Jalan, Gedung, No. Rumah');
-    const streetHelper = screen.getByText('Membuka pencarian alamat pengiriman');
     const streetAddressText = screen.getByText('Nama Jalan, Gedung, No. Rumah');
     const noteHelper = screen.getByText(
       'Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)',
     );
     const noteInput = screen.getByLabelText('Detail lainnya');
 
-    expect(streetAddressTrigger.props['aria-describedby']).toBe(streetHelper.props.id);
+    expect(streetAddressTrigger.props['aria-describedby']).toBeUndefined();
+    expect(screen.queryByText('Membuka pencarian alamat pengiriman')).toBeNull();
     expect(streetAddressText.props.numberOfLines).toBeUndefined();
     expect(noteInput.props['aria-describedby']).toBe(noteHelper.props.id);
+
+    view.rerender(
+      <AddressForm
+        values={initialFormValues}
+        errors={{ ...initialFormErrors, streetAddress: 'Alamat wajib dipilih' }}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={jest.fn()}
+        onFieldValidate={jest.fn()}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={jest.fn()}
+      />,
+    );
+
+    const erroredStreetAddressTrigger = screen.getByLabelText('Nama Jalan, Gedung, No. Rumah');
+    const streetError = screen.getByText('Alamat wajib dipilih');
+    expect(erroredStreetAddressTrigger.props['aria-describedby']).toBe(streetError.props.id);
   });
 
   it('updates and validates receiver fields from the live form', () => {
