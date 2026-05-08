@@ -1,7 +1,11 @@
 import { describe, expect, jest, test } from '@jest/globals';
 import { ScrollView } from 'react-native';
 import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
-import { OrderStatusTabs, type OrderTab } from '@/components/elements/OrderStatusTabs';
+import {
+  OrderStatusTabs,
+  getOrderStatusTabWidth,
+  type OrderTab,
+} from '@/components/elements/OrderStatusTabs';
 
 const counts = {
   unpaid: 2,
@@ -85,5 +89,18 @@ describe('<OrderStatusTabs />', () => {
       paddingHorizontal: 12,
       gap: 6,
     });
+  });
+
+  test('sizes tabs so exactly four statuses fit before horizontal swipe', () => {
+    const screenWidth = 390;
+    const horizontalPadding = 12 * 2;
+    const tabGap = 6;
+    const tabWidth = getOrderStatusTabWidth(screenWidth);
+    const firstFourTabsWidth = horizontalPadding + tabWidth * 4 + tabGap * 3;
+    const firstFiveTabsWidth = horizontalPadding + tabWidth * 5 + tabGap * 4;
+
+    expect(tabWidth).toBe(87);
+    expect(firstFourTabsWidth).toBe(screenWidth);
+    expect(firstFiveTabsWidth).toBeGreaterThan(screenWidth);
   });
 });
