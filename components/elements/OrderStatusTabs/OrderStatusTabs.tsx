@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, useWindowDimensions } from 'react-native';
 import { XStack, YStack, Text, styled } from 'tamagui';
 import {
   ShoppingBagIcon,
@@ -26,6 +26,7 @@ interface OrderStatusTabItemProps {
   tab: TabConfig;
   count?: number;
   isActive: boolean;
+  width: number;
   onTabChange: (tab: OrderTab) => void;
 }
 
@@ -38,16 +39,17 @@ const TABS: TabConfig[] = [
   { key: 'cancelled', label: 'Dibatalkan', icon: XCircleIcon },
 ];
 
+const VISIBLE_TAB_COUNT = 4;
+const TABS_HORIZONTAL_PADDING = 12;
+const TAB_GAP = 6;
 const TABS_CONTENT_CONTAINER_STYLE = {
-  paddingHorizontal: 12,
-  gap: 6,
+  paddingHorizontal: TABS_HORIZONTAL_PADDING,
+  gap: TAB_GAP,
 } as const;
 const TAB_PRESS_STYLE = { opacity: 0.7 } as const;
 const ACTIVE_ACCESSIBILITY_STATE = { selected: true } as const;
 const INACTIVE_ACCESSIBILITY_STATE = { selected: false } as const;
 const TAB_ICON_SIZE = 24;
-const TAB_WIDTH = 64;
-const ALL_TAB_WIDTH = 80;
 
 interface OrderStatusTabsProps {
   activeTab?: OrderTab | null;
@@ -57,6 +59,13 @@ interface OrderStatusTabsProps {
 
 function isCountedTab(tab: TabConfig): tab is TabConfig & { key: CountedOrderTab } {
   return tab.key !== 'all';
+}
+
+export function getOrderStatusTabWidth(containerWidth: number): number {
+  const horizontalPaddingWidth = TABS_HORIZONTAL_PADDING * 2;
+  const visibleGapsWidth = TAB_GAP * (VISIBLE_TAB_COUNT - 1);
+
+  return (containerWidth - horizontalPaddingWidth - visibleGapsWidth) / VISIBLE_TAB_COUNT;
 }
 
 const TabsContainer = styled(XStack, {
@@ -72,7 +81,6 @@ const TabButton = styled(YStack, {
   paddingVertical: '$2',
   paddingHorizontal: '$2',
   borderRadius: '$3',
-  width: TAB_WIDTH,
   minHeight: MIN_TOUCH_TARGET,
   position: 'relative',
 
@@ -162,6 +170,7 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
   tab,
   count,
   isActive,
+  width,
   onTabChange,
 }: OrderStatusTabItemProps) {
   const IconComponent = tab.icon;
@@ -174,7 +183,7 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
   return (
     <TabButton
       active={isActive}
-      width={tab.key === 'all' ? ALL_TAB_WIDTH : TAB_WIDTH}
+      width={width}
       onPress={handlePress}
       pressStyle={TAB_PRESS_STYLE}
       accessibilityRole="tab"
@@ -197,6 +206,9 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
 });
 
 export function OrderStatusTabs({ activeTab, counts, onTabChange }: OrderStatusTabsProps) {
+  const { width } = useWindowDimensions();
+  const tabWidth = getOrderStatusTabWidth(width);
+
   return (
     <TabsContainer>
       <ScrollView
@@ -213,6 +225,7 @@ export function OrderStatusTabs({ activeTab, counts, onTabChange }: OrderStatusT
               tab={tab}
               count={count}
               isActive={isActive}
+              width={tabWidth}
               onTabChange={onTabChange}
             />
           );
