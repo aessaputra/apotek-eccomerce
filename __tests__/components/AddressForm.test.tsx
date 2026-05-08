@@ -29,7 +29,7 @@ describe('<AddressForm />', () => {
     expect(screen.getByText('Nama Penerima', { exact: false })).toBeTruthy();
     expect(screen.getByText('Nomor Telepon', { exact: false })).toBeTruthy();
     expect(screen.queryByText('Alamat Jalan')).toBeNull();
-    expect(screen.getByText('Detail Lainnya')).toBeTruthy();
+    expect(screen.queryByText('Detail Lainnya')).toBeNull();
   });
 
   it('does not render the legacy map trigger row', () => {
@@ -86,7 +86,7 @@ describe('<AddressForm />', () => {
     expect(onStreetAddressPress).toHaveBeenCalledTimes(1);
   });
 
-  it('only describes street address with an error and keeps note helper wiring', () => {
+  it('only describes street address with an error and keeps the note input accessible', () => {
     const view = render(
       <AddressForm
         values={initialFormValues}
@@ -110,15 +110,15 @@ describe('<AddressForm />', () => {
 
     const streetAddressTrigger = screen.getByLabelText('Nama Jalan, Gedung, No. Rumah');
     const streetAddressText = screen.getByText('Nama Jalan, Gedung, No. Rumah');
-    const noteHelper = screen.getByText(
-      'Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)',
-    );
     const noteInput = screen.getByLabelText('Detail lainnya');
 
     expect(streetAddressTrigger.props['aria-describedby']).toBeUndefined();
     expect(screen.queryByText('Membuka pencarian alamat pengiriman')).toBeNull();
+    expect(
+      screen.queryByText('Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)'),
+    ).toBeNull();
     expect(streetAddressText.props.numberOfLines).toBeUndefined();
-    expect(noteInput.props['aria-describedby']).toBe(noteHelper.props.id);
+    expect(noteInput).toBeTruthy();
 
     view.rerender(
       <AddressForm

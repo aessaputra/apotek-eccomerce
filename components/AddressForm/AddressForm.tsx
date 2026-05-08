@@ -170,7 +170,6 @@ function AddressForm({
 
         <FormInput
           ref={refs.addressNoteRef}
-          label="Detail Lainnya"
           value={values.addressNote}
           onChangeText={handleAddressNoteChange}
           onBlur={handleAddressNoteBlur}
@@ -179,7 +178,6 @@ function AddressForm({
           editable={!isSaving}
           returnKeyType="done"
           aria-label="Detail lainnya"
-          helperText="Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)"
         />
       </YStack>
     </YStack>
