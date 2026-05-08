@@ -428,7 +428,7 @@ export default function Notifications() {
           />
         }
         ListHeaderComponent={
-          <YStack>
+          <YStack paddingBottom="$3">
             <NotificationPermissionBanner
               permissionStatus={permissionStatus}
               onRequest={handleRequestPermission}
