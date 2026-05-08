@@ -1,5 +1,6 @@
 import { describe, expect, jest, test } from '@jest/globals';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import type { ReactTestInstance } from 'react-test-renderer';
 import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
 import {
   OrderStatusTabs,
@@ -14,6 +15,29 @@ const counts = {
   completed: 1,
   cancelled: 3,
 };
+
+function flattenStyle(node: ReactTestInstance) {
+  return (StyleSheet.flatten(node.props.style) ?? {}) as Record<string, unknown>;
+}
+
+function findAncestorWithStyle(
+  node: ReactTestInstance,
+  matcher: (style: Record<string, unknown>) => boolean,
+) {
+  let current = node.parent;
+
+  while (current) {
+    const style = flattenStyle(current);
+
+    if (matcher(style)) {
+      return current;
+    }
+
+    current = current.parent;
+  }
+
+  throw new Error('Expected ancestor style was not found');
+}
 
 describe('<OrderStatusTabs />', () => {
   test('renders tab labels in order and non-zero status badge counts', () => {
@@ -102,5 +126,27 @@ describe('<OrderStatusTabs />', () => {
     expect(tabWidth).toBe(87);
     expect(firstFourTabsWidth).toBe(screenWidth);
     expect(firstFiveTabsWidth).toBeGreaterThan(screenWidth);
+  });
+
+  test('reserves consistent icon and two-line label slots for every tab', () => {
+    render(<OrderStatusTabs activeTab="all" counts={counts} onTabChange={() => {}} />);
+
+    const labels = screen.getAllByText(
+      /Semua pesanan|Belum Bayar|Dikemas|Dikirim|Selesai|Dibatalkan/,
+    );
+
+    labels.forEach(label => {
+      const labelStyle = flattenStyle(label);
+      const tabButton = findAncestorWithStyle(label, style => style.height === 76);
+      const tabButtonStyle = flattenStyle(tabButton);
+
+      expect(label.props.numberOfLines).toBe(2);
+      expect(labelStyle.height).toBe(28);
+      expect(labelStyle.lineHeight).toBe(14);
+      expect(tabButtonStyle.height).toBe(76);
+      expect(tabButtonStyle.minHeight).toBe(76);
+      expect(tabButtonStyle.justifyContent).toBe('flex-start');
+      expect(tabButtonStyle.gap).toBe(4);
+    });
   });
 });

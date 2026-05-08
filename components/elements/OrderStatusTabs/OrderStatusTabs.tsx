@@ -50,6 +50,15 @@ const TAB_PRESS_STYLE = { opacity: 0.7 } as const;
 const ACTIVE_ACCESSIBILITY_STATE = { selected: true } as const;
 const INACTIVE_ACCESSIBILITY_STATE = { selected: false } as const;
 const TAB_ICON_SIZE = 24;
+const TAB_ICON_SLOT_SIZE = 28;
+const TAB_LABEL_LINE_HEIGHT = 14;
+const TAB_LABEL_SLOT_HEIGHT = TAB_LABEL_LINE_HEIGHT * 2;
+const TAB_CONTENT_GAP = 4;
+const TAB_VERTICAL_PADDING = 8;
+const TAB_MIN_HEIGHT = Math.max(
+  MIN_TOUCH_TARGET,
+  TAB_ICON_SLOT_SIZE + TAB_CONTENT_GAP + TAB_LABEL_SLOT_HEIGHT + TAB_VERTICAL_PADDING * 2,
+);
 
 interface OrderStatusTabsProps {
   activeTab?: OrderTab | null;
@@ -76,12 +85,13 @@ const TabsContainer = styled(XStack, {
 
 const TabButton = styled(YStack, {
   alignItems: 'center',
-  justifyContent: 'center',
-  gap: '$1',
-  paddingVertical: '$2',
+  justifyContent: 'flex-start',
+  gap: TAB_CONTENT_GAP,
+  paddingVertical: TAB_VERTICAL_PADDING,
   paddingHorizontal: '$2',
   borderRadius: '$3',
-  minHeight: MIN_TOUCH_TARGET,
+  minHeight: TAB_MIN_HEIGHT,
+  height: TAB_MIN_HEIGHT,
   position: 'relative',
 
   variants: {
@@ -101,8 +111,8 @@ const TabButton = styled(YStack, {
 });
 
 const TabIcon = styled(YStack, {
-  width: 28,
-  height: 28,
+  width: TAB_ICON_SLOT_SIZE,
+  height: TAB_ICON_SLOT_SIZE,
   alignItems: 'center',
   justifyContent: 'center',
 
@@ -124,9 +134,10 @@ const TabIcon = styled(YStack, {
 
 const TabLabel = styled(Text, {
   fontSize: '$2',
-  lineHeight: 14,
+  lineHeight: TAB_LABEL_LINE_HEIGHT,
   textAlign: 'center',
   width: '100%',
+  height: TAB_LABEL_SLOT_HEIGHT,
 
   variants: {
     active: {
