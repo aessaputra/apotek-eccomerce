@@ -40,7 +40,19 @@ type ProfilePushTokenUpsert = Pick<
   ProfilePushTokenRow,
   'user_id' | 'device_id' | 'expo_push_token' | 'platform' | 'last_seen_at' | 'revoked_at'
 >;
+type ClaimProfilePushTokenArgs = {
+  p_device_id: string;
+  p_expo_push_token: string;
+  p_platform: string;
+  p_last_seen_at: string;
+};
 type ProfilePushTokenClient = {
+  rpc(
+    functionName: 'claim_profile_push_token',
+    args: ClaimProfilePushTokenArgs,
+  ): {
+    maybeSingle(): Promise<{ data: ProfilePushTokenRow | null; error: unknown }>;
+  };
   from(table: 'profile_push_tokens'): {
     upsert(
       values: ProfilePushTokenUpsert,
@@ -688,19 +700,13 @@ export async function updateExpoPushToken(
     const deviceId = await getNotificationDeviceId();
     const now = new Date().toISOString();
 
-    const upsertPayload: ProfilePushTokenUpsert = {
-      user_id: normalizedUserId,
-      device_id: deviceId,
-      expo_push_token: normalizedExpoPushToken,
-      platform: Platform.OS,
-      last_seen_at: now,
-      revoked_at: null,
-    };
-
     const { data, error } = await getProfilePushTokenClient()
-      .from('profile_push_tokens')
-      .upsert(upsertPayload, { onConflict: 'user_id,device_id' })
-      .select('*')
+      .rpc('claim_profile_push_token', {
+        p_device_id: deviceId,
+        p_expo_push_token: normalizedExpoPushToken,
+        p_platform: Platform.OS,
+        p_last_seen_at: now,
+      })
       .maybeSingle();
 
     if (error) {
