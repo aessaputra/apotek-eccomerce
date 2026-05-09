@@ -4,6 +4,7 @@ import {
   createTestNotification,
   fetchNotifications,
   markNotificationAsRead,
+  NOTIFICATION_DEVICE_ID_STORAGE_KEY,
   requestExpoPushTokenAndSync,
   subscribeToExpoPushTokenUpdates,
   syncExpoPushTokenIfPermitted,
@@ -153,7 +154,7 @@ describe('notification.service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockStorage.clear();
-    mockStorage.set('notifications:device-id', 'device-1');
+    mockStorage.set(NOTIFICATION_DEVICE_ID_STORAGE_KEY, 'device-1');
     jest.setSystemTime(new Date('2026-04-23T15:30:00.000Z'));
     mockHasExpoPushTokenRuntimeSupport.mockReturnValue(true);
     mockHasExpoNotificationMethodsAsync.mockImplementation(async () => true);
@@ -168,6 +169,11 @@ describe('notification.service', () => {
       getExpoPushTokenAsync: () => mockGetExpoPushTokenAsync(),
       addPushTokenListener: listener => mockAddPushTokenListener(listener),
     }));
+  });
+
+  it('uses a SecureStore-valid device ID storage key', () => {
+    expect(NOTIFICATION_DEVICE_ID_STORAGE_KEY).toMatch(/^[\w.-]+$/);
+    expect(NOTIFICATION_DEVICE_ID_STORAGE_KEY).not.toContain(':');
   });
 
   it('fetches notifications newest-first for the user inbox', async () => {

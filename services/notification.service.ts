@@ -82,7 +82,7 @@ type CreateTestNotificationClient = {
 type NotificationPageCursor = string | null;
 
 export const NOTIFICATIONS_PAGE_SIZE = 20;
-export const NOTIFICATION_DEVICE_ID_STORAGE_KEY = 'notifications:device-id';
+export const NOTIFICATION_DEVICE_ID_STORAGE_KEY = 'notifications.device-id';
 
 export interface FetchNotificationsOptions {
   signal?: AbortSignal;
