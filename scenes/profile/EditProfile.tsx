@@ -331,7 +331,7 @@ export default function EditProfile() {
                         aria-label="Email akun"
                       />
                       <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
-                        Email dikelola melalui pengaturan autentikasi akun.
+                        Alamat email dikelola melalui pengaturan autentikasi akun.
                       </Text>
                     </YStack>
                   </YStack>
