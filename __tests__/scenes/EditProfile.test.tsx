@@ -218,13 +218,6 @@ describe('<EditProfile />', () => {
   it('saves valid profile edits and dispatches the updated user', async () => {
     render(<EditProfile />);
 
-    expect(
-      screen.getByText('Isi nama lengkap sesuai identitas akun, 2-100 karakter.'),
-    ).not.toBeNull();
-    expect(
-      screen.getByText('Gunakan nomor aktif untuk konfirmasi pesanan, 8-15 digit.'),
-    ).not.toBeNull();
-
     fireEvent.changeText(screen.getByLabelText('Input nama lengkap'), 'Siti Updated');
     fireEvent.changeText(screen.getByLabelText('Input nomor telepon'), '089876543210');
     fireEvent.press(screen.getByLabelText('Simpan perubahan profil'));

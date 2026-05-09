@@ -36,9 +36,6 @@ const FormContent = styled(YStack, {
   flexGrow: 1,
 });
 
-const NAME_HELPER_TEXT = 'Isi nama lengkap sesuai identitas akun, 2-100 karakter.';
-const PHONE_HELPER_TEXT = 'Gunakan nomor aktif untuk konfirmasi pesanan, 8-15 digit.';
-
 export default function EditProfile() {
   const router = useRouter();
   const headerHeight = useHeaderHeight();
@@ -291,7 +288,6 @@ export default function EditProfile() {
                         blurOnSubmit={false}
                         onSubmitEditing={() => phoneInputRef.current?.focus()}
                         aria-label="Input nama lengkap"
-                        helperText={NAME_HELPER_TEXT}
                         error={fullNameError}
                       />
                     </YStack>
@@ -318,7 +314,6 @@ export default function EditProfile() {
                         returnKeyType="done"
                         onSubmitEditing={handleSaveProfile}
                         aria-label="Input nomor telepon"
-                        helperText={PHONE_HELPER_TEXT}
                         error={phoneNumberError}
                       />
                     </YStack>
