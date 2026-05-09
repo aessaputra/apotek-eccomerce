@@ -75,12 +75,6 @@ type ProfilePushTokenUpdateQuery = {
     maybeSingle(): Promise<{ data: ProfilePushTokenRow | null; error: unknown }>;
   };
 };
-type CreateTestNotificationClient = {
-  rpc(functionName: 'create_test_notification'): Promise<{
-    data: NotificationTableRow | null;
-    error: unknown;
-  }>;
-};
 type NotificationPageCursor = string | null;
 
 export const NOTIFICATIONS_PAGE_SIZE = 20;
@@ -126,6 +120,16 @@ export interface MarkAllNotificationsReadResult {
   markedCount: number;
   readAt: string;
 }
+
+export interface TestNotificationSendResult {
+  delivered: boolean;
+  reason: string | null;
+}
+
+type TestNotificationFunctionResponse = {
+  delivered?: boolean;
+  reason?: string | null;
+};
 
 export type NotificationTokenSyncStatus =
   | 'updated'
@@ -182,6 +186,28 @@ function normalizeRequiredIdentifier(value: string, fieldName: string): string {
   return normalized;
 }
 
+const AUTH_SESSION_ERROR_MESSAGE = 'Sesi login belum siap. Silakan coba lagi dalam beberapa saat.';
+
+async function getValidAccessToken(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    return null;
+  }
+
+  try {
+    const {
+      data: { session: refreshedSession },
+    } = await supabase.auth.refreshSession();
+
+    return refreshedSession?.access_token ?? session.access_token;
+  } catch {
+    return session.access_token;
+  }
+}
+
 function normalizeExpoPushToken(token: string): string {
   const normalized = token.trim();
 
@@ -200,10 +226,6 @@ function normalizeExpoPushToken(token: string): string {
 
 function getProfilePushTokenClient(): ProfilePushTokenClient {
   return supabase as unknown as ProfilePushTokenClient;
-}
-
-function getCreateTestNotificationClient(): CreateTestNotificationClient {
-  return supabase as unknown as CreateTestNotificationClient;
 }
 
 function createDeviceId(): string {
@@ -590,23 +612,39 @@ export async function markAllNotificationsAsRead(
   }
 }
 
-export async function createTestNotification(
+export async function sendTestNotification(
   userId: string,
-): Promise<NotificationServiceResult<NotificationRow>> {
+): Promise<NotificationServiceResult<TestNotificationSendResult>> {
   try {
     normalizeRequiredIdentifier(userId, 'userId');
 
-    const { data, error } = await getCreateTestNotificationClient().rpc('create_test_notification');
+    const accessToken = await getValidAccessToken();
+
+    if (!accessToken) {
+      return { data: null, error: new Error(AUTH_SESSION_ERROR_MESSAGE) };
+    }
+
+    const { data, error } = await supabase.functions.invoke<TestNotificationFunctionResponse>(
+      'push',
+      {
+        body: { action: 'send_test_notification' },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
 
     if (error) {
       return { data: null, error: error as unknown as Error };
     }
 
-    if (!data) {
-      return { data: null, error: new Error('Notifikasi tes tidak berhasil dibuat.') };
-    }
-
-    return { data: normalizeNotificationRow(data), error: null };
+    return {
+      data: {
+        delivered: data?.delivered === true,
+        reason: typeof data?.reason === 'string' && data.reason.trim() ? data.reason : null,
+      },
+      error: null,
+    };
   } catch (error) {
     return { data: null, error: toError(error) };
   }

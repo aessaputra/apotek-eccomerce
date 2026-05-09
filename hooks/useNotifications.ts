@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
-  createTestNotification,
   fetchNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
   requestExpoPushTokenAndSync,
+  sendTestNotification as sendTestNotificationRequest,
   subscribeToNotificationChanges,
   syncExpoPushTokenIfPermitted,
   type NotificationPage,
@@ -652,18 +652,19 @@ export function useNotifications({
     setIsSendingTestNotification(true);
 
     try {
-      const { data, error } = await createTestNotification(userId);
+      const { data, error } = await sendTestNotificationRequest(userId);
 
       if (error || !data) {
         throw error ?? new Error('Gagal mengirim tes notifikasi.');
       }
 
+      if (!data.delivered) {
+        throw new Error(data.reason ?? 'Gagal mengirim tes notifikasi.');
+      }
+
       setState(prev => {
-        const items = upsertNotificationItem(prev.items, data);
         return {
           ...prev,
-          items,
-          status: getStatusForItems(items),
           error: null,
         };
       });

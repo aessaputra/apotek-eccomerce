@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
   clearExpoPushToken,
-  createTestNotification,
   fetchNotifications,
   markNotificationAsRead,
   NOTIFICATION_DEVICE_ID_STORAGE_KEY,
   requestExpoPushTokenAndSync,
+  sendTestNotification,
   subscribeToExpoPushTokenUpdates,
   syncExpoPushTokenIfPermitted,
   updateExpoPushToken,
@@ -16,12 +16,26 @@ type PermissionResponse = {
   status: string;
 };
 
+type SessionResponse = {
+  data: { session: { access_token: string } | null };
+  error: unknown;
+};
+
 const mockFrom = jest.fn<(table: unknown) => unknown>();
 type RpcMockResult =
   | Promise<{ data: unknown; error: unknown }>
   | { data: unknown; error: unknown }
   | { maybeSingle: () => Promise<{ data: unknown; error: unknown }> };
 const mockRpc = jest.fn<(functionName: unknown, args?: unknown) => RpcMockResult>();
+const mockGetSession = jest.fn<() => Promise<SessionResponse>>();
+const mockRefreshSession = jest.fn<() => Promise<SessionResponse>>();
+const mockFunctionsInvoke =
+  jest.fn<
+    (
+      functionName: string,
+      options: { body: { action: string }; headers?: { Authorization: string } },
+    ) => Promise<{ data: unknown; error: unknown }>
+  >();
 const mockGetPermissionsAsync = jest.fn<() => Promise<PermissionResponse>>();
 const mockRequestPermissionsAsync = jest.fn<() => Promise<PermissionResponse>>();
 const mockGetExpoPushTokenAsync = jest.fn<() => Promise<{ data: string }>>();
@@ -48,6 +62,16 @@ jest.mock('@/utils/supabase', () => ({
   supabase: {
     from: (table: unknown) => mockFrom(table),
     rpc: (functionName: unknown, args: unknown) => mockRpc(functionName, args),
+    auth: {
+      getSession: () => mockGetSession(),
+      refreshSession: () => mockRefreshSession(),
+    },
+    functions: {
+      invoke: (
+        functionName: string,
+        options: { body: { action: string }; headers?: { Authorization: string } },
+      ) => mockFunctionsInvoke(functionName, options),
+    },
   },
 }));
 
@@ -228,23 +252,72 @@ describe('notification.service', () => {
     expect(updateQuery.is).toHaveBeenCalledWith('read_at', null);
   });
 
-  it('creates a test notification through the authenticated RPC', async () => {
-    const row = createNotificationRow({
-      id: 'notification-test',
-      type: 'test_notification',
-      title: 'Tes Notifikasi',
-      body: 'Ini adalah notifikasi tes dari aplikasi Apotek Ecommerce.',
-      cta_route: null,
-      data: {},
+  it('refreshes the session before sending a test notification', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: { access_token: 'access-token-123' } },
+      error: null,
+    });
+    mockRefreshSession.mockResolvedValueOnce({
+      data: { session: { access_token: 'refreshed-token-456' } },
+      error: null,
+    });
+    mockFunctionsInvoke.mockResolvedValueOnce({
+      data: { delivered: true, reason: null },
+      error: null,
     });
 
-    mockRpc.mockImplementationOnce(async () => ({ data: row, error: null }));
-
-    const result = await createTestNotification('user-1');
+    const result = await sendTestNotification('user-1');
 
     expect(result.error).toBeNull();
-    expect(result.data).toEqual(row);
-    expect(mockRpc).toHaveBeenCalledWith('create_test_notification', undefined);
+    expect(result.data).toEqual({ delivered: true, reason: null });
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+    expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+    expect(mockFunctionsInvoke).toHaveBeenCalledWith('push', {
+      body: { action: 'send_test_notification' },
+      headers: { Authorization: 'Bearer refreshed-token-456' },
+    });
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the cached access token when refresh fails', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: { access_token: 'access-token-123' } },
+      error: null,
+    });
+    mockRefreshSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: new Error('refresh failed'),
+    });
+    mockFunctionsInvoke.mockResolvedValueOnce({
+      data: { delivered: true, reason: null },
+      error: null,
+    });
+
+    const result = await sendTestNotification('user-1');
+
+    expect(result.error).toBeNull();
+    expect(result.data).toEqual({ delivered: true, reason: null });
+    expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+    expect(mockFunctionsInvoke).toHaveBeenCalledWith('push', {
+      body: { action: 'send_test_notification' },
+      headers: { Authorization: 'Bearer access-token-123' },
+    });
+  });
+
+  it('returns a clear error when no active session is available', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: null,
+    });
+
+    const result = await sendTestNotification('user-1');
+
+    expect(result.data).toBeNull();
+    expect(result.error).toEqual(
+      new Error('Sesi login belum siap. Silakan coba lagi dalam beberapa saat.'),
+    );
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+    expect(mockFunctionsInvoke).not.toHaveBeenCalled();
   });
 
   it('does not prompt or write a token when permission is not already granted', async () => {
