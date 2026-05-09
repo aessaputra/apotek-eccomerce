@@ -46,6 +46,8 @@ type ClaimProfilePushTokenArgs = {
   p_platform: string;
   p_last_seen_at: string;
 };
+
+const EXPO_PUSH_TOKEN_PATTERN = /^(ExpoPushToken|ExponentPushToken)\[[^\]]+\]$/;
 type ProfilePushTokenClient = {
   rpc(
     functionName: 'claim_profile_push_token',
@@ -185,6 +187,12 @@ function normalizeExpoPushToken(token: string): string {
 
   if (!normalized) {
     throw new Error('Expo push token is required.');
+  }
+
+  if (!EXPO_PUSH_TOKEN_PATTERN.test(normalized)) {
+    throw new Error(
+      'Expo push token must use ExpoPushToken[...] or ExponentPushToken[...] format.',
+    );
   }
 
   return normalized;

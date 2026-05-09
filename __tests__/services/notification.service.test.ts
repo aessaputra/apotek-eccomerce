@@ -400,6 +400,39 @@ describe('notification.service', () => {
     });
   });
 
+  it('rejects raw FCM values before reading the device ID or syncing token rows', async () => {
+    mockStorage.delete(NOTIFICATION_DEVICE_ID_STORAGE_KEY);
+
+    const result = await updateExpoPushToken('user-1', 'dIW3WF7sQUCHGFCbHzxGme:APA91b-token');
+
+    expect(result.data).toBeNull();
+    expect(result.error?.message).toBe(
+      'Expo push token must use ExpoPushToken[...] or ExponentPushToken[...] format.',
+    );
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockStorage.has(NOTIFICATION_DEVICE_ID_STORAGE_KEY)).toBe(false);
+  });
+
+  it('returns an error when permission sync receives invalid Expo token data', async () => {
+    mockGetPermissionsAsync.mockImplementation(async () => ({
+      granted: true,
+      status: 'granted',
+    }));
+    mockGetExpoPushTokenAsync.mockImplementation(async () => ({
+      data: 'dIW3WF7sQUCHGFCbHzxGme:APA91b-token',
+    }));
+
+    const result = await syncExpoPushTokenIfPermitted('user-1');
+
+    expect(result.data).toBeNull();
+    expect(result.error?.message).toBe(
+      'Expo push token must use ExpoPushToken[...] or ExponentPushToken[...] format.',
+    );
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
   it('revokes only the current device token and clears legacy token only when it matches', async () => {
     const revokedTokenRow = {
       user_id: 'user-1',
