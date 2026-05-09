@@ -8,7 +8,7 @@ describe('<AreaPickerTrigger />', () => {
       <AreaPickerTrigger areaName="" areaId="" onPress={jest.fn()} error={null} disabled={false} />,
     );
 
-    expect(screen.getByText('Provinsi, kota, kecamatan, kode pos')).not.toBeNull();
+    expect(screen.getByText('Provinsi, Kota, Kecamatan, Kode Pos')).not.toBeNull();
 
     renderWithDarkTheme(
       <AreaPickerTrigger
@@ -46,7 +46,7 @@ describe('<AreaPickerTrigger />', () => {
     const onPress = jest.fn();
     render(<AreaPickerTrigger areaName="" areaId="" onPress={onPress} disabled={false} />);
 
-    fireEvent.press(screen.getByText('Provinsi, kota, kecamatan, kode pos'));
+    fireEvent.press(screen.getByText('Provinsi, Kota, Kecamatan, Kode Pos'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 

@@ -4,7 +4,7 @@ import AddressForm from '@/components/AddressForm/AddressForm';
 import { initialFormErrors, initialFormValues } from '@/utils/addressValidation';
 
 describe('<AddressForm />', () => {
-  it('renders visible labels only for text-entry fields', () => {
+  it('keeps receiver and phone fields accessible without visible duplicate labels', () => {
     render(
       <AddressForm
         values={initialFormValues}
@@ -26,8 +26,10 @@ describe('<AddressForm />', () => {
       />,
     );
 
-    expect(screen.getByText('Nama Penerima', { exact: false })).toBeTruthy();
-    expect(screen.getByText('Nomor Telepon', { exact: false })).toBeTruthy();
+    expect(screen.getByLabelText('Nama Penerima')).toBeTruthy();
+    expect(screen.getByLabelText('Nomor Telepon')).toBeTruthy();
+    expect(screen.queryByText('Nama Penerima')).toBeNull();
+    expect(screen.queryByText('Nomor Telepon')).toBeNull();
     expect(screen.queryByText('Alamat Jalan')).toBeNull();
     expect(screen.queryByText('Detail Lainnya')).toBeNull();
   });

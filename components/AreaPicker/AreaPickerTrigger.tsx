@@ -92,7 +92,7 @@ function AreaPickerTrigger({
               <Text fontSize="$4" color="$colorMuted" fontWeight="400">
                 {hasPartialSelection
                   ? 'Area tersimpan, silakan pilih ulang untuk menyegarkan detail'
-                  : 'Provinsi, kota, kecamatan, kode pos'}
+                  : 'Provinsi, Kota, Kecamatan, Kode Pos'}
               </Text>
             )}
           </YStack>

@@ -89,7 +89,7 @@ function AddressForm({
         <FormInput
           ref={refs.receiverNameRef}
           required
-          label="Nama Penerima"
+          aria-label="Nama Penerima"
           value={values.receiverName}
           onChangeText={handleReceiverNameChange}
           onBlur={handleReceiverNameBlur}
@@ -104,7 +104,7 @@ function AddressForm({
         <FormInput
           ref={refs.phoneNumberRef}
           required
-          label="Nomor Telepon"
+          aria-label="Nomor Telepon"
           value={values.phoneNumber}
           onChangeText={handlePhoneNumberChange}
           onBlur={handlePhoneNumberBlur}
