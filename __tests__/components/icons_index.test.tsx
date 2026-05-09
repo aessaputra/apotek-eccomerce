@@ -39,6 +39,7 @@ jest.mock('@tamagui/lucide-icons', () => {
     Pencil: createMockIcon('Pencil'),
     Pill: createMockIcon('Pill'),
     Search: createMockIcon('Search'),
+    Send: createMockIcon('Send'),
     Settings2: createMockIcon('Settings2'),
     ShoppingBag: createMockIcon('ShoppingBag'),
     ShoppingCart: createMockIcon('ShoppingCart'),
@@ -70,6 +71,7 @@ describe('icons index', () => {
     );
 
     expect(screen.getByText('Home:16:red')).not.toBeNull();
+    expect(screen.getByText('Send:16:red')).not.toBeNull();
     expect(screen.getByText('ShoppingCart:16:red')).not.toBeNull();
     expect(screen.getByText('Truck:16:red')).not.toBeNull();
     expect(exportedIcons.length).toBeGreaterThan(10);

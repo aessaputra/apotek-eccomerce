@@ -69,6 +69,8 @@ function createHookState(overrides: Partial<UseNotificationsReturn> = {}): UseNo
     markAsRead: jest.fn(async () => true),
     markAllAsRead: jest.fn(async () => true),
     requestPermission: jest.fn(async () => true),
+    sendTestNotification: jest.fn(async () => true),
+    isSendingTestNotification: false,
   };
 
   return {
@@ -224,6 +226,20 @@ describe('<Notifications />', () => {
     ).not.toBeNull();
   });
 
+  test('renders a test-notification send error above the empty inbox state', () => {
+    mockUseNotifications.mockReturnValue(
+      createHookState({
+        status: 'empty',
+        error: 'Perangkat belum menerima notifikasi.',
+      }),
+    );
+
+    render(<Notifications />);
+
+    expect(screen.getByText('Perangkat belum menerima notifikasi.')).not.toBeNull();
+    expect(screen.getByText('Belum ada notifikasi')).not.toBeNull();
+  });
+
   test('renders unread and read items, then marks unread items as read before navigating', async () => {
     const markAsRead = jest.fn(async () => true);
     mockUseNotifications.mockReturnValue(
@@ -255,8 +271,8 @@ describe('<Notifications />', () => {
     expect(screen.getByText('Sudah dibaca')).not.toBeNull();
 
     const item = screen.getByTestId('notification-item-01');
-    expect(item.props.accessibilityLabel).toContain('Belum dibaca');
-    expect(item.props.accessibilityHint).toContain('menandai dibaca');
+    expect(item.props['aria-label']).toContain('Belum dibaca');
+    expect(item.props['aria-label']).toContain('menandai dibaca');
 
     fireEvent.press(item);
 

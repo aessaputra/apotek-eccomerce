@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
   clearExpoPushToken,
+  createTestNotification,
   fetchNotifications,
   markNotificationAsRead,
   requestExpoPushTokenAndSync,
@@ -15,7 +16,11 @@ type PermissionResponse = {
 };
 
 const mockFrom = jest.fn<(table: unknown) => unknown>();
-const mockRpc = jest.fn<(functionName: unknown, args: unknown) => unknown>();
+type RpcMockResult =
+  | Promise<{ data: unknown; error: unknown }>
+  | { data: unknown; error: unknown }
+  | { maybeSingle: () => Promise<{ data: unknown; error: unknown }> };
+const mockRpc = jest.fn<(functionName: unknown, args?: unknown) => RpcMockResult>();
 const mockGetPermissionsAsync = jest.fn<() => Promise<PermissionResponse>>();
 const mockRequestPermissionsAsync = jest.fn<() => Promise<PermissionResponse>>();
 const mockGetExpoPushTokenAsync = jest.fn<() => Promise<{ data: string }>>();
@@ -217,6 +222,25 @@ describe('notification.service', () => {
     expect(updateQuery.is).toHaveBeenCalledWith('read_at', null);
   });
 
+  it('creates a test notification through the authenticated RPC', async () => {
+    const row = createNotificationRow({
+      id: 'notification-test',
+      type: 'test_notification',
+      title: 'Tes Notifikasi',
+      body: 'Ini adalah notifikasi tes dari aplikasi Apotek Ecommerce.',
+      cta_route: null,
+      data: {},
+    });
+
+    mockRpc.mockImplementationOnce(async () => ({ data: row, error: null }));
+
+    const result = await createTestNotification('user-1');
+
+    expect(result.error).toBeNull();
+    expect(result.data).toEqual(row);
+    expect(mockRpc).toHaveBeenCalledWith('create_test_notification', undefined);
+  });
+
   it('does not prompt or write a token when permission is not already granted', async () => {
     mockGetPermissionsAsync.mockImplementation(async () => ({ granted: false, status: 'denied' }));
 
@@ -318,7 +342,7 @@ describe('notification.service', () => {
     mockGetExpoPushTokenAsync.mockImplementation(async () => ({
       data: 'ExponentPushToken[current]',
     }));
-    mockRpc.mockReturnValueOnce(tokenQuery);
+    mockRpc.mockImplementationOnce(() => tokenQuery);
     mockFrom.mockReturnValueOnce(profileQuery);
 
     const result = await requestExpoPushTokenAndSync('user-1');
@@ -350,7 +374,7 @@ describe('notification.service', () => {
     const tokenQuery = createPushTokenClaimQuery(updatedTokenRow);
     const profileQuery = createProfileUpdateQuery({ id: 'user-1' });
 
-    mockRpc.mockReturnValueOnce(tokenQuery);
+    mockRpc.mockImplementationOnce(() => tokenQuery);
     mockFrom.mockReturnValueOnce(profileQuery);
 
     const result = await updateExpoPushToken('user-1', 'ExponentPushToken[new-token]');
@@ -461,7 +485,7 @@ describe('notification.service', () => {
     const profileQuery = createProfileUpdateQuery({ id: 'user-1' });
     const onSync = jest.fn();
 
-    mockRpc.mockReturnValueOnce(tokenQuery);
+    mockRpc.mockImplementationOnce(() => tokenQuery);
     mockFrom.mockReturnValueOnce(profileQuery);
 
     const cleanup = subscribeToExpoPushTokenUpdates('user-1', onSync);

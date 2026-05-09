@@ -260,10 +260,6 @@ const NotificationListItem = React.memo(function NotificationListItem({
   }, [item, onPress]);
 
   const accessibilityLabel = `${item.title}. ${isUnread ? 'Belum dibaca' : 'Sudah dibaca'}. ${item.body}. ${isUnread ? 'Ketuk untuk menandai dibaca dan membuka detail terkait.' : 'Ketuk untuk membuka detail terkait.'}`;
-  const accessibilityHint = isUnread
-    ? 'Ketuk untuk menandai dibaca dan membuka detail terkait.'
-    : 'Ketuk untuk membuka detail terkait.';
-
   return (
     <NotificationCard
       unread={isUnread}
@@ -271,8 +267,6 @@ const NotificationListItem = React.memo(function NotificationListItem({
       onPress={isBusy ? undefined : handlePress}
       pressStyle={{ opacity: 0.92, scale: 0.98 }}
       role="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
       aria-label={accessibilityLabel}
       aria-disabled={isBusy}
       aria-busy={isBusy}
@@ -434,7 +428,7 @@ export default function Notifications() {
               onRequest={handleRequestPermission}
             />
 
-            {error && hasItems ? (
+            {error ? (
               <ErrorMessage
                 message={error}
                 dismissible={false}

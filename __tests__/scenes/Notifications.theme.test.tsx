@@ -42,7 +42,7 @@ function createNotification(id: string, overrides: Partial<NotificationRow> = {}
 }
 
 function createHookState(overrides: Partial<UseNotificationsReturn> = {}): UseNotificationsReturn {
-  return {
+  const baseState: UseNotificationsReturn = {
     items: [],
     status: 'empty',
     error: null,
@@ -60,10 +60,22 @@ function createHookState(overrides: Partial<UseNotificationsReturn> = {}): UseNo
     },
     realtimeState: 'connected',
     refresh: jest.fn(async () => undefined),
+    loadMore: jest.fn(async () => undefined),
+    hasMore: false,
+    nextCursor: null,
+    isLoadingMore: false,
     markAsRead: jest.fn(async () => true),
     markAllAsRead: jest.fn(async () => true),
     requestPermission: jest.fn(async () => true),
+    sendTestNotification: jest.fn(async () => true),
+    isSendingTestNotification: false,
+  };
+
+  return {
+    ...baseState,
     ...overrides,
+    loadMore: overrides.loadMore ?? baseState.loadMore,
+    sendTestNotification: overrides.sendTestNotification ?? baseState.sendTestNotification,
   };
 }
 

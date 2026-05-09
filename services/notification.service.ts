@@ -73,6 +73,12 @@ type ProfilePushTokenUpdateQuery = {
     maybeSingle(): Promise<{ data: ProfilePushTokenRow | null; error: unknown }>;
   };
 };
+type CreateTestNotificationClient = {
+  rpc(functionName: 'create_test_notification'): Promise<{
+    data: NotificationTableRow | null;
+    error: unknown;
+  }>;
+};
 type NotificationPageCursor = string | null;
 
 export const NOTIFICATIONS_PAGE_SIZE = 20;
@@ -186,6 +192,10 @@ function normalizeExpoPushToken(token: string): string {
 
 function getProfilePushTokenClient(): ProfilePushTokenClient {
   return supabase as unknown as ProfilePushTokenClient;
+}
+
+function getCreateTestNotificationClient(): CreateTestNotificationClient {
+  return supabase as unknown as CreateTestNotificationClient;
 }
 
 function createDeviceId(): string {
@@ -567,6 +577,28 @@ export async function markAllNotificationsAsRead(
       },
       error: null,
     };
+  } catch (error) {
+    return { data: null, error: toError(error) };
+  }
+}
+
+export async function createTestNotification(
+  userId: string,
+): Promise<NotificationServiceResult<NotificationRow>> {
+  try {
+    normalizeRequiredIdentifier(userId, 'userId');
+
+    const { data, error } = await getCreateTestNotificationClient().rpc('create_test_notification');
+
+    if (error) {
+      return { data: null, error: error as unknown as Error };
+    }
+
+    if (!data) {
+      return { data: null, error: new Error('Notifikasi tes tidak berhasil dibuat.') };
+    }
+
+    return { data: normalizeNotificationRow(data), error: null };
   } catch (error) {
     return { data: null, error: toError(error) };
   }

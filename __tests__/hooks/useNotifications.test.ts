@@ -33,6 +33,9 @@ type SyncExpoPushTokenMock = (
 ) => Promise<NotificationServiceResult<NotificationTokenSyncResult>>;
 
 type PermissionStatusValue = NotificationTokenSyncResult['permissionStatus'];
+type CreateTestNotificationMock = (
+  userId: string,
+) => Promise<NotificationServiceResult<NotificationRow>>;
 
 const mockFetchNotifications = jest.fn() as jest.MockedFunction<FetchNotificationsMock>;
 const mockMarkNotificationAsRead = jest.fn() as jest.MockedFunction<MarkNotificationAsReadMock>;
@@ -40,6 +43,7 @@ const mockMarkAllNotificationsAsRead =
   jest.fn() as jest.MockedFunction<MarkAllNotificationsAsReadMock>;
 const mockSyncExpoPushTokenIfPermitted = jest.fn() as jest.MockedFunction<SyncExpoPushTokenMock>;
 const mockRequestExpoPushTokenAndSync = jest.fn() as jest.MockedFunction<SyncExpoPushTokenMock>;
+const mockCreateTestNotification = jest.fn() as jest.MockedFunction<CreateTestNotificationMock>;
 
 let mockLatestFocusEffect: (() => void) | undefined;
 let mockLatestRealtimeHandler: ((event: NotificationRealtimeChange) => void) | null = null;
@@ -70,6 +74,7 @@ jest.mock('@/services/notification.service', () => ({
     mockMarkAllNotificationsAsRead(userId, signal),
   syncExpoPushTokenIfPermitted: (userId: string) => mockSyncExpoPushTokenIfPermitted(userId),
   requestExpoPushTokenAndSync: (userId: string) => mockRequestExpoPushTokenAndSync(userId),
+  createTestNotification: (userId: string) => mockCreateTestNotification(userId),
   subscribeToNotificationChanges: jest.fn(
     (
       _: string,
@@ -156,6 +161,16 @@ describe('useNotifications', () => {
         permissionStatus: 'granted' as PermissionStatusValue,
         status: 'updated',
         token: 'ExponentPushToken[new-token]',
+      }),
+      error: null,
+    });
+    mockCreateTestNotification.mockResolvedValue({
+      data: createNotification('99', {
+        type: 'test_notification',
+        title: 'Tes Notifikasi',
+        body: 'Ini adalah notifikasi tes dari aplikasi Apotek Ecommerce.',
+        cta_route: null,
+        data: {},
       }),
       error: null,
     });
@@ -327,6 +342,88 @@ describe('useNotifications', () => {
 
     expect(result.current.unreadCount).toBe(0);
     expect(result.current.items.every(item => item.read_at != null)).toBe(true);
+  });
+
+  it('sends a test notification and inserts it into local state', async () => {
+    const testNotification = createNotification('99', {
+      type: 'test_notification',
+      title: 'Tes Notifikasi',
+      body: 'Ini adalah notifikasi tes dari aplikasi Apotek Ecommerce.',
+      cta_route: null,
+      data: {},
+    });
+    mockCreateTestNotification.mockResolvedValueOnce({ data: testNotification, error: null });
+
+    const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('empty');
+    });
+
+    await act(async () => {
+      const sent = await result.current.sendTestNotification();
+      expect(sent).toBe(true);
+    });
+
+    expect(mockCreateTestNotification).toHaveBeenCalledWith('user-1');
+    expect(result.current.items[0]).toEqual(testNotification);
+    expect(result.current.isSendingTestNotification).toBe(false);
+  });
+
+  it('keeps a failed test notification send visible while the list remains empty', async () => {
+    mockCreateTestNotification.mockResolvedValueOnce({
+      data: null,
+      error: new Error('Perangkat belum menerima notifikasi.'),
+    });
+
+    const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('empty');
+    });
+
+    await act(async () => {
+      const sent = await result.current.sendTestNotification();
+      expect(sent).toBe(false);
+    });
+
+    expect(result.current.items).toEqual([]);
+    expect(result.current.status).toBe('empty');
+    expect(result.current.error).toBe('Perangkat belum menerima notifikasi.');
+    expect(result.current.isSendingTestNotification).toBe(false);
+  });
+
+  it('ignores same-tick duplicate test notification sends', async () => {
+    const deferred = createDeferred<NotificationServiceResult<NotificationRow>>();
+    mockCreateTestNotification.mockReturnValueOnce(deferred.promise);
+
+    const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('empty');
+    });
+
+    let firstSendResult: boolean | undefined;
+    let secondSendResult: boolean | undefined;
+
+    await act(async () => {
+      const firstSend = result.current.sendTestNotification().then(sent => {
+        firstSendResult = sent;
+      });
+      const secondSend = result.current.sendTestNotification().then(sent => {
+        secondSendResult = sent;
+      });
+
+      deferred.resolve({
+        data: createNotification('99', { type: 'test_notification', cta_route: null, data: {} }),
+        error: null,
+      });
+      await Promise.all([firstSend, secondSend]);
+    });
+
+    expect(firstSendResult).toBe(true);
+    expect(secondSendResult).toBe(false);
+    expect(mockCreateTestNotification).toHaveBeenCalledTimes(1);
   });
 
   it('refreshes on focus only after the debounce window elapses', async () => {

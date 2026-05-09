@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
+  createTestNotification,
   fetchNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -61,6 +62,8 @@ export interface UseNotificationsReturn extends UseNotificationsState {
   markAsRead: (notificationId: string) => Promise<boolean>;
   markAllAsRead: () => Promise<boolean>;
   requestPermission: () => Promise<boolean>;
+  sendTestNotification: () => Promise<boolean>;
+  isSendingTestNotification: boolean;
 }
 
 const IDLE_PERMISSION_STATE: NotificationsPermissionState = {
@@ -149,6 +152,7 @@ export function useNotifications({
   const [realtimeState, setRealtimeState] = useState<NotificationsRealtimeState>(
     userId && enableRealtime ? 'disconnected' : 'disabled',
   );
+  const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
 
   const unreadCount = useMemo(
     () => state.items.filter(item => item.read_at == null).length,
@@ -165,6 +169,7 @@ export function useNotifications({
   const subscriptionCleanupRef = useRef<(() => void) | null>(null);
   const hasConnectedOnceRef = useRef(false);
   const needsReconnectSyncRef = useRef(false);
+  const isSendingTestNotificationRef = useRef(false);
   const refreshRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(
     async () => undefined,
   );
@@ -638,6 +643,51 @@ export function useNotifications({
     }
   }, [userId]);
 
+  const sendTestNotification = useCallback(async (): Promise<boolean> => {
+    if (!userId || isSendingTestNotificationRef.current) {
+      return false;
+    }
+
+    isSendingTestNotificationRef.current = true;
+    setIsSendingTestNotification(true);
+
+    try {
+      const { data, error } = await createTestNotification(userId);
+
+      if (error || !data) {
+        throw error ?? new Error('Gagal mengirim tes notifikasi.');
+      }
+
+      setState(prev => {
+        const items = upsertNotificationItem(prev.items, data);
+        return {
+          ...prev,
+          items,
+          status: getStatusForItems(items),
+          error: null,
+        };
+      });
+
+      return true;
+    } catch (error) {
+      const classifiedError = classifyError(error);
+      const errorMessage = translateErrorMessage(classifiedError);
+
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
+      }));
+
+      return false;
+    } finally {
+      isSendingTestNotificationRef.current = false;
+
+      if (isMountedRef.current) {
+        setIsSendingTestNotification(false);
+      }
+    }
+  }, [userId]);
+
   return {
     ...state,
     unreadCount,
@@ -650,6 +700,8 @@ export function useNotifications({
     markAsRead,
     markAllAsRead,
     requestPermission: () => syncPermissionStatus('request'),
+    sendTestNotification,
+    isSendingTestNotification,
   };
 }
 
