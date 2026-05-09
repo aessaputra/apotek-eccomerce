@@ -137,9 +137,7 @@ describe('notifications stack layout', () => {
       expect(mockSendTestNotification).toHaveBeenCalledTimes(1);
       expect(getByText('Tes Notifikasi Dikirim')).toBeTruthy();
       expect(
-        getByText(
-          'Permintaan push notifikasi tes sudah dikirim ke perangkat ini. Tidak ada kartu notifikasi yang dibuat di daftar.',
-        ),
+        getByText('Permintaan push notifikasi tes sudah dikirim ke perangkat ini.'),
       ).toBeTruthy();
     });
 

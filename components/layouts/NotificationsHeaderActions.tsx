@@ -67,7 +67,7 @@ export function NotificationsHeaderLeft() {
       open: true,
       title: didSend ? 'Tes Notifikasi Dikirim' : 'Tes Notifikasi Gagal',
       description: didSend
-        ? 'Permintaan push notifikasi tes sudah dikirim ke perangkat ini. Tidak ada kartu notifikasi yang dibuat di daftar.'
+        ? 'Permintaan push notifikasi tes sudah dikirim ke perangkat ini.'
         : 'Tes push notifikasi gagal dikirim. Periksa izin notifikasi perangkat, lalu coba lagi.',
     });
   }, [isSendingTestNotification, sendTestNotification]);
