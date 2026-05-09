@@ -624,4 +624,27 @@ describe('notification.service', () => {
     cleanup();
     expect(mockPushTokenListenerRemove).toHaveBeenCalled();
   });
+
+  it('ignores non-Expo push token listener events without syncing or reporting errors', async () => {
+    const onSync = jest.fn();
+
+    const cleanup = subscribeToExpoPushTokenUpdates('user-1', onSync);
+
+    await Promise.resolve();
+    const listener = mockAddPushTokenListener.mock.calls[0]?.[0];
+    expect(listener).toBeDefined();
+
+    listener?.({ data: 'dIW3WF7sQUCHGFCbHzxGme:APA91b-token' });
+
+    for (let index = 0; index < 6; index += 1) {
+      await Promise.resolve();
+    }
+
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(onSync).not.toHaveBeenCalled();
+
+    cleanup();
+    expect(mockPushTokenListenerRemove).toHaveBeenCalled();
+  });
 });

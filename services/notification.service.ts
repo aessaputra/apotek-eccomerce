@@ -208,6 +208,10 @@ async function getValidAccessToken(): Promise<string | null> {
   }
 }
 
+function isExpoPushTokenFormat(token: string): boolean {
+  return EXPO_PUSH_TOKEN_PATTERN.test(token);
+}
+
 function normalizeExpoPushToken(token: string): string {
   const normalized = token.trim();
 
@@ -215,7 +219,7 @@ function normalizeExpoPushToken(token: string): string {
     throw new Error('Expo push token is required.');
   }
 
-  if (!EXPO_PUSH_TOKEN_PATTERN.test(normalized)) {
+  if (!isExpoPushTokenFormat(normalized)) {
     throw new Error(
       'Expo push token must use ExpoPushToken[...] or ExponentPushToken[...] format.',
     );
@@ -873,7 +877,7 @@ export function subscribeToExpoPushTokenUpdates(
   void addExpoPushTokenListenerAsync((event: ExpoPushToken) => {
     const token = event.data.trim();
 
-    if (!token) {
+    if (!token || !isExpoPushTokenFormat(token)) {
       return;
     }
 
