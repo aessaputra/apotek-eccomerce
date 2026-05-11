@@ -2,6 +2,7 @@ import React from 'react';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 
 interface OrderDetailActionsProps {
+  orderStatus: string;
   paymentStatus: string;
   isOrderExpired: boolean;
   canResumePayment: boolean;
@@ -16,6 +17,7 @@ interface OrderDetailActionsProps {
 }
 
 export default function OrderDetailActions({
+  orderStatus,
   paymentStatus,
   isOrderExpired,
   canResumePayment,
@@ -28,7 +30,7 @@ export default function OrderDetailActions({
   onTrackShipment,
   onConfirmReceived,
 }: OrderDetailActionsProps) {
-  if (paymentStatus === 'pending') {
+  if (orderStatus !== 'cancelled' && paymentStatus === 'pending') {
     return (
       <BottomActionBar
         buttonTitle={isOrderExpired ? 'Pembayaran Kadaluarsa' : 'Bayar Sekarang'}
