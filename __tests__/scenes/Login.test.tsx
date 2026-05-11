@@ -172,12 +172,12 @@ describe('<Login />', () => {
     mockRouteParams = { resetSuccess: LOGIN_RESET_SUCCESS_MESSAGE };
     render(<Login />);
 
-    expect(screen.getByText(LOGIN_RESET_SUCCESS_MESSAGE)).toBeTruthy();
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
-    });
+    const successMessages = await screen.findAllByText(LOGIN_RESET_SUCCESS_MESSAGE);
+    expect(successMessages).toHaveLength(1);
+    expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
+    expect(mockReplace).toHaveBeenCalledTimes(1);
 
-    fireEvent.press(screen.getByLabelText('Tutup pesan berhasil'));
+    fireEvent.press(await screen.findByLabelText('Tutup pesan berhasil'));
 
     await waitFor(() => {
       expect(screen.queryByText(LOGIN_RESET_SUCCESS_MESSAGE)).toBeNull();
