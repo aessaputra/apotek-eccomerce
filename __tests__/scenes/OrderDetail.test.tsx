@@ -345,6 +345,21 @@ describe('<OrderDetail />', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  test('does not render pending payment CTA for cancelled orders', () => {
+    setOrderDetailReturn({
+      order: {
+        ...mockOrder,
+        status: 'cancelled',
+        payment_status: 'pending',
+        snap_redirect_url: 'https://payment.url',
+      },
+    });
+
+    renderOrderDetail();
+
+    expect(mockBottomActionBar).not.toHaveBeenCalled();
+  });
+
   test('renders order without shipping info', () => {
     setOrderDetailReturn({
       order: {
