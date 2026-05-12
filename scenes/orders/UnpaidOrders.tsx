@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { Text, YStack, useTheme } from 'tamagui';
+import React, { useCallback, useEffect } from 'react';
+import { useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { WalletIcon } from '@/components/icons';
 import { useUnpaidOrdersPaginated } from '@/hooks/useUnpaidOrdersPaginated';
@@ -61,28 +61,6 @@ export function UnpaidOrders() {
     void refresh();
   }, [refresh]);
 
-  const unpaidHeader = useMemo(
-    () => (
-      <YStack paddingHorizontal="$4" paddingTop="$4" paddingBottom="$2">
-        <YStack
-          backgroundColor="$warningSoft"
-          borderRadius="$4"
-          padding="$3"
-          gap="$1.5"
-          borderWidth={1}
-          borderColor="$warning">
-          <Text fontSize="$4" fontWeight="700" color="$warning">
-            Masih Bisa Dibayar
-          </Text>
-          <Text fontSize="$3" color="$colorSubtle">
-            Hanya pesanan yang masih bisa dibayar ditampilkan di sini.
-          </Text>
-        </YStack>
-      </YStack>
-    ),
-    [],
-  );
-
   return (
     <OrderStatusList
       orders={unpaidOrders}
@@ -102,7 +80,6 @@ export function UnpaidOrders() {
       refreshTintColor={refreshTintColor}
       cardType="unpaid"
       onOrderExpired={handleOrderExpired}
-      headerComponent={unpaidHeader}
     />
   );
 }

@@ -152,14 +152,14 @@ describe('UnpaidOrders', () => {
     ).toBeTruthy();
   });
 
-  test('shows active unpaid helper copy above the list', () => {
+  test('does not show active unpaid helper copy above the list', () => {
     render(<UnpaidOrdersScreen />);
 
     expect(screen.queryByText('Belum Bayar')).toBeNull();
-    expect(screen.getByText('Masih Bisa Dibayar')).toBeTruthy();
+    expect(screen.queryByText('Masih Bisa Dibayar')).toBeNull();
     expect(
-      screen.getByText('Hanya pesanan yang masih bisa dibayar ditampilkan di sini.'),
-    ).toBeTruthy();
+      screen.queryByText('Hanya pesanan yang masih bisa dibayar ditampilkan di sini.'),
+    ).toBeNull();
   });
 
   test('navigates shop now CTA to /home from the empty state', () => {
