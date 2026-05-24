@@ -12,7 +12,8 @@ app/
 ├── (auth)/              # Public auth stack
 ├── (tabs)/              # Protected bottom tabs + nested stacks
 ├── cart/                # Protected standalone cart stack
-└── product-details/     # Protected standalone product-detail stack
+├── product-details/     # Protected standalone product-detail stack
+└── payment-success.tsx  # Protected order-success route wrapper
 ```
 
 ## WHERE TO LOOK
@@ -29,14 +30,14 @@ app/
 ## ROUTE PATTERNS
 
 - Route files should be one-line or thin re-exports into `scenes/`.
-- Root `Stack` registers `index`, `(tabs)`, `product-details`, `cart`, `(auth)`, `google-auth`, and `+not-found`.
+- Root `Stack` registers `index`, `(tabs)`, `product-details`, `cart`, `payment-success`, `(auth)`, `google-auth`, and `+not-found`.
 - `(tabs)/_layout.tsx` owns the custom bottom tab bar, MD3 pill, tab visibility, and `detachInactiveScreens: false`.
 - Nested stacks under home/orders/profile/notifications are wrapped with `withAuthGuard` where protected.
 - `cart/payment` is a `fullScreenModal`; keep payment UX assumptions aligned with `scenes/cart/Payment.tsx`.
 
 ## PROTECTED ROUTES
 
-- `app/_layout.tsx` hardcodes `PROTECTED_ROUTE_GROUPS = ['(tabs)', 'cart', 'product-details']`.
+- `app/_layout.tsx` hardcodes `PROTECTED_ROUTE_GROUPS = ['(tabs)', 'cart', 'product-details', 'payment-success']`.
 - Root redirects unauthenticated users from protected groups to `/login`.
 - `withAuthGuard` is still used on protected stack layouts as defense in depth.
 - When adding a protected group, update both the hardcoded list and the stack layout export.
