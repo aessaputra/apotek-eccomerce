@@ -14,11 +14,14 @@ services/
 ├── address.service.ts        # Address CRUD + defaults
 ├── regional.service.ts       # Province/city/district data
 ├── googlePlaces.service.ts   # Google Places integration
+├── googlePlaces.mappers.ts   # Google Places normalization helpers
+├── googlePlaces.shared.ts    # Shared Google Places constants/types
 ├── home.service.ts           # Categories, products, banners
 ├── cart.service.ts           # Cart queries + realtime helpers
 ├── order.service.ts          # Order history/detail state
 ├── checkout.service.ts       # Checkout + payment bootstrap
-└── shipping.service.ts       # Shipping quote integration
+├── shipping.service.ts       # Shipping quote integration
+└── notification.service.ts   # Push-token and notification realtime flows
 ```
 
 ## WHERE TO LOOK
@@ -31,7 +34,7 @@ services/
 | Order state       | `order.service.ts`                           | Status mapping, detail/history fetches            |
 | Checkout/payment  | `checkout.service.ts`                        | Payment bootstrap and edge-function calls         |
 | Shipping quotes   | `shipping.service.ts`                        | Courier quote integration                         |
-| Address data      | `address.service.ts` + `regional.service.ts` | Saved addresses plus region lookup                |
+| Address/search data | `address.service.ts` + `regional.service.ts` + `googlePlaces.*` | Saved addresses, regions, Places lookup |
 | Notifications     | `notification.service.ts`                    | Push token sync, permission state, realtime list  |
 
 ## CONVENTIONS
@@ -45,6 +48,7 @@ services/
 - `order.service.ts` is the highest-complexity service; preserve its read-model normalization chain and abort-aware retry behavior.
 - `checkout.service.ts` and `shipping.service.ts` call edge functions and require a valid access token with a 60s expiry safety window.
 - `notification.service.ts` owns push-token lifecycle and realtime notification subscriptions; keep Expo runtime guards intact.
+- Keep Google Places response mapping in `googlePlaces.mappers.ts`; `googlePlaces.service.ts` should stay focused on transport and service results.
 
 ## TESTING
 
