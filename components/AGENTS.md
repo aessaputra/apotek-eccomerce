@@ -18,17 +18,19 @@ components/
 
 | Task                  | Location                | Notes                                                       |
 | --------------------- | ----------------------- | ----------------------------------------------------------- |
-| Add atomic component  | `elements/[Name]/`      | Prefer `Name/Name.tsx` + `index.ts`                         |
-| Add layout component  | `layouts/[Name]/`       | Shared screen/header/tab structure                          |
+| Add atomic component  | `elements/[Name]/`      | Read `elements/AGENTS.md`; prefer `Name/Name.tsx` + `index.ts` |
+| Add layout component  | `layouts/[Name]/`       | Read `layouts/AGENTS.md`; shared screen/header/tab structure |
 | Add complex composite | `components/[Feature]/` | Use only when the component needs multiple supporting files |
 | Add icon              | `icons/`                | Keep icon primitives presentation-only                      |
 
 ## CHILD AGENTS
 
+- `elements/AGENTS.md` — atomic product/order/form UI catalog, skeleton states, accessibility contracts.
+- `layouts/AGENTS.md` — tab bar, header, bottom action bar, and welcome-sheet layout rules.
 - `AddressForm/AGENTS.md` — address entry composite, suggestion/result states, default-address toggle.
 - `MapPin/AGENTS.md` — native map picker, Expo Location behavior, `react-native-maps` web guard.
 
-Read the closest child file before changing those composites.
+Read the closest child file before changing those subdirectories.
 
 ## CONVENTIONS
 
