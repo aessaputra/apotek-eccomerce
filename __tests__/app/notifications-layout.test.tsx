@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import NotificationsStackLayout from '@/app/(tabs)/notifications/_layout';
 
 const mockSendTestNotification = jest.fn(async () => true);
-const mockMarkAllAsRead = jest.fn(async () => true);
 const mockStackScreen = jest.fn();
 
 jest.mock('expo-router', () => {
@@ -56,10 +55,18 @@ jest.mock('tamagui', () => {
   };
 });
 
-jest.mock('@/components/layouts/HeaderCartIcon', () => ({
-  __esModule: true,
-  default: () => null,
-}));
+jest.mock('@/components/layouts/HeaderCartIcon', () => {
+  const ReactNative = jest.requireActual('react-native') as typeof import('react-native');
+
+  return {
+    __esModule: true,
+    default: () => (
+      <ReactNative.View accessibilityLabel="Keranjang" testID="header-cart-icon">
+        <ReactNative.Text>Keranjang</ReactNative.Text>
+      </ReactNative.View>
+    ),
+  };
+});
 
 jest.mock('@/components/icons', () => {
   const ReactNative = jest.requireActual('react-native') as typeof import('react-native');
@@ -104,8 +111,6 @@ jest.mock('@/hooks/withAuthGuard', () => ({
 
 jest.mock('@/providers', () => ({
   useNotificationsContext: () => ({
-    unreadCount: 0,
-    markAllAsRead: mockMarkAllAsRead,
     sendTestNotification: mockSendTestNotification,
     isSendingTestNotification: false,
   }),
@@ -114,7 +119,6 @@ jest.mock('@/providers', () => ({
 describe('notifications stack layout', () => {
   beforeEach(() => {
     mockSendTestNotification.mockClear();
-    mockMarkAllAsRead.mockClear();
     mockStackScreen.mockClear();
   });
 
@@ -141,7 +145,11 @@ describe('notifications stack layout', () => {
       ).toBeTruthy();
     });
 
-    expect(screenProps.options.headerRight).toEqual(expect.any(Function));
+    const { getByLabelText: getHeaderRightByLabelText, queryByText: queryHeaderRightByText } =
+      render(<>{screenProps.options.headerRight()}</>);
+
+    expect(getHeaderRightByLabelText('Keranjang')).toBeTruthy();
+    expect(queryHeaderRightByText('Tandai dibaca')).toBeNull();
   });
 
   it('shows a failure dialog when the test notification request fails', async () => {
