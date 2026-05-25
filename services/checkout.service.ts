@@ -41,6 +41,10 @@ interface CartLine {
   quantity: number;
 }
 
+interface UserErrorOptions {
+  preferFallbackForGenericFunctionError?: boolean;
+}
+
 const NETWORK_ERROR_MESSAGE = 'Koneksi internet bermasalah. Periksa jaringan Anda, lalu coba lagi.';
 const NETWORK_TIMEOUT_MESSAGE =
   'Permintaan pembayaran timeout. Silakan tunggu beberapa saat lalu coba lagi.';
@@ -115,8 +119,27 @@ function normalizeErrorMessage(error: unknown): string {
   return fallback.message;
 }
 
-function toUserError(error: unknown, fallbackMessage: string): Error {
+function isGenericEdgeFunctionTransportError(error: unknown): boolean {
+  const message = toError(error).message.toLowerCase();
+  return message.includes('edge function') && message.includes('non-2xx');
+}
+
+function toUserError(
+  error: unknown,
+  fallbackMessage: string,
+  options: UserErrorOptions = {},
+): Error {
   const normalizedMessage = normalizeErrorMessage(error).trim();
+
+  if (
+    options.preferFallbackForGenericFunctionError &&
+    isGenericEdgeFunctionTransportError(error) &&
+    normalizedMessage !== NETWORK_ERROR_MESSAGE &&
+    normalizedMessage !== NETWORK_TIMEOUT_MESSAGE
+  ) {
+    return new Error(fallbackMessage);
+  }
+
   return new Error(normalizedMessage || fallbackMessage);
 }
 
@@ -299,7 +322,12 @@ export async function createSnapToken(
     });
 
     if (error) {
-      return { data: null, error: toUserError(error, MIDTRANS_ERROR_MESSAGE) };
+      return {
+        data: null,
+        error: toUserError(error, MIDTRANS_ERROR_MESSAGE, {
+          preferFallbackForGenericFunctionError: true,
+        }),
+      };
     }
 
     const response = (data ?? {}) as {
@@ -341,7 +369,12 @@ export async function createSnapToken(
       error: null,
     };
   } catch (error) {
-    return { data: null, error: toUserError(error, MIDTRANS_ERROR_MESSAGE) };
+    return {
+      data: null,
+      error: toUserError(error, MIDTRANS_ERROR_MESSAGE, {
+        preferFallbackForGenericFunctionError: true,
+      }),
+    };
   }
 }
 
