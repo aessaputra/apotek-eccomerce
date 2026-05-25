@@ -107,7 +107,8 @@ const mockCartShippingHookState: {
 const mockCartCheckoutHookState = {
   startingCheckout: false,
   activeOrderId: null as string | null,
-  paymentError: null,
+  paymentError: null as string | null,
+  handleStartCheckout: jest.fn(async () => undefined),
   clearCheckoutSession: jest.fn(async () => undefined),
   resetPaymentError: jest.fn(() => undefined),
 };
@@ -182,7 +183,10 @@ jest.mock('@/hooks/useCartCheckout', () => ({
       handleStartCheckout: async () => {
         if (params.isOffline) {
           params.onOfflineAction('Checkout tidak tersedia offline');
+          return;
         }
+
+        await mockCartCheckoutHookState.handleStartCheckout();
       },
     };
   },
@@ -524,6 +528,7 @@ describe('<Cart />', () => {
     mockCartCheckoutHookState.startingCheckout = false;
     mockCartCheckoutHookState.activeOrderId = null;
     mockCartCheckoutHookState.paymentError = null;
+    mockCartCheckoutHookState.handleStartCheckout.mockClear();
     mockCartCheckoutHookState.clearCheckoutSession.mockClear();
     mockCartCheckoutHookState.resetPaymentError.mockClear();
   });
@@ -735,6 +740,37 @@ describe('<Cart />', () => {
 
     expect(screen.getByText('Gagal memuat keranjang.')).not.toBeNull();
     expect(screen.getByText('Gagal sinkronisasi keranjang')).not.toBeNull();
+  });
+
+  it('renders Midtrans checkout failure without the cart-load failure title', () => {
+    const paymentError =
+      'Layanan pembayaran Midtrans sedang bermasalah. Silakan coba beberapa saat lagi.';
+
+    setCartItems([createItem(1)]);
+    setReadyForCheckout();
+    mockCartHookState.error = null;
+    mockCartCheckoutHookState.activeOrderId = 'order-1';
+    mockCartCheckoutHookState.paymentError = paymentError;
+
+    render(<Cart />);
+
+    expect(screen.queryByText('Gagal memuat keranjang.')).toBeNull();
+    expect(screen.getByText(paymentError)).not.toBeNull();
+  });
+
+  it('renders cart fetch failure without Midtrans copy', () => {
+    const fetchError = 'Koneksi internet bermasalah. Periksa jaringan Anda, lalu coba lagi.';
+    const paymentError =
+      'Layanan pembayaran Midtrans sedang bermasalah. Silakan coba beberapa saat lagi.';
+
+    mockCartHookState.error = fetchError;
+    mockCartCheckoutHookState.paymentError = null;
+
+    render(<Cart />);
+
+    expect(screen.getByText('Gagal memuat keranjang.')).not.toBeNull();
+    expect(screen.getByText(fetchError)).not.toBeNull();
+    expect(screen.queryByText(paymentError)).toBeNull();
   });
 
   it('does not show the empty-cart state when fetch fails with no cart items', () => {
