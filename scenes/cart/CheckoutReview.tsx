@@ -246,7 +246,9 @@ export default function CheckoutReview() {
         </YStack>
 
         {checkoutError ? <ErrorBanner message={checkoutError} /> : null}
-        {paymentError ? <ErrorBanner message={paymentError} /> : null}
+        {paymentError ? (
+          <ErrorBanner title="Pembayaran belum bisa dilanjutkan." message={paymentError} />
+        ) : null}
         {isOffline ? <ErrorBanner message="Checkout tidak tersedia offline." /> : null}
 
         <YStack
