@@ -318,7 +318,7 @@ export default function CheckoutReview() {
           </ReviewSection>
         </YStack>
 
-        {activeOrderId ? (
+        {activeOrderId && !startingCheckout ? (
           <YStack
             borderWidth={1}
             borderColor="$warning"

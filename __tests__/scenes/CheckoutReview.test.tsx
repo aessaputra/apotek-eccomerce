@@ -156,6 +156,16 @@ describe('<CheckoutReview />', () => {
     expect(mockClearCheckoutSession).toHaveBeenCalledTimes(1);
   });
 
+  it('hides pending checkout card while starting checkout with an active order', () => {
+    mockCheckoutState.activeOrderId = 'order-1';
+    mockCheckoutState.startingCheckout = true;
+
+    render(<CheckoutReview />);
+
+    expect(screen.queryByText('Checkout Tertunda')).toBeNull();
+    expect(screen.getByText('Lanjutkan Pembayaran')).toBeTruthy();
+  });
+
   it('renders Midtrans payment failure with a payment-specific title', () => {
     const paymentError =
       'Layanan pembayaran Midtrans sedang bermasalah. Silakan coba beberapa saat lagi.';
