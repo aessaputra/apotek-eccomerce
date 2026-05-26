@@ -129,4 +129,10 @@ describe('<CartCheckoutDetails />', () => {
     const continueButton = screen.getByLabelText('Lanjutkan pembayaran');
     expect(continueButton).toBeTruthy();
   });
+
+  test('hides pending payment banner while starting checkout with an active order', () => {
+    render(<CartCheckoutDetails {...createProps()} activeOrderId="order-1" startingCheckout />);
+
+    expect(screen.queryByText('Pembayaran Tertunda')).toBeNull();
+  });
 });

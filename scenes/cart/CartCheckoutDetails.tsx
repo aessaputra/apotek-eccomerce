@@ -180,7 +180,7 @@ export function CartCheckoutDetails({
         ) : null}
       </Card>
 
-      {activeOrderId ? (
+      {activeOrderId && !startingCheckout ? (
         <Card
           borderRadius="$4"
           borderWidth={1}
