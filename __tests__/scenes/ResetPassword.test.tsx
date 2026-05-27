@@ -249,7 +249,7 @@ describe('<ResetPassword />', () => {
         'Tautan reset password tidak valid, sudah digunakan, atau telah kedaluwarsa.',
       ),
     ).toBeNull();
-    expect(screen.queryByLabelText('Dismiss error')).toBeNull();
+    expect(screen.queryByLabelText('Tutup pesan error')).toBeNull();
     expect(mockVerifyEmailOtp).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByLabelText('Minta Tautan Reset Baru'));
@@ -324,7 +324,7 @@ describe('<ResetPassword />', () => {
       expect(callSequence).toEqual(['updatePassword', 'signOut']);
       expect(screen.getByText('Password Berhasil Diperbarui')).toBeTruthy();
       expect(
-        screen.getByText('Password berhasil diperbarui. Silakan login dengan password baru Anda.'),
+        screen.getByText('Password berhasil diperbarui. Silakan masuk dengan password baru Anda.'),
       ).toBeTruthy();
     });
 
@@ -384,7 +384,7 @@ describe('<ResetPassword />', () => {
     expect(
       await screen.findByText('Koneksi internet bermasalah. Periksa koneksi Anda dan coba lagi.'),
     ).toBeTruthy();
-    expect(screen.queryByLabelText('Dismiss error')).toBeNull();
+    expect(screen.queryByLabelText('Tutup pesan error')).toBeNull();
     expect(screen.getByLabelText('Minta Tautan Reset Baru')).toBeTruthy();
   });
 

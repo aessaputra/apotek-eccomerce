@@ -23,6 +23,7 @@ import {
   Pencil,
   Pill,
   Search,
+  Send,
   Settings2,
   ShoppingBag,
   ShoppingCart,
@@ -68,6 +69,10 @@ export function HistoryIcon(props: IconProps) {
 
 export function BellIcon(props: IconProps) {
   return <Bell {...props} />;
+}
+
+export function SendIcon(props: IconProps) {
+  return <Send {...props} />;
 }
 
 export function GridIcon(props: IconProps) {

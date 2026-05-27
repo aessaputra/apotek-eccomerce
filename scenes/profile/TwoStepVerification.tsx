@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, ScrollView, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { YStack, Text, Card, Button, Spinner, styled, Input, XStack, Dialog } from 'tamagui';
-import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView as RNSafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createMfaChallenge,
   enrollTotpFactor,
@@ -15,10 +21,19 @@ import {
 import { useAppSlice } from '@/slices';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { StatusBadge } from '@/components/elements/StatusBadge';
+import { FORM_SCROLL_PADDING } from '@/constants/ui';
+import { useAndroidKeyboardInset } from './useAndroidKeyboardInset';
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
   backgroundColor: '$background',
+});
+
+const KeyboardAvoidingWrapper = styled(KeyboardAvoidingView, {
+  flex: 1,
+  width: '100%',
+  alignItems: 'center',
+  justifyContent: 'center',
 });
 
 interface MfaFactor {
@@ -74,8 +89,14 @@ function getChallengeId(data: unknown) {
   return typeof id === 'string' ? id : null;
 }
 
+function normalizeTotpCode(value: string) {
+  return value.replace(/\D/g, '').slice(0, 6);
+}
+
 export default function TwoStepVerification() {
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useAndroidKeyboardInset();
   const { user } = useAppSlice();
   const [{ loading, factors, error }, setFactorsState] = useState<FactorsState>({
     loading: true,
@@ -92,6 +113,23 @@ export default function TwoStepVerification() {
   const [secretCopied, setSecretCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const unverifiedFactorIdRef = useRef<string | null>(null);
+  const isNarrowScreen = windowWidth < 360;
+  const keyboardGap = 16;
+  const extraBottomOffset = Platform.OS === 'android' ? keyboardHeight : 0;
+  const dialogBottomPadding = insets.bottom + FORM_SCROLL_PADDING.COMPACT + extraBottomOffset;
+  const dialogKeyboardOffset = Platform.OS === 'ios' ? 64 : 0;
+  const availableDialogHeight = Math.max(
+    280,
+    windowHeight - insets.top - insets.bottom - extraBottomOffset - 32,
+  );
+  const mainScrollContentContainerStyle = useMemo(
+    () => ({
+      padding: 16,
+      paddingBottom: insets.bottom + FORM_SCROLL_PADDING.SPACIOUS + keyboardHeight + keyboardGap,
+      flexGrow: 1 as const,
+    }),
+    [insets.bottom, keyboardHeight],
+  );
 
   const loadFactors = useCallback(async () => {
     setFactorsState({ loading: true, factors: [], error: null });
@@ -358,23 +396,28 @@ export default function TwoStepVerification() {
 
   const handleSecretCopy = useCallback(async () => {
     if (!enrollmentData.secret) {
-      setEnrollmentError('Secret tidak tersedia.');
+      setEnrollmentError('Kode manual tidak tersedia.');
       return;
     }
 
     try {
       const copied = await copyTextToClipboard(enrollmentData.secret);
       if (!copied) {
-        setEnrollmentError('Gagal menyalin. Salin manual.');
+        setEnrollmentError('Gagal menyalin. Salin kode manual.');
         return;
       }
 
       setEnrollmentError(null);
       setSecretCopied(true);
     } catch {
-      setEnrollmentError('Gagal menyalin. Salin manual.');
+      setEnrollmentError('Gagal menyalin. Salin kode manual.');
     }
   }, [enrollmentData.secret]);
+
+  const handleTotpCodeChange = useCallback((value: string) => {
+    setTotpCode(normalizeTotpCode(value));
+    setEnrollmentError(null);
+  }, []);
 
   const cancelEnrollmentWithKeyboardDismiss = useCallback(() => {
     Keyboard.dismiss();
@@ -425,7 +468,7 @@ export default function TwoStepVerification() {
     }
 
     return (
-      <Text fontSize="$3" color="$danger" testID="mfa-enrollment-error">
+      <Text fontSize="$3" color="$danger" testID="mfa-enrollment-error" aria-live="polite">
         {enrollmentError}
       </Text>
     );
@@ -437,7 +480,7 @@ export default function TwoStepVerification() {
     }
 
     return (
-      <Text fontSize="$3" color="$primary" testID="mfa-enrollment-notice">
+      <Text fontSize="$3" color="$primary" testID="mfa-enrollment-notice" aria-live="polite">
         {enrollmentNotice}
       </Text>
     );
@@ -467,28 +510,31 @@ export default function TwoStepVerification() {
           <Text fontSize="$5" fontWeight="600" color="$color">
             Masukkan kode 6 digit
           </Text>
-          <Text fontSize="$3" color="$colorPress" lineHeight={18}>
+          <Text fontSize="$3" color="$colorPress">
             Masukkan 6 digit kode dari aplikasi autentikator.
           </Text>
           <Input
             value={totpCode}
-            onChangeText={setTotpCode}
+            onChangeText={handleTotpCodeChange}
             keyboardType="number-pad"
-            maxLength={6}
+            maxLength={12}
             placeholder="123456"
+            autoComplete="one-time-code"
+            textContentType="oneTimeCode"
             returnKeyType="done"
             submitBehavior="blurAndSubmit"
             onSubmitEditing={submitVerifyCode}
             aria-label="Kode autentikator"
           />
           {renderEnrollmentError()}
-          <XStack gap="$2">
+          <XStack gap="$2" flexDirection={isNarrowScreen ? 'column' : 'row'}>
             <Button
               flex={1}
               backgroundColor="$primary"
               color="$onPrimary"
               disabled={submitting || totpCode.length !== 6}
               onPress={submitVerifyCode}
+              aria-disabled={submitting || totpCode.length !== 6}
               aria-label="Aktifkan dengan kode autentikator">
               {submitting ? 'Memverifikasi...' : 'Verifikasi'}
             </Button>
@@ -496,6 +542,7 @@ export default function TwoStepVerification() {
               flex={1}
               disabled={submitting}
               onPress={cancelEnrollmentWithKeyboardDismiss}
+              aria-disabled={submitting}
               aria-label="Batalkan aktivasi">
               Batalkan
             </Button>
@@ -523,115 +570,132 @@ export default function TwoStepVerification() {
             enterStyle={{ opacity: 0 }}
             exitStyle={{ opacity: 0 }}
           />
-          <Dialog.Content
-            key="password-content"
-            bordered
-            elevate
-            width="92%"
-            maxWidth={440}
-            padding="$5"
-            gap="$5"
-            backgroundColor="$surface"
-            borderColor="$surfaceBorder"
-            borderRadius="$6"
-            animation={['quick', { opacity: { overshootClamping: true } }]}
-            animateOnly={['transform', 'opacity']}
-            enterStyle={{ y: -20, opacity: 0, scale: 0.95 }}
-            exitStyle={{ y: 10, opacity: 0, scale: 0.95 }}>
-            <YStack gap="$4">
-              <YStack gap="$1">
-                <Dialog.Title fontSize="$6" fontWeight="700" color="$color" lineHeight={26}>
-                  Masukkan password akun
-                </Dialog.Title>
-                <Dialog.Description fontSize="$3" color="$colorPress" lineHeight={19}>
-                  {isDisabling
-                    ? 'Konfirmasi identitas sebelum menonaktifkan verifikasi 2 langkah.'
-                    : 'Konfirmasi identitas sebelum mengaktifkan verifikasi 2 langkah.'}
-                </Dialog.Description>
-              </YStack>
+          <KeyboardAvoidingWrapper
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={dialogKeyboardOffset}>
+            <Dialog.Content
+              key="password-content"
+              bordered
+              elevate
+              width="92%"
+              maxWidth={440}
+              maxHeight={availableDialogHeight}
+              padding="$5"
+              gap="$5"
+              backgroundColor="$surface"
+              borderColor="$surfaceBorder"
+              borderRadius="$6"
+              animation={['quick', { opacity: { overshootClamping: true } }]}
+              animateOnly={['transform', 'opacity']}
+              enterStyle={{ y: -20, opacity: 0, scale: 0.95 }}
+              exitStyle={{ y: 10, opacity: 0, scale: 0.95 }}>
+              <ScrollView
+                style={{ maxHeight: availableDialogHeight }}
+                contentContainerStyle={{ paddingBottom: dialogBottomPadding }}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                showsVerticalScrollIndicator={false}>
+                <YStack gap="$4">
+                  <YStack gap="$1">
+                    <Dialog.Title fontSize="$6" fontWeight="700" color="$color">
+                      Masukkan password akun
+                    </Dialog.Title>
+                    <Dialog.Description fontSize="$3" color="$colorPress">
+                      {isDisabling
+                        ? 'Konfirmasi identitas sebelum menonaktifkan verifikasi 2 langkah.'
+                        : 'Konfirmasi identitas sebelum mengaktifkan verifikasi 2 langkah.'}
+                    </Dialog.Description>
+                  </YStack>
 
-              {isDisabling && factors.length > 1 ? (
-                <YStack gap="$2" padding="$3" backgroundColor="$background" borderRadius="$4">
-                  <Text fontSize="$3" fontWeight="600" color="$color">
-                    Pilih aplikasi autentikator
-                  </Text>
-                  {factors.map(factor => {
-                    const isSelected = factor.id === selectedFactorId;
+                  {isDisabling && factors.length > 1 ? (
+                    <YStack gap="$2" padding="$3" backgroundColor="$background" borderRadius="$4">
+                      <Text fontSize="$3" fontWeight="600" color="$color">
+                        Pilih aplikasi autentikator
+                      </Text>
+                      {factors.map(factor => {
+                        const isSelected = factor.id === selectedFactorId;
 
-                    return (
-                      <Button
-                        key={factor.id}
-                        justifyContent="flex-start"
-                        minHeight={44}
-                        backgroundColor={isSelected ? '$primary' : '$background'}
-                        color={isSelected ? '$onPrimary' : '$color'}
-                        borderWidth={1}
-                        borderColor={isSelected ? '$primary' : '$surfaceBorder'}
-                        disabled={submitting}
-                        onPress={() => setSelectedFactorId(factor.id)}
-                        aria-label={`Pilih aplikasi autentikator ${getFactorLabel(factor)}`}>
-                        {isSelected ? '● ' : '○ '}
-                        {getFactorLabel(factor)}
-                      </Button>
-                    );
-                  })}
+                        return (
+                          <Button
+                            key={factor.id}
+                            justifyContent="flex-start"
+                            minHeight={44}
+                            backgroundColor={isSelected ? '$primary' : '$background'}
+                            color={isSelected ? '$onPrimary' : '$color'}
+                            borderWidth={1}
+                            borderColor={isSelected ? '$primary' : '$surfaceBorder'}
+                            disabled={submitting}
+                            onPress={() => setSelectedFactorId(factor.id)}
+                            role="radio"
+                            aria-selected={isSelected}
+                            aria-disabled={submitting}
+                            aria-label={`Pilih aplikasi autentikator ${getFactorLabel(factor)}`}>
+                            {isSelected ? '● ' : '○ '}
+                            {getFactorLabel(factor)}
+                          </Button>
+                        );
+                      })}
+                    </YStack>
+                  ) : null}
+
+                  <YStack gap="$2">
+                    <Text fontSize="$3" fontWeight="600" color="$color">
+                      Password
+                    </Text>
+                    <Input
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoComplete="password"
+                      returnKeyType="done"
+                      submitBehavior="blurAndSubmit"
+                      onSubmitEditing={submitPasswordConfirmation}
+                      minHeight={48}
+                      borderRadius="$4"
+                      borderColor="$surfaceBorder"
+                      backgroundColor="$background"
+                      placeholder="Masukkan password"
+                      aria-label={
+                        isDisabling
+                          ? 'Password akun untuk menonaktifkan verifikasi 2 langkah'
+                          : 'Password akun untuk mengaktifkan verifikasi 2 langkah'
+                      }
+                    />
+                  </YStack>
+                  {renderEnrollmentError()}
+                  <XStack gap="$3" marginTop="$1" flexDirection={isNarrowScreen ? 'column' : 'row'}>
+                    <Button
+                      flex={1}
+                      backgroundColor="$primary"
+                      color="$onPrimary"
+                      minHeight={48}
+                      borderRadius="$4"
+                      disabled={submitting || password.length === 0}
+                      onPress={submitPasswordConfirmation}
+                      aria-disabled={submitting || password.length === 0}
+                      aria-label={
+                        isDisabling
+                          ? 'Lanjutkan penonaktifan verifikasi 2 langkah'
+                          : 'Lanjutkan aktivasi verifikasi 2 langkah'
+                      }>
+                      {submitting ? 'Memproses...' : 'Lanjutkan'}
+                    </Button>
+                    <Button
+                      flex={1}
+                      minHeight={48}
+                      borderRadius="$4"
+                      disabled={submitting}
+                      onPress={cancelEnrollmentWithKeyboardDismiss}
+                      aria-disabled={submitting}
+                      aria-label={isDisabling ? 'Batalkan penonaktifan' : 'Batalkan aktivasi'}>
+                      Batalkan
+                    </Button>
+                  </XStack>
                 </YStack>
-              ) : null}
-
-              <YStack gap="$2">
-                <Text fontSize="$3" fontWeight="600" color="$color">
-                  Password
-                </Text>
-                <Input
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete="password"
-                  returnKeyType="done"
-                  submitBehavior="blurAndSubmit"
-                  onSubmitEditing={submitPasswordConfirmation}
-                  minHeight={48}
-                  borderRadius="$4"
-                  borderColor="$surfaceBorder"
-                  backgroundColor="$background"
-                  placeholder="Masukkan password"
-                  aria-label={
-                    isDisabling
-                      ? 'Password akun untuk menonaktifkan verifikasi 2 langkah'
-                      : 'Password akun untuk mengaktifkan verifikasi 2 langkah'
-                  }
-                />
-              </YStack>
-              {renderEnrollmentError()}
-              <XStack gap="$3" marginTop="$1">
-                <Button
-                  flex={1}
-                  backgroundColor="$primary"
-                  color="$onPrimary"
-                  minHeight={48}
-                  borderRadius="$4"
-                  disabled={submitting || password.length === 0}
-                  onPress={submitPasswordConfirmation}
-                  aria-label={
-                    isDisabling
-                      ? 'Lanjutkan penonaktifan verifikasi 2 langkah'
-                      : 'Lanjutkan aktivasi verifikasi 2 langkah'
-                  }>
-                  {submitting ? 'Memproses...' : 'Lanjutkan'}
-                </Button>
-                <Button
-                  flex={1}
-                  minHeight={48}
-                  borderRadius="$4"
-                  disabled={submitting}
-                  onPress={cancelEnrollmentWithKeyboardDismiss}
-                  aria-label={isDisabling ? 'Batalkan penonaktifan' : 'Batalkan aktivasi'}>
-                  Batalkan
-                </Button>
-              </XStack>
-            </YStack>
-          </Dialog.Content>
+              </ScrollView>
+            </Dialog.Content>
+          </KeyboardAvoidingWrapper>
         </Dialog.Portal>
       </Dialog>
     );
@@ -639,8 +703,11 @@ export default function TwoStepVerification() {
 
   const renderSetupDialog = () => {
     const isOpen = enrollmentMode === 'enrolling-qr';
-    const setupDialogMaxHeight = Math.max(420, Math.floor(windowHeight * 0.72));
-    const setupDialogBodyMaxHeight = Math.max(180, setupDialogMaxHeight - 320);
+    const setupDialogMaxHeight = Math.min(
+      availableDialogHeight,
+      Math.max(320, Math.floor(windowHeight * 0.72)),
+    );
+    const setupDialogBodyMaxHeight = Math.max(160, setupDialogMaxHeight - 300);
     const qrCodeSize = Math.min(210, Math.max(180, Math.floor(windowWidth * 0.5)));
 
     if (!isOpen) {
@@ -657,118 +724,131 @@ export default function TwoStepVerification() {
             enterStyle={{ opacity: 0 }}
             exitStyle={{ opacity: 0 }}
           />
-          <Dialog.Content
-            key="setup-content"
-            bordered
-            elevate
-            width="94%"
-            maxWidth={500}
-            maxHeight={setupDialogMaxHeight}
-            overflow="hidden"
-            padding="$5"
-            gap="$5"
-            backgroundColor="$surface"
-            borderColor="$surfaceBorder"
-            borderRadius="$6"
-            x={0}
-            y={0}
-            scale={1}
-            opacity={1}
-            animation={['quick', { opacity: { overshootClamping: true } }]}
-            animateOnly={['transform', 'opacity']}
-            enterStyle={{ opacity: 0, scale: 0.98 }}
-            exitStyle={{ opacity: 0, scale: 0.98 }}>
-            <YStack gap="$4">
-              <YStack gap="$1">
-                <Dialog.Title fontSize="$6" fontWeight="700" color="$color" lineHeight={26}>
-                  Hubungkan aplikasi autentikator
-                </Dialog.Title>
-                <Dialog.Description fontSize="$3" color="$colorPress" lineHeight={19}>
-                  Pindai kode QR, atau salin secret manual jika diminta aplikasi.
-                </Dialog.Description>
-              </YStack>
-
-              <ScrollView
-                style={{ maxHeight: setupDialogBodyMaxHeight }}
-                contentContainerStyle={{ flexGrow: 0 }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}>
-                <YStack gap="$4">
-                  {enrollmentData.qrCode ? (
-                    <YStack
-                      width="100%"
-                      alignItems="center"
-                      justifyContent="center"
-                      padding="$3"
-                      borderRadius="$5"
-                      borderWidth={1}
-                      borderColor="$surfaceBorder"
-                      backgroundColor="white"
-                      testID="mfa-qr-code">
-                      <SvgXml xml={enrollmentData.qrCode} width={qrCodeSize} height={qrCodeSize} />
-                    </YStack>
-                  ) : (
-                    <Text fontSize="$3" color="$colorPress" testID="mfa-uri-fallback">
-                      {enrollmentData.uri}
-                    </Text>
-                  )}
-
-                  <Card
-                    padding="$3"
-                    backgroundColor="$background"
-                    borderRadius="$4"
-                    borderWidth={1}
-                    borderColor="$surfaceBorder">
-                    <YStack gap="$2">
-                      <Text fontSize="$3" fontWeight="600" color="$color">
-                        Secret manual
-                      </Text>
-                      <Text fontSize="$4" color="$color" selectable testID="mfa-manual-secret">
-                        {enrollmentData.secret}
-                      </Text>
-                      <Button
-                        minHeight={44}
-                        borderRadius="$4"
-                        backgroundColor={secretCopied ? '$success' : '$primarySoft'}
-                        borderWidth={1}
-                        borderColor={secretCopied ? '$success' : '$primary'}
-                        color={secretCopied ? '$onPrimary' : '$primary'}
-                        onPress={handleSecretCopy}
-                        aria-label={secretCopied ? 'Secret sudah disalin' : 'Salin secret manual'}>
-                        {secretCopied ? 'Secret disalin' : 'Salin Secret'}
-                      </Button>
-                    </YStack>
-                  </Card>
-
-                  {renderEnrollmentError()}
-                  {renderEnrollmentNotice()}
+          <KeyboardAvoidingWrapper
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={dialogKeyboardOffset}>
+            <Dialog.Content
+              key="setup-content"
+              bordered
+              elevate
+              width="94%"
+              maxWidth={500}
+              maxHeight={setupDialogMaxHeight}
+              overflow="hidden"
+              padding="$5"
+              gap="$5"
+              backgroundColor="$surface"
+              borderColor="$surfaceBorder"
+              borderRadius="$6"
+              x={0}
+              y={0}
+              scale={1}
+              opacity={1}
+              animation={['quick', { opacity: { overshootClamping: true } }]}
+              animateOnly={['transform', 'opacity']}
+              enterStyle={{ opacity: 0, scale: 0.98 }}
+              exitStyle={{ opacity: 0, scale: 0.98 }}>
+              <YStack gap="$4">
+                <YStack gap="$1">
+                  <Dialog.Title fontSize="$6" fontWeight="700" color="$color">
+                    Hubungkan aplikasi autentikator
+                  </Dialog.Title>
+                  <Dialog.Description fontSize="$3" color="$colorPress">
+                    Pindai kode QR, atau salin kode manual jika aplikasi autentikator memintanya.
+                  </Dialog.Description>
                 </YStack>
-              </ScrollView>
 
-              <YStack gap="$2">
-                <Button
-                  backgroundColor="$primary"
-                  color="$onPrimary"
-                  minHeight={48}
-                  borderRadius="$4"
-                  disabled={submitting}
-                  onPress={submitCreateChallenge}
-                  aria-label="Saya sudah menyalin secret">
-                  {submitting ? 'Memproses...' : 'Saya sudah menyalin secret'}
-                </Button>
-                <Button
-                  backgroundColor="$danger"
-                  color="$onDanger"
-                  minHeight={48}
-                  borderRadius="$4"
-                  disabled={submitting}
-                  onPress={cancelEnrollmentWithKeyboardDismiss}
-                  aria-label="Batalkan setup aktivasi">
-                  Batalkan
-                </Button>
+                <ScrollView
+                  style={{ maxHeight: setupDialogBodyMaxHeight }}
+                  contentContainerStyle={{ flexGrow: 0 }}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}>
+                  <YStack gap="$4">
+                    {enrollmentData.qrCode ? (
+                      <YStack
+                        width="100%"
+                        alignItems="center"
+                        justifyContent="center"
+                        padding="$3"
+                        borderRadius="$5"
+                        borderWidth={1}
+                        borderColor="$surfaceBorder"
+                        backgroundColor="white"
+                        testID="mfa-qr-code">
+                        <SvgXml
+                          xml={enrollmentData.qrCode}
+                          width={qrCodeSize}
+                          height={qrCodeSize}
+                        />
+                      </YStack>
+                    ) : (
+                      <Text fontSize="$3" color="$colorPress" testID="mfa-uri-fallback">
+                        {enrollmentData.uri}
+                      </Text>
+                    )}
+
+                    <Card
+                      padding="$3"
+                      backgroundColor="$background"
+                      borderRadius="$4"
+                      borderWidth={1}
+                      borderColor="$surfaceBorder">
+                      <YStack gap="$2">
+                        <Text fontSize="$3" fontWeight="600" color="$color">
+                          Kode manual
+                        </Text>
+                        <Text fontSize="$4" color="$color" selectable testID="mfa-manual-secret">
+                          {enrollmentData.secret}
+                        </Text>
+                        <Button
+                          minHeight={44}
+                          borderRadius="$4"
+                          backgroundColor={secretCopied ? '$success' : '$primarySoft'}
+                          borderWidth={1}
+                          borderColor={secretCopied ? '$success' : '$primary'}
+                          color={secretCopied ? '$onPrimary' : '$primary'}
+                          onPress={handleSecretCopy}
+                          aria-label={
+                            secretCopied ? 'Kode manual sudah disalin' : 'Salin kode manual'
+                          }>
+                          {secretCopied ? 'Kode disalin' : 'Salin kode'}
+                        </Button>
+                      </YStack>
+                    </Card>
+
+                    {renderEnrollmentError()}
+                    {renderEnrollmentNotice()}
+                  </YStack>
+                </ScrollView>
+
+                <YStack gap="$2">
+                  <Button
+                    backgroundColor="$primary"
+                    color="$onPrimary"
+                    minHeight={48}
+                    borderRadius="$4"
+                    disabled={submitting}
+                    onPress={submitCreateChallenge}
+                    aria-disabled={submitting}
+                    aria-busy={submitting}
+                    aria-label="Saya sudah menambahkan aplikasi autentikator">
+                    {submitting ? 'Memproses...' : 'Saya sudah menambahkan aplikasi'}
+                  </Button>
+                  <Button
+                    backgroundColor="$danger"
+                    color="$onDanger"
+                    minHeight={48}
+                    borderRadius="$4"
+                    disabled={submitting}
+                    onPress={cancelEnrollmentWithKeyboardDismiss}
+                    aria-disabled={submitting}
+                    aria-label="Batalkan setup aktivasi">
+                    Batalkan
+                  </Button>
+                </YStack>
               </YStack>
-            </YStack>
-          </Dialog.Content>
+            </Dialog.Content>
+          </KeyboardAvoidingWrapper>
         </Dialog.Portal>
       </Dialog>
     );
@@ -782,7 +862,7 @@ export default function TwoStepVerification() {
           alignItems="center"
           justifyContent="center"
           aria-label="Memuat verifikasi"
-          accessibilityLiveRegion="polite">
+          aria-live="polite">
           <Spinner size="large" color="$primary" />
         </YStack>
       </SafeAreaView>
@@ -794,7 +874,9 @@ export default function TwoStepVerification() {
       <SafeAreaView edges={['bottom']}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+          contentContainerStyle={mainScrollContentContainerStyle}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}>
           <YStack flex={1} alignItems="center" justifyContent="center" gap="$4">
             <Text fontSize="$5" fontWeight="600" color="$danger" textAlign="center">
@@ -820,7 +902,9 @@ export default function TwoStepVerification() {
     <SafeAreaView edges={['bottom']}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+        contentContainerStyle={mainScrollContentContainerStyle}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}>
         <YStack gap="$4">
           <Card
@@ -836,7 +920,7 @@ export default function TwoStepVerification() {
                 justifyContent="space-between"
                 flexWrap="wrap">
                 <YStack flex={1} minWidth={220} gap="$1">
-                  <Text fontSize="$3" color="$colorPress" lineHeight={18}>
+                  <Text fontSize="$3" color="$colorPress">
                     {isEnabled
                       ? 'Anda akan diminta memasukkan kode tambahan saat masuk.'
                       : 'Tambahkan kode verifikasi untuk membantu menjaga akun Anda.'}
@@ -866,6 +950,7 @@ export default function TwoStepVerification() {
                 color={isEnabled ? '$onDanger' : '$onPrimary'}
                 disabled={enrollmentMode !== 'idle'}
                 onPress={isEnabled ? startDisable : startEnrollment}
+                aria-disabled={enrollmentMode !== 'idle'}
                 aria-label={
                   isEnabled ? 'Nonaktifkan verifikasi 2 langkah' : 'Aktifkan verifikasi 2 langkah'
                 }>
@@ -876,7 +961,7 @@ export default function TwoStepVerification() {
 
           {renderEnrollmentNotice()}
           {renderEnrollmentFlow()}
-          <Text fontSize="$3" color="$colorHover" lineHeight={18}>
+          <Text fontSize="$3" color="$colorHover">
             Kode cadangan belum tersedia. Pastikan Anda tetap dapat membuka aplikasi autentikator.
           </Text>
         </YStack>

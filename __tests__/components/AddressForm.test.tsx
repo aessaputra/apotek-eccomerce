@@ -4,6 +4,36 @@ import AddressForm from '@/components/AddressForm/AddressForm';
 import { initialFormErrors, initialFormValues } from '@/utils/addressValidation';
 
 describe('<AddressForm />', () => {
+  it('keeps receiver and phone fields accessible without visible duplicate labels', () => {
+    render(
+      <AddressForm
+        values={initialFormValues}
+        errors={initialFormErrors}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={jest.fn()}
+        onFieldValidate={jest.fn()}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Nama Penerima')).toBeTruthy();
+    expect(screen.getByLabelText('Nomor Telepon')).toBeTruthy();
+    expect(screen.queryByText('Nama Penerima')).toBeNull();
+    expect(screen.queryByText('Nomor Telepon')).toBeNull();
+    expect(screen.queryByText('Alamat Jalan')).toBeNull();
+    expect(screen.queryByText('Detail Lainnya')).toBeNull();
+  });
+
   it('does not render the legacy map trigger row', () => {
     render(
       <AddressForm
@@ -56,6 +86,66 @@ describe('<AddressForm />', () => {
     fireEvent.press(screen.getByText('Nama Jalan, Gedung, No. Rumah'));
 
     expect(onStreetAddressPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('only describes street address with an error and keeps the note input accessible', () => {
+    const view = render(
+      <AddressForm
+        values={initialFormValues}
+        errors={initialFormErrors}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={jest.fn()}
+        onFieldValidate={jest.fn()}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={jest.fn()}
+      />,
+    );
+
+    const streetAddressTrigger = screen.getByLabelText('Nama Jalan, Gedung, No. Rumah');
+    const streetAddressText = screen.getByText('Nama Jalan, Gedung, No. Rumah');
+    const noteInput = screen.getByLabelText('Detail lainnya');
+
+    expect(streetAddressTrigger.props['aria-describedby']).toBeUndefined();
+    expect(screen.queryByText('Membuka pencarian alamat pengiriman')).toBeNull();
+    expect(
+      screen.queryByText('Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)'),
+    ).toBeNull();
+    expect(streetAddressText.props.numberOfLines).toBeUndefined();
+    expect(noteInput).toBeTruthy();
+
+    view.rerender(
+      <AddressForm
+        values={initialFormValues}
+        errors={{ ...initialFormErrors, streetAddress: 'Alamat wajib dipilih' }}
+        isSaving={false}
+        refs={{
+          receiverNameRef: { current: null },
+          phoneNumberRef: { current: null },
+          streetAddressRef: { current: null },
+          addressNoteRef: { current: null },
+          cityRef: { current: null },
+          postalCodeRef: { current: null },
+          provinceRef: { current: null },
+        }}
+        onFieldSave={jest.fn()}
+        onFieldValidate={jest.fn()}
+        onAreaPickerPress={jest.fn()}
+        onStreetAddressPress={jest.fn()}
+      />,
+    );
+
+    const erroredStreetAddressTrigger = screen.getByLabelText('Nama Jalan, Gedung, No. Rumah');
+    const streetError = screen.getByText('Alamat wajib dipilih');
+    expect(erroredStreetAddressTrigger.props['aria-describedby']).toBe(streetError.props.id);
   });
 
   it('updates and validates receiver fields from the live form', () => {

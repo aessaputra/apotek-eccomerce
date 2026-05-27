@@ -28,6 +28,8 @@ export const EmptyCartState: React.FC<EmptyCartStateProps> = ({ onBrowse }) => {
         fontWeight="600"
         pressStyle={{ opacity: 0.85, scale: 0.98 }}
         onPress={onBrowse}
+        role="button"
+        aria-label="Belanja sekarang"
         icon={<ShoppingBag size={18} color="$onPrimary" />}>
         Belanja Sekarang
       </Button>

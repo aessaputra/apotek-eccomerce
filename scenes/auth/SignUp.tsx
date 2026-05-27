@@ -97,10 +97,10 @@ export default function SignUp() {
                   letterSpacing={-0.8}
                   color="$color"
                   lineHeight={38}>
-                  Daftar
+                  Daftar akun
                 </Text>
                 <Text fontSize={15} color="$colorHover" lineHeight={22}>
-                  Buat akun baru untuk belanja obat dan layanan kesehatan dengan lebih cepat.
+                  Mulai pengalaman belanja kesehatan yang lebih praktis.
                 </Text>
               </YStack>
 
@@ -151,7 +151,7 @@ export default function SignUp() {
                     {focusedField === 'email' && !emailError && (
                       <YStack marginTop="$1">
                         <Text fontSize={12} color="$colorHover">
-                          Pastikan email Anda valid untuk verifikasi akun
+                          Kami akan mengirim verifikasi ke email ini.
                         </Text>
                       </YStack>
                     )}
@@ -219,7 +219,7 @@ export default function SignUp() {
                     {focusedField === 'password' && !passwordError && (
                       <YStack marginTop="$1">
                         <Text fontSize={12} color="$colorHover">
-                          Gunakan kombinasi huruf dan angka untuk keamanan lebih baik
+                          Minimal 6 karakter, gunakan huruf dan angka.
                         </Text>
                       </YStack>
                     )}
@@ -227,7 +227,7 @@ export default function SignUp() {
 
                   {/* Submit Button dengan enhanced styling dan micro-interactions */}
                   <Button
-                    title="Buat Akun"
+                    title="Buat akun"
                     paddingVertical={16}
                     borderRadius={14}
                     height={56}

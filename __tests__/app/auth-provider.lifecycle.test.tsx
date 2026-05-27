@@ -19,6 +19,8 @@ const mockAuthSignOut = jest.fn();
 const mockClearLocalAuthSessionForInvalidRefreshToken = jest.fn();
 const mockSyncExpoPushTokenIfPermitted = jest.fn();
 const mockClearExpoPushToken = jest.fn();
+const mockSubscribeToExpoPushTokenUpdates = jest.fn();
+const mockPushTokenSubscriptionCleanup = jest.fn();
 const mockStartAutoRefresh = jest.fn();
 const mockStopAutoRefresh = jest.fn();
 const mockSubscriptionUnsubscribe = jest.fn();
@@ -60,6 +62,8 @@ jest.mock('@/services/auth.service', () => ({
 
 jest.mock('@/services/notification.service', () => ({
   clearExpoPushToken: (...args: unknown[]) => mockClearExpoPushToken(...args),
+  subscribeToExpoPushTokenUpdates: (...args: unknown[]) =>
+    mockSubscribeToExpoPushTokenUpdates(...args),
   syncExpoPushTokenIfPermitted: (...args: unknown[]) => mockSyncExpoPushTokenIfPermitted(...args),
 }));
 
@@ -149,6 +153,8 @@ describe('AuthProvider notification lifecycle', () => {
     mockClearLocalAuthSessionForInvalidRefreshToken.mockReset();
     mockSyncExpoPushTokenIfPermitted.mockReset();
     mockClearExpoPushToken.mockReset();
+    mockSubscribeToExpoPushTokenUpdates.mockReset();
+    mockPushTokenSubscriptionCleanup.mockReset();
     jest.useFakeTimers();
     jest.spyOn(AppState, 'addEventListener').mockReturnValue({
       remove: mockAppStateRemove,
@@ -161,8 +167,12 @@ describe('AuthProvider notification lifecycle', () => {
       data: { currentLevel: 'aal2', nextLevel: 'aal2' },
       error: null,
     }));
-    mockSyncExpoPushTokenIfPermitted.mockImplementation(async () => ({ data: null, error: null }));
+    mockSyncExpoPushTokenIfPermitted.mockImplementation(async () => ({
+      data: { token: 'ExponentPushToken[current]' },
+      error: null,
+    }));
     mockClearExpoPushToken.mockImplementation(async () => ({ data: null, error: null }));
+    mockSubscribeToExpoPushTokenUpdates.mockImplementation(() => mockPushTokenSubscriptionCleanup);
   });
 
   afterEach(() => {
@@ -203,6 +213,10 @@ describe('AuthProvider notification lifecycle', () => {
       });
 
       expect(mockSyncExpoPushTokenIfPermitted).toHaveBeenCalledWith('user-1');
+      expect(mockSubscribeToExpoPushTokenUpdates).toHaveBeenCalledWith(
+        'user-1',
+        expect.any(Function),
+      );
     },
   );
 
@@ -359,13 +373,12 @@ describe('AuthProvider notification lifecycle', () => {
       authStateChangeCallback?.('SIGNED_OUT', null);
     });
 
-    await waitFor(() => {
-      expect(mockClearExpoPushToken).toHaveBeenCalledWith('user-1');
-      expect(mockSetAuthPhase).toHaveBeenLastCalledWith('signed-out');
-    });
+    expect(mockClearExpoPushToken).not.toHaveBeenCalled();
+    expect(mockPushTokenSubscriptionCleanup).toHaveBeenCalled();
+    expect(mockSetAuthPhase).toHaveBeenLastCalledWith('signed-out');
   });
 
-  it('does not warn when push token clear is a successful no-op after sign out', async () => {
+  it('does not clear push tokens after sign out because auth.service clears before sign out', async () => {
     const currentUserResult = createCurrentUserResult();
     const session = createSession();
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -373,7 +386,6 @@ describe('AuthProvider notification lifecycle', () => {
     mockGetCurrentUser
       .mockImplementationOnce(async () => null)
       .mockImplementationOnce(async () => currentUserResult);
-    mockClearExpoPushToken.mockImplementationOnce(async () => ({ data: null, error: null }));
 
     render(
       <AuthProvider>
@@ -396,9 +408,7 @@ describe('AuthProvider notification lifecycle', () => {
       authStateChangeCallback?.('SIGNED_OUT', null);
     });
 
-    await waitFor(() => {
-      expect(mockClearExpoPushToken).toHaveBeenCalledWith('user-1');
-    });
+    expect(mockClearExpoPushToken).not.toHaveBeenCalled();
     expect(warnSpy).not.toHaveBeenCalledWith(
       '[AuthProvider] push token clear error:',
       expect.any(Error),

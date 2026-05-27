@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TabBarLabel from '@/components/layouts/TabBarLabel';
 import TabBarButton from '@/components/layouts/TabBarButton';
 import TabBarIcon from '@/components/layouts/TabBarIcon';
+import { NotificationsProvider, useNotificationsContext } from '@/providers';
 import { DEFAULT_THEME_VALUES } from '@/themes';
 import {
   TAB_BAR_BORDER_TOP_WIDTH,
@@ -23,12 +24,13 @@ import { getThemeColor } from '@/utils/theme';
 import { getTabBarLayoutMetrics } from '@/utils/tabBarTypography';
 import { Platform, useWindowDimensions } from 'react-native';
 
-export default function TabsLayout() {
+function TabsLayoutContent() {
   const theme = useTheme();
   const router = useRouter();
   const segments = useSegments();
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { unreadCount } = useNotificationsContext();
   const currentGroup = segments[0];
   const visibleSegments = segments.slice(1);
 
@@ -143,14 +145,28 @@ export default function TabsLayout() {
     tabBarLabel: ({ color, children }) => <TabBarLabel color={color}>{children}</TabBarLabel>,
   };
 
+  const notificationBadge = unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined;
+
   const getTabScreenOptions = useCallback(
-    (tabName: TabRouteName): BottomTabNavigationOptions => ({
-      title: TABS[tabName].label,
-      tabBarAccessibilityLabel: TABS[tabName].accessibilityLabel,
-      tabBarButton: renderTabButton(tabName),
-      tabBarIcon: renderTabIcon(tabName),
-    }),
-    [renderTabButton, renderTabIcon],
+    (tabName: TabRouteName): BottomTabNavigationOptions => {
+      const baseOptions: BottomTabNavigationOptions = {
+        title: TABS[tabName].label,
+        tabBarAccessibilityLabel: TABS[tabName].accessibilityLabel,
+        tabBarButton: renderTabButton(tabName),
+        tabBarIcon: renderTabIcon(tabName),
+      };
+
+      if (tabName === 'notifications' && notificationBadge) {
+        return {
+          ...baseOptions,
+          tabBarBadge: notificationBadge,
+          tabBarAccessibilityLabel: `${TABS[tabName].accessibilityLabel}, ${unreadCount} belum dibaca`,
+        };
+      }
+
+      return baseOptions;
+    },
+    [renderTabButton, renderTabIcon, notificationBadge, unreadCount],
   );
 
   return (
@@ -160,5 +176,13 @@ export default function TabsLayout() {
       <Tabs.Screen name="notifications" options={getTabScreenOptions('notifications')} />
       <Tabs.Screen name="profile" options={getTabScreenOptions('profile')} />
     </Tabs>
+  );
+}
+
+export default function TabsLayout() {
+  return (
+    <NotificationsProvider>
+      <TabsLayoutContent />
+    </NotificationsProvider>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, useWindowDimensions } from 'react-native';
 import { XStack, YStack, Text, styled } from 'tamagui';
 import {
   ShoppingBagIcon,
@@ -26,6 +26,7 @@ interface OrderStatusTabItemProps {
   tab: TabConfig;
   count?: number;
   isActive: boolean;
+  width: number;
   onTabChange: (tab: OrderTab) => void;
 }
 
@@ -38,16 +39,26 @@ const TABS: TabConfig[] = [
   { key: 'cancelled', label: 'Dibatalkan', icon: XCircleIcon },
 ];
 
+const VISIBLE_TAB_COUNT = 4;
+const TABS_HORIZONTAL_PADDING = 12;
+const TAB_GAP = 6;
 const TABS_CONTENT_CONTAINER_STYLE = {
-  paddingHorizontal: 16,
-  gap: 8,
+  paddingHorizontal: TABS_HORIZONTAL_PADDING,
+  gap: TAB_GAP,
 } as const;
 const TAB_PRESS_STYLE = { opacity: 0.7 } as const;
 const ACTIVE_ACCESSIBILITY_STATE = { selected: true } as const;
 const INACTIVE_ACCESSIBILITY_STATE = { selected: false } as const;
-const TAB_ICON_SIZE = 28;
-const TAB_MIN_WIDTH = 92;
-const ALL_TAB_MIN_WIDTH = 116;
+const TAB_ICON_SIZE = 24;
+const TAB_ICON_SLOT_SIZE = 28;
+const TAB_LABEL_LINE_HEIGHT = 14;
+const TAB_LABEL_SLOT_HEIGHT = TAB_LABEL_LINE_HEIGHT * 2;
+const TAB_CONTENT_GAP = 4;
+const TAB_VERTICAL_PADDING = 8;
+const TAB_MIN_HEIGHT = Math.max(
+  MIN_TOUCH_TARGET,
+  TAB_ICON_SLOT_SIZE + TAB_CONTENT_GAP + TAB_LABEL_SLOT_HEIGHT + TAB_VERTICAL_PADDING * 2,
+);
 
 interface OrderStatusTabsProps {
   activeTab?: OrderTab | null;
@@ -59,6 +70,13 @@ function isCountedTab(tab: TabConfig): tab is TabConfig & { key: CountedOrderTab
   return tab.key !== 'all';
 }
 
+export function getOrderStatusTabWidth(containerWidth: number): number {
+  const horizontalPaddingWidth = TABS_HORIZONTAL_PADDING * 2;
+  const visibleGapsWidth = TAB_GAP * (VISIBLE_TAB_COUNT - 1);
+
+  return (containerWidth - horizontalPaddingWidth - visibleGapsWidth) / VISIBLE_TAB_COUNT;
+}
+
 const TabsContainer = styled(XStack, {
   backgroundColor: '$background',
   paddingVertical: '$3',
@@ -67,13 +85,13 @@ const TabsContainer = styled(XStack, {
 
 const TabButton = styled(YStack, {
   alignItems: 'center',
-  justifyContent: 'center',
-  gap: '$1',
-  paddingVertical: '$2',
-  paddingHorizontal: '$3',
+  justifyContent: 'flex-start',
+  gap: TAB_CONTENT_GAP,
+  paddingVertical: TAB_VERTICAL_PADDING,
+  paddingHorizontal: '$2',
   borderRadius: '$3',
-  minWidth: TAB_MIN_WIDTH,
-  minHeight: MIN_TOUCH_TARGET,
+  minHeight: TAB_MIN_HEIGHT,
+  height: TAB_MIN_HEIGHT,
   position: 'relative',
 
   variants: {
@@ -93,8 +111,8 @@ const TabButton = styled(YStack, {
 });
 
 const TabIcon = styled(YStack, {
-  width: 32,
-  height: 32,
+  width: TAB_ICON_SLOT_SIZE,
+  height: TAB_ICON_SLOT_SIZE,
   alignItems: 'center',
   justifyContent: 'center',
 
@@ -116,7 +134,10 @@ const TabIcon = styled(YStack, {
 
 const TabLabel = styled(Text, {
   fontSize: '$2',
+  lineHeight: TAB_LABEL_LINE_HEIGHT,
   textAlign: 'center',
+  width: '100%',
+  height: TAB_LABEL_SLOT_HEIGHT,
 
   variants: {
     active: {
@@ -160,6 +181,7 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
   tab,
   count,
   isActive,
+  width,
   onTabChange,
 }: OrderStatusTabItemProps) {
   const IconComponent = tab.icon;
@@ -172,7 +194,7 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
   return (
     <TabButton
       active={isActive}
-      minWidth={tab.key === 'all' ? ALL_TAB_MIN_WIDTH : TAB_MIN_WIDTH}
+      width={width}
       onPress={handlePress}
       pressStyle={TAB_PRESS_STYLE}
       accessibilityRole="tab"
@@ -182,7 +204,9 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
       <TabIcon active={isActive}>
         <IconComponent size={TAB_ICON_SIZE} color={isActive ? '$primary' : '$colorSubtle'} />
       </TabIcon>
-      <TabLabel active={isActive}>{tab.label}</TabLabel>
+      <TabLabel active={isActive} numberOfLines={2}>
+        {tab.label}
+      </TabLabel>
       {count !== undefined && count > 0 && (
         <Badge>
           <BadgeText>{count > 99 ? '99+' : count}</BadgeText>
@@ -193,6 +217,9 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
 });
 
 export function OrderStatusTabs({ activeTab, counts, onTabChange }: OrderStatusTabsProps) {
+  const { width } = useWindowDimensions();
+  const tabWidth = getOrderStatusTabWidth(width);
+
   return (
     <TabsContainer>
       <ScrollView
@@ -209,6 +236,7 @@ export function OrderStatusTabs({ activeTab, counts, onTabChange }: OrderStatusT
               tab={tab}
               count={count}
               isActive={isActive}
+              width={tabWidth}
               onTabChange={onTabChange}
             />
           );

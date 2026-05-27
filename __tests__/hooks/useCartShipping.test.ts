@@ -367,4 +367,40 @@ describe('useCartShipping', () => {
       expect(result.current.shippingOptions[0]?.courier_code).toBe('gojek');
     });
   });
+
+  it('routes shipping failures to shippingError without checkout or payment state', async () => {
+    mockGetShippingRatesForAddress.mockResolvedValue({
+      data: null,
+      error: new Error('BITESHIP_CONFIG_INCOMPLETE'),
+    });
+
+    const { result } = renderHook(() =>
+      useCartShipping({
+        selectedAddress: baseAddress,
+        selectedAddressId: baseAddress.id,
+        selectedCartItemIds,
+        snapshot,
+        isOffline: false,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(mockGetShippingRatesForAddress).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await jest.runOnlyPendingTimersAsync();
+      await jest.runOnlyPendingTimersAsync();
+    });
+
+    await waitFor(() => {
+      expect(mockGetShippingRatesForAddress).toHaveBeenCalledTimes(3);
+      expect(result.current.shippingError?.message).toBe('BITESHIP_CONFIG_INCOMPLETE');
+    });
+
+    expect(result.current.shippingOptions).toEqual([]);
+    expect(result.current.selectedShippingOption).toBeNull();
+    expect('paymentError' in result.current).toBe(false);
+    expect('checkoutError' in result.current).toBe(false);
+  });
 });

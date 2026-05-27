@@ -1,14 +1,53 @@
-name: Preview Channel CI
+name: EAS Update CI
 
 on:
   pull_request:
     branches: ['*']
   push:
-    branches: ['dev', 'staging', 'main', 'release/**']
+    branches: ['dev', 'main', 'release/**']
+
+concurrency:
+  group: eas-update-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  checks:
+    name: Quality gate before EAS Update
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        node-version: [20.x]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          cache-dependency-path: package-lock.json
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install lightningcss Linux binary
+        run: npm install lightningcss-linux-x64-gnu --save-optional
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
+
   update:
-    name: Publish Preview Channel on Push / Pull-Request
+    name: Publish EAS Update on Push / Pull-Request
+    needs: checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -38,21 +77,31 @@ jobs:
         id: branch-name
         uses: tj-actions/branch-names@v8
 
-      # Pilih env berdasarkan branch: prod → .env.prod, staging → .env.staging, dev/PR → .env.dev
+      # Pilih env berdasarkan branch: prod → .env.prod, dev/PR/preview → .env.preview
       - name: Set EXPO env from env file
         id: expo-env
         run: |
           BRANCH="${{ steps.branch-name.outputs.current_branch }}"
           if [ "$BRANCH" = "main" ] || [[ "$BRANCH" == release/* ]]; then
             ENV_FILE=".env.prod.example"
-          elif [ "$BRANCH" = "staging" ]; then
-            ENV_FILE=".env.staging.example"
+            UPDATE_BRANCH="production"
+          elif [ "$BRANCH" = "dev" ]; then
+            ENV_FILE=".env.preview.example"
+            UPDATE_BRANCH="preview"
           else
-            ENV_FILE=".env.dev.example"
+            ENV_FILE=".env.preview.example"
+            UPDATE_BRANCH="$BRANCH"
           fi
-          echo "Using $ENV_FILE for branch $BRANCH"
-          PROJECT_ID=$(grep -E '^EXPO_PROJECT_ID=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
-          SLUG=$(grep -E '^EXPO_SLUG=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
+          echo "Using $ENV_FILE for branch $BRANCH and EAS update branch $UPDATE_BRANCH"
+          read_env_value() {
+            grep -E "^$1=" "$ENV_FILE" | cut -d= -f2- | tr -d '\r' | sed 's/^"//; s/"$//'
+          }
+          ENV_NAME=$(read_env_value ENV)
+          PROJECT_ID=$(read_env_value EXPO_PROJECT_ID)
+          SLUG=$(read_env_value EXPO_SLUG)
+          APP_NAME=$(read_env_value EXPO_NAME)
+          IOS_BUNDLE_IDENTIFIER=$(read_env_value EXPO_IOS_BUNDLE_IDENTIFIER)
+          ANDROID_PACKAGE=$(read_env_value EXPO_ANDROID_PACKAGE)
           if [ -z "$PROJECT_ID" ]; then
             echo "EXPO_PROJECT_ID not found in $ENV_FILE"
             exit 1
@@ -61,11 +110,30 @@ jobs:
             echo "EXPO_SLUG not found in $ENV_FILE"
             exit 1
           fi
+          if [ -z "$ENV_NAME" ] || [ -z "$APP_NAME" ] || [ -z "$IOS_BUNDLE_IDENTIFIER" ] || [ -z "$ANDROID_PACKAGE" ]; then
+            echo "Required Expo app identity values are missing in $ENV_FILE"
+            exit 1
+          fi
+          echo "env_name<<EOF" >> $GITHUB_OUTPUT
+          echo "$ENV_NAME" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "project_id<<EOF" >> $GITHUB_OUTPUT
           echo "$PROJECT_ID" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "slug<<EOF" >> $GITHUB_OUTPUT
           echo "$SLUG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "app_name<<EOF" >> $GITHUB_OUTPUT
+          echo "$APP_NAME" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "ios_bundle_identifier<<EOF" >> $GITHUB_OUTPUT
+          echo "$IOS_BUNDLE_IDENTIFIER" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "android_package<<EOF" >> $GITHUB_OUTPUT
+          echo "$ANDROID_PACKAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "update_branch<<EOF" >> $GITHUB_OUTPUT
+          echo "$UPDATE_BRANCH" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       # setup node
@@ -97,10 +165,15 @@ jobs:
       - name: Create preview (EAS Update + PR comment)
         if: github.event_name == 'pull_request'
         env:
+          ENV: ${{ steps.expo-env.outputs.env_name }}
           EXPO_PROJECT_ID: ${{ steps.expo-env.outputs.project_id }}
           EXPO_SLUG: ${{ steps.expo-env.outputs.slug }}
+          EXPO_NAME: ${{ steps.expo-env.outputs.app_name }}
+          EXPO_IOS_BUNDLE_IDENTIFIER: ${{ steps.expo-env.outputs.ios_bundle_identifier }}
+          EXPO_ANDROID_PACKAGE: ${{ steps.expo-env.outputs.android_package }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
+          EXPO_PUBLIC_GOOGLE_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_API_KEY }}
         uses: expo/expo-github-action/preview@v8
         with:
           command: eas update --auto
@@ -109,11 +182,16 @@ jobs:
       - name: EAS update
         if: github.event_name == 'push'
         env:
+          ENV: ${{ steps.expo-env.outputs.env_name }}
           EXPO_PROJECT_ID: ${{ steps.expo-env.outputs.project_id }}
           EXPO_SLUG: ${{ steps.expo-env.outputs.slug }}
+          EXPO_NAME: ${{ steps.expo-env.outputs.app_name }}
+          EXPO_IOS_BUNDLE_IDENTIFIER: ${{ steps.expo-env.outputs.ios_bundle_identifier }}
+          EXPO_ANDROID_PACKAGE: ${{ steps.expo-env.outputs.android_package }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
+          EXPO_PUBLIC_GOOGLE_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_API_KEY }}
           UPDATE_MSG: ${{ github.event.head_commit.message }}
         run: |
           SAFE_MSG="${UPDATE_MSG//\"/\'}"
-          eas update --branch ${{ steps.branch-name.outputs.current_branch }} --message "$SAFE_MSG"
+          eas update --branch ${{ steps.expo-env.outputs.update_branch }} --message "$SAFE_MSG"

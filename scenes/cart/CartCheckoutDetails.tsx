@@ -1,6 +1,7 @@
 import { Button as TamaguiButton, Card, Separator, Spinner, Text, XStack, YStack } from 'tamagui';
 import { ChevronRightIcon, MapPinIcon } from '@/components/icons';
 import EmptyAddressCard from '@/components/elements/EmptyAddressCard';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import type { Address } from '@/types/address';
 import type { ShippingOption } from '@/types/shipping';
 import { formatRupiah } from '@/scenes/cart/cart.constants';
@@ -17,7 +18,9 @@ function ErrorDetailsCard({ message, suggestion }: ErrorDetailsCardProps) {
       borderWidth={1}
       borderColor="$danger"
       padding="$3"
-      backgroundColor="$surface">
+      backgroundColor="$surface"
+      role="alert"
+      aria-live="assertive">
       <YStack gap="$1.5">
         <Text color="$danger">{message}</Text>
         {suggestion ? (
@@ -86,6 +89,7 @@ export function CartCheckoutDetails({
           backgroundColor="$surface"
           borderColor="$surfaceBorder"
           onPress={onOpenAddressSheet}
+          role="button"
           aria-label="Ganti alamat pengiriman">
           <XStack padding="$4" gap="$3" alignItems="center">
             <XStack alignSelf="flex-start" marginTop="$1">
@@ -127,6 +131,8 @@ export function CartCheckoutDetails({
         borderColor="$surfaceBorder"
         opacity={isOffline ? 0.7 : 1}
         onPress={onOpenShippingSheet}
+        role="button"
+        aria-disabled={isOffline}
         aria-label="Pilih opsi pengiriman">
         <Card.Header padded>
           <XStack alignItems="center" justifyContent="space-between" gap="$3">
@@ -174,7 +180,7 @@ export function CartCheckoutDetails({
         ) : null}
       </Card>
 
-      {activeOrderId ? (
+      {activeOrderId && !startingCheckout ? (
         <Card
           borderRadius="$4"
           borderWidth={1}
@@ -192,6 +198,7 @@ export function CartCheckoutDetails({
             <XStack justifyContent="flex-end" gap="$2">
               <TamaguiButton
                 size="$2"
+                minHeight={MIN_TOUCH_TARGET}
                 borderRadius="$3"
                 backgroundColor="transparent"
                 borderWidth={1}
@@ -203,6 +210,7 @@ export function CartCheckoutDetails({
               </TamaguiButton>
               <TamaguiButton
                 size="$2"
+                minHeight={MIN_TOUCH_TARGET}
                 borderRadius="$3"
                 backgroundColor="$primary"
                 color="$onPrimary"
@@ -221,6 +229,8 @@ export function CartCheckoutDetails({
         <XStack justifyContent="flex-end" marginTop="$-2">
           <TamaguiButton
             size="$2"
+            minHeight={MIN_TOUCH_TARGET}
+            minWidth={MIN_TOUCH_TARGET}
             circular
             backgroundColor="transparent"
             borderWidth={1}

@@ -19,8 +19,8 @@ import {
 } from './googlePlaces.mappers';
 import { normalizePlaceId, sanitizeAddressCandidate } from './googlePlaces.shared';
 
-const GOOGLE_PLACES_API_BASE = 'https://places.googleapis.com/v1';
-const GOOGLE_GEOCODING_API_BASE = 'https://maps.googleapis.com/maps/api';
+const GOOGLE_PLACES_API_BASE = config.googlePlacesApiUrl;
+const GOOGLE_GEOCODING_API_BASE = config.googleGeocodingApiUrl;
 
 // Cache configuration for cost optimization
 // Place IDs are permanent - safe to cache for extended periods

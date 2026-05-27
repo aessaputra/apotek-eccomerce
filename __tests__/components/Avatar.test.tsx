@@ -46,6 +46,18 @@ describe('<Avatar />', () => {
     expect(screen.getByText('✎')).not.toBeNull();
   });
 
+  test('exposes editable avatar accessibility semantics', async () => {
+    render(<Avatar avatarUrl={null} name="John Doe" editable />);
+
+    const avatarButton = screen.getByLabelText('Foto profil John Doe');
+
+    expect(avatarButton.props.accessibilityRole).toBe('button');
+    expect(avatarButton.props.accessibilityHint).toBe(
+      'Ketuk untuk memilih foto profil baru dari galeri.',
+    );
+    expect(avatarButton.props.accessibilityState).toEqual({ disabled: false, busy: false });
+  });
+
   test('does not show edit indicator when editable is false', async () => {
     render(<Avatar avatarUrl={null} name="John Doe" editable={false} />);
     expect(screen.queryByText('✎')).toBeNull();
@@ -53,6 +65,10 @@ describe('<Avatar />', () => {
 
   test('shows uploading indicator when uploading', async () => {
     render(<Avatar avatarUrl={null} name="John Doe" editable uploading />);
-    expect(screen.getByText('...')).not.toBeNull();
+    const avatarButton = screen.getByLabelText('Foto profil John Doe');
+
+    expect(screen.getByText('Mengunggah')).not.toBeNull();
+    expect(avatarButton.props.accessibilityState).toEqual({ disabled: true, busy: true });
+    expect(avatarButton.props.accessibilityHint).toBe('Foto profil sedang diunggah.');
   });
 });

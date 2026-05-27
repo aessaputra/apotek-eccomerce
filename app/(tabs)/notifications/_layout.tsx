@@ -1,6 +1,9 @@
 import { useTheme } from 'tamagui';
 import { Stack } from 'expo-router';
-import HeaderCartIcon from '@/components/layouts/HeaderCartIcon';
+import {
+  NotificationsHeaderLeft,
+  NotificationsHeaderRight,
+} from '@/components/layouts/NotificationsHeaderActions';
 import { getStackHeaderOptions } from '@/utils/theme';
 import { withAuthGuard } from '@/hooks/withAuthGuard';
 
@@ -18,7 +21,8 @@ function NotificationsStackLayout() {
         options={{
           title: 'Notifikasi',
           headerTitleAlign: 'center',
-          headerRight: () => <HeaderCartIcon forHeaderRight />,
+          headerLeft: () => <NotificationsHeaderLeft />,
+          headerRight: () => <NotificationsHeaderRight />,
         }}
       />
     </Stack>

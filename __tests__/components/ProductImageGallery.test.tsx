@@ -9,7 +9,7 @@ describe('ProductImageGallery', () => {
     { url: 'https://example.com/image3.jpg', sort_order: 3 },
   ];
 
-  it('renders placeholder when images array is empty', () => {
+  it('renders placeholder with HeartIcon fallback when images array is empty', () => {
     const { toJSON } = render(<ProductImageGallery images={[]} />);
     expect(toJSON()).toBeTruthy();
   });

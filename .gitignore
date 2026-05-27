@@ -13,6 +13,8 @@ expo-env.d.ts
 /android/*
 !/android/AGENTS.md
 /ios
+google-services.*.json
+GoogleService-Info*.plist
 *.orig.*
 *.jks
 *.keystore
@@ -39,6 +41,7 @@ yarn-error.*
 # local env files
 .env*
 !.env.dev.example
+!.env.preview.example
 !.env.prod.example
 
 # typescript
@@ -53,7 +56,9 @@ app-example
 .agent/
 .sisyphus/
 .sisypush/
+.omo/
 # local git worktrees
 .worktrees/
 #.agents/
 run-gradlew-logs.txt
+.agents/skills/**/.cache/

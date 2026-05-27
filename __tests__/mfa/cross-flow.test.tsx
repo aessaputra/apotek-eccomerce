@@ -523,7 +523,7 @@ describe('MFA cross-flow coverage', () => {
 
     await waitFor(() => expect(screen.getByText('Hubungkan aplikasi autentikator')).toBeTruthy());
     expect(screen.getByText('SECRET123')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Saya sudah menyalin secret'));
+    fireEvent.press(screen.getByLabelText('Saya sudah menambahkan aplikasi autentikator'));
 
     await waitFor(() => expect(screen.getByLabelText('Kode autentikator')).toBeTruthy());
     fireEvent.changeText(screen.getByLabelText('Kode autentikator'), '123456');

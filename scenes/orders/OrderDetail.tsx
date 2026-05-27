@@ -209,7 +209,8 @@ export default function OrderDetail() {
   const paymentUrl = order.snap_redirect_url?.trim() || '';
   const isBackendPaymentExpired = isBackendExpired(order.expired_at);
   const isOrderExpired = isBackendPaymentExpired || isPaymentExpired;
-  const canResumePayment = !isOrderExpired && !!paymentUrl;
+  const canShowPaymentAction = order.status !== 'cancelled' && order.payment_status === 'pending';
+  const canResumePayment = canShowPaymentAction && !isOrderExpired && !!paymentUrl;
   const isAwaitingCustomerConfirmation = order.customer_completion_stage === 'awaiting_customer';
   const primaryStatusDisplay = getOrderPrimaryStatusDisplay(
     order.status,
@@ -220,7 +221,7 @@ export default function OrderDetail() {
   const secondaryStatusDisplay = getOrderSecondaryStatusDisplay(order.status, order.payment_status);
 
   const shouldReserveActionSpace =
-    order.payment_status === 'pending' || shouldShowTracking || isAwaitingCustomerConfirmation;
+    canShowPaymentAction || shouldShowTracking || isAwaitingCustomerConfirmation;
   const contentContainerStyle = shouldReserveActionSpace
     ? DETAIL_CONTENT_WITH_ACTION_STYLE
     : DETAIL_CONTENT_DEFAULT_STYLE;
@@ -254,7 +255,7 @@ export default function OrderDetail() {
                       {orderNumber}
                     </Text>
                   </YStack>
-                  {order.payment_status === 'pending' && !isBackendPaymentExpired && (
+                  {canShowPaymentAction && !isBackendPaymentExpired && (
                     <PaymentCountdownTimer
                       createdAt={order.created_at}
                       expiresAt={order.expired_at}
@@ -301,6 +302,7 @@ export default function OrderDetail() {
       </ScrollView>
 
       <OrderDetailActions
+        orderStatus={order.status}
         paymentStatus={order.payment_status}
         isOrderExpired={isOrderExpired}
         canResumePayment={canResumePayment}

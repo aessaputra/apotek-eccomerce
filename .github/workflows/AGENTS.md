@@ -1,6 +1,6 @@
 # GITHUB WORKFLOWS
 
-CI and preview automation. Root commands are in `package.json`; this folder owns GitHub-specific branch/env/secret behavior.
+GitHub Actions CI and OTA preview automation. Root commands are in `package.json`; this folder owns GitHub-specific branch/env/secret behavior. EAS dashboard build/deploy workflows live in `.eas/workflows/AGENTS.md`.
 
 ## STRUCTURE
 
@@ -12,27 +12,32 @@ CI and preview automation. Root commands are in `package.json`; this folder owns
 
 ## WORKFLOWS
 
-- `test.yml` runs on all PRs and pushes to `dev`, `staging`, `main`, and `release/**`.
+- `test.yml` runs on all PRs and pushes to `dev`, `main`, and `release/**`.
 - Test CI uses Node `20.x`, `npm ci`, `npm run format:check`, `npm run lint`, then `npm run test`.
+- `preview.yml` is named **EAS Update CI** and has a built-in quality gate before publishing OTA updates.
 - `preview.yml` requires `EXPO_TOKEN`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_KEY` GitHub secrets.
+- `preview.yml` also passes `EXPO_PUBLIC_GOOGLE_API_KEY` when present; keep Google API usage optional unless app config makes it required.
+- `preview.yml` runs format check, lint, and Jest before any EAS Update step; do not bypass this gate.
 - PR previews use `expo/expo-github-action/preview@v8` with `eas update --auto`, which comments preview/QR on the PR.
-- Push updates run `eas update --branch <current_branch>` after sanitizing double quotes in the commit message.
+- Push updates map Git branch `dev` to EAS Update branch `preview`, and `main` / `release/**` to EAS Update branch `production`, after sanitizing double quotes in the commit message.
+- Concurrency is enabled per event/ref so superseded OTA jobs are cancelled when newer commits arrive.
 
 ## ENV MAPPING
 
 | Branch               | Env example            |
 | -------------------- | ---------------------- |
 | `main`, `release/**` | `.env.prod.example`    |
-| `staging`            | `.env.staging.example` |
-| other branches / PR  | `.env.dev.example`     |
+| `dev` / PR previews  | `.env.preview.example` |
+| other branches       | `.env.preview.example` |
 
-Current repo has only `.env.dev.example` and `.env.prod.example`; `staging` workflow will fail until `.env.staging.example` exists or mapping changes.
+Current repo has `.env.dev.example`, `.env.preview.example`, and `.env.prod.example`.
 
 ## CI QUIRKS
 
-- `preview.yml` extracts `EXPO_PROJECT_ID` and `EXPO_SLUG` with `grep`/`cut`; keep those keys present in every mapped env example.
+- `preview.yml` extracts Expo app identity values with `grep`/`cut`; keep `ENV`, `EXPO_PROJECT_ID`, `EXPO_SLUG`, `EXPO_NAME`, `EXPO_IOS_BUNDLE_IDENTIFIER`, and `EXPO_ANDROID_PACKAGE` present in every mapped env example.
 - `preview.yml` installs `lightningcss-linux-x64-gnu --save-optional` after `npm ci`; preserve this Linux/Tamagui workaround.
 - `EXPO_TOKEN` must belong to the Expo account that owns `app.json` `owner` / the EAS project.
+- EAS build/profile behavior belongs in `.eas/workflows/` and `eas.json`; do not overload GitHub Actions with native build jobs unless that ownership changes.
 
 ## ANTI-PATTERNS
 

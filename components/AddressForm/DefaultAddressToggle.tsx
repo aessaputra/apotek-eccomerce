@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { YStack, XStack, Text, Card, Checkbox, styled } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 import { CheckIcon } from '@/components/icons';
@@ -31,6 +32,8 @@ const StyledCard = styled(Card, {
 });
 
 function DefaultAddressToggle({ isDefault, isSaving, onToggle }: DefaultAddressToggleProps) {
+  const descriptionId = useId();
+
   const handlePress = () => {
     if (!isSaving) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -47,7 +50,7 @@ function DefaultAddressToggle({ isDefault, isSaving, onToggle }: DefaultAddressT
       role="checkbox"
       accessibilityState={{ checked: isDefault }}
       aria-label="Jadikan alamat utama"
-      aria-describedby="Mengatur alamat ini sebagai alamat pengiriman utama yang akan digunakan otomatis saat checkout"
+      aria-describedby={descriptionId}
       pressStyle={{ opacity: PRESS_OPACITY }}>
       <XStack gap="$3" alignItems="center">
         <Checkbox
@@ -66,7 +69,7 @@ function DefaultAddressToggle({ isDefault, isSaving, onToggle }: DefaultAddressT
           <Text fontSize="$4" color="$color" fontWeight="600">
             Jadikan alamat utama
           </Text>
-          <Text fontSize="$3" color="$colorPress">
+          <Text id={descriptionId} fontSize="$3" color="$colorPress">
             Alamat ini akan digunakan secara otomatis saat checkout
           </Text>
         </YStack>

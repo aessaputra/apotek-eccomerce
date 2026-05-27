@@ -197,10 +197,62 @@ describe('<AddressList />', () => {
     expect(screen.queryByText('Default')).toBeNull();
     expect(screen.getAllByText('Utama')).toHaveLength(1);
     expect(screen.getByLabelText('Alamat Alamat Utama')).not.toBeNull();
-    expect(screen.getByLabelText('Alamat Alamat Kedua')).not.toBeNull();
+    const defaultAddressCard = screen.getByLabelText('Alamat Alamat Utama');
+    const secondaryAddressCard = screen.getByLabelText('Alamat Alamat Kedua');
+    expect(defaultAddressCard).not.toBeNull();
+    expect(secondaryAddressCard).not.toBeNull();
+    expect(defaultAddressCard.props.accessibilityActions).toEqual([
+      { name: 'edit', label: 'Ubah alamat' },
+      { name: 'delete', label: 'Hapus alamat' },
+    ]);
+    expect(secondaryAddressCard.props.accessibilityActions).toEqual([
+      { name: 'setDefault', label: 'Jadikan alamat utama' },
+      { name: 'edit', label: 'Ubah alamat' },
+      { name: 'delete', label: 'Hapus alamat' },
+    ]);
     expect(screen.getAllByLabelText('Edit alamat')).toHaveLength(2);
     expect(screen.getAllByLabelText('Hapus alamat')).toHaveLength(2);
     expect(screen.getAllByLabelText('Jadikan alamat utama')).toHaveLength(1);
+    expect(screen.queryByLabelText('Ubah alamat Alamat Utama')).toBeNull();
+    expect(screen.queryByLabelText('Hapus alamat Alamat Utama')).toBeNull();
+    expect(screen.queryByLabelText('Jadikan alamat Alamat Kedua sebagai alamat utama')).toBeNull();
+  });
+
+  it('exposes edit and delete swipe actions through screen-reader accessibility actions', async () => {
+    render(<AddressList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alamat Kedua')).not.toBeNull();
+    });
+
+    const secondaryAddressCard = screen.getByLabelText('Alamat Alamat Kedua');
+
+    secondaryAddressCard.props.onAccessibilityAction({ nativeEvent: { actionName: 'edit' } });
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/profile/address-form',
+      params: { id: 'address-other' },
+    });
+
+    await act(async () => {
+      secondaryAddressCard.props.onAccessibilityAction({ nativeEvent: { actionName: 'delete' } });
+    });
+    expect(screen.getByText('Hapus Alamat')).not.toBeNull();
+  });
+
+  it('exposes set-default swipe action through screen-reader accessibility actions', async () => {
+    render(<AddressList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alamat Kedua')).not.toBeNull();
+    });
+
+    const secondaryAddressCard = screen.getByLabelText('Alamat Alamat Kedua');
+
+    secondaryAddressCard.props.onAccessibilityAction({ nativeEvent: { actionName: 'setDefault' } });
+
+    await waitFor(() => {
+      expect(mockSetDefaultAddress).toHaveBeenCalledWith('address-other', 'user-1');
+    });
   });
 
   it('fetches and orders the default address first even when service data is unsorted', async () => {
@@ -213,6 +265,11 @@ describe('<AddressList />', () => {
 
     await waitFor(() => {
       expect(mockGetAddresses).toHaveBeenCalledWith('user-1');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Alamat Utama')).not.toBeNull();
+      expect(screen.getByText('Alamat Kedua')).not.toBeNull();
     });
 
     const list = screen.UNSAFE_getByType(SectionList<Address, { data: Address[] }>);

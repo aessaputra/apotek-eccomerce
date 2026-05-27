@@ -2,6 +2,7 @@ import React from 'react';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 
 interface OrderDetailActionsProps {
+  orderStatus: string;
   paymentStatus: string;
   isOrderExpired: boolean;
   canResumePayment: boolean;
@@ -16,6 +17,7 @@ interface OrderDetailActionsProps {
 }
 
 export default function OrderDetailActions({
+  orderStatus,
   paymentStatus,
   isOrderExpired,
   canResumePayment,
@@ -28,7 +30,7 @@ export default function OrderDetailActions({
   onTrackShipment,
   onConfirmReceived,
 }: OrderDetailActionsProps) {
-  if (paymentStatus === 'pending') {
+  if (orderStatus !== 'cancelled' && paymentStatus === 'pending') {
     return (
       <BottomActionBar
         buttonTitle={isOrderExpired ? 'Pembayaran Kadaluarsa' : 'Bayar Sekarang'}
@@ -36,7 +38,7 @@ export default function OrderDetailActions({
         isLoading={isLoading}
         disabled={!canResumePayment}
         aria-label="Bayar pesanan"
-        aria-describedby="Tombol untuk melanjutkan pembayaran"
+        accessibilityHint="Tombol untuk melanjutkan pembayaran"
       />
     );
   }
@@ -49,7 +51,7 @@ export default function OrderDetailActions({
         isLoading={isLoading}
         disabled={!waybillNumber}
         aria-label="Lacak pengiriman pesanan"
-        aria-describedby="Tombol untuk membuka layar tracking pengiriman"
+        accessibilityHint="Tombol untuk membuka layar tracking pengiriman"
       />
     );
   }
@@ -62,7 +64,7 @@ export default function OrderDetailActions({
         isLoading={isConfirming}
         disabled={isConfirming}
         aria-label="Konfirmasi pesanan diterima"
-        aria-describedby="Tombol untuk mengonfirmasi bahwa pesanan sudah diterima"
+        accessibilityHint="Tombol untuk mengonfirmasi bahwa pesanan sudah diterima"
       />
     );
   }

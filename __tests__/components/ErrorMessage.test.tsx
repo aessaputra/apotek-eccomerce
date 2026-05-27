@@ -4,8 +4,8 @@ import ErrorMessage from '@/components/elements/ErrorMessage';
 
 describe('<ErrorMessage />', () => {
   test('renders error message when message is provided', async () => {
-    render(<ErrorMessage message="Format email tidak valid." />);
-    const errorText = screen.getByText('Format email tidak valid.');
+    render(<ErrorMessage message="Masukkan email yang valid, contoh: nama@email.com." />);
+    const errorText = screen.getByText('Masukkan email yang valid, contoh: nama@email.com.');
     expect(errorText).not.toBeNull();
   });
 
@@ -27,7 +27,7 @@ describe('<ErrorMessage />', () => {
     const onDismiss = jest.fn();
     render(<ErrorMessage message="Error message" onDismiss={onDismiss} dismissible={true} />);
 
-    const dismissButton = screen.getByLabelText('Dismiss error');
+    const dismissButton = screen.getByLabelText('Tutup pesan error');
     expect(dismissButton).not.toBeNull();
 
     fireEvent.press(dismissButton);
@@ -38,14 +38,14 @@ describe('<ErrorMessage />', () => {
     const onDismiss = jest.fn();
     render(<ErrorMessage message="Error message" onDismiss={onDismiss} dismissible={false} />);
 
-    const dismissButton = screen.queryByLabelText('Dismiss error');
+    const dismissButton = screen.queryByLabelText('Tutup pesan error');
     expect(dismissButton).toBeNull();
   });
 
   test('does not display dismiss button when onDismiss is not provided', async () => {
     render(<ErrorMessage message="Error message" dismissible={true} />);
 
-    const dismissButton = screen.queryByLabelText('Dismiss error');
+    const dismissButton = screen.queryByLabelText('Tutup pesan error');
     expect(dismissButton).toBeNull();
   });
 

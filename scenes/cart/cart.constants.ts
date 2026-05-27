@@ -7,6 +7,4 @@ export const SHEET_ANIMATION_CONFIG = {
   stiffness: 200,
 };
 
-export function formatRupiah(amount: number): string {
-  return `Rp ${amount.toLocaleString('id-ID')}`;
-}
+export { formatRupiah } from '@/utils/currency';

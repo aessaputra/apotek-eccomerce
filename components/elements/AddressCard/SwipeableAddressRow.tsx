@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import type { AccessibilityActionEvent, AccessibilityActionInfo } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { XStack, Button, styled } from 'tamagui';
 import * as Haptics from 'expo-haptics';
@@ -71,7 +72,7 @@ export default function SwipeableAddressRow({
             backgroundColor="$primary"
             role="button"
             aria-label="Jadikan alamat utama"
-            aria-describedby="Mengatur alamat ini sebagai alamat pengiriman utama">
+            accessibilityHint="Mengatur alamat ini sebagai alamat pengiriman utama">
             <StarIcon size={24} color="$onPrimary" />
           </SwipeButton>
         )}
@@ -81,7 +82,7 @@ export default function SwipeableAddressRow({
           backgroundColor="$info"
           role="button"
           aria-label="Edit alamat"
-          aria-describedby="Mengedit alamat pengiriman">
+          accessibilityHint="Mengedit alamat pengiriman">
           <EditIcon size={24} color="$onPrimary" />
         </SwipeButton>
 
@@ -90,11 +91,36 @@ export default function SwipeableAddressRow({
           backgroundColor="$danger"
           role="button"
           aria-label="Hapus alamat"
-          aria-describedby="Menghapus alamat pengiriman ini">
+          accessibilityHint="Menghapus alamat pengiriman ini">
           <DeleteIcon size={24} color="$onPrimary" />
         </SwipeButton>
       </SwipeContainer>
     );
+  }
+
+  const accessibilityActions: AccessibilityActionInfo[] = [
+    { name: 'edit', label: 'Ubah alamat' },
+    { name: 'delete', label: 'Hapus alamat' },
+  ];
+
+  if (!isDefault && onSetDefault) {
+    accessibilityActions.unshift({ name: 'setDefault', label: 'Jadikan alamat utama' });
+  }
+
+  function handleAccessibilityAction(event: AccessibilityActionEvent) {
+    switch (event.nativeEvent.actionName) {
+      case 'setDefault':
+        handleSetDefault();
+        break;
+      case 'edit':
+        handleEdit();
+        break;
+      case 'delete':
+        handleDelete();
+        break;
+      default:
+        break;
+    }
   }
 
   return (
@@ -103,7 +129,13 @@ export default function SwipeableAddressRow({
       renderRightActions={renderRightActions}
       rightThreshold={SWIPE_ACTION_WIDTH / 3}
       containerStyle={SWIPEABLE_CONTAINER_STYLE}>
-      <AddressCard address={address} isDefault={isDefault} onPress={onPress} />
+      <AddressCard
+        address={address}
+        isDefault={isDefault}
+        onPress={onPress}
+        accessibilityActions={accessibilityActions}
+        onAccessibilityAction={handleAccessibilityAction}
+      />
     </Swipeable>
   );
 }

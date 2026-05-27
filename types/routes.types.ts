@@ -61,9 +61,12 @@ export type OrdersRoutes = {
   'orders/shipped': undefined;
   'orders/completed': undefined;
   'orders/cancelled': undefined;
-  'orders/success': { orderId?: string };
   'orders/order-detail/[orderId]': { orderId: string };
   'orders/track-shipment/[orderId]': { orderId: string };
+};
+
+export type PaymentSuccessRoutes = {
+  'payment-success': { orderId?: string };
 };
 
 // Profile routes
@@ -100,6 +103,7 @@ export type AppRoutes = AuthRoutes &
   ProductDetailsRoutes &
   CartRoutes &
   OrdersRoutes &
+  PaymentSuccessRoutes &
   ProfileRoutes &
   GoogleAuthRoutes;
 
@@ -155,7 +159,6 @@ export type OrdersStackParams = {
   shipped: undefined;
   completed: undefined;
   cancelled: undefined;
-  success: { orderId?: string };
   'order-detail/[orderId]': { orderId: string };
   'track-shipment/[orderId]': { orderId: string };
 };

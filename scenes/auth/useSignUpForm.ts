@@ -9,6 +9,8 @@ import {
   validateAuthPassword,
 } from './authForm.helpers';
 
+const SIGN_UP_EXCEPTION_MESSAGE = 'Belum berhasil membuat akun. Silakan coba lagi.';
+
 type SignUpField = 'email' | 'password';
 
 type SignUpFieldErrors = {
@@ -54,7 +56,7 @@ function validateSignUpForm(values: SignUpFormValues): SignUpValidationResult {
   if (!validateEmail(trimmedEmail)) {
     return {
       valid: false,
-      message: 'Format email tidak valid.',
+      message: 'Masukkan email yang valid, contoh: nama@email.com.',
       fieldErrors: {
         ...EMPTY_FIELD_ERRORS,
         email: true,
@@ -148,7 +150,7 @@ export function useSignUpForm() {
       });
 
       if (signUpError) {
-        setError(getAuthErrorMessage(signUpError));
+        setError(getAuthErrorMessage(signUpError, SIGN_UP_EXCEPTION_MESSAGE));
 
         if (isUserAlreadyExistsError(signUpError)) {
           setEmailError(true);
@@ -164,7 +166,7 @@ export function useSignUpForm() {
         });
       }
     } catch {
-      setError('Terjadi kesalahan saat mendaftar. Silakan coba lagi.');
+      setError(SIGN_UP_EXCEPTION_MESSAGE);
     } finally {
       setLoading(false);
     }

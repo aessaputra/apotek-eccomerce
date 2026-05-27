@@ -97,8 +97,8 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode | string, string> = {
 
   // OAuth errors
   [AuthErrorCode.ACCESS_DENIED]:
-    'Akses ditolak. Anda membatalkan login atau tidak memberikan izin yang diperlukan.',
-  [AuthErrorCode.INVALID_GRANT]: 'Autentikasi gagal. Silakan coba login lagi.',
+    'Akses ditolak. Anda membatalkan proses masuk atau tidak memberikan izin yang diperlukan.',
+  [AuthErrorCode.INVALID_GRANT]: 'Autentikasi gagal. Silakan masuk lagi.',
   [AuthErrorCode.INVALID_REQUEST]: 'Permintaan autentikasi tidak valid. Silakan coba lagi.',
   [AuthErrorCode.INVALID_SCOPE]: 'Izin akses tidak valid.',
   [AuthErrorCode.INVALID_CLIENT]: 'Aplikasi klien tidak valid.',
@@ -110,8 +110,7 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode | string, string> = {
   [AuthErrorCode.UNABLE_TO_EXCHANGE]: 'Gagal menukar kode autentikasi. Silakan coba lagi.',
 
   // User/account errors
-  [AuthErrorCode.USER_ALREADY_EXISTS]:
-    'Email sudah terdaftar. Silakan login atau gunakan email lain.',
+  [AuthErrorCode.USER_ALREADY_EXISTS]: 'Email sudah terdaftar. Masuk atau gunakan email lain.',
   [AuthErrorCode.USER_NOT_FOUND]: 'Akun tidak ditemukan. Silakan daftar terlebih dahulu.',
   [AuthErrorCode.USER_BANNED]: 'Akun Anda telah dinonaktifkan.',
   [AuthErrorCode.IDENTITY_ALREADY_EXISTS]: 'Identitas sudah terhubung dengan akun lain.',
@@ -119,11 +118,12 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode | string, string> = {
   [AuthErrorCode.IDENTITY_TOKEN_INVALID]: 'Token identitas tidak valid.',
 
   // Authentication errors
-  [AuthErrorCode.INVALID_CREDENTIALS]: 'Email atau password salah. Periksa kembali informasi Anda.',
+  [AuthErrorCode.INVALID_CREDENTIALS]:
+    'Email atau password belum sesuai. Periksa lagi atau atur ulang password.',
   [AuthErrorCode.INVALID_LOGIN_CREDENTIALS]:
-    'Email atau password salah. Periksa kembali informasi Anda.',
+    'Email atau password belum sesuai. Periksa lagi atau atur ulang password.',
   [AuthErrorCode.INVALID_TOKEN]: 'Token autentikasi tidak valid.',
-  [AuthErrorCode.INVALID_REFRESH_TOKEN]: 'Sesi tidak valid. Silakan login kembali.',
+  [AuthErrorCode.INVALID_REFRESH_TOKEN]: 'Sesi tidak valid. Silakan masuk kembali.',
   [AuthErrorCode.INVALID_ACCESS_TOKEN]: 'Token akses tidak valid.',
   [AuthErrorCode.INVALID_AUDIENCE]: 'Audience token tidak valid.',
   [AuthErrorCode.INVALID_APPLE_ID_TOKEN]: 'Token Apple ID tidak valid.',
@@ -163,8 +163,8 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode | string, string> = {
   [AuthErrorCode.CONFLICT]: 'Terjadi konflik. Silakan coba lagi.',
   [AuthErrorCode.REAUTH_NEEDED]: 'Autentikasi ulang diperlukan.',
   [AuthErrorCode.REAUTH_NOT_VALID]: 'Autentikasi ulang tidak valid.',
-  [AuthErrorCode.SESSION_NOT_FOUND]: 'Sesi tidak ditemukan. Silakan login kembali.',
-  [AuthErrorCode.SESSION_EXPIRED]: 'Sesi telah berakhir. Silakan login kembali.',
+  [AuthErrorCode.SESSION_NOT_FOUND]: 'Sesi tidak ditemukan. Silakan masuk kembali.',
+  [AuthErrorCode.SESSION_EXPIRED]: 'Sesi telah berakhir. Silakan masuk kembali.',
   [AuthErrorCode.CODE_CHALLENGE_NOT_FOUND]: 'Code challenge tidak ditemukan.',
   [AuthErrorCode.CODE_CHALLENGE_MISMATCH]: 'Code challenge tidak cocok.',
 };
@@ -181,6 +181,8 @@ export const AUTH_FORGOT_PASSWORD_GENERIC_SUCCESS_MESSAGE =
  */
 export const AUTH_RESET_PASSWORD_INVALID_LINK_MESSAGE =
   'Tautan reset password tidak valid atau kedaluwarsa. Silakan minta tautan baru.';
+
+export const AUTH_GENERIC_FALLBACK_MESSAGE = 'Akses akun belum berhasil. Silakan coba lagi.';
 
 /**
  * Custom error names for Google OAuth and other auth flows
@@ -204,9 +206,9 @@ export const AUTH_FLOW_ERROR_MESSAGES: Record<AuthErrorName, string> = {
   [AuthErrorName.OAuthCallbackError]: 'Autentikasi gagal. Silakan coba lagi.',
   [AuthErrorName.AuthCodeError]: 'Kode autentikasi tidak ditemukan.',
   [AuthErrorName.OAuthCallbackParseError]: 'Gagal memproses respons autentikasi.',
-  [AuthErrorName.AuthLockedError]: 'Sesi login sedang berjalan. Coba lagi sebentar.',
-  [AuthErrorName.AuthCancelError]: 'Login dibatalkan.',
-  [AuthErrorName.AuthGoogleError]: 'Gagal login dengan Google.',
+  [AuthErrorName.AuthLockedError]: 'Sesi masuk sedang berjalan. Coba lagi sebentar.',
+  [AuthErrorName.AuthCancelError]: 'Proses masuk dibatalkan.',
+  [AuthErrorName.AuthGoogleError]: 'Gagal masuk dengan Google.',
   [AuthErrorName.ExchangeCodeError]: 'Gagal menukar kode autentikasi.',
   [AuthErrorName.AuthError]: 'Terjadi kesalahan autentikasi.',
   [AuthErrorName.NetworkError]: 'Koneksi internet bermasalah. Periksa koneksi Anda dan coba lagi.',
@@ -215,7 +217,10 @@ export const AUTH_FLOW_ERROR_MESSAGES: Record<AuthErrorName, string> = {
 /**
  * Get user-friendly error message from error code or error object
  */
-export function getAuthErrorMessage(error: unknown): string {
+export function getAuthErrorMessage(
+  error: unknown,
+  fallbackMessage = AUTH_GENERIC_FALLBACK_MESSAGE,
+): string {
   if (!error) {
     return 'Terjadi kesalahan yang tidak diketahui.';
   }
@@ -242,7 +247,7 @@ export function getAuthErrorMessage(error: unknown): string {
           return message;
         }
       }
-      return error.message;
+      return fallbackMessage;
     }
   }
 
@@ -253,7 +258,7 @@ export function getAuthErrorMessage(error: unknown): string {
         return message;
       }
     }
-    return error;
+    return fallbackMessage;
   }
 
   return 'Terjadi kesalahan yang tidak diketahui.';

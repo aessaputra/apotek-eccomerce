@@ -9,6 +9,7 @@ providers/
 ├── Provider.tsx       # Gesture Handler → Safe Area → Redux → Tamagui → Navigation theme
 ├── QueryProvider.tsx  # Single TanStack Query client
 ├── AuthProvider.tsx   # Session bootstrap, OAuth, role/banned checks, push token sync
+├── NotificationsProvider.tsx # Tab-scoped notification context
 └── index.ts           # Public barrel
 ```
 
@@ -19,6 +20,7 @@ providers/
 | Base provider order  | `Provider.tsx`      | Wraps Redux and Tamagui before navigation theme           |
 | Query cache settings | `QueryProvider.tsx` | `staleTime` 1h, `gcTime` 24h, `retry: 2`                  |
 | Auth bootstrap       | `AuthProvider.tsx`  | 15s init timeout, OAuth hash handling, profile validation |
+| Notification context | `NotificationsProvider.tsx` | Mounted by `app/(tabs)/_layout.tsx`, not root       |
 | Export providers     | `index.ts`          | Keep imports stable for `app/_layout.tsx`                 |
 
 ## CONVENTIONS
@@ -29,6 +31,7 @@ providers/
 - Auth listener callbacks defer work with `setTimeout(0)` to avoid GoTrue lock deadlocks during OAuth code exchange.
 - Push token sync only runs after a valid signed-in profile passes validation.
 - Mobile token auto-refresh is tied to `AppState`; web is skipped.
+- `NotificationsProvider` is intentionally tab-scoped; root layout handles notification bootstrap/routing separately.
 
 ## ANTI-PATTERNS
 
@@ -36,3 +39,4 @@ providers/
 - **NEVER** call `supabase.auth.getSession()` inside synchronous `onAuthStateChange` work; defer to avoid lock deadlocks.
 - **NEVER** create a second `QueryClient` for app code; update `QueryProvider.tsx` instead.
 - **NEVER** bypass `validateAndDispatch` when changing auth profile acceptance rules.
+- **NEVER** move notification context to root without checking startup auth redirects and notification response routing.

@@ -5,16 +5,18 @@ import { subscribeToNotificationChanges } from '@/services/notification.service'
 import type { NotificationRow } from '@/types/notification';
 import type {
   MarkAllNotificationsReadResult,
+  NotificationPage,
   NotificationRealtimeChange,
   NotificationRealtimeConnectionState,
   NotificationServiceResult,
+  TestNotificationSendResult,
   NotificationTokenSyncResult,
 } from '@/services/notification.service';
 
 type FetchNotificationsMock = (
   userId: string,
-  signal?: AbortSignal,
-) => Promise<NotificationServiceResult<NotificationRow[]>>;
+  options?: { signal?: AbortSignal; cursor?: string | null; pageSize?: number } | AbortSignal,
+) => Promise<NotificationServiceResult<NotificationPage>>;
 
 type MarkNotificationAsReadMock = (
   notificationId: string,
@@ -32,6 +34,9 @@ type SyncExpoPushTokenMock = (
 ) => Promise<NotificationServiceResult<NotificationTokenSyncResult>>;
 
 type PermissionStatusValue = NotificationTokenSyncResult['permissionStatus'];
+type SendTestNotificationMock = (
+  userId: string,
+) => Promise<NotificationServiceResult<TestNotificationSendResult>>;
 
 const mockFetchNotifications = jest.fn() as jest.MockedFunction<FetchNotificationsMock>;
 const mockMarkNotificationAsRead = jest.fn() as jest.MockedFunction<MarkNotificationAsReadMock>;
@@ -39,6 +44,7 @@ const mockMarkAllNotificationsAsRead =
   jest.fn() as jest.MockedFunction<MarkAllNotificationsAsReadMock>;
 const mockSyncExpoPushTokenIfPermitted = jest.fn() as jest.MockedFunction<SyncExpoPushTokenMock>;
 const mockRequestExpoPushTokenAndSync = jest.fn() as jest.MockedFunction<SyncExpoPushTokenMock>;
+const mockSendTestNotification = jest.fn() as jest.MockedFunction<SendTestNotificationMock>;
 
 let mockLatestFocusEffect: (() => void) | undefined;
 let mockLatestRealtimeHandler: ((event: NotificationRealtimeChange) => void) | null = null;
@@ -59,14 +65,17 @@ jest.mock('@/utils/error', () => ({
 }));
 
 jest.mock('@/services/notification.service', () => ({
-  fetchNotifications: (userId: string, signal?: AbortSignal) =>
-    mockFetchNotifications(userId, signal),
+  fetchNotifications: (
+    userId: string,
+    options?: { signal?: AbortSignal; cursor?: string | null; pageSize?: number } | AbortSignal,
+  ) => mockFetchNotifications(userId, options),
   markNotificationAsRead: (notificationId: string, userId: string, signal?: AbortSignal) =>
     mockMarkNotificationAsRead(notificationId, userId, signal),
   markAllNotificationsAsRead: (userId: string, signal?: AbortSignal) =>
     mockMarkAllNotificationsAsRead(userId, signal),
   syncExpoPushTokenIfPermitted: (userId: string) => mockSyncExpoPushTokenIfPermitted(userId),
   requestExpoPushTokenAndSync: (userId: string) => mockRequestExpoPushTokenAndSync(userId),
+  sendTestNotification: (userId: string) => mockSendTestNotification(userId),
   subscribeToNotificationChanges: jest.fn(
     (
       _: string,
@@ -97,6 +106,18 @@ function createNotification(id: string, overrides: Partial<NotificationRow> = {}
   };
 }
 
+function createNotificationPage(
+  items: NotificationRow[],
+  overrides: Partial<Omit<NotificationPage, 'items'>> = {},
+): NotificationPage {
+  return {
+    items,
+    hasMore: false,
+    nextCursor: null,
+    ...overrides,
+  };
+}
+
 function createPermissionResult(
   overrides: Partial<NotificationTokenSyncResult> = {},
 ): NotificationTokenSyncResult {
@@ -109,6 +130,15 @@ function createPermissionResult(
   } as NotificationTokenSyncResult;
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(promiseResolve => {
+    resolve = promiseResolve;
+  });
+
+  return { promise, resolve };
+}
+
 describe('useNotifications', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -116,7 +146,7 @@ describe('useNotifications', () => {
     mockLatestFocusEffect = undefined;
     mockLatestRealtimeHandler = null;
     mockLatestRealtimeStateHandler = null;
-    mockFetchNotifications.mockResolvedValue({ data: [], error: null });
+    mockFetchNotifications.mockResolvedValue({ data: createNotificationPage([]), error: null });
     mockMarkNotificationAsRead.mockResolvedValue({ data: null, error: null });
     mockMarkAllNotificationsAsRead.mockResolvedValue({
       data: { markedCount: 0, readAt: '2026-04-23T12:00:00.000Z' },
@@ -133,6 +163,10 @@ describe('useNotifications', () => {
         status: 'updated',
         token: 'ExponentPushToken[new-token]',
       }),
+      error: null,
+    });
+    mockSendTestNotification.mockResolvedValue({
+      data: { delivered: true, reason: null },
       error: null,
     });
   });
@@ -169,7 +203,10 @@ describe('useNotifications', () => {
       createNotification('02'),
       createNotification('01', { read_at: '2026-04-23T11:00:00.000Z' }),
     ];
-    mockFetchNotifications.mockResolvedValueOnce({ data: notifications, error: null });
+    mockFetchNotifications.mockResolvedValueOnce({
+      data: createNotificationPage(notifications),
+      error: null,
+    });
 
     const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
 
@@ -188,7 +225,9 @@ describe('useNotifications', () => {
       isRequesting: false,
       error: null,
     });
-    expect(mockFetchNotifications).toHaveBeenCalledWith('user-1', expect.any(AbortSignal));
+    expect(mockFetchNotifications).toHaveBeenCalledWith('user-1', {
+      signal: expect.any(AbortSignal),
+    });
     expect(mockSyncExpoPushTokenIfPermitted).toHaveBeenCalledWith('user-1');
   });
 
@@ -216,12 +255,58 @@ describe('useNotifications', () => {
     expect(mockRequestExpoPushTokenAndSync).toHaveBeenCalledWith('user-1');
   });
 
+  it('loads the next notification page and exposes loading-more state', async () => {
+    const firstPage = [createNotification('03'), createNotification('02')];
+    const secondPage = [createNotification('01')];
+    const nextPage = createDeferred<NotificationServiceResult<NotificationPage>>();
+
+    mockFetchNotifications
+      .mockResolvedValueOnce({
+        data: createNotificationPage(firstPage, { hasMore: true, nextCursor: '2' }),
+        error: null,
+      })
+      .mockImplementationOnce(() => nextPage.promise);
+
+    const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual(firstPage);
+      expect(result.current.hasMore).toBe(true);
+    });
+
+    let loadMorePromise: Promise<void> | null = null;
+
+    act(() => {
+      loadMorePromise = result.current.loadMore();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoadingMore).toBe(true);
+    });
+
+    await act(async () => {
+      nextPage.resolve({ data: createNotificationPage(secondPage), error: null });
+      await loadMorePromise;
+    });
+
+    expect(result.current.items.map(item => item.id)).toEqual(['03', '02', '01']);
+    expect(result.current.hasMore).toBe(false);
+    expect(result.current.isLoadingMore).toBe(false);
+    expect(mockFetchNotifications).toHaveBeenLastCalledWith('user-1', {
+      signal: expect.any(AbortSignal),
+      cursor: '2',
+    });
+  });
+
   it('updates local read state for markAsRead and markAllAsRead actions', async () => {
     const unreadA = createNotification('01');
     const unreadB = createNotification('02');
     const readAt = '2026-04-23T12:30:00.000Z';
 
-    mockFetchNotifications.mockResolvedValueOnce({ data: [unreadB, unreadA], error: null });
+    mockFetchNotifications.mockResolvedValueOnce({
+      data: createNotificationPage([unreadB, unreadA]),
+      error: null,
+    });
     mockMarkNotificationAsRead.mockResolvedValueOnce({
       data: { ...unreadA, read_at: readAt },
       error: null,
@@ -254,10 +339,96 @@ describe('useNotifications', () => {
     expect(result.current.items.every(item => item.read_at != null)).toBe(true);
   });
 
+  it('sends a test notification request without inserting local notification state', async () => {
+    mockSendTestNotification.mockResolvedValueOnce({
+      data: { delivered: true, reason: null },
+      error: null,
+    });
+
+    const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('empty');
+    });
+
+    await act(async () => {
+      const sent = await result.current.sendTestNotification();
+      expect(sent).toBe(true);
+    });
+
+    expect(mockSendTestNotification).toHaveBeenCalledWith('user-1');
+    expect(result.current.items).toEqual([]);
+    expect(result.current.status).toBe('empty');
+    expect(result.current.error).toBeNull();
+    expect(result.current.isSendingTestNotification).toBe(false);
+  });
+
+  it('keeps a failed test notification send visible while the list remains empty', async () => {
+    mockSendTestNotification.mockResolvedValueOnce({
+      data: null,
+      error: new Error('Perangkat belum menerima notifikasi.'),
+    });
+
+    const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('empty');
+    });
+
+    await act(async () => {
+      const sent = await result.current.sendTestNotification();
+      expect(sent).toBe(false);
+    });
+
+    expect(result.current.items).toEqual([]);
+    expect(result.current.status).toBe('empty');
+    expect(result.current.error).toBe('Perangkat belum menerima notifikasi.');
+    expect(result.current.isSendingTestNotification).toBe(false);
+  });
+
+  it('ignores same-tick duplicate test notification sends', async () => {
+    const deferred = createDeferred<NotificationServiceResult<TestNotificationSendResult>>();
+    mockSendTestNotification.mockReturnValueOnce(deferred.promise);
+
+    const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('empty');
+    });
+
+    let firstSendResult: boolean | undefined;
+    let secondSendResult: boolean | undefined;
+
+    await act(async () => {
+      const firstSend = result.current.sendTestNotification().then(sent => {
+        firstSendResult = sent;
+      });
+      const secondSend = result.current.sendTestNotification().then(sent => {
+        secondSendResult = sent;
+      });
+
+      deferred.resolve({
+        data: { delivered: true, reason: null },
+        error: null,
+      });
+      await Promise.all([firstSend, secondSend]);
+    });
+
+    expect(firstSendResult).toBe(true);
+    expect(secondSendResult).toBe(false);
+    expect(mockSendTestNotification).toHaveBeenCalledTimes(1);
+  });
+
   it('refreshes on focus only after the debounce window elapses', async () => {
     mockFetchNotifications
-      .mockResolvedValueOnce({ data: [createNotification('01')], error: null })
-      .mockResolvedValueOnce({ data: [createNotification('02')], error: null });
+      .mockResolvedValueOnce({
+        data: createNotificationPage([createNotification('01')]),
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: createNotificationPage([createNotification('02')]),
+        error: null,
+      });
 
     const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
 
@@ -288,7 +459,10 @@ describe('useNotifications', () => {
     const existingItem = createNotification('01');
     const newItem = createNotification('03');
 
-    mockFetchNotifications.mockResolvedValueOnce({ data: [existingItem], error: null });
+    mockFetchNotifications.mockResolvedValueOnce({
+      data: createNotificationPage([existingItem]),
+      error: null,
+    });
 
     const { result, unmount } = renderHook(() => useNotifications({ userId: 'user-1' }));
 
@@ -325,8 +499,14 @@ describe('useNotifications', () => {
 
   it('refreshes silently after a realtime reconnect so missed events are reconciled', async () => {
     mockFetchNotifications
-      .mockResolvedValueOnce({ data: [createNotification('01')], error: null })
-      .mockResolvedValueOnce({ data: [createNotification('02')], error: null });
+      .mockResolvedValueOnce({
+        data: createNotificationPage([createNotification('01')]),
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: createNotificationPage([createNotification('02')]),
+        error: null,
+      });
 
     const { result } = renderHook(() => useNotifications({ userId: 'user-1' }));
 

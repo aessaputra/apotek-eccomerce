@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-05T00:00:00.000Z",
+  "title": "Design System: Apotek Online",
+  "extensions": {
+    "colorMeta": {
+      "primary-teal": {
+        "role": "primary",
+        "displayName": "Counter Teal",
+        "canonical": "#0F766E",
+        "tonalRamp": ["#051513", "#0F2F2B", "#0B5A53", "#0C6961", "#0F766E", "#52878E", "#70A0AC", "#DFF2EE"]
+      },
+      "primary-teal-deep": {
+        "role": "primary",
+        "displayName": "Deep Label Teal",
+        "canonical": "#0F2F2B",
+        "tonalRamp": ["#051513", "#0F2F2B", "#123732", "#4B5563", "#7FA39A", "#B0C4BE", "#D4E4E1", "#F0FBFA"]
+      },
+      "dark-primary-cyan": {
+        "role": "primary",
+        "displayName": "Night Cyan",
+        "canonical": "#06B6D4",
+        "tonalRamp": ["#1A1F26", "#3D5A68", "#4D7A88", "#5D9AA8", "#06B6D4", "#75CAD8", "#C4D0D8", "#F0F4F8"]
+      },
+      "secondary-green": {
+        "role": "secondary",
+        "displayName": "Service Green",
+        "canonical": "#0A7F4F",
+        "tonalRamp": ["#052E1D", "#064E32", "#0A7F4F", "#16A34A", "#34D399", "#86EFAC", "#DCFCE7", "#F0FDF4"]
+      },
+      "warning-rust": {
+        "role": "tertiary",
+        "displayName": "Rust Warning",
+        "canonical": "#C2410C",
+        "tonalRamp": ["#431407", "#7C2D12", "#C2410C", "#EA580C", "#FB923C", "#FED7AA", "#FFEDD5", "#FFF7ED"]
+      },
+      "light-canvas": {
+        "role": "neutral",
+        "displayName": "Clean Counter Canvas",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#0F2F2B", "#4B5563", "#64748B", "#9CA3AF", "#E5E7EB", "#F3F4F6", "#F9FAFB", "#FFFFFF"]
+      },
+      "dark-canvas": {
+        "role": "neutral",
+        "displayName": "Warm Charcoal Canvas",
+        "canonical": "#1A1F26",
+        "tonalRamp": ["#1A1F26", "#252B33", "#303840", "#3B454D", "#72818E", "#A8B8C4", "#C4D0D8", "#F0F4F8"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Home hero and rare emotional anchors." },
+      "headline": { "displayName": "Headline", "purpose": "Auth titles, success states, and major screen introductions." },
+      "title": { "displayName": "Title", "purpose": "Section headers, product detail names, totals, and dialog titles." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, helper copy, checkout explanations, and empty-state bodies." },
+      "label": { "displayName": "Label", "purpose": "Tabs, badges, prices, timestamps, and CTA text." }
+    },
+    "shadows": [
+      { "name": "bottom-safe-area-lift", "value": "0px -6px 20px {shadowColor}", "purpose": "Sticky checkout and form action bars." },
+      { "name": "card-ambient-lift", "value": "0px 10px 30px {shadowColor}", "purpose": "Auth cards and important contained forms." },
+      { "name": "banner-soft-lift", "value": "0 2px 8px rgba shadow at opacity 0.15", "purpose": "Home banners with image or fallback promotional content." }
+    ],
+    "motion": [
+      { "name": "press-feedback", "value": "opacity 0.85-0.98, scale 0.95-0.98", "purpose": "Tactile response for cards and buttons." },
+      { "name": "tab-pill-opacity", "value": "200ms timing", "purpose": "MD3 active tab indicator opacity." },
+      { "name": "tab-pill-scale", "value": "250ms timing", "purpose": "MD3 active tab indicator scaleX." },
+      { "name": "dialog-transform-opacity", "value": "animateOnly transform, opacity", "purpose": "Alert dialog entry and exit." }
+    ],
+    "breakpoints": [
+      { "name": "xs", "value": "max-width 660px" },
+      { "name": "sm", "value": "max-width 860px" },
+      { "name": "md", "value": "max-width 980px" },
+      { "name": "lg", "value": "max-width 1120px" },
+      { "name": "tabXs", "value": "max-width 320px" },
+      { "name": "tabSm", "value": "321px to 375px" },
+      { "name": "tabMd", "value": "376px to 430px" },
+      { "name": "tabLg", "value": "min-width 431px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main pharmacy action button for checkout, confirmation, retry, and form submission.",
+      "html": "<button class=\"ds-btn-primary\">Konfirmasi</button>",
+      "css": ".ds-btn-primary { min-height: 48px; padding: 0 16px; border: 0; border-radius: 14px; background: #0F766E; color: #FFFFFF; font-family: Poppins, system-ui, sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 180ms ease-out, opacity 180ms ease-out; } .ds-btn-primary:hover { opacity: 0.92; } .ds-btn-primary:active { transform: scale(0.98); opacity: 0.85; } .ds-btn-primary:focus-visible { outline: 3px solid rgba(15,118,110,0.3); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard form field for auth, address, profile, and checkout data entry.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Nama penerima</span><input class=\"ds-input\" placeholder=\"Masukkan nama\" /></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font-family: Poppins, system-ui, sans-serif; } .ds-field-label { color: #0F2F2B; font-size: 14px; font-weight: 500; } .ds-input { height: 56px; padding: 0 18px; border: 1.5px solid #D1D5DB; border-radius: 14px; background: #FFFFFF; color: #0F2F2B; font-family: Poppins, system-ui, sans-serif; font-size: 16px; } .ds-input:focus { border-width: 2px; border-color: #0F766E; outline: none; } .ds-input::placeholder { color: #6B7280; }"
+    },
+    {
+      "name": "Product Card",
+      "kind": "card",
+      "refersTo": "card-product",
+      "description": "Compact shelf item with image shell, two-line name, price, and add-to-cart control.",
+      "html": "<article class=\"ds-product-card\"><div class=\"ds-product-image\">💊</div><h3>Vitamin C 500mg</h3><div class=\"ds-product-row\"><span>Rp25.000</span><button>+</button></div></article>",
+      "css": ".ds-product-card { width: 160px; padding: 12px; border: 1px solid #E5E7EB; border-radius: 20px; background: #FFFFFF; color: #0F2F2B; font-family: Poppins, system-ui, sans-serif; display: grid; gap: 8px; transition: transform 180ms ease-out, opacity 180ms ease-out; } .ds-product-card:hover { opacity: 0.95; transform: scale(0.98); } .ds-product-image { height: 120px; border-radius: 12px; background: #FFF7ED; display: grid; place-items: center; font-size: 34px; } .ds-product-card h3 { margin: 0; min-height: 36px; font-size: 14px; line-height: 18px; font-weight: 600; } .ds-product-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .ds-product-row span { color: #4B5563; font-size: 12px; font-weight: 500; } .ds-product-row button { width: 36px; height: 36px; border: 0; border-radius: 999px; background: #0F766E; color: #FFFFFF; font-size: 20px; font-weight: 700; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-status",
+      "description": "Semantic order/payment status chip with soft background and explicit text.",
+      "html": "<span class=\"ds-status-badge\">Dikemas</span>",
+      "css": ".ds-status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 12px; background: #E5F5F2; color: #0F766E; font-family: Poppins, system-ui, sans-serif; font-size: 13px; font-weight: 600; line-height: 1; }"
+    },
+    {
+      "name": "Bottom Action Bar",
+      "kind": "custom",
+      "refersTo": "button-primary",
+      "description": "Safe-area footer for checkout and forms, keeping the primary action reachable.",
+      "html": "<div class=\"ds-bottom-action\"><button class=\"ds-btn-primary\">Bayar Sekarang</button></div>",
+      "css": ".ds-bottom-action { padding: 8px 16px 16px; border-top: 1px solid #E5E7EB; background: #FFFFFF; box-shadow: 0px -6px 20px rgba(0,0,0,0.06); } .ds-bottom-action .ds-btn-primary { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: #0F766E; color: #FFFFFF; font-family: Poppins, system-ui, sans-serif; font-size: 16px; font-weight: 600; }"
+    },
+    {
+      "name": "MD3 Tab Pill",
+      "kind": "nav",
+      "refersTo": "tab-pill-active",
+      "description": "Bottom navigation active indicator behind icons.",
+      "html": "<nav class=\"ds-tab\"><span class=\"ds-tab-pill\">⌂</span><span>Beranda</span></nav>",
+      "css": ".ds-tab { width: 80px; height: 64px; display: grid; place-items: center; gap: 3px; color: #0F766E; font-family: Poppins, system-ui, sans-serif; font-size: 12px; font-weight: 500; } .ds-tab-pill { width: 64px; height: 32px; border-radius: 16px; background: rgba(15,118,110,0.12); display: grid; place-items: center; transition: opacity 200ms ease-out, transform 250ms ease-out; }"
+    },
+    {
+      "name": "Alert Dialog",
+      "kind": "custom",
+      "description": "Confirmation dialog with sheet overlay, elevated surface, and stacked actions.",
+      "html": "<section class=\"ds-dialog\"><h2>Konfirmasi pesanan</h2><p>Pastikan alamat dan metode pengiriman sudah benar.</p><button class=\"ds-btn-primary\">OK</button></section>",
+      "css": ".ds-dialog { width: min(90vw, 420px); padding: 16px; border: 1px solid #E5E7EB; border-radius: 16px; background: #F9FAFB; box-shadow: 0 10px 30px rgba(0,0,0,0.06); font-family: Poppins, system-ui, sans-serif; } .ds-dialog h2 { margin: 0; color: #0F2F2B; font-size: 20px; font-weight: 700; } .ds-dialog p { color: #4B5563; font-size: 13px; line-height: 1.5; } .ds-dialog .ds-btn-primary { width: 100%; min-height: 48px; border: 0; border-radius: 14px; background: #0F766E; color: #FFFFFF; font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Neighborhood Counter",
+    "overview": "This system should feel like a familiar pharmacy counter translated to a phone: orderly shelves, readable labels, a calm attendant nearby, and no pressure to rush a health decision. PRODUCT.md defines the posture as a trusted neighborhood pharmacy on the phone, so the interface must prioritize confidence, recovery paths, and clear Indonesian copy before promotional energy.",
+    "keyCharacteristics": [
+      "Mobile-first, product-register UI for shopping, checkout, order tracking, profile, and support workflows.",
+      "Teal is the primary trust signal; semantic colors are functional and restrained.",
+      "Poppins carries both headings and body copy for a friendly, readable, contemporary voice.",
+      "Surfaces are rounded, bordered, and softly layered rather than glassy or dramatic.",
+      "Every purchase-critical screen needs clear recovery paths: retry, resume payment, edit address, track shipment, or contact support."
+    ],
+    "rules": [
+      { "name": "The Teal Earns Trust Rule", "body": "Primary teal is for decisive, helpful actions and selected state, not decorative striping or arbitrary emphasis.", "section": "colors" },
+      { "name": "The Soft Semantic Rule", "body": "Success, warning, danger, and info colors must appear with their soft backgrounds in badges or notices whenever possible. Never rely on color alone for order or payment status.", "section": "colors" },
+      { "name": "The No Flash-Sale Rule", "body": "Promotions may guide discovery, but the color system must never create marketplace urgency that overpowers medication safety, price clarity, delivery expectations, or support.", "section": "colors" },
+      { "name": "The Label-First Rule", "body": "Medicine names, prices, address details, and payment status must stay legible before the layout tries to be expressive.", "section": "typography" },
+      { "name": "The Weight Is the Accent Rule", "body": "Use font weight and spacing for emphasis before adding another color. This protects the restrained pharmacy tone.", "section": "typography" },
+      { "name": "The Surface Before Shadow Rule", "body": "Start with `$surface`, `$surfaceSubtle`, borders, and spacing. Add shadow only when the user needs to understand persistence, action priority, or modal interruption.", "section": "elevation" },
+      { "name": "The No Decorative Glass Rule", "body": "Blur and glassmorphism are not part of this system. Use solid surfaces and readable contrast.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use `$primary` Counter Teal for primary actions, selected state, focused fields, and cart/payment progress.",
+      "Do keep all tappable controls at 48px minimum unless the component is a clearly secondary nested control with an accessible parent.",
+      "Do keep product names readable at two lines, prices visible, and checkout totals bold enough to scan.",
+      "Do use Poppins 600-800 for important labels, totals, and headings; use muted color plus smaller size for helper copy.",
+      "Do use `$surface`, `$surfaceSubtle`, `$surfaceBorder`, and soft elevation before adding new decorative effects.",
+      "Do pair semantic color with explicit words: unpaid, packed, shipped, completed, failed, retry, edit, confirm.",
+      "Do use `FormInput` as the preferred general form pattern and keep auth-specific inputs visually aligned with it.",
+      "Do choose between `BottomActionBar` and `StickyBottomBar` intentionally, based on whether a total summary is part of the action."
+    ],
+    "donts": [
+      "Don't create discount-marketplace patterns where flash-sale energy, dense cards, urgency tactics, or cluttered promotions overpower medicine safety and trust.",
+      "Don't use colored side-stripe borders as a card accent. Existing left-accent hero usage is technical debt to avoid, not a pattern to expand.",
+      "Don't introduce gradient text, decorative glassmorphism, or nested card grids.",
+      "Don't hide delivery fees, stock limitations, prescription constraints, payment status, or support paths behind decorative hierarchy.",
+      "Don't rely on color alone for order, payment, stock, notification, or validation state.",
+      "Don't add a third bottom action/footer pattern unless both existing bars fail a concrete checkout or form need.",
+      "Don't create new Tamagui theme tokens without updating `themes.ts`, `constants/ui.ts` fallbacks, and non-Tamagui theme bridges.",
+      "Don't use raw black or raw white for new ad hoc styles. Use existing tokens and tinted surfaces so future dark/light modes stay coherent."
+    ]
+  }
+}

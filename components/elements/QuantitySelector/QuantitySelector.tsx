@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, GetProps, Input, Text, XStack, styled } from 'tamagui';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
+
+const COMPACT_CONTROL_SIZE = 36;
+const COMPACT_VALUE_WIDTH = 40;
+const COMPACT_HIT_SLOP = {
+  top: (MIN_TOUCH_TARGET - COMPACT_CONTROL_SIZE) / 2,
+  right: (MIN_TOUCH_TARGET - COMPACT_CONTROL_SIZE) / 2,
+  bottom: (MIN_TOUCH_TARGET - COMPACT_CONTROL_SIZE) / 2,
+  left: (MIN_TOUCH_TARGET - COMPACT_CONTROL_SIZE) / 2,
+} as const;
 
 const QuantityContainer = styled(XStack, {
   alignItems: 'center',
@@ -12,8 +22,8 @@ const QuantityContainer = styled(XStack, {
 });
 
 const QuantityButton = styled(Button, {
-  width: 24,
-  height: 24,
+  width: MIN_TOUCH_TARGET,
+  height: MIN_TOUCH_TARGET,
   borderRadius: '$10',
   borderWidth: 1,
   borderColor: '$surfaceBorder',
@@ -75,26 +85,35 @@ function QuantitySelector({
     () =>
       size === 'sm'
         ? {
-            buttonSize: 20,
-            valueMinWidth: 24,
-            valueHeight: 20,
-            valueFontSize: 11,
-            buttonFontSize: 12,
-            buttonLineHeight: 12,
-          }
-        : {
-            buttonSize: 32,
-            valueMinWidth: 40,
-            valueHeight: 32,
+            buttonSize: COMPACT_CONTROL_SIZE,
+            valueMinWidth: COMPACT_VALUE_WIDTH,
+            valueHeight: COMPACT_CONTROL_SIZE,
             valueFontSize: 14,
             buttonFontSize: 16,
             buttonLineHeight: 16,
+            containerGap: '$0.5',
+            containerPadding: '$0.5',
+            hitSlop: COMPACT_HIT_SLOP,
+          }
+        : {
+            buttonSize: 48,
+            valueMinWidth: 56,
+            valueHeight: 48,
+            valueFontSize: 16,
+            buttonFontSize: 20,
+            buttonLineHeight: 20,
+            containerGap: '$1',
+            containerPadding: '$1',
+            hitSlop: undefined,
           },
     [size],
   );
 
   const canDecrease = !disabled && nextValue > lowerBound;
   const canIncrease = !disabled && nextValue < upperBound;
+  const decreaseLabel = `Kurangi jumlah, saat ini ${nextValue}`;
+  const increaseLabel = `Tambah jumlah, saat ini ${nextValue}`;
+  const valueLabel = `Ubah jumlah produk, saat ini ${nextValue}`;
 
   const handleDecrease = useCallback(() => {
     if (!canDecrease) return;
@@ -135,12 +154,18 @@ function QuantitySelector({
     <QuantityContainer
       animation={disableAnimation ? undefined : 'quick'}
       enterStyle={disableAnimation ? undefined : { opacity: 0, y: 8 }}
+      gap={metrics.containerGap}
+      padding={metrics.containerPadding}
       {...stackProps}>
       <QuantityButton
         width={metrics.buttonSize}
         height={metrics.buttonSize}
         onPress={handleDecrease}
-        disabled={!canDecrease}>
+        disabled={!canDecrease}
+        role="button"
+        aria-label={decreaseLabel}
+        aria-disabled={!canDecrease}
+        hitSlop={metrics.hitSlop}>
         <Text
           fontSize={metrics.buttonFontSize}
           lineHeight={metrics.buttonLineHeight}
@@ -173,19 +198,24 @@ function QuantitySelector({
           textAlign="center"
           paddingHorizontal={0}
           paddingVertical={0}
+          role="spinbutton"
+          aria-label="Masukkan jumlah produk"
+          aria-valuemin={lowerBound}
+          aria-valuemax={upperBound}
+          aria-valuenow={nextValue}
+          hitSlop={metrics.hitSlop}
         />
       ) : (
         <QuantityValueCard
           minWidth={metrics.valueMinWidth}
           height={metrics.valueHeight}
           paddingHorizontal={size === 'sm' ? '$1.5' : '$2'}
-          onPress={handleStartEditing}>
-          <Text
-            fontSize={metrics.valueFontSize}
-            color="$color"
-            fontWeight="700"
-            animation="quick"
-            key={nextValue}>
+          onPress={handleStartEditing}
+          role="button"
+          aria-label={valueLabel}
+          aria-disabled={disabled}
+          hitSlop={metrics.hitSlop}>
+          <Text fontSize={metrics.valueFontSize} color="$color" fontWeight="700">
             {nextValue}
           </Text>
         </QuantityValueCard>
@@ -195,7 +225,11 @@ function QuantitySelector({
         width={metrics.buttonSize}
         height={metrics.buttonSize}
         onPress={handleIncrease}
-        disabled={!canIncrease}>
+        disabled={!canIncrease}
+        role="button"
+        aria-label={increaseLabel}
+        aria-disabled={!canIncrease}
+        hitSlop={metrics.hitSlop}>
         <Text
           fontSize={metrics.buttonFontSize}
           lineHeight={metrics.buttonLineHeight}

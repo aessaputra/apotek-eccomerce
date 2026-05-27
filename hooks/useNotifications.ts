@@ -5,8 +5,10 @@ import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
   requestExpoPushTokenAndSync,
+  sendTestNotification as sendTestNotificationRequest,
   subscribeToNotificationChanges,
   syncExpoPushTokenIfPermitted,
+  type NotificationPage,
   type NotificationPermissionStatus,
   type NotificationRealtimeChange,
   type NotificationRealtimeConnectionState,
@@ -36,6 +38,9 @@ export interface UseNotificationsState {
   items: NotificationRow[];
   status: NotificationsStatus;
   error: string | null;
+  hasMore: boolean;
+  nextCursor: string | null;
+  isLoadingMore: boolean;
 }
 
 export interface UseNotificationsParams {
@@ -51,9 +56,14 @@ export interface UseNotificationsReturn extends UseNotificationsState {
   permissionStatus: NotificationsPermissionState;
   realtimeState: NotificationsRealtimeState;
   refresh: () => Promise<void>;
+  loadMore: () => Promise<void>;
+  hasMore: boolean;
+  isLoadingMore: boolean;
   markAsRead: (notificationId: string) => Promise<boolean>;
   markAllAsRead: () => Promise<boolean>;
   requestPermission: () => Promise<boolean>;
+  sendTestNotification: () => Promise<boolean>;
+  isSendingTestNotification: boolean;
 }
 
 const IDLE_PERMISSION_STATE: NotificationsPermissionState = {
@@ -85,6 +95,17 @@ function upsertNotificationItem(
   const nextItemsById = new Map(currentItems.map(item => [item.id, item]));
   nextItemsById.set(nextItem.id, nextItem);
   return sortNotificationItems(Array.from(nextItemsById.values()));
+}
+
+function getStateForPage(page: NotificationPage): UseNotificationsState {
+  return {
+    items: page.items,
+    status: getStatusForItems(page.items),
+    error: null,
+    hasMore: page.hasMore,
+    nextCursor: page.nextCursor,
+    isLoadingMore: false,
+  };
 }
 
 function removeNotificationItem(
@@ -122,12 +143,16 @@ export function useNotifications({
     items: [],
     status: userId ? 'loading' : 'idle',
     error: null,
+    hasMore: false,
+    nextCursor: null,
+    isLoadingMore: false,
   });
   const [permissionStatus, setPermissionStatus] =
     useState<NotificationsPermissionState>(IDLE_PERMISSION_STATE);
   const [realtimeState, setRealtimeState] = useState<NotificationsRealtimeState>(
     userId && enableRealtime ? 'disconnected' : 'disabled',
   );
+  const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
 
   const unreadCount = useMemo(
     () => state.items.filter(item => item.read_at == null).length,
@@ -138,11 +163,13 @@ export function useNotifications({
   const activePermissionRequestIdRef = useRef(0);
   const isMountedRef = useRef(true);
   const fetchAbortControllerRef = useRef<AbortController | null>(null);
+  const loadMoreAbortControllerRef = useRef<AbortController | null>(null);
   const hasInitialLoadCompletedRef = useRef(false);
   const lastLoadTimeRef = useRef(0);
   const subscriptionCleanupRef = useRef<(() => void) | null>(null);
   const hasConnectedOnceRef = useRef(false);
   const needsReconnectSyncRef = useRef(false);
+  const isSendingTestNotificationRef = useRef(false);
   const refreshRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(
     async () => undefined,
   );
@@ -154,6 +181,8 @@ export function useNotifications({
       activePermissionRequestIdRef.current += 1;
       fetchAbortControllerRef.current?.abort();
       fetchAbortControllerRef.current = null;
+      loadMoreAbortControllerRef.current?.abort();
+      loadMoreAbortControllerRef.current = null;
       subscriptionCleanupRef.current?.();
       subscriptionCleanupRef.current = null;
     };
@@ -164,6 +193,8 @@ export function useNotifications({
     activePermissionRequestIdRef.current += 1;
     fetchAbortControllerRef.current?.abort();
     fetchAbortControllerRef.current = null;
+    loadMoreAbortControllerRef.current?.abort();
+    loadMoreAbortControllerRef.current = null;
     hasInitialLoadCompletedRef.current = false;
     lastLoadTimeRef.current = 0;
     hasConnectedOnceRef.current = false;
@@ -173,6 +204,9 @@ export function useNotifications({
       items: [],
       status: userId ? 'loading' : 'idle',
       error: null,
+      hasMore: false,
+      nextCursor: null,
+      isLoadingMore: false,
     });
     setPermissionStatus(IDLE_PERMISSION_STATE);
     setRealtimeState(userId ? 'disconnected' : 'disabled');
@@ -186,7 +220,16 @@ export function useNotifications({
       if (!userId) {
         fetchAbortControllerRef.current?.abort();
         fetchAbortControllerRef.current = null;
-        setState({ items: [], status: 'idle', error: null });
+        loadMoreAbortControllerRef.current?.abort();
+        loadMoreAbortControllerRef.current = null;
+        setState({
+          items: [],
+          status: 'idle',
+          error: null,
+          hasMore: false,
+          nextCursor: null,
+          isLoadingMore: false,
+        });
         return;
       }
 
@@ -209,7 +252,9 @@ export function useNotifications({
       }
 
       try {
-        const { data, error } = await fetchNotifications(userId, abortController.signal);
+        const { data, error } = await fetchNotifications(userId, {
+          signal: abortController.signal,
+        });
 
         if (!isMountedRef.current || activeRequestIdRef.current !== requestId) {
           return;
@@ -219,11 +264,7 @@ export function useNotifications({
           throw error ?? new Error('Gagal memuat notifikasi.');
         }
 
-        setState({
-          items: data,
-          status: getStatusForItems(data),
-          error: null,
-        });
+        setState(getStateForPage(data));
 
         lastLoadTimeRef.current = Date.now();
 
@@ -250,6 +291,9 @@ export function useNotifications({
           items: isRefresh ? prev.items : [],
           status: 'error',
           error: errorMessage,
+          hasMore: isRefresh ? prev.hasMore : false,
+          nextCursor: isRefresh ? prev.nextCursor : null,
+          isLoadingMore: false,
         }));
       } finally {
         if (fetchAbortControllerRef.current === abortController) {
@@ -266,6 +310,67 @@ export function useNotifications({
     },
     [loadNotifications],
   );
+
+  const loadMore = useCallback(async (): Promise<void> => {
+    if (!userId || !state.hasMore || !state.nextCursor || state.isLoadingMore) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    loadMoreAbortControllerRef.current?.abort();
+    loadMoreAbortControllerRef.current = abortController;
+
+    setState(prev => ({
+      ...prev,
+      isLoadingMore: true,
+      error: null,
+    }));
+
+    try {
+      const { data, error } = await fetchNotifications(userId, {
+        signal: abortController.signal,
+        cursor: state.nextCursor,
+      });
+
+      if (!isMountedRef.current || loadMoreAbortControllerRef.current !== abortController) {
+        return;
+      }
+
+      if (error || !data) {
+        throw error ?? new Error('Gagal memuat notifikasi berikutnya.');
+      }
+
+      setState(prev => ({
+        items: sortNotificationItems([...prev.items, ...data.items]),
+        status: getStatusForItems([...prev.items, ...data.items]),
+        error: null,
+        hasMore: data.hasMore,
+        nextCursor: data.nextCursor,
+        isLoadingMore: false,
+      }));
+    } catch (error) {
+      if (!isMountedRef.current || loadMoreAbortControllerRef.current !== abortController) {
+        return;
+      }
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+
+      const classifiedError = classifyError(error);
+      const errorMessage = translateErrorMessage(classifiedError);
+
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
+        isLoadingMore: false,
+      }));
+    } finally {
+      if (loadMoreAbortControllerRef.current === abortController) {
+        loadMoreAbortControllerRef.current = null;
+      }
+    }
+  }, [state.hasMore, state.isLoadingMore, state.nextCursor, userId]);
 
   useEffect(() => {
     refreshRef.current = refresh;
@@ -336,6 +441,7 @@ export function useNotifications({
 
         const items = removeNotificationItem(prev.items, deletedItem.id);
         return {
+          ...prev,
           items,
           status: getStatusForItems(items),
           error: null,
@@ -351,6 +457,7 @@ export function useNotifications({
       const items = upsertNotificationItem(prev.items, nextItem);
 
       return {
+        ...prev,
         items,
         status: getStatusForItems(items),
         error: null,
@@ -381,7 +488,14 @@ export function useNotifications({
 
   useEffect(() => {
     if (!userId) {
-      setState({ items: [], status: 'idle', error: null });
+      setState({
+        items: [],
+        status: 'idle',
+        error: null,
+        hasMore: false,
+        nextCursor: null,
+        isLoadingMore: false,
+      });
       return;
     }
 
@@ -454,6 +568,7 @@ export function useNotifications({
         setState(prev => {
           const items = upsertNotificationItem(prev.items, data);
           return {
+            ...prev,
             items,
             status: getStatusForItems(items),
             error: null,
@@ -507,6 +622,7 @@ export function useNotifications({
         );
 
         return {
+          ...prev,
           items,
           status: getStatusForItems(items),
           error: null,
@@ -527,6 +643,52 @@ export function useNotifications({
     }
   }, [userId]);
 
+  const sendTestNotification = useCallback(async (): Promise<boolean> => {
+    if (!userId || isSendingTestNotificationRef.current) {
+      return false;
+    }
+
+    isSendingTestNotificationRef.current = true;
+    setIsSendingTestNotification(true);
+
+    try {
+      const { data, error } = await sendTestNotificationRequest(userId);
+
+      if (error || !data) {
+        throw error ?? new Error('Gagal mengirim tes notifikasi.');
+      }
+
+      if (!data.delivered) {
+        throw new Error(data.reason ?? 'Gagal mengirim tes notifikasi.');
+      }
+
+      setState(prev => {
+        return {
+          ...prev,
+          error: null,
+        };
+      });
+
+      return true;
+    } catch (error) {
+      const classifiedError = classifyError(error);
+      const errorMessage = translateErrorMessage(classifiedError);
+
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
+      }));
+
+      return false;
+    } finally {
+      isSendingTestNotificationRef.current = false;
+
+      if (isMountedRef.current) {
+        setIsSendingTestNotification(false);
+      }
+    }
+  }, [userId]);
+
   return {
     ...state,
     unreadCount,
@@ -535,9 +697,12 @@ export function useNotifications({
     permissionStatus,
     realtimeState,
     refresh,
+    loadMore,
     markAsRead,
     markAllAsRead,
     requestPermission: () => syncPermissionStatus('request'),
+    sendTestNotification,
+    isSendingTestNotification,
   };
 }
 

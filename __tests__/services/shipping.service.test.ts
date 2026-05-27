@@ -23,6 +23,21 @@ jest.mock('@/utils/supabase', () => ({
   },
 }));
 
+function collectObjectKeys(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(collectObjectKeys);
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return [];
+  }
+
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, nestedValue]) => [
+    key,
+    ...collectObjectKeys(nestedValue),
+  ]);
+}
+
 const baseAddress: Address = {
   id: 'address-1',
   profile_id: 'profile-1',
@@ -123,6 +138,46 @@ describe('shipping.service', () => {
     expect(
       (mockInvoke.mock.calls[0]?.[1] as { headers?: { Authorization?: string } }).headers,
     ).toEqual({ Authorization: 'Bearer test-access-token' });
+  });
+
+  test('maps Biteship config failures without Midtrans payment copy', async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: new Error('BITESHIP_CONFIG_INCOMPLETE'),
+    });
+
+    const { data, error } = await getShippingRatesForAddress({
+      address: baseAddress,
+      package_weight_grams: 500,
+    });
+
+    const paymentCopy = 'Layanan pembayaran Midtrans';
+    const errorMessage = error?.message ?? '';
+
+    expect(data).toBeNull();
+    expect(error?.message).not.toBe(paymentCopy);
+    expect(errorMessage).not.toContain(paymentCopy);
+    expect(errorMessage).toContain('BITESHIP_CONFIG_INCOMPLETE');
+    expect(mockInvoke).toHaveBeenCalledWith(
+      'biteship',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          action: 'rates',
+        }),
+      }),
+    );
+
+    const invokeBody = (mockInvoke.mock.calls[0]?.[1] as { body?: Record<string, unknown> }).body;
+    const payload = invokeBody?.payload as Record<string, unknown> | undefined;
+
+    expect(payload?.origin_area_id).toBeUndefined();
+    expect(payload?.origin_postal_code).toBeUndefined();
+    expect(payload?.couriers).toBeUndefined();
+    expect(collectObjectKeys(invokeBody)).not.toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/secret|token|api_?key|authorization|credential|password/i),
+      ]),
+    );
   });
 
   test('searchBiteshipArea preserves mixed postal code shapes from the proxy', async () => {

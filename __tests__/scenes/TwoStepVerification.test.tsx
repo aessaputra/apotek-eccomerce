@@ -275,6 +275,8 @@ describe('<TwoStepVerification />', () => {
       expect(screen.getByText('Password salah. Coba lagi.')).not.toBeNull();
     });
 
+    expect(screen.getByTestId('mfa-enrollment-error').props['aria-live']).toBe('polite');
+
     expect(mockReauthenticateWithPassword).toHaveBeenCalledWith({
       email: 'user@example.com',
       password: 'wrong-password',
@@ -335,7 +337,8 @@ describe('<TwoStepVerification />', () => {
 
     expect(screen.getByTestId('mfa-qr-code')).not.toBeNull();
     expect(screen.getByText('SECRET123')).not.toBeNull();
-    expect(screen.getByLabelText('Salin secret manual')).not.toBeNull();
+    expect(screen.getByText('Kode manual')).not.toBeNull();
+    expect(screen.getByLabelText('Salin kode manual')).not.toBeNull();
     expect(screen.getByLabelText('Batalkan setup aktivasi')).not.toBeNull();
   });
 
@@ -358,15 +361,15 @@ describe('<TwoStepVerification />', () => {
     fireEvent.press(screen.getByLabelText('Lanjutkan aktivasi verifikasi 2 langkah'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Salin secret manual')).not.toBeNull();
+      expect(screen.getByLabelText('Salin kode manual')).not.toBeNull();
     });
 
-    fireEvent.press(screen.getByLabelText('Salin secret manual'));
+    fireEvent.press(screen.getByLabelText('Salin kode manual'));
 
     await waitFor(() => {
       expect(mockCopyTextToClipboard).toHaveBeenCalledWith('SECRET123');
-      expect(screen.getByText('Secret disalin')).not.toBeNull();
-      expect(screen.getByLabelText('Secret sudah disalin')).not.toBeNull();
+      expect(screen.getByText('Kode disalin')).not.toBeNull();
+      expect(screen.getByLabelText('Kode manual sudah disalin')).not.toBeNull();
     });
   });
 
@@ -390,14 +393,14 @@ describe('<TwoStepVerification />', () => {
     fireEvent.press(screen.getByLabelText('Lanjutkan aktivasi verifikasi 2 langkah'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Salin secret manual')).not.toBeNull();
+      expect(screen.getByLabelText('Salin kode manual')).not.toBeNull();
     });
 
-    fireEvent.press(screen.getByLabelText('Salin secret manual'));
+    fireEvent.press(screen.getByLabelText('Salin kode manual'));
 
     await waitFor(() => {
       expect(mockCopyTextToClipboard).toHaveBeenCalledWith('SECRET123');
-      expect(screen.getByText('Gagal menyalin. Salin manual.')).not.toBeNull();
+      expect(screen.getByText('Gagal menyalin. Salin kode manual.')).not.toBeNull();
     });
   });
 
@@ -428,21 +431,23 @@ describe('<TwoStepVerification />', () => {
     fireEvent.press(screen.getByLabelText('Lanjutkan aktivasi verifikasi 2 langkah'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Saya sudah menyalin secret')).not.toBeNull();
+      expect(screen.getByLabelText('Saya sudah menambahkan aplikasi autentikator')).not.toBeNull();
     });
 
-    fireEvent.press(screen.getByLabelText('Saya sudah menyalin secret'));
+    fireEvent.press(screen.getByLabelText('Saya sudah menambahkan aplikasi autentikator'));
 
     await waitFor(() => {
       expect(screen.getByLabelText('Kode autentikator')).not.toBeNull();
     });
 
-    fireEvent.changeText(screen.getByLabelText('Kode autentikator'), '123456');
+    fireEvent.changeText(screen.getByLabelText('Kode autentikator'), '123 456');
     fireEvent.press(screen.getByLabelText('Aktifkan dengan kode autentikator'));
 
     await waitFor(() => {
       expect(screen.getByText('Aktif')).not.toBeNull();
     });
+
+    expect(screen.getByTestId('mfa-enrollment-notice').props['aria-live']).toBe('polite');
 
     expect(mockEnrollTotpFactor).toHaveBeenCalledWith({
       friendlyName: 'Aplikasi Autentikator',
@@ -481,10 +486,10 @@ describe('<TwoStepVerification />', () => {
     fireEvent.press(screen.getByLabelText('Lanjutkan aktivasi verifikasi 2 langkah'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Saya sudah menyalin secret')).not.toBeNull();
+      expect(screen.getByLabelText('Saya sudah menambahkan aplikasi autentikator')).not.toBeNull();
     });
 
-    fireEvent.press(screen.getByLabelText('Saya sudah menyalin secret'));
+    fireEvent.press(screen.getByLabelText('Saya sudah menambahkan aplikasi autentikator'));
 
     await waitFor(() => {
       expect(screen.getByLabelText('Kode autentikator')).not.toBeNull();
@@ -556,16 +561,16 @@ describe('<TwoStepVerification />', () => {
     fireEvent.press(screen.getByLabelText('Lanjutkan aktivasi verifikasi 2 langkah'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Saya sudah menyalin secret')).not.toBeNull();
+      expect(screen.getByLabelText('Saya sudah menambahkan aplikasi autentikator')).not.toBeNull();
     });
 
-    fireEvent.press(screen.getByLabelText('Saya sudah menyalin secret'));
+    fireEvent.press(screen.getByLabelText('Saya sudah menambahkan aplikasi autentikator'));
 
     await waitFor(() => {
       expect(screen.getByLabelText('Kode autentikator')).not.toBeNull();
     });
 
-    fireEvent.changeText(screen.getByLabelText('Kode autentikator'), '000000');
+    fireEvent.changeText(screen.getByLabelText('Kode autentikator'), '000-000-999');
     fireEvent.press(screen.getByLabelText('Aktifkan dengan kode autentikator'));
 
     await waitFor(() => {
@@ -573,6 +578,11 @@ describe('<TwoStepVerification />', () => {
     });
 
     expect(mockUnenrollMfaFactor).not.toHaveBeenCalled();
+    expect(mockVerifyMfaChallenge).toHaveBeenCalledWith({
+      factorId: 'factor-new',
+      challengeId: 'challenge-1',
+      code: '000000',
+    });
   });
 
   it('disables verification after password re-auth when session is already sufficient', async () => {
@@ -735,7 +745,21 @@ describe('<TwoStepVerification />', () => {
     });
 
     fireEvent.press(screen.getByLabelText('Nonaktifkan verifikasi 2 langkah'));
-    fireEvent.press(screen.getByLabelText('Pilih aplikasi autentikator Google Authenticator'));
+    expect(screen.getByLabelText('Pilih aplikasi autentikator Authy').props['aria-selected']).toBe(
+      true,
+    );
+
+    const googleAuthenticatorOption = screen.getByLabelText(
+      'Pilih aplikasi autentikator Google Authenticator',
+    );
+    expect(googleAuthenticatorOption.props['aria-selected']).toBe(false);
+
+    fireEvent.press(googleAuthenticatorOption);
+    expect(
+      screen.getByLabelText('Pilih aplikasi autentikator Google Authenticator').props[
+        'aria-selected'
+      ],
+    ).toBe(true);
     fireEvent.changeText(
       screen.getByLabelText('Password akun untuk menonaktifkan verifikasi 2 langkah'),
       'valid-password',

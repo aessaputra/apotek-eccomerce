@@ -1,3 +1,4 @@
+import config from '@/utils/config';
 import type {
   RegionalDistrict,
   RegionalDistrictPostalData,
@@ -6,17 +7,13 @@ import type {
 } from '@/types/regional';
 import { normalizeAreaNameForApi } from '@/utils/areaNormalization';
 
-const REGIONAL_BASE_URL = 'https://wilayah.id/api';
-const POSTAL_BASE_URL =
-  'https://raw.githubusercontent.com/ArrayAccess/Indonesia-Postal-And-Area/master/data/json/area/62';
-
 type RegionalApiEnvelope<T> = {
   data?: T[];
 };
 
 async function fetchRegional<T>(path: string): Promise<{ data: T[]; error: Error | null }> {
   try {
-    const response = await fetch(`${REGIONAL_BASE_URL}${path}`);
+    const response = await fetch(`${config.regionalApiUrl}${path}`);
 
     if (!response.ok) {
       return { data: [], error: new Error('Gagal memuat data wilayah.') };
@@ -72,7 +69,7 @@ export async function getPostalCodesByDistrict(
     const normalizedRegency = regencyCode.replace(/\./g, '');
 
     const cityResponse = await fetch(
-      `${POSTAL_BASE_URL}/${normalizedProvince}/${normalizedRegency}/${normalizedRegency}.json`,
+      `${config.postalDataUrl}/${normalizedProvince}/${normalizedRegency}/${normalizedRegency}.json`,
     );
 
     if (!cityResponse.ok) {
@@ -89,7 +86,7 @@ export async function getPostalCodesByDistrict(
     const districtResults = await Promise.all(
       districtIds.map(async districtId => {
         const response = await fetch(
-          `${POSTAL_BASE_URL}/${normalizedProvince}/${normalizedRegency}/${districtId}/${districtId}.json`,
+          `${config.postalDataUrl}/${normalizedProvince}/${normalizedRegency}/${districtId}/${districtId}.json`,
         );
 
         if (!response.ok) {

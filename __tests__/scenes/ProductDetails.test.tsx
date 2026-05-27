@@ -12,6 +12,7 @@ const mockBack = jest.fn();
 const mockPush = jest.fn();
 const mockGetProductDetailsById = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockAddProductToCart = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockToastShow = jest.fn();
 
 jest.mock('expo-router', () => ({
   __esModule: true,
@@ -38,6 +39,12 @@ jest.mock('@/services/cart.service', () => ({
   addProductToCart: (...args: unknown[]) => mockAddProductToCart(...args),
 }));
 
+jest.mock('@tamagui/toast', () => ({
+  useToastController: () => ({
+    show: mockToastShow,
+  }),
+}));
+
 jest.mock('@/components/elements/QuantitySelector', () => {
   const { Text } = jest.requireActual('react-native') as typeof import('react-native');
 
@@ -61,6 +68,7 @@ describe('<ProductDetails />', () => {
     mockBack.mockClear();
     mockPush.mockClear();
     mockAddProductToCart.mockClear();
+    mockToastShow.mockClear();
     mockGetProductDetailsById.mockReset();
     mockGetProductDetailsById.mockResolvedValue({
       id: 'product-1',
@@ -135,7 +143,15 @@ describe('<ProductDetails />', () => {
     expect(screen.getByTestId('product-category-label').props.children).toBe('Pain Relief');
   });
 
-  it('shows a success dialog and stays on the product detail scene after adding to cart', async () => {
+  it('shows error state when product fetch throws', async () => {
+    mockGetProductDetailsById.mockRejectedValue(new Error('Network error'));
+
+    render(<ProductDetails />);
+
+    expect(await screen.findByText('Gagal memuat detail produk. Silakan coba lagi.')).toBeTruthy();
+  });
+
+  it('shows a toast and stays on the product detail scene after adding to cart', async () => {
     mockAddProductToCart.mockResolvedValue({ error: null });
 
     render(<ProductDetails />);
@@ -149,13 +165,16 @@ describe('<ProductDetails />', () => {
       expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
     });
 
-    expect(
-      await screen.findByText('Produk berhasil ditambahkan ke keranjang (1 item).'),
-    ).toBeTruthy();
+    expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+      message: 'Paracetamol 500mg sudah ada di keranjang.',
+      type: 'background',
+    });
+    expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
+    expect(screen.queryByText('Produk berhasil ditambahkan ke keranjang (1 item).')).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it('shows inline error feedback and does not open the success dialog when adding to cart fails', async () => {
+  it('shows a foreground toast and does not open the success dialog when adding to cart fails', async () => {
     mockAddProductToCart.mockResolvedValue({
       error: new Error('Gagal menambahkan produk ke keranjang.'),
     });
@@ -171,9 +190,58 @@ describe('<ProductDetails />', () => {
       expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
     });
 
-    expect(await screen.findByText('Gagal menambahkan produk ke keranjang.')).toBeTruthy();
+    expect(mockToastShow).toHaveBeenCalledWith(
+      'Produk belum masuk keranjang. Coba lagi sebentar lagi.',
+      {
+        type: 'foreground',
+      },
+    );
     expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
     expect(screen.queryByText('Produk berhasil ditambahkan ke keranjang (1 item).')).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('labels the favorite button with its action and selected state', async () => {
+    render(<ProductDetails />);
+
+    const favoriteButton = await screen.findByLabelText('Tambah ke favorit');
+    expect(favoriteButton.props.accessibilityRole).toBe('button');
+    expect(favoriteButton.props.accessibilityState?.selected).toBe(false);
+  });
+
+  it('announces sheet header as a header for accessibility', async () => {
+    render(<ProductDetails />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tambah Keranjang')).not.toBeNull();
+    });
+
+    fireEvent.press(screen.getByText('Tambah Keranjang'));
+
+    const sheetHeader = await screen.findByText('Tambah ke Keranjang');
+    expect(sheetHeader.props.accessibilityRole).toBe('header');
+  });
+
+  it('shows stock errors through a foreground toast', async () => {
+    mockAddProductToCart.mockResolvedValue({
+      error: new Error('Stok habis.'),
+    });
+
+    render(<ProductDetails />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tambah Keranjang')).not.toBeNull();
+    });
+
+    fireEvent.press(screen.getByText('Tambah Keranjang'));
+    fireEvent.press(await screen.findByLabelText('Konfirmasi tambah ke keranjang'));
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        'Stok produk belum cukup. Periksa jumlah atau pilih produk lain.',
+        { type: 'foreground' },
+      );
+    });
+    expect(screen.queryByText('Stok habis.')).toBeNull();
   });
 });

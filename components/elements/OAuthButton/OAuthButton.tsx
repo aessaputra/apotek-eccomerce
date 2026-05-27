@@ -17,6 +17,7 @@ export interface OAuthButtonProps extends Omit<GetProps<typeof XStack>, 'onPress
 function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonProps) {
   const media = useMedia();
   const label = 'Masuk dengan Google';
+  const loadingLabel = 'Membuka Google...';
 
   // Error handling wrapper untuk onPress dengan graceful error handling
   const handlePress = useCallback(() => {
@@ -58,11 +59,16 @@ function OAuthButton({ provider, onPress, isLoading, ...others }: OAuthButtonPro
       disabled={isLoading}
       cursor={isLoading ? 'not-allowed' : 'pointer'}
       role="button"
-      aria-label={label}
-      accessibilityState={{ disabled: isLoading }}
+      aria-label={isLoading ? loadingLabel : label}
+      accessibilityState={{ disabled: isLoading, busy: isLoading }}
       {...others}>
       {isLoading ? (
-        <Spinner size="small" color="$color" />
+        <>
+          <Spinner size="small" color="$color" />
+          <Text fontSize={16} fontWeight="600" color="$color">
+            {loadingLabel}
+          </Text>
+        </>
       ) : (
         <>
           <XStack

@@ -156,6 +156,28 @@ describe('<CheckoutReview />', () => {
     expect(mockClearCheckoutSession).toHaveBeenCalledTimes(1);
   });
 
+  it('hides pending checkout card while starting checkout with an active order', () => {
+    mockCheckoutState.activeOrderId = 'order-1';
+    mockCheckoutState.startingCheckout = true;
+
+    render(<CheckoutReview />);
+
+    expect(screen.queryByText('Checkout Tertunda')).toBeNull();
+    expect(screen.getByText('Lanjutkan Pembayaran')).toBeTruthy();
+  });
+
+  it('renders Midtrans payment failure with a payment-specific title', () => {
+    const paymentError =
+      'Layanan pembayaran Midtrans sedang bermasalah. Silakan coba beberapa saat lagi.';
+    mockCheckoutState.paymentError = paymentError;
+
+    render(<CheckoutReview />);
+
+    expect(screen.getByText(paymentError)).toBeTruthy();
+    expect(screen.queryByText('Gagal memuat keranjang.')).toBeNull();
+    expect(screen.getByText('Pembayaran belum bisa dilanjutkan.')).toBeTruthy();
+  });
+
   it('falls back to cart when review params are incomplete', () => {
     mockParams = {};
 
@@ -198,7 +220,7 @@ describe('<CheckoutReview />', () => {
     render(<CheckoutReview />);
 
     expect(
-      screen.getByText('Tinjau Kembali detail pesanan Anda sebelum Melanjutkan pembayaran'),
+      screen.getByText('Tinjau kembali detail pesanan Anda sebelum melanjutkan pembayaran.'),
     ).toBeTruthy();
   });
 

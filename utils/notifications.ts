@@ -3,6 +3,10 @@ import { Platform } from 'react-native';
 
 type ExpoDeviceModule = typeof import('expo-device');
 type ExpoNotificationsModule = typeof import('expo-notifications');
+type ExpoPushTokenListener = Parameters<ExpoNotificationsModule['addPushTokenListener']>[0];
+type ExpoPushTokenListenerSubscription = ReturnType<
+  ExpoNotificationsModule['addPushTokenListener']
+>;
 type ExpoNotificationMethodName =
   | 'addNotificationResponseReceivedListener'
   | 'addPushTokenListener'
@@ -93,6 +97,22 @@ export async function hasExpoNotificationMethodsAsync(
   } catch {
     return false;
   }
+}
+
+export async function addExpoPushTokenListenerAsync(
+  listener: ExpoPushTokenListener,
+): Promise<ExpoPushTokenListenerSubscription | null> {
+  if (!hasExpoPushTokenRuntimeSupport()) {
+    return null;
+  }
+
+  const Notifications = await getExpoNotificationsModuleAsync();
+
+  if (!hasNotificationMethods(Notifications, ['addPushTokenListener'])) {
+    return null;
+  }
+
+  return Notifications.addPushTokenListener(listener);
 }
 
 export async function isPhysicalNotificationDeviceAsync(): Promise<boolean> {

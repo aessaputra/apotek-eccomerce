@@ -75,6 +75,7 @@ export function useCartCheckout({
   const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string | null>(null);
 
   const checkoutInProgressRef = useRef(false);
+  const paymentErrorOrderIdRef = useRef<string | null>(null);
   const canonicalSelectedCartItemIds = useMemo(
     () => canonicalizeSelectedCartItemIds(selectedCartItemIds),
     [selectedCartItemIds],
@@ -111,6 +112,11 @@ export function useCartCheckout({
     setActiveOrderId(null);
   }, []);
 
+  const clearPaymentError = useCallback(() => {
+    paymentErrorOrderIdRef.current = null;
+    setPaymentError(null);
+  }, []);
+
   const handleCheckoutError = useCallback(
     (error: unknown, fallbackMessage: string) => {
       onError?.(toTranslatedCheckoutError(error, fallbackMessage));
@@ -120,9 +126,9 @@ export function useCartCheckout({
 
   const clearCheckoutSession = useCallback(async () => {
     resetCheckoutState();
-    setPaymentError(null);
+    clearPaymentError();
     await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
-  }, [removePersistData, resetCheckoutState]);
+  }, [clearPaymentError, removePersistData, resetCheckoutState]);
 
   const persistCheckoutSession = useCallback(
     async (idempotencyKey: string, orderId: string | null) => {
@@ -273,12 +279,12 @@ export function useCartCheckout({
   );
 
   useEffect(() => {
-    if (activeOrderId) {
+    if (activeOrderId || paymentErrorOrderIdRef.current) {
       return;
     }
 
-    setPaymentError(null);
-  }, [activeOrderId]);
+    clearPaymentError();
+  }, [activeOrderId, clearPaymentError]);
 
   const handleStartCheckout = useCallback(async () => {
     if (isOffline) {
@@ -304,13 +310,13 @@ export function useCartCheckout({
       return;
     }
 
+    let orderIdForPayment = activeOrderId;
+
     try {
       const currentIdempotencyKey = checkoutIdempotencyKey ?? Crypto.randomUUID();
       if (!checkoutIdempotencyKey) {
         setCheckoutIdempotencyKey(currentIdempotencyKey);
       }
-
-      let orderIdForPayment = activeOrderId;
 
       await persistCheckoutSession(currentIdempotencyKey, orderIdForPayment);
 
@@ -348,7 +354,19 @@ export function useCartCheckout({
         await persistCheckoutSession(orderData.checkout_idempotency_key, orderData.order_id);
       }
 
-      const snapData = await requestSnapTokenWithRetry(orderIdForPayment);
+      let snapData: Awaited<ReturnType<typeof requestSnapTokenWithRetry>>;
+
+      try {
+        snapData = await requestSnapTokenWithRetry(orderIdForPayment);
+      } catch (error) {
+        const paymentProcessingError = withFallbackMessage(
+          classifyError(error),
+          'Gagal memproses pembayaran. Silakan lanjutkan pembayaran kembali.',
+        );
+        paymentErrorOrderIdRef.current = orderIdForPayment;
+        setPaymentError(translateErrorMessage(paymentProcessingError));
+        return;
+      }
 
       await clearCheckoutSession();
 
@@ -360,11 +378,7 @@ export function useCartCheckout({
         },
       });
     } catch (error) {
-      const paymentProcessingError = withFallbackMessage(
-        classifyError(error),
-        'Gagal memproses pembayaran. Silakan lanjutkan pembayaran kembali.',
-      );
-      setPaymentError(translateErrorMessage(paymentProcessingError));
+      handleCheckoutError(error, 'Gagal memulai checkout. Silakan coba lagi.');
     } finally {
       setStartingCheckout(false);
       checkoutInProgressRef.current = false;
@@ -388,8 +402,8 @@ export function useCartCheckout({
   ]);
 
   const resetPaymentError = useCallback(() => {
-    setPaymentError(null);
-  }, []);
+    clearPaymentError();
+  }, [clearPaymentError]);
 
   return {
     startingCheckout,

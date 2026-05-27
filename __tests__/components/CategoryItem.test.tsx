@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import { test, expect, jest } from '@jest/globals';
 import { render, renderWithDarkTheme, screen, fireEvent } from '@/test-utils/renderWithTheme';
 import CategoryItem, { CategorySkeleton } from '@/components/elements/CategoryItem/CategoryItem';
@@ -17,7 +18,7 @@ describe('<CategoryItem />', () => {
     render(<CategoryItem category={category} onPress={onPress} />);
 
     expect(screen.getByText('Vitamin')).not.toBeNull();
-    fireEvent.press(screen.getByLabelText('Vitamin category'));
+    fireEvent.press(screen.getByLabelText('Jelajahi kategori Vitamin'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -44,19 +45,42 @@ describe('<CategorySkeleton />', () => {
 
   test('renders with custom count', async () => {
     render(<CategorySkeleton isLargeScreen={false} count={4} />);
-    const items = screen.getAllByTestId('category-skeleton-item');
+    const items = screen.getAllByTestId('category-skeleton-item', { includeHiddenElements: true });
     expect(items).toHaveLength(4);
   });
 
   test('renders default 8 items when count not specified', async () => {
     render(<CategorySkeleton isLargeScreen />);
-    const items = screen.getAllByTestId('category-skeleton-item');
+    const items = screen.getAllByTestId('category-skeleton-item', { includeHiddenElements: true });
     expect(items).toHaveLength(8);
   });
 
   test('renders correct count for mobile layout', async () => {
     render(<CategorySkeleton isLargeScreen={false} count={2} />);
-    const items = screen.getAllByTestId('category-skeleton-item');
+    const items = screen.getAllByTestId('category-skeleton-item', { includeHiddenElements: true });
     expect(items).toHaveLength(2);
+  });
+
+  test('aligns mobile skeleton width with the home carousel metrics and hides placeholders', async () => {
+    render(
+      <CategorySkeleton isLargeScreen={false} count={2} width={169} gap="$3" peekOffset={7} />,
+    );
+    const items = screen.getAllByTestId('category-skeleton-item', { includeHiddenElements: true });
+
+    expect(items).toHaveLength(2);
+    expect(items[0].props.accessible).toBe(false);
+    expect(items[0].props.accessibilityElementsHidden).toBe(true);
+    expect(items[0].props.importantForAccessibility).toBe('no-hide-descendants');
+    expect(items[0].props['aria-hidden']).toBe(true);
+  });
+
+  test('uses the final category grid layout variant on larger screens', async () => {
+    render(<CategorySkeleton isLargeScreen count={3} layout="grid3" />);
+    const items = screen.getAllByTestId('category-skeleton-item', { includeHiddenElements: true });
+    const itemStyle = StyleSheet.flatten(items[0].props.style) as Record<string, unknown>;
+
+    expect(items).toHaveLength(3);
+    expect(itemStyle.flexBasis).toBe('32%');
+    expect(itemStyle.flexGrow).toBe(0);
   });
 });

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import {
   createCheckoutOrder,
+  createSnapToken,
   getOrderPaymentStatus,
   pollOrderPaymentStatus,
 } from '@/services/checkout.service';
@@ -249,6 +250,24 @@ describe('checkout.service', () => {
 
     expect(mockFunctionInvoke).not.toHaveBeenCalled();
     expect(result.error?.message).toContain('Alamat tujuan belum lengkap');
+  });
+
+  test('maps create-snap-token non-2xx transport errors to the Midtrans fallback', async () => {
+    mockFunctionInvoke.mockResolvedValue({
+      data: null,
+      error: new Error('Edge Function returned a non-2xx status code'),
+    });
+
+    const result = await createSnapToken('order-1');
+
+    expect(result.data).toBeNull();
+    expect(result.error?.message).toBe(
+      'Layanan pembayaran Midtrans sedang bermasalah. Silakan coba beberapa saat lagi.',
+    );
+    expect(mockFunctionInvoke).toHaveBeenCalledWith('create-snap-token', {
+      body: { order_id: 'order-1' },
+      headers: { Authorization: 'Bearer token-1' },
+    });
   });
 
   test('keeps polling when confirmation temporarily fails and authorize is returned', async () => {

@@ -15,7 +15,7 @@ Aplikasi e-commerce apotek berbasis React Native (Expo SDK 54), dengan dukungan 
 - **Tema terang/gelap** dengan deteksi otomatis
 - **Redux Toolkit** untuk state global
 - **Supabase** untuk auth dan backend
-- **Environment** dotenvx (dev/staging/prod)
+- **Environment** dotenvx (dev/preview/prod)
 - **CI/CD** EAS Build dan Preview channel (GitHub Actions)
 - **ESLint 9**, Prettier, Jest
 - **TypeScript** strict mode
@@ -31,7 +31,7 @@ Aplikasi e-commerce apotek berbasis React Native (Expo SDK 54), dengan dukungan 
 **Pertama kali?** → Baca **[GETTING_STARTED.md](./GETTING_STARTED.md)** (env, Supabase, menjalankan app).
 
 1. `npm install`
-2. Salin `.env.dev.example` ke `.env.dev`, isi `EXPO_PROJECT_ID`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY`, dan `API_URL` jika perlu
+2. Salin `.env.dev.example` ke `.env.dev`, isi `EXPO_PROJECT_ID`, `EXPO_PUBLIC_SUPABASE_URL`, dan `EXPO_PUBLIC_SUPABASE_KEY`
 3. `npm run dev` → tekan `i` (iOS), `a` (Android), atau `w` (Web)
 
 ## Struktur navigasi
@@ -63,7 +63,7 @@ Redux logger aktif di development. Untuk mematikan, hapus logger di [utils/store
 
 ## Environment variables
 
-- Template: `.env.dev.example`, `.env.staging.example`, `.env.prod.example`
+- Template: `.env.dev.example`, `.env.preview.example`, `.env.prod.example`
 - Konfigurasi: [app.config.ts](./app.config.ts), [utils/config.ts](./utils/config.ts)
 - Set `owner` di [app.json](./app.json) sesuai username Expo
 - Variabel baru: tambah di `app.config.ts` (extra) dan `utils/config.ts`
@@ -72,10 +72,59 @@ Verifikasi: tampilan bottom sheet saat app jalan, atau `npm run dev:config:publi
 
 ## Build & deploy
 
-- **Mobile (dev):** `npm run dev:build:mobile`
-- **Web:** `npm run dev:build:web` → `npm run dev:serve:web` (uji lokal) → `npm run dev:deploy:web` (EAS Hosting)
+### Environment setup
 
-## Preview channel (PR)
+1. Copy template env:
+   ```bash
+   cp .env.dev.example .env.dev      # For local development
+   cp .env.prod.example .env.prod    # For production build
+   ```
+
+2. Fill in all secrets in `.env.dev` and `.env.prod`:
+   - `GOOGLE_MAPS_API_KEY` — Maps SDK for Android/iOS
+   - `EXPO_PUBLIC_GOOGLE_API_KEY` — Places API (New) + Geocoding API
+   - `EXPO_PUBLIC_SUPABASE_URL` — Supabase project URL
+   - `EXPO_PUBLIC_SUPABASE_KEY` — Supabase publishable key
+
+3. Push secrets to EAS:
+   ```bash
+   # Development secrets
+   npm run dev:secret:push
+
+   # Production secrets
+   dotenvx run -f .env.prod -- eas secret:push --scope project --env-file .env.prod --force
+   ```
+
+### Deploy targets
+
+| Target | Command | Output |
+|--------|---------|--------|
+| **Preview APK** (testing) | `npm run build:android:preview` | APK download from EAS dashboard |
+| **Production APK** (distribution) | `npm run build:android:prod` | APK download from EAS dashboard |
+| **Production Web** | `npm run deploy:web:prod` | Live on EAS Hosting |
+
+### Automatic workflows
+
+- **Preview** — Push to `dev` branch triggers `.eas/workflows/preview.yml` (Android APK + Web preview)
+- **Production** — Push to `main` or `release/*` triggers `.eas/workflows/release.yml` (Android APK + Web production)
+
+### APK distribution (no Play Store)
+
+Since this project has no Play Store budget, distribute APK directly:
+
+1. Build production APK:
+   ```bash
+   npm run build:android:prod
+   ```
+
+2. Download APK from EAS dashboard or use the QR code link
+
+3. Share APK via:
+   - Google Drive / Dropbox
+   - Firebase App Distribution (free)
+   - Direct download link
+
+### Preview channel (PR)
 
 Workflow [.github/workflows/preview.yml](./.github/workflows/preview.yml) memakai [expo-github-action](https://github.com/expo/expo-github-action). Setup:
 
@@ -90,10 +139,13 @@ Workflow [.github/workflows/preview.yml](./.github/workflows/preview.yml) memaka
 | `npm run dev` | Dev server (semua platform) |
 | `npm run dev:ios` / `dev:android` / `dev:web` | Per platform |
 | `npm run dev:doctor` | Cek kesehatan project |
-| `npm run dev:build:mobile` | Build iOS/Android (EAS) |
+| `npm run dev:build:mobile` | Build iOS/Android development client (EAS) |
 | `npm run dev:build:web` | Export web statis |
-| `npm run dev:deploy:web` | Build + deploy web ke EAS Hosting |
-| `npm run dev:secret:push` | Upload env ke EAS secrets |
+| `npm run dev:deploy:web` | Build + deploy web ke EAS Hosting (development) |
+| `npm run dev:secret:push` | Upload env ke EAS secrets (development) |
+| `npm run build:android:preview` | Build Android APK preview (EAS) |
+| `npm run build:android:prod` | Build Android APK production (EAS) |
+| `npm run deploy:web:prod` | Build + deploy web ke EAS Hosting (production) |
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier |
 | `npm run test` | Jest |

@@ -729,6 +729,31 @@ describe('RootLayout auth redirects', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('/home');
   });
 
+  it('replaces logged-out protected payment-success users with the login route', async () => {
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'signed-out',
+      checked: true,
+      loggedIn: false,
+      pendingMfa: false,
+    }));
+    mockUseSegments.mockImplementation(() => ['payment-success']);
+
+    render(<RootLayout />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
+    });
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+  });
+
   it('redirects logged-in pending-MFA protected route users to verify MFA', async () => {
     mockUseAppSlice.mockImplementation(() => ({
       authPhase: 'requires-mfa',
@@ -737,6 +762,31 @@ describe('RootLayout auth redirects', () => {
       pendingMfa: true,
     }));
     mockUseSegments.mockImplementation(() => ['cart']);
+
+    render(<RootLayout />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/verify-mfa');
+    });
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home');
+  });
+
+  it('redirects logged-in pending-MFA payment-success users to verify MFA', async () => {
+    mockUseAppSlice.mockImplementation(() => ({
+      authPhase: 'requires-mfa',
+      checked: true,
+      loggedIn: true,
+      pendingMfa: true,
+    }));
+    mockUseSegments.mockImplementation(() => ['payment-success']);
 
     render(<RootLayout />);
 

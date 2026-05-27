@@ -5,6 +5,7 @@ import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
+import { clearExpoPushToken } from '@/services/notification.service';
 
 // Complete OAuth session for expo-web-browser (native only)
 WebBrowser.maybeCompleteAuthSession();
@@ -140,6 +141,20 @@ export async function signUp(input: SignUpInput) {
 }
 
 export async function signOut(options?: SignOutInput) {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (userData.user?.id) {
+      const { error } = await clearExpoPushToken(userData.user.id);
+
+      if (__DEV__ && error) {
+        console.warn('[auth.service] push token clear before sign out failed:', error);
+      }
+    }
+  } catch (error) {
+    if (__DEV__) console.warn('[auth.service] push token clear before sign out failed:', error);
+  }
+
   if (!options) {
     return supabase.auth.signOut();
   }

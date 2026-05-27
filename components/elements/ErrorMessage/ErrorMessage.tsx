@@ -68,7 +68,7 @@ function ErrorMessage({
                 onPress={onDismiss}
                 backgroundColor="$colorTransparent"
                 padding={4}
-                aria-label="Dismiss error"
+                aria-label="Tutup pesan error"
                 role="button">
                 <CloseIcon size={14} color={dangerColor} />
               </Button>

@@ -280,6 +280,65 @@ export function mapPlaceDetailsResponseToDetails(
   };
 }
 
+interface AddressComponentLike {
+  types: string[];
+  longName?: string;
+  long_name?: string;
+}
+
+function resolveAddressHierarchy(
+  components: AddressComponentLike[],
+  countryCode?: string,
+): {
+  city: string;
+  district: string;
+  province: string;
+  postalCode: string;
+  locality: string;
+  subLocality: string;
+  neighborhood: string;
+  adminArea2: string;
+  adminArea3: string;
+  adminArea4: string;
+} {
+  const get = (type: string) => {
+    const c = components.find(x => x.types.includes(type));
+    return (c?.longName ?? c?.long_name ?? '').trim();
+  };
+
+  const locality = get('locality');
+  const subLocality = get('sublocality') || get('sublocality_level_1');
+  const neighborhood = get('neighborhood');
+  const adminArea2 = get('administrative_area_level_2');
+  const adminArea3 = get('administrative_area_level_3');
+  const adminArea4 = get('administrative_area_level_4');
+  const province = get('administrative_area_level_1');
+  const postalCode = get('postal_code');
+
+  const isIndonesia = countryCode === 'ID';
+
+  const city = isIndonesia
+    ? adminArea2 || locality || adminArea3 || subLocality || ''
+    : locality || adminArea2 || adminArea3 || subLocality || '';
+
+  const district = isIndonesia
+    ? adminArea3 || locality || adminArea4 || subLocality || neighborhood || ''
+    : adminArea3 || adminArea4 || subLocality || neighborhood || '';
+
+  return {
+    city,
+    district,
+    province,
+    postalCode,
+    locality,
+    subLocality,
+    neighborhood,
+    adminArea2,
+    adminArea3,
+    adminArea4,
+  };
+}
+
 export function convertPlaceDetailsToAddressValue(placeDetails: GooglePlaceDetails): {
   streetAddress: string;
   city: string;
@@ -292,26 +351,12 @@ export function convertPlaceDetailsToAddressValue(placeDetails: GooglePlaceDetai
   const components = placeDetails.addressComponents;
   const streetNumber = components.find(c => c.types.includes('street_number'))?.longName ?? '';
   const route = components.find(c => c.types.includes('route'))?.longName ?? '';
-  const subLocality =
-    components.find(c => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'))
-      ?.longName ?? '';
-  const neighborhood = components.find(c => c.types.includes('neighborhood'))?.longName ?? '';
-  const adminArea2 =
-    components.find(c => c.types.includes('administrative_area_level_2'))?.longName ?? '';
-  const adminArea3 =
-    components.find(c => c.types.includes('administrative_area_level_3'))?.longName ?? '';
-  const adminArea4 =
-    components.find(c => c.types.includes('administrative_area_level_4'))?.longName ?? '';
-  const city =
-    components.find(c => c.types.includes('locality'))?.longName ??
-    adminArea2 ??
-    adminArea3 ??
-    subLocality ??
-    '';
-  const district = adminArea3 || adminArea4 || subLocality || neighborhood || '';
-  const province =
-    components.find(c => c.types.includes('administrative_area_level_1'))?.longName ?? '';
-  const postalCode = components.find(c => c.types.includes('postal_code'))?.longName ?? '';
+
+  const { city, district, province, postalCode, subLocality } = resolveAddressHierarchy(
+    components,
+    'ID',
+  );
+
   const streetParts = [route, streetNumber].filter(Boolean);
   const rawStreetAddress = streetParts.length > 0 ? streetParts.join(' ') : placeDetails.name;
   const sanitizedRaw = sanitizeAddressCandidate(rawStreetAddress);
@@ -336,26 +381,21 @@ export function mapReverseGeocodeResultToAddress(
   const premise = components.find(c => c.types.includes('premise'))?.long_name ?? '';
   const route = components.find(c => c.types.includes('route'))?.long_name ?? '';
   const streetNumber = components.find(c => c.types.includes('street_number'))?.long_name ?? '';
-  const locality = components.find(c => c.types.includes('locality'))?.long_name ?? '';
-  const subLocality =
-    components.find(c => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'))
-      ?.long_name ?? '';
-  const province =
-    components.find(c => c.types.includes('administrative_area_level_1'))?.long_name ?? '';
-  const adminArea2 =
-    components.find(c => c.types.includes('administrative_area_level_2'))?.long_name ?? '';
-  const adminArea3 =
-    components.find(c => c.types.includes('administrative_area_level_3'))?.long_name ?? '';
-  const adminArea4 =
-    components.find(c => c.types.includes('administrative_area_level_4'))?.long_name ?? '';
-  const neighborhood = components.find(c => c.types.includes('neighborhood'))?.long_name ?? '';
-  const postalCode = components.find(c => c.types.includes('postal_code'))?.long_name ?? '';
+
+  const countryCode =
+    components.find(c => c.types.includes('country'))?.short_name ??
+    components.find(c => c.types.includes('country'))?.long_name ??
+    'ID';
+
+  const { city, district, province, postalCode, subLocality } = resolveAddressHierarchy(
+    components,
+    countryCode,
+  );
+
   const streetParts = [route, streetNumber].filter(Boolean);
   const sanitizedFromParts = sanitizeAddressCandidate(streetParts.join(' '));
   const sanitizedFallback = sanitizeAddressCandidate(result.formatted_address.split(',')[0]);
   const streetAddress = sanitizedFromParts || sanitizedFallback || 'Lokasi';
-  const city = locality || adminArea2 || adminArea3 || subLocality || '';
-  const district = adminArea3 || adminArea4 || subLocality || neighborhood || '';
 
   return {
     id: result.place_id,
@@ -366,7 +406,7 @@ export function mapReverseGeocodeResultToAddress(
     province,
     postalCode,
     district,
-    countryCode: 'ID',
+    countryCode,
     latitude: result.geometry.location.lat,
     longitude: result.geometry.location.lng,
     accuracy: null,

@@ -4,14 +4,15 @@ export function normalize(text: string | undefined | null): string {
 
 export function normalizeAdminName(text: string | undefined | null): string {
   return normalize(text)
-    .replace(/^KABUPATEN\s+/, '')
-    .replace(/^KOTA\s+/, '')
-    .replace(/^KAB\.\s*/, '')
-    .replace(/^KAB\s+/, '')
-    .replace(/ADM\.?/g, '')
-    .replace(/ADMINISTRASI/g, '')
-    .replace(/KEPULAUAN/g, 'KEP')
-    .replace(/DAERAH ISTIMEWA YOGYAKARTA/g, 'DI YOGYAKARTA')
+    .replace(/\bKABUPATEN\b/g, '')
+    .replace(/\bKOTA\b/g, '')
+    .replace(/\bKECAMATAN\b/g, '')
+    .replace(/\bKAB\.?\s*/g, '')
+    .replace(/\bKEC\.?\s*/g, '')
+    .replace(/\bADM\.?\s*/g, '')
+    .replace(/\bADMINISTRASI\b/g, '')
+    .replace(/\bKEPULAUAN\b/g, 'KEP')
+    .replace(/\bDAERAH ISTIMEWA YOGYAKARTA\b/g, 'DI YOGYAKARTA')
     .replace(/\s+/g, ' ')
     .trim();
 }

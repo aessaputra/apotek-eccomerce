@@ -1,0 +1,48 @@
+# EAS Build archive rules.
+# Keep remote builds in Continuous Native Generation mode: local native folders are
+# developer build artifacts and must not be uploaded unless the full native project
+# is intentionally committed.
+
+# dependencies
+node_modules/
+
+# Expo/generated output
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native — CNG: EAS Build runs expo prebuild from app.config.ts
+/android
+/ios
+
+# credentials and local env
+*.orig.*
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.env*
+!.env.dev.example
+!.env.preview.example
+!.env.prod.example
+
+# build/cache output
+coverage/
+.jest-cache/
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# local/editor/agent state
+.DS_Store
+*.pem
+.agent/
+.sisyphus/
+.sisypush/
+.worktrees/
+run-gradlew-logs.txt
+.agents/skills/**/.cache/

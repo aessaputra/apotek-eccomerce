@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useToastController } from '@tamagui/toast';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RouteParams } from '@/types/routes.types';
@@ -16,14 +17,7 @@ import {
   useMedia,
   useTheme,
 } from 'tamagui';
-import AppAlertDialog from '@/components/elements/AppAlertDialog';
-import {
-  AlertCircleIcon,
-  CartIcon,
-  CheckCircleIcon,
-  HeartIcon,
-  PillIcon,
-} from '@/components/icons';
+import { AlertCircleIcon, CartIcon, HeartIcon, PillIcon } from '@/components/icons';
 import { addProductToCart } from '@/services/cart.service';
 import {
   formatPrice,
@@ -37,6 +31,11 @@ import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import QuantitySelector from '@/components/elements/QuantitySelector';
 import ProductImageGallery from '@/components/elements/ProductImageGallery';
+import {
+  showAddToCartFailureToast,
+  showAddToCartLoginToast,
+  showAddToCartSuccessToast,
+} from '@/utils/cartToastFeedback';
 
 const ScreenRoot = styled(YStack, {
   flex: 1,
@@ -207,10 +206,10 @@ function ProductErrorState({
             justifyContent="center">
             <AlertCircleIcon size={28} color={getThemeColor(theme, 'danger')} />
           </YStack>
-          <Text fontSize={18} fontWeight="700" color="$color" textAlign="center">
+          <Text fontSize="$5" fontWeight="700" color="$color" textAlign="center">
             Gagal memuat produk
           </Text>
-          <Text fontSize={14} lineHeight={21} color="$colorSubtle" textAlign="center">
+          <Text fontSize="$4" lineHeight={22} color="$colorSubtle" textAlign="center">
             {message}
           </Text>
           <Button
@@ -221,7 +220,7 @@ function ProductErrorState({
             backgroundColor="$primary"
             pressStyle={{ opacity: 0.95, scale: 0.98 }}
             onPress={onRetry}>
-            <Text color="$onPrimary" fontSize={15} fontWeight="700">
+            <Text color="$onPrimary" fontSize="$3" fontWeight="700">
               Coba Lagi
             </Text>
           </Button>
@@ -235,14 +234,13 @@ export default function ProductDetails() {
   const params = useLocalSearchParams<RouteParams<'product-details'>>();
   const media = useMedia();
   const theme = useTheme();
+  const toast = useToastController();
   const { user } = useAppSlice();
   const insets = useSafeAreaInsets();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
-  const [successDialogMessage, setSuccessDialogMessage] = useState<string | null>(null);
   const [product, setProduct] = useState<ProductDetailsData | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -265,17 +263,22 @@ export default function ProductDetails() {
     setIsLoading(true);
     setError(null);
 
-    const nextProduct = await getProductDetailsById(productId);
+    try {
+      const nextProduct = await getProductDetailsById(productId);
 
-    if (!nextProduct) {
-      setProduct(null);
-      setError('Produk tidak ditemukan atau sudah tidak tersedia.');
+      if (!nextProduct) {
+        setProduct(null);
+        setError('Produk tidak ditemukan atau sudah tidak tersedia.');
+        setIsLoading(false);
+        return;
+      }
+
+      setProduct(nextProduct);
       setIsLoading(false);
-      return;
+    } catch {
+      setError('Gagal memuat detail produk. Silakan coba lagi.');
+      setIsLoading(false);
     }
-
-    setProduct(nextProduct);
-    setIsLoading(false);
   }, [productId]);
 
   useEffect(() => {
@@ -293,45 +296,37 @@ export default function ProductDetails() {
 
   const handleAddToCart = useCallback(async () => {
     if (!product) {
-      setActionFeedback('Produk tidak tersedia.');
+      showAddToCartFailureToast(toast, new Error('Produk tidak tersedia.'));
       return false;
     }
 
     if (!user?.id) {
-      setActionFeedback('Silakan login untuk menambahkan produk ke keranjang.');
+      showAddToCartLoginToast(toast);
       return false;
     }
 
     if (product.stock <= 0) {
-      setActionFeedback('Stok produk habis untuk saat ini.');
+      showAddToCartFailureToast(toast, new Error('Stok produk habis untuk saat ini.'));
       return false;
     }
 
-    setActionFeedback(null);
     setIsAddingToCart(true);
 
     const { error: cartError } = await addProductToCart(user.id, product.id, quantity);
     setIsAddingToCart(false);
 
     if (cartError) {
-      setActionFeedback(cartError.message || 'Gagal menambahkan produk ke keranjang.');
+      showAddToCartFailureToast(toast, cartError);
       return false;
     }
 
-    setSuccessDialogMessage(`Produk berhasil ditambahkan ke keranjang (${quantity} item).`);
+    showAddToCartSuccessToast(toast, product.name);
     setIsSheetOpen(false);
     return true;
-  }, [product, quantity, user?.id]);
+  }, [product, quantity, toast, user?.id]);
 
   const handleQuantityChange = useCallback((nextQuantity: number) => {
     setQuantity(nextQuantity);
-    setActionFeedback(null);
-  }, []);
-
-  const handleSuccessDialogOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      setSuccessDialogMessage(null);
-    }
   }, []);
 
   const handleToggleFavorite = useCallback(() => {
@@ -344,7 +339,6 @@ export default function ProductDetails() {
 
   const handleOpenSheet = useCallback(() => {
     if ((product?.stock ?? 0) <= 0) return;
-    setActionFeedback(null);
     setIsSheetOpen(true);
   }, [product?.stock]);
 
@@ -382,9 +376,7 @@ export default function ProductDetails() {
   const formattedTotalPrice = formatPrice(product.price * quantity);
   const isOutOfStock = product.stock <= 0;
   const maxQuantity = Math.max(product.stock, 1);
-  const feedbackExtraPadding = actionFeedback ? 22 : 0;
-  const contentBottomPadding = bottomBarHeight + feedbackExtraPadding;
-  const successDialogColor = getThemeColor(theme, 'primary');
+  const contentBottomPadding = bottomBarHeight;
 
   return (
     <ScreenRoot>
@@ -396,7 +388,7 @@ export default function ProductDetails() {
             <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
               <Text
                 flex={1}
-                fontSize={28}
+                fontSize="$8"
                 lineHeight={34}
                 color="$color"
                 fontWeight="800"
@@ -406,14 +398,17 @@ export default function ProductDetails() {
               </Text>
 
               <Card
-                width={38}
-                height={38}
+                width={44}
+                height={44}
                 borderRadius="$10"
                 backgroundColor="$surface"
                 borderWidth={1}
                 borderColor="$surfaceBorder"
                 alignItems="center"
                 justifyContent="center"
+                accessibilityRole="button"
+                accessibilityLabel={isFavorite ? 'Hapus dari favorit' : 'Tambah ke favorit'}
+                accessibilityState={{ selected: isFavorite }}
                 pressStyle={{ opacity: 0.9, scale: 0.95 }}
                 onPress={handleToggleFavorite}>
                 <HeartIcon
@@ -452,12 +447,12 @@ export default function ProductDetails() {
                   </View>
                 )}
               </CategoryIcon>
-              <Text testID="product-category-label" fontSize={12} color="$color" fontWeight="600">
+              <Text testID="product-category-label" fontSize="$2" color="$color" fontWeight="600">
                 {product.category_name ?? 'Uncategorized'}
               </Text>
             </CategoryTag>
 
-            <Text fontSize={15} lineHeight={23} color="$colorSubtle" mt="$1">
+            <Text fontSize="$3" lineHeight={24} color="$colorSubtle" mt="$1">
               {descriptionLabel}
             </Text>
           </YStack>
@@ -469,12 +464,6 @@ export default function ProductDetails() {
         pb={bottomPaddingInset}
         style={getBottomBarShadow(getThemeColor(theme, 'shadowColor'))}>
         <BottomActionBarContent>
-          {actionFeedback ? (
-            <Text fontSize={13} color="$danger" textAlign="center" numberOfLines={2} mb="$2">
-              {actionFeedback}
-            </Text>
-          ) : null}
-
           <XStack alignItems="stretch" justifyContent="space-between" gap="$3">
             <YStack
               flex={1}
@@ -489,7 +478,7 @@ export default function ProductDetails() {
               px="$3"
               py="$2">
               <Text
-                fontSize={18}
+                fontSize="$5"
                 lineHeight={22}
                 color="$color"
                 fontWeight="800"
@@ -517,7 +506,7 @@ export default function ProductDetails() {
                 />
                 <Text
                   color={isOutOfStock ? '$colorDisabled' : '$onPrimary'}
-                  fontSize={15}
+                  fontSize="$3"
                   fontWeight="700"
                   flexShrink={1}
                   minWidth={0}
@@ -540,13 +529,7 @@ export default function ProductDetails() {
         dismissOnSnapToBottom
         moveOnKeyboardChange
         snapPoints={[35]}
-        animation="medium"
-        animationConfig={{
-          type: 'spring',
-          damping: 24,
-          mass: 0.9,
-          stiffness: 200,
-        }}>
+        animation="medium">
         <Sheet.Overlay
           animation="lazy"
           enterStyle={{ opacity: 0 }}
@@ -565,6 +548,10 @@ export default function ProductDetails() {
             pb={Math.max(insets.bottom + 12, 20)}
             gap="$4"
             pointerEvents="box-none">
+            <Text fontSize="$4" fontWeight="700" color="$color" accessibilityRole="header">
+              Tambah ke Keranjang
+            </Text>
+
             <XStack alignItems="center" gap="$3">
               {imageUrl ? (
                 <Image
@@ -582,15 +569,15 @@ export default function ProductDetails() {
                   alignItems="center"
                   justifyContent="center"
                   backgroundColor="$warningSoft">
-                  <HeartIcon size={24} color={getThemeColor(theme, 'primary')} />
+                  <PillIcon size={24} color={getThemeColor(theme, 'primary')} />
                 </YStack>
               )}
 
               <YStack flex={1} gap="$1">
-                <Text fontSize={16} fontWeight="700" color="$color" numberOfLines={2}>
+                <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={2}>
                   {product.name}
                 </Text>
-                <Text fontSize={13} color="$colorSubtle" fontWeight="600">
+                <Text fontSize="$2" color="$colorSubtle" fontWeight="600">
                   Stok: {product.stock}
                 </Text>
               </YStack>
@@ -601,7 +588,7 @@ export default function ProductDetails() {
               justifyContent="space-between"
               gap="$3"
               pointerEvents="auto">
-              <Text fontSize={14} color="$colorSubtle" fontWeight="600">
+              <Text fontSize="$3" color="$colorSubtle" fontWeight="600">
                 Jumlah
               </Text>
               <QuantitySelector
@@ -620,17 +607,17 @@ export default function ProductDetails() {
               gap="$3"
               pointerEvents="auto">
               <YStack gap="$1">
-                <Text fontSize={14} color="$colorSubtle" fontWeight="600">
+                <Text fontSize="$3" color="$colorSubtle" fontWeight="600">
                   Total
                 </Text>
-                <Text fontSize={24} color="$color" fontWeight="800" letterSpacing={-0.4}>
+                <Text fontSize="$7" color="$color" fontWeight="800" letterSpacing={-0.4}>
                   {formattedTotalPrice}
                 </Text>
               </YStack>
 
               <SheetConfirmButton
                 aria-label="Konfirmasi tambah ke keranjang"
-                aria-describedby="Menambahkan produk ke keranjang"
+                accessibilityHint="Menambahkan produk ke keranjang"
                 onPress={handleConfirmFromSheet}
                 disabled={isAddingToCart || isOutOfStock}>
                 <CartIcon size={22} color={getThemeColor(theme, 'white')} />
@@ -639,18 +626,6 @@ export default function ProductDetails() {
           </YStack>
         </Sheet.Frame>
       </Sheet>
-
-      <AppAlertDialog
-        open={successDialogMessage !== null}
-        onOpenChange={handleSuccessDialogOpenChange}
-        title="Produk berhasil ditambahkan"
-        description={successDialogMessage ?? 'Produk berhasil ditambahkan ke keranjang.'}
-        confirmText="OK"
-        confirmColor={successDialogColor}
-        confirmTextColor="$white"
-        hideTitle
-        icon={<CheckCircleIcon size={48} color={successDialogColor} />}
-      />
     </ScreenRoot>
   );
 }

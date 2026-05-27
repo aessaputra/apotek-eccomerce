@@ -62,4 +62,18 @@ describe('notification routing contract', () => {
       params: { orderId: 'order-77' },
     });
   });
+
+  it('keeps test notifications non-routable even without an order id', () => {
+    expect(
+      parseNotificationRoute({
+        type: 'test_notification',
+        cta_route: null,
+        data: {},
+      }),
+    ).toEqual({
+      kind: 'fallback',
+      reason: 'non_routable_type',
+      fallbackRoute: '/notifications',
+    });
+  });
 });

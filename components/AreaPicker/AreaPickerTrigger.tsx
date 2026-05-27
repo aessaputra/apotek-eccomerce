@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { YStack, Text, XStack } from 'tamagui';
 import { ChevronRight } from '@tamagui/lucide-icons';
 
@@ -32,6 +33,12 @@ function AreaPickerTrigger({
     .map(part => part.trim())
     .filter(Boolean)
     .map(formatSelectionLine);
+  const selectionSummary = selectionLines.join(', ');
+  const accessibleLabel = hasFullSelection
+    ? `Area pengiriman ${selectionSummary}. Ketuk untuk mengubah area pengiriman`
+    : 'Pilih area pengiriman';
+
+  const errorId = useId();
 
   const getBorderColor = () => {
     if (error) return '$danger';
@@ -41,6 +48,14 @@ function AreaPickerTrigger({
   return (
     <YStack gap="$1">
       <YStack
+        role="button"
+        aria-label={accessibleLabel}
+        aria-haspopup="dialog"
+        aria-expanded={false}
+        aria-disabled={disabled}
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : undefined}
+        accessibilityValue={hasFullSelection ? { text: selectionSummary } : undefined}
         backgroundColor="$background"
         borderWidth={hasFullSelection ? 0 : 1.5}
         borderBottomWidth={hasFullSelection ? 1 : 1.5}
@@ -65,20 +80,19 @@ function AreaPickerTrigger({
                   <Text
                     key={line}
                     fontSize="$5"
-                    lineHeight="$1"
+                    lineHeight="$5"
                     color="$color"
                     fontWeight="400"
-                    textTransform="uppercase"
-                    numberOfLines={1}>
+                    textTransform="uppercase">
                     {line}
                   </Text>
                 ))}
               </YStack>
             ) : (
-              <Text fontSize="$4" color="$colorMuted" fontWeight="400" numberOfLines={1}>
+              <Text fontSize="$4" color="$colorMuted" fontWeight="400">
                 {hasPartialSelection
                   ? 'Area tersimpan, silakan pilih ulang untuk menyegarkan detail'
-                  : 'Pilih provinsi, kota, kecamatan, kode pos'}
+                  : 'Provinsi, Kota, Kecamatan, Kode Pos'}
               </Text>
             )}
           </YStack>
@@ -88,11 +102,11 @@ function AreaPickerTrigger({
         </XStack>
       </YStack>
 
-      {error && (
-        <Text fontSize="$2" color="$danger" marginTop="$1">
+      {error ? (
+        <Text id={errorId} fontSize="$2" color="$danger" marginTop="$1">
           {error}
         </Text>
-      )}
+      ) : null}
     </YStack>
   );
 }

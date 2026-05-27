@@ -89,6 +89,7 @@ function AddressForm({
         <FormInput
           ref={refs.receiverNameRef}
           required
+          aria-label="Nama Penerima"
           value={values.receiverName}
           onChangeText={handleReceiverNameChange}
           onBlur={handleReceiverNameBlur}
@@ -103,6 +104,7 @@ function AddressForm({
         <FormInput
           ref={refs.phoneNumberRef}
           required
+          aria-label="Nomor Telepon"
           value={values.phoneNumber}
           onChangeText={handlePhoneNumberChange}
           onBlur={handlePhoneNumberBlur}
@@ -142,9 +144,7 @@ function AddressForm({
             aria-disabled={isSaving}
             aria-invalid={!!errors.streetAddress}
             aria-label={values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
-            aria-describedby={
-              errors.streetAddress ? streetAddressErrorId : 'Membuka pencarian alamat pengiriman'
-            }
+            aria-describedby={errors.streetAddress ? streetAddressErrorId : undefined}
             pressStyle={{ opacity: 0.9, scale: 0.995 }}
             animation="quick"
             onPress={isSaving ? undefined : handleOpenStreetSearch}>
@@ -154,7 +154,7 @@ function AddressForm({
                 fontSize="$4"
                 color={values.streetAddress ? '$color' : '$colorMuted'}
                 fontWeight="400"
-                numberOfLines={2}>
+                flexShrink={1}>
                 {values.streetAddress || ADDRESS_PLACEHOLDER_STREET}
               </Text>
               <ChevronRight size={20} color="$colorMuted" />
@@ -178,7 +178,6 @@ function AddressForm({
           editable={!isSaving}
           returnKeyType="done"
           aria-label="Detail lainnya"
-          aria-describedby="Masukkan detail tambahan seperti blok, unit, atau patokan (opsional)"
         />
       </YStack>
     </YStack>

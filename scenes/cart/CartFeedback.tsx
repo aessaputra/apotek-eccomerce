@@ -1,5 +1,6 @@
 import { RefreshCw } from '@tamagui/lucide-icons';
 import { Button as TamaguiButton, Card, Text, XStack, YStack } from 'tamagui';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 
 type ErrorBannerType = 'warning' | 'danger';
 
@@ -7,10 +8,17 @@ interface ErrorBannerProps {
   title?: string;
   message: string;
   onRetry?: () => void;
+  actionLabel?: string;
   type?: ErrorBannerType;
 }
 
-export function ErrorBanner({ title, message, onRetry, type = 'danger' }: ErrorBannerProps) {
+export function ErrorBanner({
+  title,
+  message,
+  onRetry,
+  actionLabel = 'Muat ulang keranjang',
+  type = 'danger',
+}: ErrorBannerProps) {
   const isWarning = type === 'warning';
   const resolvedTitle =
     title ?? (isWarning ? 'Menampilkan data keranjang tersimpan.' : 'Gagal memuat keranjang.');
@@ -21,7 +29,9 @@ export function ErrorBanner({ title, message, onRetry, type = 'danger' }: ErrorB
       borderWidth={1}
       borderColor={isWarning ? '$primary' : '$danger'}
       padding="$3"
-      backgroundColor={isWarning ? '$surfaceSubtle' : '$surface'}>
+      backgroundColor={isWarning ? '$surfaceSubtle' : '$surface'}
+      role="alert"
+      aria-live={isWarning ? 'polite' : 'assertive'}>
       <YStack gap="$2">
         <Text color={isWarning ? '$primary' : '$danger'} fontWeight="700">
           {resolvedTitle}
@@ -32,13 +42,15 @@ export function ErrorBanner({ title, message, onRetry, type = 'danger' }: ErrorB
             <TamaguiButton
               size="$2"
               circular
+              minWidth={MIN_TOUCH_TARGET}
+              minHeight={MIN_TOUCH_TARGET}
               backgroundColor="transparent"
               borderWidth={1}
               borderColor={isWarning ? '$primary' : '$danger'}
               color={isWarning ? '$primary' : '$danger'}
               onPress={onRetry}
               icon={<RefreshCw size={14} color={isWarning ? '$primary' : '$danger'} />}
-              aria-label="Muat ulang keranjang"
+              aria-label={actionLabel}
             />
           </XStack>
         ) : null}
@@ -58,7 +70,9 @@ export function OfflineBanner({ hasCachedData }: OfflineBannerProps) {
       borderWidth={1}
       borderColor="$warning"
       padding="$3"
-      backgroundColor="$warningSoft">
+      backgroundColor="$warningSoft"
+      role="alert"
+      aria-live="polite">
       <YStack gap="$1">
         <Text color="$warning" fontWeight="700">
           Koneksi internet terputus
@@ -102,7 +116,9 @@ export function CartStatusBanners({
           borderWidth={1}
           borderColor="$warning"
           padding="$3"
-          backgroundColor="$surfaceSubtle">
+          backgroundColor="$surfaceSubtle"
+          role="alert"
+          aria-live="polite">
           <Text color="$warning" fontWeight="600">
             {offlineActionMessage}
           </Text>
@@ -116,6 +132,7 @@ export function CartStatusBanners({
           title="Gagal memperbarui keranjang."
           message={cartActionError}
           onRetry={onDismissCartActionError}
+          actionLabel="Tutup pesan gagal memperbarui keranjang"
           type="warning"
         />
       ) : null}

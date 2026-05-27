@@ -225,7 +225,7 @@ export default function EditProfile() {
                 alignItems="center"
                 gap="$3"
                 aria-label="Foto profil"
-                aria-describedby="Ketuk untuk mengubah foto profil">
+                accessibilityHint="Ketuk untuk mengubah foto profil">
                 <Avatar
                   avatarUrl={user.avatar_url}
                   name={user.full_name || user.name || user.email}
@@ -233,6 +233,12 @@ export default function EditProfile() {
                   editable={true}
                   onUpload={handleAvatarUpload}
                   uploading={uploadingAvatar}
+                  accessibilityLabel="Ubah foto profil"
+                  accessibilityHint={
+                    uploadingAvatar
+                      ? 'Foto profil sedang diunggah.'
+                      : 'Ketuk untuk memilih foto profil baru dari galeri.'
+                  }
                 />
               </YStack>
 
@@ -274,7 +280,7 @@ export default function EditProfile() {
                             setError(null);
                           }
                         }}
-                        onBlur={() => setFullNameError(validateName(fullName))}
+                        onBlur={() => setFullNameError(validateName(fullName.trimEnd()))}
                         autoCapitalize="words"
                         autoCorrect={false}
                         placeholder="Nama lengkap"
@@ -282,12 +288,8 @@ export default function EditProfile() {
                         blurOnSubmit={false}
                         onSubmitEditing={() => phoneInputRef.current?.focus()}
                         aria-label="Input nama lengkap"
-                        aria-describedby="Wajib diisi, gunakan 2-100 karakter"
                         error={fullNameError}
                       />
-                      <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
-                        Gunakan 2-100 karakter.
-                      </Text>
                     </YStack>
 
                     <YStack gap="$2">
@@ -305,19 +307,15 @@ export default function EditProfile() {
                             setError(null);
                           }
                         }}
-                        onBlur={() => setPhoneNumberError(validatePhone(phoneNumber))}
+                        onBlur={() => setPhoneNumberError(validatePhone(phoneNumber.trim()))}
                         autoCapitalize="none"
                         keyboardType="phone-pad"
                         placeholder="08xx xxxx xxxx"
                         returnKeyType="done"
                         onSubmitEditing={handleSaveProfile}
                         aria-label="Input nomor telepon"
-                        aria-describedby="Wajib diisi, 8-15 digit angka"
                         error={phoneNumberError}
                       />
-                      <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
-                        Wajib diisi, 8-15 digit angka.
-                      </Text>
                     </YStack>
 
                     <YStack gap="$2">
@@ -333,7 +331,7 @@ export default function EditProfile() {
                         aria-label="Email akun"
                       />
                       <Text fontSize="$2" color="$colorSubtle" lineHeight="$3" px="$1">
-                        Email dikelola melalui pengaturan autentikasi akun.
+                        Alamat email dikelola melalui pengaturan autentikasi akun.
                       </Text>
                     </YStack>
                   </YStack>
@@ -350,7 +348,7 @@ export default function EditProfile() {
             extraBottomOffset={extraBottomOffset}
             keyboardAnchored={Platform.OS === 'android'}
             aria-label="Simpan perubahan profil"
-            aria-describedby="Menyimpan pembaruan informasi profil"
+            accessibilityHint="Menyimpan pembaruan informasi profil"
           />
         </YStack>
       </KeyboardAvoidingWrapper>

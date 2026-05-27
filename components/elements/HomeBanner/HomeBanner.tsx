@@ -18,6 +18,8 @@ export interface HomeBannerSkeletonProps {
   placement?: HomeBannerPlacement;
 }
 
+export const HOME_BANNER_CONTENT_OVERLAY_BACKGROUND = '$colorTransparent';
+
 function getAspectRatio(placement: HomeBannerPlacement): number {
   return placement === 'home_banner_top' ? 3 / 1 : 2 / 1;
 }
@@ -69,22 +71,22 @@ const BANNER_THEME_CONFIG: Record<
   }
 > = {
   promotional: {
-    titleColor: '#FFFFFF',
-    bodyColor: 'rgba(255,255,255,0.92)',
+    titleColor: '$white',
+    bodyColor: '$white',
     fallbackBg: '$warningSoft',
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: '$white',
   },
   informational: {
-    titleColor: '#FFFFFF',
-    bodyColor: 'rgba(255,255,255,0.92)',
+    titleColor: '$white',
+    bodyColor: '$white',
     fallbackBg: '$infoSoft',
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: '$white',
   },
   branding: {
-    titleColor: '#FFFFFF',
-    bodyColor: 'rgba(255,255,255,0.88)',
+    titleColor: '$white',
+    bodyColor: '$white',
     fallbackBg: '$surfaceSubtle',
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: '$white',
   },
 };
 
@@ -98,8 +100,24 @@ export const HomeBannerSkeleton = memo(function HomeBannerSkeleton({
 }: HomeBannerSkeletonProps) {
   const aspectRatio = getAspectRatio(placement);
   return (
-    <BannerContainer testID="home-banner-skeleton" aspectRatio={aspectRatio}>
-      <YStack flex={1} backgroundColor="$surface" justifyContent="flex-end" padding="$3.5" gap="$2">
+    <BannerContainer
+      testID="home-banner-skeleton"
+      aspectRatio={aspectRatio}
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      aria-hidden={true}>
+      <YStack
+        flex={1}
+        backgroundColor="$surface"
+        justifyContent="flex-end"
+        padding="$3.5"
+        gap="$2"
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        aria-hidden={true}
+        pointerEvents="none">
         {showIllustration ? (
           <SkeletonBlock width="100%" height="100%" position="absolute" top={0} left={0} />
         ) : null}
@@ -127,6 +145,10 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
   const aspectRatio = banner ? getAspectRatio(banner.placementKey) : 3 / 1;
   const showsImage = hasMediaUrl && !imageFailed;
   const mediaUrl = banner?.mediaUrl;
+  const accessibilityLabel = [banner?.title, banner?.body].filter(Boolean).join('. ');
+  const bannerContainerAccessibilityLabel = hasValidCTA
+    ? undefined
+    : accessibilityLabel || 'Banner beranda';
 
   useEffect(() => {
     if (previousMediaUrlRef.current !== mediaUrl) {
@@ -141,7 +163,11 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
 
   if (!hasText && !hasValidCTA && hasMediaUrl) {
     return (
-      <BannerContainer testID={`home-banner-${banner.placementKey}`} aspectRatio={aspectRatio}>
+      <BannerContainer
+        testID={`home-banner-${banner.placementKey}`}
+        aspectRatio={aspectRatio}
+        accessible
+        accessibilityLabel={bannerContainerAccessibilityLabel}>
         {imageFailed ? (
           <YStack flex={1} backgroundColor={theme.fallbackBg} />
         ) : (
@@ -160,7 +186,11 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
   }
 
   return (
-    <BannerContainer testID={`home-banner-${banner.placementKey}`} aspectRatio={aspectRatio}>
+    <BannerContainer
+      testID={`home-banner-${banner.placementKey}`}
+      aspectRatio={aspectRatio}
+      accessible={!hasValidCTA}
+      accessibilityLabel={bannerContainerAccessibilityLabel}>
       {showsImage ? (
         <Image
           source={{ uri: banner.mediaUrl! }}
@@ -178,7 +208,9 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
         <YStack flex={1} backgroundColor={theme.fallbackBg} />
       )}
 
-      <ContentOverlay>
+      <ContentOverlay
+        testID={`home-banner-content-${banner.placementKey}`}
+        backgroundColor={HOME_BANNER_CONTENT_OVERLAY_BACKGROUND}>
         {banner.title ? (
           <Text
             color={showsImage ? theme.titleColor : '$color'}
@@ -186,10 +218,7 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
             lineHeight={20}
             fontWeight="700"
             letterSpacing={-0.3}
-            numberOfLines={2}
-            textShadowColor={showsImage ? 'rgba(0,0,0,0.5)' : undefined}
-            textShadowOffset={showsImage ? { width: 0, height: 1 } : undefined}
-            textShadowRadius={showsImage ? 3 : undefined}>
+            numberOfLines={2}>
             {banner.title}
           </Text>
         ) : null}
@@ -200,10 +229,8 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
             fontSize={13}
             lineHeight={17}
             fontWeight="500"
-            numberOfLines={2}
-            textShadowColor={showsImage ? 'rgba(0,0,0,0.4)' : undefined}
-            textShadowOffset={showsImage ? { width: 0, height: 1 } : undefined}
-            textShadowRadius={showsImage ? 2 : undefined}>
+            opacity={showsImage ? 0.92 : 1}
+            numberOfLines={2}>
             {banner.body}
           </Text>
         ) : null}
@@ -216,6 +243,7 @@ function HomeBanner({ banner, onCTAPress }: HomeBannerProps) {
             accessible
             accessibilityRole="button"
             accessibilityLabel={cta.label}
+            accessibilityHint="Buka halaman dari banner beranda"
             borderWidth={1}
             borderColor={theme.borderColor}
             testID={`home-banner-cta-${banner.placementKey}`}>

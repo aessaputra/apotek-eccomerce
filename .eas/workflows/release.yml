@@ -1,0 +1,54 @@
+name: Production Release
+
+on:
+  push:
+    branches:
+      - main
+      - release/**
+  workflow_dispatch: {}
+
+jobs:
+  # NOTE: iOS App Store requires Apple Developer Program ($99/year).
+  # Uncomment build-ios and submit-ios jobs when you have an active membership.
+  # For now, focus on Android APK (internal distribution) and Web.
+
+  # build-ios:
+  #   name: Build iOS Production
+  #   type: build
+  ���   params:
+  #     platform: ios
+  #     profile: production
+
+  build-android:
+    name: Build Android APK Production
+    type: build
+    params:
+      platform: android
+      profile: production
+      # Build APK instead of AAB for direct distribution (no Play Store)
+      # Change to "app-bundle" if you get Play Store access later
+      buildType: apk
+
+  # submit-ios:
+  #   name: Submit iOS to App Store
+  #   type: submit
+  #   needs: [build-ios]
+  #   params:
+  #     build_id: ${{ needs.build-ios.outputs.build_id }}
+  #     profile: production
+
+  # NOTE: Play Store submission disabled — no Play Console budget.
+  # Re-enable when you have a Google Play Developer account ($25 one-time).
+  # submit-android:
+  #   name: Submit Android to Play Store
+  #   type: submit
+  #   needs: [build-android]
+  #   params:
+  #     build_id: ${{ needs.build-android.outputs.build_id }}
+  #     profile: production
+
+  deploy-web:
+    name: Deploy Web to Production
+    type: deploy
+    params:
+      prod: true

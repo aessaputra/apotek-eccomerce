@@ -1,4 +1,5 @@
-import { Card, Text, XStack, YStack } from 'tamagui';
+import { Button, Card, Text, XStack, YStack } from 'tamagui';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
 import type { PostalOption } from './areaPickerHelpers';
 import type { SelectionStage } from './areaPickerTypes';
@@ -29,9 +30,20 @@ export default function AreaPickerSelectionSummary({
           Lokasi Terpilih
         </Text>
         {(selectedProvince || selectedCity || selectedDistrict) && (
-          <Text color="$primary" fontSize="$3" fontWeight="500" onPress={onReset}>
+          <Button
+            chromeless
+            minHeight={MIN_TOUCH_TARGET}
+            minWidth={MIN_TOUCH_TARGET}
+            paddingHorizontal="$2"
+            color="$primary"
+            fontSize="$3"
+            fontWeight="500"
+            role="button"
+            aria-label="Atur ulang pilihan lokasi"
+            pressStyle={{ opacity: 0.8 }}
+            onPress={onReset}>
             Atur Ulang
-          </Text>
+          </Button>
         )}
       </XStack>
 
@@ -39,8 +51,9 @@ export default function AreaPickerSelectionSummary({
         <XStack
           alignItems="center"
           gap="$2"
-          minHeight={44}
+          minHeight={MIN_TOUCH_TARGET}
           role="button"
+          aria-disabled={!selectedProvince}
           aria-label={
             selectedProvince ? `Ubah provinsi ${selectedProvince.name}` : 'Pilih provinsi'
           }
@@ -53,7 +66,9 @@ export default function AreaPickerSelectionSummary({
           <Text
             fontSize="$5"
             color={selectedProvince ? '$color' : '$colorMuted'}
-            fontWeight={stage === 'province' ? '600' : '400'}>
+            fontWeight={stage === 'province' ? '600' : '400'}
+            flex={1}
+            minWidth={0}>
             {selectedProvince?.name.toUpperCase() || 'Pilih Provinsi'}
           </Text>
         </XStack>
@@ -62,8 +77,9 @@ export default function AreaPickerSelectionSummary({
           <XStack
             alignItems="center"
             gap="$2"
-            minHeight={44}
+            minHeight={MIN_TOUCH_TARGET}
             role="button"
+            aria-disabled={!selectedCity}
             aria-label={
               selectedCity ? `Ubah kota ${selectedCity.name}` : 'Pilih kota atau kabupaten'
             }
@@ -78,7 +94,9 @@ export default function AreaPickerSelectionSummary({
             <Text
               fontSize="$5"
               color={selectedCity ? '$color' : '$colorMuted'}
-              fontWeight={stage === 'city' ? '600' : '400'}>
+              fontWeight={stage === 'city' ? '600' : '400'}
+              flex={1}
+              minWidth={0}>
               {selectedCity?.name.toUpperCase() || 'Pilih Kota/Kabupaten'}
             </Text>
           </XStack>
@@ -88,8 +106,9 @@ export default function AreaPickerSelectionSummary({
           <XStack
             alignItems="center"
             gap="$2"
-            minHeight={44}
+            minHeight={MIN_TOUCH_TARGET}
             role="button"
+            aria-disabled={!selectedDistrict}
             aria-label={
               selectedDistrict ? `Ubah kecamatan ${selectedDistrict.name}` : 'Pilih kecamatan'
             }
@@ -108,14 +127,16 @@ export default function AreaPickerSelectionSummary({
             <Text
               fontSize="$5"
               color={selectedDistrict ? '$color' : '$colorMuted'}
-              fontWeight={stage === 'district' ? '600' : '400'}>
+              fontWeight={stage === 'district' ? '600' : '400'}
+              flex={1}
+              minWidth={0}>
               {selectedDistrict?.name.toUpperCase() || 'Pilih Kecamatan'}
             </Text>
           </XStack>
         )}
 
         {(selectedDistrict || stage === 'postal') && (
-          <XStack alignItems="center" gap="$2" minHeight={44}>
+          <XStack alignItems="center" gap="$2" minHeight={MIN_TOUCH_TARGET}>
             <YStack
               width={2}
               height={20}
@@ -143,7 +164,9 @@ export default function AreaPickerSelectionSummary({
               <Text
                 fontSize="$5"
                 color="$colorMuted"
-                fontWeight={stage === 'postal' ? '600' : '400'}>
+                fontWeight={stage === 'postal' ? '600' : '400'}
+                flex={1}
+                minWidth={0}>
                 {stage === 'postal' ? 'Pilih Kode Pos' : 'Kode Pos'}
               </Text>
             )}

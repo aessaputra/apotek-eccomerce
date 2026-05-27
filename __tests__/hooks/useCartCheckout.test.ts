@@ -393,6 +393,86 @@ describe('useCartCheckout', () => {
     );
   });
 
+  it('surfaces snap token failures as paymentError without calling cart-level onError', async () => {
+    const onError = jest.fn();
+    const paymentMessage =
+      'Layanan pembayaran Midtrans sedang bermasalah. Silakan coba beberapa saat lagi.';
+
+    mockCreateCheckoutOrder.mockResolvedValue({
+      data: {
+        order_id: 'order-1',
+        total_amount: 50000,
+        item_count: 2,
+        checkout_idempotency_key: 'idem-1',
+      },
+      error: null,
+    });
+    mockCreateSnapToken.mockResolvedValue({
+      data: null,
+      error: new Error(paymentMessage),
+    });
+
+    const { result } = renderHook(() =>
+      useCartCheckout({
+        userId: 'user-1',
+        selectedAddress,
+        selectedAddressId: 'address-1',
+        loadingSelectedAddress: false,
+        selectedShippingOption,
+        selectedShippingKey: 'jne-reg',
+        selectedCartItemIds,
+        quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+        snapshot,
+        isOffline: false,
+        onError,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleStartCheckout();
+    });
+
+    expect(onError).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(result.current.paymentError).toBe(paymentMessage);
+    });
+  });
+
+  it('routes persistence failures through checkout onError without setting paymentError', async () => {
+    const onError = jest.fn();
+    const checkoutError = new Error('Checkout session persistence failed.');
+
+    mockSetPersistData.mockRejectedValueOnce(checkoutError);
+
+    const { result } = renderHook(() =>
+      useCartCheckout({
+        userId: 'user-1',
+        selectedAddress,
+        selectedAddressId: 'address-1',
+        loadingSelectedAddress: false,
+        selectedShippingOption,
+        selectedShippingKey: 'jne-reg',
+        selectedCartItemIds,
+        quoteDestination: { areaId: 'AREA-1', postalCode: 12345 },
+        snapshot,
+        isOffline: false,
+        onError,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleStartCheckout();
+    });
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Checkout session persistence failed.' }),
+    );
+    expect(result.current.paymentError).toBeNull();
+    expect(mockCreateCheckoutOrder).not.toHaveBeenCalled();
+    expect(mockCreateSnapToken).not.toHaveBeenCalled();
+  });
+
   it('resumes payment with activeOrderId and no selectedShippingOption', async () => {
     mockGetPersistData.mockResolvedValue({
       fingerprint:

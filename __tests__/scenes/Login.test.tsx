@@ -66,6 +66,13 @@ describe('<Login />', () => {
     mockRequiresMfaChallenge.mockReturnValue(false);
   });
 
+  it('shows the clarified login title and subtitle copy', () => {
+    render(<Login />);
+
+    expect(screen.getAllByText('Masuk')).toHaveLength(2);
+    expect(screen.getByText('Lanjutkan belanja kebutuhan kesehatan Anda.')).toBeTruthy();
+  });
+
   it('shows the required-field message for an empty form', () => {
     render(<Login />);
 
@@ -82,7 +89,7 @@ describe('<Login />', () => {
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
     fireEvent.press(screen.getByLabelText('Masuk'));
 
-    expect(screen.getByText('Format email tidak valid.')).toBeTruthy();
+    expect(screen.getByText('Masukkan email yang valid, contoh: nama@email.com.')).toBeTruthy();
     expect(mockSignInWithPassword).not.toHaveBeenCalled();
   });
 
@@ -121,11 +128,11 @@ describe('<Login />', () => {
     await waitFor(() => {
       expect(mockSignInWithGoogle).toHaveBeenCalledWith();
     });
-    expect(screen.queryByText('Login dibatalkan.')).toBeNull();
+    expect(screen.queryByText('Proses masuk dibatalkan.')).toBeNull();
     expect(screen.queryByText('Login Google dibatalkan')).toBeNull();
   });
 
-  it('shows Google OAuth service errors returned by the auth service', async () => {
+  it('shows a localized fallback for unmapped Google OAuth service errors', async () => {
     mockSignInWithGoogle.mockImplementationOnce(async () => ({
       data: null,
       error: { message: 'Provider unavailable', name: 'UnknownGoogleError' },
@@ -134,7 +141,10 @@ describe('<Login />', () => {
 
     fireEvent.press(screen.getByLabelText('Masuk dengan Google'));
 
-    expect(await screen.findByText('Provider unavailable')).toBeTruthy();
+    expect(
+      await screen.findByText('Belum berhasil masuk dengan Google. Silakan coba lagi.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Provider unavailable')).toBeNull();
   });
 
   it('shows the generic login error when password sign-in throws', async () => {
@@ -147,15 +157,13 @@ describe('<Login />', () => {
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
     fireEvent.press(screen.getByLabelText('Masuk'));
 
-    expect(
-      await screen.findByText('Terjadi kesalahan saat login. Silakan coba lagi.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('Belum berhasil masuk. Silakan coba lagi.')).toBeTruthy();
   });
 
   it('navigates to forgot password from the Login form card', () => {
     render(<Login />);
 
-    fireEvent.press(screen.getByLabelText('Lupa Password?'));
+    fireEvent.press(screen.getByLabelText('Lupa password?'));
 
     expect(mockPush).toHaveBeenCalledWith('/(auth)/forgot-password');
   });
@@ -164,12 +172,12 @@ describe('<Login />', () => {
     mockRouteParams = { resetSuccess: LOGIN_RESET_SUCCESS_MESSAGE };
     render(<Login />);
 
-    expect(screen.getByText(LOGIN_RESET_SUCCESS_MESSAGE)).toBeTruthy();
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
-    });
+    const successMessages = await screen.findAllByText(LOGIN_RESET_SUCCESS_MESSAGE);
+    expect(successMessages).toHaveLength(1);
+    expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
+    expect(mockReplace).toHaveBeenCalledTimes(1);
 
-    fireEvent.press(screen.getByLabelText('Dismiss success'));
+    fireEvent.press(await screen.findByLabelText('Tutup pesan berhasil'));
 
     await waitFor(() => {
       expect(screen.queryByText(LOGIN_RESET_SUCCESS_MESSAGE)).toBeNull();

@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-04-30
-**Commit:** 29c1a91
+**Generated:** 2026-05-24
+**Commit:** de745f6
 **Branch:** dev
 
 ## OVERVIEW
@@ -23,13 +23,16 @@ Expo SDK 54 pharmacy e-commerce app built with React Native 0.81.5, React 19.1, 
 ├── types/              # Domain, route, generated Supabase types — see types/AGENTS.md
 ├── __tests__/          # Centralized Jest tests — see __tests__/AGENTS.md
 ├── .github/workflows/  # CI and EAS Update workflows — see .github/workflows/AGENTS.md
-└── android/            # Checked-in native Android project — see android/AGENTS.md
+├── .eas/workflows/     # EAS dashboard build/deploy workflows — see .eas/workflows/AGENTS.md
+└── android/            # Local native Android project notes — see android/AGENTS.md
 ```
 
 ## CHILD AGENTS
 
 - `app/AGENTS.md` — route group wrappers, protected-route sync, thin-route rules.
 - `components/AGENTS.md` — Tamagui component shape, UI-only boundaries.
+- `components/elements/AGENTS.md` — atomic product/order/form UI catalog, skeletons, accessibility.
+- `components/layouts/AGENTS.md` — tab bar, header, bottom action, and sheet layout primitives.
 - `components/AddressForm/AGENTS.md` — address form composite, suggestion list, default toggle.
 - `components/MapPin/AGENTS.md` — native map picker, Expo Location, web-safe dynamic map loading.
 - `services/AGENTS.md` — Supabase, edge functions, notification service, service return patterns.
@@ -46,6 +49,7 @@ Expo SDK 54 pharmacy e-commerce app built with React Native 0.81.5, React 19.1, 
 - `scenes/orders/AGENTS.md` — order list/detail/status-tab conventions.
 - `__tests__/AGENTS.md` — centralized Jest layout, mocks, validation expectations.
 - `.github/workflows/AGENTS.md` — test CI, preview branch/env mapping, EAS Update quirks.
+- `.eas/workflows/AGENTS.md` — EAS platform workflow build/deploy jobs for preview/release.
 - `android/AGENTS.md` — Gradle, dev namespace, Hermes/New Architecture constraints.
 
 Read the closest child file before editing inside that directory. Root covers global rules only.
@@ -66,43 +70,27 @@ Read the closest child file before editing inside that directory. Root covers gl
 | Add env/config             | `app.config.ts` + `utils/config.ts` + `.env.*.example`               | Public env vars must be wired in all three                          |
 | Add theme token            | `themes.ts` + `constants/ui.ts` + `utils/theme.ts`                   | Keep fallbacks synchronized                                         |
 | Add tests                  | `__tests__/[domain]/`                                                | Centralized tests, inline mocks                                     |
-| Check CI/deploy            | `.github/workflows/` + `eas.json`                                    | Test CI + EAS preview/update flows                                  |
+| Check CI/deploy            | `.github/workflows/` + `.eas/workflows/` + `eas.json`                 | GitHub quality gates, OTA updates, EAS build/deploy workflows       |
 | Check backend contract     | `/home/coder/dev/pharma/admin-panel/supabase`                        | Schema migrations + Edge Functions are backend truth                |
 | Check admin operations     | `/home/coder/dev/pharma/admin-panel`                                 | Backoffice owns operational workflows and admin read models         |
 
 ## ARCHITECTURE PATTERNS
 
-### Routing
-
 - `package.json` entry is `expo-router/entry`; `app/_layout.tsx` is the true composition root.
 - `app/` route files are thin wrappers/re-exports into `scenes/`.
 - Allowed route-logic exceptions: `app/_layout.tsx`, `app/index.tsx`, `app/google-auth.tsx`, and `app/+native-intent.tsx`.
-- Protected groups are hardcoded in `app/_layout.tsx`: `['(tabs)', 'cart', 'product-details']`; protected stack layouts also use `withAuthGuard`.
-
-### Provider composition
-
+- Protected groups are hardcoded in `app/_layout.tsx`: `['(tabs)', 'cart', 'product-details', 'payment-success']`; protected stack layouts also use `withAuthGuard`.
 - `providers/Provider.tsx`: Gesture Handler → Safe Area → Redux → Tamagui → React Navigation theme.
 - `providers/QueryProvider.tsx`: one long-lived QueryClient (`staleTime` 1h, `gcTime` 24h, `retry: 2`).
 - `providers/AuthProvider.tsx`: session bootstrap, OAuth hash handling, role/banned checks, push-token sync, mobile token refresh.
-
-### Service/data boundary
-
 - `utils/supabase.ts` is the only Supabase client creator. Its crypto polyfill import must remain first.
 - Services own query shaping, normalization, edge-function calls, retry/abort behavior, and error translation.
 - Components and scenes should consume services/hooks, not Supabase clients.
 - Public service helpers go through `services/index.ts` when shared broadly; `notification.service.ts` is a direct-use service for push-token/realtime notification flows.
-
-### Cross-repo dependencies
-
 - Backend Supabase repo: `/home/coder/dev/pharma/admin-panel/supabase`; read its `AGENTS.md` before schema, RLS, RPC, or Edge Function contract changes.
-- Backend truth lives in `supabase/migrations/*.sql` and `supabase/functions/*`; shared Deno helpers are in `supabase/functions/_shared`.
 - Frontend-relevant functions include `biteship`, `create-checkout-order`, `create-snap-token`, `confirm-midtrans-payment`, `confirm-order-received`, and `push`.
 - Admin operational repo: `/home/coder/dev/pharma/admin-panel`; read root `AGENTS.md` and `src/providers/AGENTS.md` before order, catalog, banner, shipping, branding, notification, or ban-state changes.
-- Admin app owns backoffice truth: order transitions/read models, product/category/home-banner CRUD, store settings, active couriers, reports, admin notifications, and customer ban/unban flows.
 - Never copy admin/server secrets into frontend env; service-role, Midtrans, Biteship, Expo push, DB, and Vault secrets stay backend-only.
-
-### State and theme split
-
 - Redux Toolkit (`slices/app.slice.ts`) stores auth state and app-wide caches; Zustand currently owns only area-picker workflow state.
 - React Query provider exists globally, but most current server-state caching is still service/hook/Redux driven.
 - Tamagui themes live in `themes.ts`; `constants/ui.ts` mirrors fallbacks; `utils/theme.ts` bridges non-Tamagui/native style consumers.
@@ -151,12 +139,12 @@ npm run dev:deploy:web               # EAS Hosting development deploy
 ## TESTING & CI NOTES
 
 - Jest uses `jest-expo`, `jest.setup.js`, fake timers, and common native mocks; CI runs `npm ci`, format check, lint, then Jest on Node 20.x.
-- Preview CI maps branches to env examples and runs EAS Update; `staging` currently references missing `.env.staging.example`.
+- Preview CI maps branches to env examples and runs EAS Update.
+- EAS platform workflows build preview Android APKs from `dev`, release Android APKs from `main`/`release/**`, and deploy web targets.
 - Preview CI installs `lightningcss-linux-x64-gnu --save-optional` after `npm ci`; preserve this Tamagui/Linux workaround.
 
 ## NOTES
 
-- Node 20.x is required; EAS base pins Node 20.19.4; `.npmrc` enables `legacy-peer-deps=true`; env examples present: `.env.dev.example`, `.env.prod.example`.
-- `google-services.json` is present at repo root and conditionally wired by `app.config.ts`.
-- Native Android Gradle uses development namespace/applicationId `com.apotekecommerce.dev`; `app.config.ts` default package is `com.apotekecommerce`.
+- Node 20.x is required; EAS base pins Node 20.19.4; `.npmrc` enables `legacy-peer-deps=true`; env examples present: `.env.dev.example`, `.env.preview.example`, `.env.prod.example`.
+- Local Android Gradle uses development namespace `com.apotekecommerce.dev`; remote EAS builds use CNG from `app.config.ts`, where env can override `android.package`.
 - `android/gradle.properties` still contains deprecated `expo.edgeToEdgeEnabled=true`; prefer `edgeToEdgeEnabled` / `react.edgeToEdgeEnabled` going forward.

@@ -2,6 +2,7 @@ import type { AppRoutes, RouteParams, TypedHref } from './routes.types';
 import type { Database, Json, Tables } from './supabase';
 
 export const NOTIFICATION_TYPES = [
+  'test_notification',
   'payment_settlement',
   'payment_failed_or_expired',
   'order_processing',
@@ -12,6 +13,10 @@ export const NOTIFICATION_TYPES = [
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+export type NonRoutableNotificationType = Extract<NotificationType, 'test_notification'>;
+
+export type RoutableNotificationType = Exclude<NotificationType, NonRoutableNotificationType>;
 
 type NotificationAppRoute = Extract<
   keyof AppRoutes,
@@ -39,7 +44,7 @@ export interface NotificationRouteTargetByType {
   order_completed: 'orders/order-detail/[orderId]';
 }
 
-export type NotificationRouteTargetForType<T extends NotificationType> =
+export type NotificationRouteTargetForType<T extends RoutableNotificationType> =
   NotificationRouteTargetByType[T];
 
 export type NotificationRouteKey<T extends NotificationRouteTarget> = T extends `/${infer Route}`
@@ -83,7 +88,12 @@ export interface OrderDeliveredActionRequiredNotificationPayload extends Notific
 
 export type OrderCompletedNotificationPayload = NotificationOrderPayload;
 
+export interface TestNotificationPayload {
+  orderId?: never;
+}
+
 export interface NotificationPayloadByType {
+  test_notification: TestNotificationPayload;
   payment_settlement: PaymentSettlementNotificationPayload;
   payment_failed_or_expired: PaymentFailedOrExpiredNotificationPayload;
   order_processing: OrderProcessingNotificationPayload;
@@ -102,17 +112,18 @@ export interface NotificationRow extends Omit<Tables<'notifications'>, 'type'> {
 
 export type NotificationRouteSource = Pick<NotificationRow, 'type' | 'cta_route' | 'data'>;
 
-export type NotificationNavigationTarget<T extends NotificationType = NotificationType> =
-  T extends NotificationType
-    ? {
-        type: T;
-        pathname: NotificationRouteTargetForType<T>;
-        params: NotificationRouteParams<NotificationRouteTargetForType<T>>;
-      }
-    : never;
+export type NotificationNavigationTarget<
+  T extends RoutableNotificationType = RoutableNotificationType,
+> = T extends RoutableNotificationType
+  ? {
+      type: T;
+      pathname: NotificationRouteTargetForType<T>;
+      params: NotificationRouteParams<NotificationRouteTargetForType<T>>;
+    }
+  : never;
 
-export type ParsedNotificationRoute<T extends NotificationType = NotificationType> =
-  T extends NotificationType
+export type ParsedNotificationRoute<T extends RoutableNotificationType = RoutableNotificationType> =
+  T extends RoutableNotificationType
     ? {
         kind: 'route';
         route: NotificationNavigationTarget<T>;
@@ -121,6 +132,7 @@ export type ParsedNotificationRoute<T extends NotificationType = NotificationTyp
     : never;
 
 export type NotificationRouteFallbackReason =
+  | 'non_routable_type'
   | 'missing_cta_route'
   | 'unsupported_cta_route'
   | 'unsupported_type_route_combination'
@@ -201,6 +213,10 @@ export function parseNotificationPayload<T extends NotificationType>(
   type: T,
   data: Json,
 ): NotificationPayload<T> | null {
+  if (type === 'test_notification') {
+    return {} as NotificationPayload<T>;
+  }
+
   const record = parseNotificationDataRecord(data);
 
   if (!record) {
@@ -273,11 +289,11 @@ export function parseNotificationPayload<T extends NotificationType>(
   }
 }
 
-export function createNotificationNavigationTarget<T extends NotificationType>(
+export function createNotificationNavigationTarget<T extends RoutableNotificationType>(
   type: T,
   payload: NotificationPayload<T>,
 ): NotificationNavigationTarget<T>;
-export function createNotificationNavigationTarget<T extends NotificationType>(
+export function createNotificationNavigationTarget<T extends RoutableNotificationType>(
   type: T,
   payload: NotificationPayload<T>,
 ): NotificationNavigationTarget<T> {
@@ -299,6 +315,14 @@ export function createNotificationNavigationTarget<T extends NotificationType>(
 export function parseNotificationRoute(
   notification: NotificationRouteSource,
 ): NotificationRouteParseResult {
+  if (notification.type === 'test_notification') {
+    return {
+      kind: 'fallback',
+      reason: 'non_routable_type',
+      fallbackRoute: NOTIFICATIONS_FALLBACK_ROUTE,
+    };
+  }
+
   const ctaRoute = notification.cta_route;
 
   if (!ctaRoute) {

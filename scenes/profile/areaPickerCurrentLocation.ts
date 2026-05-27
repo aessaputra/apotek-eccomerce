@@ -410,14 +410,9 @@ function selectRegencyFromCitySignal(
   const fuzzyMatchedRegencies = regencies.filter(option =>
     adminNamesMatch(option.name, address.city),
   );
-  const hasStrongDistrictSignal = Boolean(address.district);
 
-  if (fuzzyMatchedRegencies.length === 1 && hasStrongDistrictSignal) {
-    return findCorroboratedFuzzyRegency(
-      fuzzyMatchedRegencies,
-      districtSearchResults,
-      address.district,
-    );
+  if (fuzzyMatchedRegencies.length === 1) {
+    return fuzzyMatchedRegencies[0];
   }
 
   if (fuzzyMatchedRegencies.length > 1) {

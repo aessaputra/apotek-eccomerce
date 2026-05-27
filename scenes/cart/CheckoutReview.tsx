@@ -13,7 +13,8 @@ import type { CartSnapshot, ItemSummary } from '@/types/cart';
 import type { RouteParams } from '@/types/routes.types';
 import type { ShippingOption } from '@/types/shipping';
 import { translateErrorMessage, type AppError } from '@/utils/error';
-import { BOTTOM_BAR_HEIGHT } from '@/constants/ui';
+import { BOTTOM_BAR_HEIGHT, MIN_TOUCH_TARGET } from '@/constants/ui';
+import { ErrorBanner } from '@/scenes/cart/CartFeedback';
 import { formatRupiah } from '@/scenes/cart/cart.constants';
 import { resolveRouteParam } from '@/scenes/cart/payment.utils';
 
@@ -45,21 +46,6 @@ function parseSelectedCartItemIds(param: string | string[] | undefined): string[
   }
 
   return selectedIds;
-}
-
-function ErrorBanner({ message }: { message: string }) {
-  return (
-    <YStack
-      borderWidth={1}
-      borderColor="$danger"
-      borderRadius="$3"
-      padding="$3"
-      backgroundColor="$dangerSoft">
-      <Text color="$danger" fontSize="$3" fontWeight="600">
-        {message}
-      </Text>
-    </YStack>
-  );
 }
 
 function ReviewSection({
@@ -226,7 +212,7 @@ export default function CheckoutReview() {
           backgroundColor="$primary"
           color="$onPrimary"
           borderRadius="$3"
-          minHeight={44}
+          minHeight={MIN_TOUCH_TARGET}
           onPress={() => router.replace('/cart')}
           aria-label="Kembali ke keranjang">
           Kembali ke Keranjang
@@ -252,7 +238,7 @@ export default function CheckoutReview() {
           padding="$4"
           gap="$1.5">
           <Text color="$color" fontSize="$3" lineHeight="$4">
-            Tinjau Kembali detail pesanan Anda sebelum Melanjutkan pembayaran
+            Tinjau kembali detail pesanan Anda sebelum melanjutkan pembayaran.
           </Text>
           <Text color="$colorSubtle" fontSize="$2" lineHeight="$3">
             Produk yang tidak dipilih tetap tersimpan di keranjang.
@@ -260,7 +246,9 @@ export default function CheckoutReview() {
         </YStack>
 
         {checkoutError ? <ErrorBanner message={checkoutError} /> : null}
-        {paymentError ? <ErrorBanner message={paymentError} /> : null}
+        {paymentError ? (
+          <ErrorBanner title="Pembayaran belum bisa dilanjutkan." message={paymentError} />
+        ) : null}
         {isOffline ? <ErrorBanner message="Checkout tidak tersedia offline." /> : null}
 
         <YStack
@@ -290,7 +278,7 @@ export default function CheckoutReview() {
           <ReviewSection icon={<TruckIcon size={16} color="$primary" />} label="Pengiriman">
             <YStack gap="$0.5" paddingLeft="$5">
               <Text color="$color" fontWeight="700" numberOfLines={1}>
-                {selectedShippingOption.courier_name} — {selectedShippingOption.service_name}
+                {selectedShippingOption.courier_name} - {selectedShippingOption.service_name}
               </Text>
               <Text color="$colorSubtle" fontSize="$2" numberOfLines={1}>
                 Estimasi {selectedShippingOption.estimated_delivery}
@@ -330,7 +318,7 @@ export default function CheckoutReview() {
           </ReviewSection>
         </YStack>
 
-        {activeOrderId ? (
+        {activeOrderId && !startingCheckout ? (
           <YStack
             borderWidth={1}
             borderColor="$warning"
@@ -347,6 +335,7 @@ export default function CheckoutReview() {
             <XStack justifyContent="flex-end">
               <TamaguiButton
                 size="$2"
+                minHeight={MIN_TOUCH_TARGET}
                 borderRadius="$3"
                 backgroundColor="transparent"
                 borderWidth={1}

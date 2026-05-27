@@ -1,5 +1,15 @@
 import { memo } from 'react';
-import { Card, Image, ScrollView, Text, XStack, YStack, styled, useTheme } from 'tamagui';
+import {
+  Card,
+  Image,
+  ScrollView,
+  Text,
+  XStack,
+  YStack,
+  styled,
+  useTheme,
+  type XStackProps,
+} from 'tamagui';
 import { PillIcon } from '@/components/icons';
 import type { CategoryRow } from '@/services/home.service';
 import { getThemeColor } from '@/utils/theme';
@@ -116,6 +126,31 @@ const SkeletonCard = styled(Card, {
   $gtSm: {
     borderRadius: '$7',
   },
+
+  variants: {
+    layout: {
+      scroll: {
+        flexGrow: 0,
+        flexShrink: 0,
+      },
+      grid2: {
+        flexBasis: '48.8%',
+        flexGrow: 0,
+      },
+      grid3: {
+        flexBasis: '32%',
+        flexGrow: 0,
+      },
+      grid4: {
+        flexBasis: '24%',
+        flexGrow: 0,
+      },
+    },
+  } as const,
+
+  defaultVariants: {
+    layout: 'scroll',
+  },
 });
 
 export interface CategoryItemProps {
@@ -129,22 +164,39 @@ export interface CategoryItemProps {
 export interface CategorySkeletonProps {
   isLargeScreen?: boolean;
   count?: number;
+  gap?: XStackProps['gap'];
+  layout?: CategoryItemProps['layout'];
+  width?: number;
+  peekOffset?: number;
 }
 
 export const CategorySkeleton = memo(function CategorySkeleton({
   isLargeScreen = false,
   count = 8,
+  gap = '$3',
+  layout = 'scroll',
+  width,
+  peekOffset = 0,
 }: CategorySkeletonProps) {
+  const constrainedWidth = !isLargeScreen && typeof width === 'number' ? Math.max(width, 44) : null;
+  const skeletonLayout = isLargeScreen ? layout : 'scroll';
   const skeletonItems = Array.from({ length: count }, (_, i) => i + 1).map(i => (
     <SkeletonCard
       key={i}
       testID="category-skeleton-item"
-      minWidth={86}
-      maxWidth={110}
+      layout={skeletonLayout}
+      width={constrainedWidth ?? undefined}
+      minWidth={constrainedWidth ?? 86}
+      maxWidth={constrainedWidth ?? 110}
       $gtSm={{ minWidth: 178, maxWidth: 232 }}
       $gtLg={{ minWidth: 214, maxWidth: 276 }}
       paddingHorizontal="$3.5"
-      paddingVertical="$2.5">
+      paddingVertical="$2.5"
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      aria-hidden={true}
+      pointerEvents="none">
       <XStack alignItems="center" justifyContent="flex-start" gap="$2.5">
         <YStack width={32} height={32} borderRadius="$10" backgroundColor="$surfaceSubtle" />
         <YStack flex={1} maxWidth={92} gap="$1.5">
@@ -157,7 +209,7 @@ export const CategorySkeleton = memo(function CategorySkeleton({
 
   if (isLargeScreen) {
     return (
-      <XStack flexWrap="wrap" gap="$3" justifyContent="flex-start">
+      <XStack flexWrap="wrap" gap={gap} justifyContent="flex-start">
         {skeletonItems}
       </XStack>
     );
@@ -167,8 +219,8 @@ export const CategorySkeleton = memo(function CategorySkeleton({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 2, paddingRight: 6 }}>
-      <XStack gap="$3">{skeletonItems}</XStack>
+      contentContainerStyle={{ paddingRight: peekOffset }}>
+      <XStack gap={gap}>{skeletonItems}</XStack>
     </ScrollView>
   );
 });
@@ -198,8 +250,10 @@ function CategoryItem({
       paddingVertical={sizeConfig.verticalPadding}
       onPress={onPress}
       role={onPress ? 'button' : undefined}
-      aria-label={onPress ? `${category.name} category` : undefined}
-      aria-describedby={onPress ? `Explore ${category.name} products` : undefined}>
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `Jelajahi kategori ${category.name}` : undefined}
+      accessibilityHint={onPress ? 'Buka daftar produk dalam kategori ini' : undefined}
+      aria-label={onPress ? `Jelajahi kategori ${category.name}` : undefined}>
       <XStack alignItems="center" justifyContent="flex-start" gap="$2.5" minHeight={44}>
         {category.logo_url ? (
           <Card

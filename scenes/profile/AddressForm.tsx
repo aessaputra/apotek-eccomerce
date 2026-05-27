@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { YStack, Spinner, styled, ScrollView } from 'tamagui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -114,6 +114,44 @@ export default function AddressFormScreen() {
   const loading = dataLoading;
   const saving = dataSaving;
   const displayedError = generalError ?? dataError;
+  const scrollContentContainerStyle = useMemo(
+    () => ({
+      paddingBottom: scrollPaddingBottom,
+    }),
+    [scrollPaddingBottom],
+  );
+  const currentAddressMapParams = useMemo(
+    () => ({
+      latitude: values.latitude,
+      longitude: values.longitude,
+      streetAddress: values.streetAddress,
+      areaName: values.areaName,
+      areaId: values.areaId,
+      city: values.city,
+      province: values.province,
+      postalCode: values.postalCode,
+    }),
+    [
+      values.areaId,
+      values.areaName,
+      values.city,
+      values.latitude,
+      values.longitude,
+      values.postalCode,
+      values.province,
+      values.streetAddress,
+    ],
+  );
+  const currentAddressContext = useMemo(
+    () => ({
+      areaId: values.areaId,
+      areaName: values.areaName,
+      city: values.city,
+      province: values.province,
+      postalCode: values.postalCode,
+    }),
+    [values.areaId, values.areaName, values.city, values.postalCode, values.province],
+  );
 
   const clearTransientErrors = useCallback(() => {
     if (generalError) {
@@ -128,22 +166,10 @@ export default function AddressFormScreen() {
     (overrides?: Parameters<typeof buildAddressMapRouteParams>[1]) => {
       router.push({
         pathname: '/profile/address-map',
-        params: buildAddressMapRouteParams(
-          {
-            latitude: values.latitude,
-            longitude: values.longitude,
-            streetAddress: values.streetAddress,
-            areaName: values.areaName,
-            areaId: values.areaId,
-            city: values.city,
-            province: values.province,
-            postalCode: values.postalCode,
-          },
-          overrides,
-        ),
+        params: buildAddressMapRouteParams(currentAddressMapParams, overrides),
       });
     },
-    [router, values],
+    [currentAddressMapParams, router],
   );
 
   const applySelectedArea = useCallback(
@@ -207,27 +233,12 @@ export default function AddressFormScreen() {
         consumePendingAreaSelection,
         consumePendingAddressSelection,
         consumePendingMapPickerResult,
-        getCurrentAddressContext: () => ({
-          areaId: values.areaId,
-          areaName: values.areaName,
-          city: values.city,
-          province: values.province,
-          postalCode: values.postalCode,
-        }),
+        getCurrentAddressContext: () => currentAddressContext,
         applySelectedArea,
         applySelectedAddress,
         applyMapPickerResult,
       });
-    }, [
-      applySelectedAddress,
-      applySelectedArea,
-      applyMapPickerResult,
-      values.areaId,
-      values.areaName,
-      values.city,
-      values.postalCode,
-      values.province,
-    ]),
+    }, [applySelectedAddress, applySelectedArea, applyMapPickerResult, currentAddressContext]),
   );
 
   const handleOpenAreaPicker = useCallback(() => {
@@ -274,6 +285,15 @@ export default function AddressFormScreen() {
 
     router.back();
   }, [returnTo, router]);
+
+  const handleMapConfirmRequiredConfirm = useCallback(() => {
+    setMapConfirmRequiredDialogOpen(false);
+    handleOpenMap();
+  }, [handleOpenMap]);
+
+  const handleMapConfirmRequiredCancel = useCallback(() => {
+    setMapConfirmRequiredDialogOpen(false);
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!user?.id) return;
@@ -325,7 +345,26 @@ export default function AddressFormScreen() {
     if (success) {
       setSuccessDialogOpen(true);
     }
-  }, [id, saveAddress, setGeneralError, user?.id, validateAll, values, mapConfirmed]);
+  }, [
+    id,
+    mapConfirmed,
+    saveAddress,
+    setGeneralError,
+    user?.id,
+    validateAll,
+    values.addressNote,
+    values.areaId,
+    values.areaName,
+    values.city,
+    values.isDefault,
+    values.latitude,
+    values.longitude,
+    values.phoneNumber,
+    values.postalCode,
+    values.province,
+    values.receiverName,
+    values.streetAddress,
+  ]);
 
   if (loading) {
     return (
@@ -344,9 +383,7 @@ export default function AddressFormScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
         <YStack flex={1}>
           <FormScrollView
-            contentContainerStyle={{
-              paddingBottom: scrollPaddingBottom,
-            }}
+            contentContainerStyle={scrollContentContainerStyle}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag">
@@ -384,7 +421,7 @@ export default function AddressFormScreen() {
             extraBottomOffset={extraBottomOffset}
             keyboardAnchored={Platform.OS === 'android'}
             aria-label={isEdit ? 'Simpan perubahan alamat' : 'Simpan alamat baru'}
-            aria-describedby="Menyimpan data alamat pengiriman"
+            accessibilityHint="Menyimpan data alamat pengiriman"
           />
         </YStack>
       </KeyboardAvoidingWrapper>
@@ -405,11 +442,8 @@ export default function AddressFormScreen() {
         description="Lokasi peta harus cocok dengan alamat agar pengiriman berhasil. Silakan buka peta lalu konfirmasi titik alamat Anda."
         confirmText="Buka Peta"
         cancelText="Batal"
-        onConfirm={() => {
-          setMapConfirmRequiredDialogOpen(false);
-          handleOpenMap();
-        }}
-        onCancel={() => setMapConfirmRequiredDialogOpen(false)}
+        onConfirm={handleMapConfirmRequiredConfirm}
+        onCancel={handleMapConfirmRequiredCancel}
         confirmColor="$primary"
         confirmTextColor="$onPrimary"
         cancelColor="$background"

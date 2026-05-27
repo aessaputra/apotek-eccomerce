@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { useToastController } from '@tamagui/toast';
 import { RefreshControl, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,8 +14,7 @@ import {
   useMedia,
   useTheme,
 } from 'tamagui';
-import { CartIcon, CheckCircleIcon, SearchIcon } from '@/components/icons';
-import AppAlertDialog from '@/components/elements/AppAlertDialog';
+import { CartIcon, SearchIcon } from '@/components/icons';
 import HomeBanner, { HomeBannerSkeleton } from '@/components/elements/HomeBanner';
 import { HOME_BANNER_CTA_ROUTE_MAP } from '@/constants/homeBanner.constants';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
@@ -22,8 +22,18 @@ import { useAppSlice } from '@/slices';
 import { useHomeData, useCartPaginated } from '@/hooks';
 import { addProductToCart } from '@/services';
 import type { HomeBannerCTA } from '@/types/homeBanner';
+import {
+  showAddToCartFailureToast,
+  showAddToCartLoginToast,
+  showAddToCartSuccessToast,
+} from '@/utils/cartToastFeedback';
 import { getThemeColor } from '@/utils/theme';
-import { HOME_COPY } from './Home.constants';
+import {
+  HOME_CONTENT_MAX_WIDTH,
+  HOME_COPY,
+  HOME_SPACE_TOKEN_TO_PX,
+  type HomeSpaceToken,
+} from './Home.constants';
 import { HomeCategorySection, HomeProductSection } from './Home.sections';
 import {
   ContentStack,
@@ -33,22 +43,11 @@ import {
   SurfaceIconButton,
 } from './Home.styles';
 
-const SPACE_TOKEN_TO_PX = {
-  '$2.5': 10,
-  $3: 12,
-  '$3.5': 14,
-  $4: 16,
-  $5: 20,
-  '$5.5': 22,
-  $6: 24,
-} as const;
-
-type SpaceToken = keyof typeof SPACE_TOKEN_TO_PX;
-
 export default function Home() {
   const router = useRouter();
   const media = useMedia();
   const theme = useTheme();
+  const toast = useToastController();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { user } = useAppSlice();
@@ -66,29 +65,56 @@ export default function Home() {
   } = useHomeData();
 
   const { snapshot: cartSnapshot } = useCartPaginated({ userId: user?.id });
-  const [cartSuccessProductName, setCartSuccessProductName] = useState<string | null>(null);
+  const pendingAddToCartProductIdsRef = useRef(new Set<string>());
+  const [addingProductIds, setAddingProductIds] = useState<readonly string[]>([]);
 
   const iconColor = getThemeColor(theme, 'colorPress');
   const heroColor = getThemeColor(theme, 'color');
-  const successDialogColor = '$primary';
-  const horizontalPadding = media.gtLg ? '$6' : media.gtMd ? '$5.5' : media.gtSm ? '$5' : '$4';
-  const contentMaxWidth = media.gtLg ? 1080 : media.gtMd ? 920 : media.gtSm ? 720 : 560;
-  const contentWidth = Math.min(screenWidth, contentMaxWidth);
-  const horizontalPaddingPx = SPACE_TOKEN_TO_PX[horizontalPadding as SpaceToken];
-  const categoryGap = media.gtLg ? '$3.5' : media.gtMd ? '$3' : media.gtSm ? '$2.5' : '$3';
-  const categoryGapPx = SPACE_TOKEN_TO_PX[categoryGap as SpaceToken];
-  const productGapPx = SPACE_TOKEN_TO_PX['$2.5'];
-  const mobileInnerWidth = contentWidth - horizontalPaddingPx * 2;
-  const productPeekOffset = Math.floor(productGapPx * 0.6);
-  const categoryPeekOffset = Math.floor(categoryGapPx * 0.6);
-  const productWidth = media.gtSm
-    ? 156
-    : Math.max(44, Math.floor((mobileInnerWidth - productGapPx - productPeekOffset) / 2));
-  const mobileCategoryWidth = Math.max(
-    44,
-    Math.floor((mobileInnerWidth - categoryGapPx - categoryPeekOffset) / 2),
-  );
-  const topPadding = (media.gtSm ? 16 : 12) + insets.top;
+  const layoutMetrics = useMemo(() => {
+    const horizontalPadding: HomeSpaceToken = media.gtLg
+      ? '$6'
+      : media.gtMd
+        ? '$5.5'
+        : media.gtSm
+          ? '$5'
+          : '$4';
+    const contentMaxWidth = media.gtLg
+      ? HOME_CONTENT_MAX_WIDTH.gtLg
+      : media.gtMd
+        ? HOME_CONTENT_MAX_WIDTH.gtMd
+        : media.gtSm
+          ? HOME_CONTENT_MAX_WIDTH.gtSm
+          : HOME_CONTENT_MAX_WIDTH.base;
+    const contentWidth = Math.min(screenWidth, contentMaxWidth);
+    const horizontalPaddingPx = HOME_SPACE_TOKEN_TO_PX[horizontalPadding];
+    const categoryGap: HomeSpaceToken = media.gtLg
+      ? '$3.5'
+      : media.gtMd
+        ? '$3'
+        : media.gtSm
+          ? '$2.5'
+          : '$3';
+    const categoryGapPx = HOME_SPACE_TOKEN_TO_PX[categoryGap];
+    const productGapPx = HOME_SPACE_TOKEN_TO_PX['$2.5'];
+    const mobileInnerWidth = contentWidth - horizontalPaddingPx * 2;
+    const productPeekOffset = Math.floor(productGapPx * 0.6);
+    const categoryPeekOffset = Math.floor(categoryGapPx * 0.6);
+
+    return {
+      horizontalPadding,
+      categoryGap,
+      productPeekOffset,
+      categoryPeekOffset,
+      productWidth: media.gtSm
+        ? 156
+        : Math.max(44, Math.floor((mobileInnerWidth - productGapPx - productPeekOffset) / 2)),
+      mobileCategoryWidth: Math.max(
+        44,
+        Math.floor((mobileInnerWidth - categoryGapPx - categoryPeekOffset) / 2),
+      ),
+      topPadding: (media.gtSm ? HOME_SPACE_TOKEN_TO_PX.$4 : HOME_SPACE_TOKEN_TO_PX.$3) + insets.top,
+    };
+  }, [insets.top, media.gtLg, media.gtMd, media.gtSm, screenWidth]);
 
   const categorySize = media.gtLg ? 'large' : media.gtSm ? 'medium' : 'small';
   const categoryLayout = media.gtLg
@@ -108,7 +134,7 @@ export default function Home() {
         ? 6
         : 4
     : 2;
-  const productSkeletonCount = 2;
+  const productSkeletonCount = media.gtLg ? 6 : media.gtMd ? 5 : media.gtSm ? 4 : 3;
 
   const handleOpenCart = () => {
     router.push('/cart');
@@ -140,21 +166,40 @@ export default function Home() {
 
   const handleAddToCart = useCallback(
     async (productId: string, productName: string) => {
-      if (!user?.id) return;
-      const { error } = await addProductToCart(user.id, productId, 1);
+      if (!user?.id) {
+        showAddToCartLoginToast(toast);
+        return;
+      }
 
-      if (!error) {
-        setCartSuccessProductName(productName);
+      if (pendingAddToCartProductIdsRef.current.has(productId)) return;
+
+      pendingAddToCartProductIdsRef.current.add(productId);
+      setAddingProductIds(currentProductIds =>
+        currentProductIds.includes(productId)
+          ? currentProductIds
+          : [...currentProductIds, productId],
+      );
+
+      try {
+        const { error } = await addProductToCart(user.id, productId, 1);
+
+        if (error) {
+          showAddToCartFailureToast(toast, error);
+          return;
+        }
+
+        showAddToCartSuccessToast(toast, productName);
+      } catch {
+        showAddToCartFailureToast(toast);
+      } finally {
+        pendingAddToCartProductIdsRef.current.delete(productId);
+        setAddingProductIds(currentProductIds =>
+          currentProductIds.filter(currentProductId => currentProductId !== productId),
+        );
       }
     },
-    [user?.id],
+    [toast, user?.id],
   );
-
-  const handleCartSuccessDialogOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      setCartSuccessProductName(null);
-    }
-  }, []);
 
   const handleRetryCoreContent = useCallback(() => {
     void refresh();
@@ -164,6 +209,10 @@ export default function Home() {
     user?.full_name || user?.name || user?.email?.split('@')[0] || HOME_COPY.defaultUserName;
   const userAvatarUrl = user?.avatar_url;
   const userInitial = userName.charAt(0).toUpperCase();
+  const cartAccessibilityLabel =
+    cartSnapshot.itemCount > 0
+      ? `${HOME_COPY.cartLabel}, ${cartSnapshot.itemCount} produk di keranjang`
+      : `${HOME_COPY.cartLabel}, keranjang kosong`;
 
   const handleBannerCTAPress = useCallback(
     (cta: HomeBannerCTA) => {
@@ -182,11 +231,20 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
         bounces={false}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}>
-        <ContentStack pt={topPadding} px={horizontalPadding} pb={TAB_BAR_HEIGHT + insets.bottom}>
+        <ContentStack
+          pt={layoutMetrics.topPadding}
+          px={layoutMetrics.horizontalPadding}
+          pb={TAB_BAR_HEIGHT + insets.bottom}>
           <XStack alignItems="center" justifyContent="space-between" gap="$3">
             <XStack alignItems="center" gap="$2.5" flex={1} minWidth={0}>
               {userAvatarUrl ? (
-                <Card width={42} height={42} borderRadius="$10" overflow="hidden">
+                <Card
+                  width={42}
+                  height={42}
+                  borderRadius="$10"
+                  overflow="hidden"
+                  accessibilityRole="image"
+                  accessibilityLabel={`Foto profil ${userName}`}>
                   <YStack width="100%" height="100%">
                     <Image source={{ uri: userAvatarUrl }} width="100%" height="100%" />
                   </YStack>
@@ -198,7 +256,9 @@ export default function Home() {
                   borderRadius="$10"
                   alignItems="center"
                   justifyContent="center"
-                  backgroundColor="$infoSoft">
+                  backgroundColor="$infoSoft"
+                  accessibilityRole="image"
+                  accessibilityLabel={`Inisial profil ${userName}`}>
                   <Text color="$primary" fontSize={16} fontWeight="700">
                     {userInitial}
                   </Text>
@@ -218,8 +278,10 @@ export default function Home() {
               <SurfaceIconButton
                 onPress={handleOpenCart}
                 role="button"
-                aria-label="Cart"
-                aria-describedby="Open cart page">
+                accessibilityRole="button"
+                accessibilityLabel={cartAccessibilityLabel}
+                accessibilityHint={HOME_COPY.cartHint}
+                aria-label={cartAccessibilityLabel}>
                 <CartIcon size={20} color={iconColor} />
                 {cartSnapshot.itemCount > 0 && (
                   <YStack
@@ -253,15 +315,18 @@ export default function Home() {
               lineHeight={media.gtSm ? 48 : 42}
               fontWeight="800"
               letterSpacing={-0.8}
-              maxWidth={media.gtSm ? 320 : '100%'}>
+              maxWidth={media.gtSm ? 320 : '100%'}
+              accessibilityRole="header">
               {HOME_COPY.heroTitle}
             </Text>
 
             <SearchShell
               onPress={handleOpenSearch}
               role="button"
-              aria-label="Search products"
-              aria-describedby="Open product discovery details">
+              accessibilityRole="button"
+              accessibilityLabel={HOME_COPY.searchLabel}
+              accessibilityHint={HOME_COPY.searchHint}
+              aria-label={HOME_COPY.searchLabel}>
               <Text flex={1} color="$searchPlaceholderColor" fontSize={14} fontWeight="500" pl="$1">
                 {HOME_COPY.searchPlaceholder}
               </Text>
@@ -270,13 +335,21 @@ export default function Home() {
           </YStack>
 
           {isLoadingBanners && !banners.home_banner_top ? (
-            <HomeBannerSkeleton />
+            <YStack
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel={HOME_COPY.bannerTopLoadingLabel}
+              accessibilityLiveRegion="polite"
+              accessibilityState={{ busy: true }}
+              aria-busy={true}>
+              <HomeBannerSkeleton />
+            </YStack>
           ) : (
             <HomeBanner banner={banners.home_banner_top} onCTAPress={handleBannerCTAPress} />
           )}
 
           {showCoreErrorState && (
-            <ErrorCallout>
+            <ErrorCallout role="alert" accessibilityLiveRegion="polite">
               <YStack gap="$1.5">
                 <Text color="$color" fontSize={15} fontWeight="700">
                   {HOME_COPY.coreErrorTitle}
@@ -295,7 +368,7 @@ export default function Home() {
           )}
 
           {bannerError && !isLoadingBanners && (
-            <Text fontSize={12} color="$colorSubtle">
+            <Text fontSize={12} color="$colorSubtle" accessibilityLiveRegion="polite">
               {HOME_COPY.bannerWarning}
             </Text>
           )}
@@ -306,11 +379,11 @@ export default function Home() {
             isLoadingCategories={isLoadingCategories}
             isLargeScreen={isLargeScreen}
             categorySkeletonCount={categorySkeletonCount}
-            categoryGap={categoryGap}
+            categoryGap={layoutMetrics.categoryGap}
             categorySize={categorySize}
             categoryLayout={categoryLayout}
-            categoryPeekOffset={categoryPeekOffset}
-            mobileCategoryWidth={mobileCategoryWidth}
+            categoryPeekOffset={layoutMetrics.categoryPeekOffset}
+            mobileCategoryWidth={layoutMetrics.mobileCategoryWidth}
             onCategoryPress={handleCategoryPress}
           />
 
@@ -319,34 +392,29 @@ export default function Home() {
             error={error}
             isLoadingProducts={isLoadingProducts}
             productSkeletonCount={productSkeletonCount}
-            productWidth={productWidth}
-            productPeekOffset={productPeekOffset}
+            productWidth={layoutMetrics.productWidth}
+            productPeekOffset={layoutMetrics.productPeekOffset}
             iconColor={iconColor}
+            addingProductIds={addingProductIds}
             onProductPress={handleProductPress}
             onAddToCart={handleAddToCart}
           />
 
           {isLoadingBanners && !banners.home_banner_bottom ? (
-            <HomeBannerSkeleton />
+            <YStack
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel={HOME_COPY.bannerBottomLoadingLabel}
+              accessibilityLiveRegion="polite"
+              accessibilityState={{ busy: true }}
+              aria-busy={true}>
+              <HomeBannerSkeleton placement="home_banner_bottom" />
+            </YStack>
           ) : (
             <HomeBanner banner={banners.home_banner_bottom} onCTAPress={handleBannerCTAPress} />
           )}
         </ContentStack>
       </ScrollView>
-
-      <AppAlertDialog
-        open={cartSuccessProductName !== null}
-        onOpenChange={handleCartSuccessDialogOpenChange}
-        title={HOME_COPY.addToCartSuccessTitle}
-        description={`${cartSuccessProductName ?? HOME_COPY.addToCartSuccessFallbackProduct} ${
-          HOME_COPY.addToCartSuccessDescriptionSuffix
-        }`}
-        confirmText="OK"
-        confirmColor={successDialogColor}
-        confirmTextColor="$white"
-        hideTitle
-        icon={<CheckCircleIcon size={48} color={successDialogColor} />}
-      />
     </ScreenRoot>
   );
 }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import * as ReactNative from 'react-native';
-import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
+import { act, fireEvent, render, screen, waitFor } from '@/test-utils/renderWithTheme';
 import Home from '@/scenes/home/Home';
 import type { UseHomeDataReturn } from '@/hooks';
 import type { ProductWithImages } from '@/services/home.service';
@@ -8,7 +8,9 @@ import type { ProductWithImages } from '@/services/home.service';
 type AddToCartResult = Promise<{ error: Error | null }>;
 
 const mockPush = jest.fn();
+const mockToastShow = jest.fn();
 const mockUseHomeData = jest.fn<() => UseHomeDataReturn>();
+const mockUseAppSlice = jest.fn();
 const mockUseWindowDimensions = jest.fn(() => ({
   width: 390,
   height: 844,
@@ -22,6 +24,12 @@ const mockAddProductToCart = jest.fn<
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: mockPush,
+  }),
+}));
+
+jest.mock('@tamagui/toast', () => ({
+  useToastController: () => ({
+    show: mockToastShow,
   }),
 }));
 
@@ -47,14 +55,7 @@ jest.mock('@/services', () => ({
 }));
 
 jest.mock('@/slices', () => ({
-  useAppSlice: () => ({
-    user: {
-      id: 'user-1',
-      full_name: 'John Doe',
-      avatar_url: null,
-      email: 'john@example.com',
-    },
-  }),
+  useAppSlice: () => mockUseAppSlice(),
 }));
 
 jest.mock('@/components/elements/CategoryItem', () => {
@@ -63,8 +64,20 @@ jest.mock('@/components/elements/CategoryItem', () => {
   return {
     __esModule: true,
     default: ({ category }: { category: { name: string } }) => <Text>{category.name}</Text>,
-    CategorySkeleton: ({ count }: { count?: number }) => (
-      <Text>Category Skeleton {count ?? 8}</Text>
+    CategorySkeleton: ({
+      count,
+      gap,
+      layout,
+      width,
+      peekOffset,
+    }: {
+      count?: number;
+      gap?: string;
+      layout?: string;
+      width?: number;
+      peekOffset?: number;
+    }) => (
+      <Text>{`Category Skeleton ${count ?? 8} gap:${gap ?? 'none'} layout:${layout ?? 'none'} width:${width ?? 'none'} peek:${peekOffset ?? 'none'}`}</Text>
     ),
   };
 });
@@ -76,10 +89,22 @@ jest.mock('@/components/elements/ProductCard', () => {
 
   return {
     __esModule: true,
-    default: ({ item, onAddToCart }: { item: { name: string }; onAddToCart?: () => void }) => (
+    default: ({
+      item,
+      onAddToCart,
+      isAddingToCart,
+    }: {
+      item: { name: string };
+      onAddToCart?: () => void;
+      isAddingToCart?: boolean;
+    }) => (
       <View>
         <Text>{item.name}</Text>
-        <Button title={`Add ${item.name}`} onPress={onAddToCart} />
+        <Button
+          title={isAddingToCart ? `Menambahkan ${item.name}` : `Tambah ${item.name} ke keranjang`}
+          onPress={onAddToCart}
+          disabled={isAddingToCart}
+        />
       </View>
     ),
     ProductCardSkeleton: ({ count }: { count?: number }) => (
@@ -106,6 +131,12 @@ function createHomeData(): UseHomeDataReturn {
   const productWithSku: ProductWithImages & { sku: string } = {
     ...product,
     sku: 'SKU-PRODUCT-1',
+  };
+  const secondProduct: ProductWithImages = {
+    ...product,
+    id: 'product-2',
+    name: 'Product 2',
+    slug: 'product-2',
   };
 
   return {
@@ -140,7 +171,7 @@ function createHomeData(): UseHomeDataReturn {
       },
     },
     categories: [{ id: 'cat-1', name: 'Vitamin', slug: 'vitamin', logo_url: null, created_at: '' }],
-    products: [productWithSku],
+    products: [productWithSku, secondProduct],
     isLoadingBanners: false,
     isLoadingCategories: false,
     isLoadingProducts: false,
@@ -155,9 +186,19 @@ describe('<Home />', () => {
   beforeEach(() => {
     jest.spyOn(ReactNative, 'useWindowDimensions').mockImplementation(mockUseWindowDimensions);
     mockPush.mockClear();
+    mockToastShow.mockClear();
     mockUseHomeData.mockReset();
     mockUseHomeData.mockReturnValue(createHomeData());
     mockAddProductToCart.mockClear();
+    mockUseAppSlice.mockReset();
+    mockUseAppSlice.mockReturnValue({
+      user: {
+        id: 'user-1',
+        full_name: 'John Doe',
+        avatar_url: null,
+        email: 'john@example.com',
+      },
+    });
     mockUseWindowDimensions.mockReturnValue({
       width: 390,
       height: 844,
@@ -227,7 +268,11 @@ describe('<Home />', () => {
 
     render(<Home />);
 
-    expect(screen.getAllByTestId('home-banner-skeleton')).toHaveLength(2);
+    expect(
+      screen.getAllByTestId('home-banner-skeleton', { includeHiddenElements: true }),
+    ).toHaveLength(2);
+    expect(screen.getByLabelText('Memuat banner utama')).toBeTruthy();
+    expect(screen.getByLabelText('Memuat banner beranda berikutnya')).toBeTruthy();
   });
 
   it('renders category and product skeletons with viewport-aligned counts while loading', () => {
@@ -241,30 +286,113 @@ describe('<Home />', () => {
 
     render(<Home />);
 
-    expect(screen.getByText('Category Skeleton 2')).toBeTruthy();
-    expect(screen.getByText('Product Skeleton 2')).toBeTruthy();
+    expect(
+      screen.getByText('Category Skeleton 2 gap:$3 layout:scroll width:254 peek:7', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+    expect(screen.getByText('Product Skeleton 3', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByLabelText('Memuat kategori')).toBeTruthy();
+    expect(screen.getByLabelText('Memuat produk terbaru')).toBeTruthy();
   });
 
-  it('shows a success dialog after a product is added to cart successfully', async () => {
+  it('shows a success toast after a product is added to cart successfully', async () => {
     render(<Home />);
 
-    fireEvent.press(screen.getByText('Add Product 1'));
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
 
     expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
-    expect(await screen.findByText('Produk berhasil ditambahkan')).toBeTruthy();
-    expect(screen.getByText('Product 1 berhasil ditambahkan ke keranjang')).toBeTruthy();
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+        message: 'Product 1 sudah ada di keranjang.',
+        type: 'background',
+      });
+    });
   });
 
-  it('does not show the success dialog when adding to cart fails', async () => {
+  it('does not show the success toast when adding to cart fails', async () => {
     mockAddProductToCart.mockResolvedValue({ error: new Error('cart failed') });
 
     render(<Home />);
 
-    fireEvent.press(screen.getByText('Add Product 1'));
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
 
     expect(mockAddProductToCart).toHaveBeenCalledWith('user-1', 'product-1', 1);
-    expect(screen.queryByText('Produk berhasil ditambahkan')).toBeNull();
-    expect(screen.queryByText('Product 1 berhasil ditambahkan ke keranjang')).toBeNull();
+    await waitFor(() => {
+      expect(mockToastShow).not.toHaveBeenCalledWith(
+        'Produk ditambahkan ke keranjang.',
+        expect.objectContaining({ message: 'Product 1 sudah ada di keranjang.' }),
+      );
+    });
+  });
+
+  it('shows a user-facing toast when adding to cart fails', async () => {
+    mockAddProductToCart.mockResolvedValue({ error: new Error('Stok produk habis') });
+
+    render(<Home />);
+
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
+
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith(
+        'Stok produk belum cukup. Periksa jumlah atau pilih produk lain.',
+        { type: 'foreground' },
+      );
+    });
+  });
+
+  it('shows a login toast before adding products for guests', () => {
+    mockUseAppSlice.mockReturnValue({ user: null });
+
+    render(<Home />);
+
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
+
+    expect(mockAddProductToCart).not.toHaveBeenCalled();
+    expect(mockToastShow).toHaveBeenCalledWith(
+      'Silakan masuk untuk menambahkan produk ke keranjang.',
+      {
+        message: 'Masuk diperlukan agar keranjang Anda tersimpan.',
+        type: 'foreground',
+      },
+    );
+  });
+
+  it('shows per-product pending feedback, prevents duplicate product requests, and allows other products', async () => {
+    const addToCartResolvers = new Map<string, (value: { error: Error | null }) => void>();
+    mockAddProductToCart.mockImplementation(
+      (_userId, productId) =>
+        new Promise(resolve => {
+          addToCartResolvers.set(productId, resolve);
+        }),
+    );
+
+    render(<Home />);
+
+    fireEvent.press(screen.getByText('Tambah Product 1 ke keranjang'));
+
+    expect(await screen.findByText('Menambahkan Product 1')).toBeTruthy();
+    fireEvent.press(screen.getByText('Menambahkan Product 1'));
+    fireEvent.press(screen.getByText('Tambah Product 2 ke keranjang'));
+
+    expect(mockAddProductToCart).toHaveBeenCalledTimes(2);
+    expect(mockAddProductToCart).toHaveBeenNthCalledWith(1, 'user-1', 'product-1', 1);
+    expect(mockAddProductToCart).toHaveBeenNthCalledWith(2, 'user-1', 'product-2', 1);
+    expect(await screen.findByText('Menambahkan Product 2')).toBeTruthy();
+    await act(async () => {
+      addToCartResolvers.get('product-1')?.({ error: null });
+      addToCartResolvers.get('product-2')?.({ error: null });
+    });
+    await waitFor(() => {
+      expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+        message: 'Product 1 sudah ada di keranjang.',
+        type: 'background',
+      });
+      expect(mockToastShow).toHaveBeenCalledWith('Produk ditambahkan ke keranjang.', {
+        message: 'Product 2 sudah ada di keranjang.',
+        type: 'background',
+      });
+    });
   });
 
   it('renders a retryable core error state when home content fails to load', () => {

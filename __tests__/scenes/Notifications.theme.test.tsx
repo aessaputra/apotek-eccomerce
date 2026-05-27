@@ -14,8 +14,8 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
-jest.mock('@/hooks/useNotifications', () => ({
-  useNotifications: (...args: unknown[]) => mockUseNotifications(...args),
+jest.mock('@/providers', () => ({
+  useNotificationsContext: () => mockUseNotifications(),
 }));
 
 jest.mock('@/slices', () => ({
@@ -42,7 +42,7 @@ function createNotification(id: string, overrides: Partial<NotificationRow> = {}
 }
 
 function createHookState(overrides: Partial<UseNotificationsReturn> = {}): UseNotificationsReturn {
-  return {
+  const baseState: UseNotificationsReturn = {
     items: [],
     status: 'empty',
     error: null,
@@ -60,10 +60,22 @@ function createHookState(overrides: Partial<UseNotificationsReturn> = {}): UseNo
     },
     realtimeState: 'connected',
     refresh: jest.fn(async () => undefined),
+    loadMore: jest.fn(async () => undefined),
+    hasMore: false,
+    nextCursor: null,
+    isLoadingMore: false,
     markAsRead: jest.fn(async () => true),
     markAllAsRead: jest.fn(async () => true),
     requestPermission: jest.fn(async () => true),
+    sendTestNotification: jest.fn(async () => true),
+    isSendingTestNotification: false,
+  };
+
+  return {
+    ...baseState,
     ...overrides,
+    loadMore: overrides.loadMore ?? baseState.loadMore,
+    sendTestNotification: overrides.sendTestNotification ?? baseState.sendTestNotification,
   };
 }
 
@@ -84,7 +96,7 @@ describe('<Notifications /> Theme', () => {
     ).toBeTruthy();
   });
 
-  test('does not render duplicate permission reminder copy in dark theme after the prompt was already shown', async () => {
+  test('renders inline permission banner in dark theme when permission is requestable', () => {
     mockUseNotifications.mockReturnValue(
       createHookState({
         items: [createNotification('01')],
@@ -104,10 +116,9 @@ describe('<Notifications /> Theme', () => {
 
     renderWithDarkTheme(<Notifications />);
 
-    expect(screen.queryByText('Nanti')).toBeNull();
-    expect(screen.queryByTestId('notifications-permission-reminder')).toBeNull();
-    expect(screen.queryByText('Aktifkan notifikasi')).toBeNull();
-    expect(screen.queryByText('Aktifkan Sekarang')).toBeNull();
+    expect(screen.getByTestId('notifications-permission-banner')).toBeTruthy();
+    expect(screen.getByText('Aktifkan notifikasi')).toBeTruthy();
+    expect(screen.getByText('Aktifkan Sekarang')).toBeTruthy();
     expect(screen.getByText('Gagal mengaktifkan notifikasi.')).toBeTruthy();
   });
 });

@@ -34,7 +34,7 @@ export interface BottomActionBarProps {
   /** Accessibility label for screen readers */
   'aria-label': string;
   /** Accessibility hint providing additional context for screen readers */
-  'aria-describedby': string;
+  accessibilityHint: string;
 }
 export default function BottomActionBar({
   buttonTitle,
@@ -45,7 +45,7 @@ export default function BottomActionBar({
   keyboardAnchored = false,
   includeBottomInset = true,
   'aria-label': ariaLabel,
-  'aria-describedby': ariaDescribedBy,
+  accessibilityHint,
 }: BottomActionBarProps) {
   const insets = useSafeAreaInsets();
 
@@ -69,7 +69,7 @@ export default function BottomActionBar({
       elevation={8}
       role="toolbar"
       aria-label="Bottom action bar"
-      aria-describedby="Action bar with primary action button">
+      accessibilityHint="Action bar with primary action button">
       <Button
         title={buttonTitle}
         width="100%"
@@ -81,7 +81,7 @@ export default function BottomActionBar({
         isLoading={isLoading}
         disabled={disabled}
         aria-label={ariaLabel}
-        aria-describedby={ariaDescribedBy}
+        accessibilityHint={accessibilityHint}
         accessibilityState={{
           disabled: disabled || isLoading,
           busy: isLoading,

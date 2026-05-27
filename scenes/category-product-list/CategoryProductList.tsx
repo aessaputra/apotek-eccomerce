@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
+import { useToastController } from '@tamagui/toast';
 import { FlatList, Platform, RefreshControl, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +10,11 @@ import { useProductsPaginated } from '@/hooks';
 import { addProductToCart, type ProductListItem } from '@/services';
 import { useAppSlice } from '@/slices';
 import type { RouteParams } from '@/types/routes.types';
+import {
+  showAddToCartFailureToast,
+  showAddToCartLoginToast,
+  showAddToCartSuccessToast,
+} from '@/utils/cartToastFeedback';
 import { getThemeColor } from '@/utils/theme';
 
 const ScreenRoot = styled(YStack, {
@@ -128,11 +134,11 @@ export default function CategoryProductList() {
   const router = useRouter();
   const media = useMedia();
   const theme = useTheme();
+  const toast = useToastController();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const params = useLocalSearchParams<RouteParams<'home/category-product-list'>>();
   const { user } = useAppSlice();
-  const [cartFeedback, setCartFeedback] = useState<string | null>(null);
 
   const categoryId = useMemo(() => {
     const value = params.categoryId;
@@ -196,22 +202,23 @@ export default function CategoryProductList() {
   const handleAddToCart = useCallback(
     async (productId: string) => {
       if (!user?.id) {
-        setCartFeedback('Silakan login untuk menambahkan produk ke keranjang.');
-        setTimeout(() => setCartFeedback(null), 3000);
+        showAddToCartLoginToast(toast);
         return;
       }
 
-      const { error: cartError } = await addProductToCart(user.id, productId, 1);
+      try {
+        const { error: cartError } = await addProductToCart(user.id, productId, 1);
 
-      if (cartError) {
-        setCartFeedback(cartError.message || 'Gagal menambahkan produk ke keranjang.');
-      } else {
-        setCartFeedback('Produk berhasil ditambahkan ke keranjang.');
+        if (cartError) {
+          showAddToCartFailureToast(toast, cartError);
+        } else {
+          showAddToCartSuccessToast(toast);
+        }
+      } catch {
+        showAddToCartFailureToast(toast);
       }
-
-      setTimeout(() => setCartFeedback(null), 3000);
     },
-    [user?.id],
+    [toast, user?.id],
   );
 
   const renderItem = useCallback(
@@ -285,15 +292,7 @@ export default function CategoryProductList() {
             tintColor={getThemeColor(theme, 'primary')}
           />
         }
-        ListHeaderComponent={
-          <ContentStack pt={topPadding} px={horizontalPadding} pb="$3">
-            {cartFeedback ? (
-              <Text fontSize={13} color="$primary" pt="$2">
-                {cartFeedback}
-              </Text>
-            ) : null}
-          </ContentStack>
-        }
+        ListHeaderComponent={<ContentStack pt={topPadding} px={horizontalPadding} pb="$3" />}
         ListEmptyComponent={
           error ? (
             <ErrorState message={error} />
