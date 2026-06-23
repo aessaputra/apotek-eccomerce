@@ -415,6 +415,24 @@ export async function getHomeBannersByPlacement(): Promise<HomeBannersByPlacemen
   }
 }
 
+export function resolveCategoryMediaUrl(mediaPath: string | null): string | null {
+  const normalizedPath = normalizeOptionalText(mediaPath);
+
+  if (!normalizedPath) {
+    return null;
+  }
+
+  if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+    return normalizedPath;
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(PRODUCT_MEDIA_BUCKET).getPublicUrl(normalizedPath);
+
+  return publicUrl;
+}
+
 /**
  * Fetch all active categories from Supabase
  */
@@ -429,7 +447,10 @@ export async function getCategories(): Promise<CategoryRow[]> {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(category => ({
+      ...category,
+      logo_url: resolveCategoryMediaUrl(category.logo_url),
+    }));
   } catch (error) {
     logHomeServiceError('getCategories error', error);
     throw toUserError(error, 'Failed to load categories. Please try again.');
@@ -822,7 +843,7 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
       })),
       category_name: categoryResult.data?.name ?? null,
       category_slug: categoryResult.data?.slug ?? null,
-      category_logo_url: categoryResult.data?.logo_url ?? null,
+      category_logo_url: resolveCategoryMediaUrl(categoryResult.data?.logo_url ?? null),
     };
   } catch (error) {
     if (__DEV__) console.warn('[HomeService] getProductDetailsById error:', error);
