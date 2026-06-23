@@ -1,4 +1,5 @@
 import { supabase } from '@/utils/supabase';
+import { resolveProductMediaUrl } from '@/services/home.service';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Tables } from '@/types/supabase';
 import { CART_PAGE_SIZE, DEFAULT_CART_ITEM_WEIGHT_GRAMS } from '@/constants/cart.constants';
@@ -177,7 +178,7 @@ function toSortedCartImages(images: Pick<ProductImageRow, 'id' | 'url' | 'sort_o
     .sort((imageA, imageB) => imageA.sort_order - imageB.sort_order)
     .map(image => ({
       id: image.id,
-      url: image.url,
+      url: resolveProductMediaUrl(image.url),
       sort_order: image.sort_order,
     }));
 }

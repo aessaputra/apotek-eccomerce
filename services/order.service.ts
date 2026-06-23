@@ -1,4 +1,5 @@
 import { supabase } from './supabase.service';
+import { resolveProductMediaUrl } from './home.service';
 import type { Database, Tables } from '@/types/supabase';
 import { classifyError, isRetryableError, translateErrorMessage } from '@/utils/error';
 import { withRetry } from '@/utils/retry';
@@ -587,7 +588,7 @@ async function fetchProductsById(productIds: string[]): Promise<Map<string, Orde
     'product_id' | 'url' | 'sort_order'
   >[]) {
     const existing = imagesByProductId.get(image.product_id) ?? [];
-    existing.push({ url: image.url, sort_order: image.sort_order });
+    existing.push({ url: resolveProductMediaUrl(image.url), sort_order: image.sort_order });
     imagesByProductId.set(image.product_id, existing);
   }
 
@@ -638,7 +639,7 @@ async function fetchDetailedProductsById(
     'product_id' | 'url' | 'sort_order'
   >[]) {
     const existing = imagesByProductId.get(image.product_id) ?? [];
-    existing.push({ url: image.url, sort_order: image.sort_order });
+    existing.push({ url: resolveProductMediaUrl(image.url), sort_order: image.sort_order });
     imagesByProductId.set(image.product_id, existing);
   }
 
@@ -719,7 +720,7 @@ async function fetchPastPurchaseProductsById(productIds: string[]): Promise<
     'product_id' | 'url' | 'sort_order'
   >[]) {
     const existing = imagesByProductId.get(image.product_id) ?? [];
-    existing.push({ url: image.url, sort_order: image.sort_order });
+    existing.push({ url: resolveProductMediaUrl(image.url), sort_order: image.sort_order });
     imagesByProductId.set(image.product_id, existing);
   }
 
