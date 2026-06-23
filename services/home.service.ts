@@ -665,7 +665,10 @@ export async function getLatestProductsWithImages(
     const imagesByProduct = images.reduce(
       (acc, image) => {
         if (!acc[image.product_id]) acc[image.product_id] = [];
-        acc[image.product_id].push({ url: resolveProductMediaUrl(image.url), sort_order: image.sort_order });
+        acc[image.product_id].push({
+          url: resolveProductMediaUrl(image.url),
+          sort_order: image.sort_order,
+        });
         return acc;
       },
       {} as Record<string, { url: string; sort_order: number }[]>,
@@ -723,7 +726,10 @@ export async function searchProducts(query: string): Promise<ProductWithImages[]
   const imagesByProduct = images.reduce(
     (acc, image) => {
       if (!acc[image.product_id]) acc[image.product_id] = [];
-      acc[image.product_id].push({ url: resolveProductMediaUrl(image.url), sort_order: image.sort_order });
+      acc[image.product_id].push({
+        url: resolveProductMediaUrl(image.url),
+        sort_order: image.sort_order,
+      });
       return acc;
     },
     {} as Record<string, { url: string; sort_order: number }[]>,
