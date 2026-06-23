@@ -139,7 +139,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const expoConfig: ExpoConfig = {
     ...config,
     slug: process.env.EXPO_SLUG ?? 'apotek-ecommerce',
-    name: process.env.EXPO_NAME ?? 'Apotek Ecommerce',
+    name: process.env.EXPO_NAME ?? 'SiFarma',
     scheme: 'apotek-ecommerce', // Deep linking scheme untuk OAuth redirect
     icon: './assets/images/logo.png', // App icon untuk semua platform
     ios: {
@@ -223,7 +223,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         'expo-splash-screen',
         {
           backgroundColor: '#ffffff',
-          image: './assets/images/logo.png',
+          image: './assets/images/splash-screen.png',
           imageWidth: 200,
           resizeMode: 'contain',
         },
