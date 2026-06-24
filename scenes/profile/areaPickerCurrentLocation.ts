@@ -356,12 +356,21 @@ async function fetchDistrictsForRegencies(
   regencies: RegionalRegency[],
   fetchDistricts: ResolveCurrentLocationSelectionParams['fetchDistricts'],
 ): Promise<DistrictSearchResult[]> {
-  return Promise.all(
-    regencies.map(async regency => {
-      const { data: districts } = await fetchDistricts(regency.code);
-      return { regency, districts: districts || [] };
-    }),
-  );
+  const CHUNK_SIZE = 5;
+  const results: DistrictSearchResult[] = [];
+
+  for (let i = 0; i < regencies.length; i += CHUNK_SIZE) {
+    const chunk = regencies.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map(async regency => {
+        const { data: districts } = await fetchDistricts(regency.code);
+        return { regency, districts: districts || [] };
+      }),
+    );
+    results.push(...chunkResults);
+  }
+
+  return results;
 }
 
 function findCorroboratedFuzzyRegency(
@@ -392,38 +401,6 @@ function disambiguateRegencyByDistrict(
   });
 
   return disambiguatedRegency?.regency;
-}
-
-function selectRegencyFromCitySignal(
-  regencies: RegionalRegency[],
-  districtSearchResults: DistrictSearchResult[],
-  address: CurrentLocationAddress,
-): RegionalRegency | undefined {
-  const exactMatchedRegency = regencies.find(option => {
-    return normalizeExactAdminName(option.name) === normalizeExactAdminName(address.city);
-  });
-
-  if (exactMatchedRegency) {
-    return exactMatchedRegency;
-  }
-
-  const fuzzyMatchedRegencies = regencies.filter(option =>
-    adminNamesMatch(option.name, address.city),
-  );
-
-  if (fuzzyMatchedRegencies.length === 1) {
-    return fuzzyMatchedRegencies[0];
-  }
-
-  if (fuzzyMatchedRegencies.length > 1) {
-    return disambiguateRegencyByDistrict(
-      fuzzyMatchedRegencies,
-      districtSearchResults,
-      address.district,
-    );
-  }
-
-  return undefined;
 }
 
 async function resolveCityPhase(
