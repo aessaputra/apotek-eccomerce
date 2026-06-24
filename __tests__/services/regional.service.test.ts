@@ -12,8 +12,7 @@ jest.mock('@/utils/config', () => ({
   __esModule: true,
   default: {
     regionalApiUrl: 'https://wilayah.id/api',
-    postalDataUrl:
-      'https://raw.githubusercontent.com/ArrayAccess/Indonesia-Postal-And-Area/master/data/json/area/62',
+    postalDataUrl: 'https://idn-area.aes.my.id/data/json/area/62',
   },
 }));
 describe('regional.service', () => {
