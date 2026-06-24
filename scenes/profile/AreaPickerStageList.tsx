@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { Check } from '@tamagui/lucide-icons';
 import { Card, Spinner, Text, XStack, YStack } from 'tamagui';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
@@ -20,13 +21,15 @@ type AreaPickerStageListProps = {
   onPostalSelect: (option: PostalOption) => void | Promise<void>;
 };
 
-type OptionCardProps = {
+type OptionCardProps<T> = {
   label: string;
-  onPress: () => void;
+  value: T;
+  onSelect: (value: T) => void | Promise<void>;
   selected?: boolean;
 };
 
-function OptionCard({ label, onPress, selected = false }: OptionCardProps) {
+function OptionCard<T>({ label, value, onSelect, selected = false }: OptionCardProps<T>) {
+  const handlePress = useCallback(() => onSelect(value), [onSelect, value]);
   return (
     <Card
       borderRadius="$0"
@@ -36,7 +39,7 @@ function OptionCard({ label, onPress, selected = false }: OptionCardProps) {
       backgroundColor="$background"
       paddingVertical="$4"
       paddingHorizontal="$1"
-      onPress={onPress}>
+      onPress={handlePress}>
       <XStack justifyContent="space-between" alignItems="center">
         <Text fontSize="$5" color={selected ? '$primary' : '$color'}>
           {label}
@@ -90,7 +93,8 @@ function StageOptionList({
           <OptionCard
             key={option.code}
             label={option.name.toUpperCase()}
-            onPress={() => onProvinceSelect(option)}
+            value={option}
+            onSelect={onProvinceSelect}
           />
         ))}
       </>
@@ -104,7 +108,8 @@ function StageOptionList({
           <OptionCard
             key={option.code}
             label={option.name.toUpperCase()}
-            onPress={() => onCitySelect(option)}
+            value={option}
+            onSelect={onCitySelect}
           />
         ))}
       </>
@@ -118,7 +123,8 @@ function StageOptionList({
           <OptionCard
             key={option.code}
             label={option.name.toUpperCase()}
-            onPress={() => onDistrictSelect(option)}
+            value={option}
+            onSelect={onDistrictSelect}
           />
         ))}
       </>
@@ -131,8 +137,9 @@ function StageOptionList({
         <OptionCard
           key={option.label}
           label={option.label}
+          value={option}
           selected={selectedPostalLabel === option.label}
-          onPress={() => onPostalSelect(option)}
+          onSelect={onPostalSelect}
         />
       ))}
     </>

@@ -124,7 +124,7 @@ export default function AreaPickerScreen() {
             borderColor="$surfaceBorder"
             minHeight={56}
             gap="$2"
-            onPress={() => void handleUseCurrentLocation()}
+            onPress={handleUseCurrentLocation}
             titleStyle={{ color: '$color', fontSize: '$4', fontWeight: '500' }}>
             <MapPin size={16} color="$primary" />
           </Button>
