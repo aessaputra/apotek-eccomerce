@@ -122,7 +122,7 @@ async function resolveCurrentCoordinates(
         accuracy: locationModule.Accuracy.Balanced,
         mayShowUserSettingsDialog: true,
       }),
-      15000,
+      10000,
     );
   } catch {
     current = null;

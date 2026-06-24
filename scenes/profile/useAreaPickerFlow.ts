@@ -26,7 +26,7 @@ import {
 } from './areaPickerState';
 import type { SelectionStage, StageStatus } from './areaPickerTypes';
 
-const CURRENT_LOCATION_TIMEOUT_MS = Platform.OS === 'web' ? 25000 : 20000;
+const CURRENT_LOCATION_TIMEOUT_MS = Platform.OS === 'web' ? 35000 : 35000;
 
 type UseAreaPickerFlowParams = {
   onComplete: () => void;
