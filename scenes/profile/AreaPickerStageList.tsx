@@ -84,43 +84,59 @@ function StageOptionList({
   onPostalSelect,
 }: Omit<AreaPickerStageListProps, 'stageTitle' | 'isLoadingStage' | 'stageStatus'>) {
   if (stage === 'province') {
-    return provinceOptions.map(option => (
-      <OptionCard
-        key={option.code}
-        label={option.name.toUpperCase()}
-        onPress={() => void onProvinceSelect(option)}
-      />
-    ));
+    return (
+      <>
+        {provinceOptions.map(option => (
+          <OptionCard
+            key={option.code}
+            label={option.name.toUpperCase()}
+            onPress={() => onProvinceSelect(option)}
+          />
+        ))}
+      </>
+    );
   }
 
   if (stage === 'city') {
-    return cityOptions.map(option => (
-      <OptionCard
-        key={option.code}
-        label={option.name.toUpperCase()}
-        onPress={() => void onCitySelect(option)}
-      />
-    ));
+    return (
+      <>
+        {cityOptions.map(option => (
+          <OptionCard
+            key={option.code}
+            label={option.name.toUpperCase()}
+            onPress={() => onCitySelect(option)}
+          />
+        ))}
+      </>
+    );
   }
 
   if (stage === 'district') {
-    return districtOptions.map(option => (
-      <OptionCard
-        key={option.code}
-        label={option.name.toUpperCase()}
-        onPress={() => void onDistrictSelect(option)}
-      />
-    ));
+    return (
+      <>
+        {districtOptions.map(option => (
+          <OptionCard
+            key={option.code}
+            label={option.name.toUpperCase()}
+            onPress={() => onDistrictSelect(option)}
+          />
+        ))}
+      </>
+    );
   }
 
-  return postalOptions.map(option => (
-    <OptionCard
-      key={option.label}
-      label={option.label}
-      selected={option.label === selectedPostalLabel}
-      onPress={() => void onPostalSelect(option)}
-    />
-  ));
+  return (
+    <>
+      {postalOptions.map(option => (
+        <OptionCard
+          key={option.label}
+          label={option.label}
+          selected={selectedPostalLabel === option.label}
+          onPress={() => onPostalSelect(option)}
+        />
+      ))}
+    </>
+  );
 }
 
 export default function AreaPickerStageList({
