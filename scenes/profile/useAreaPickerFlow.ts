@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
 import type { BiteshipArea } from '@/types/shipping';
 import {
@@ -24,6 +25,8 @@ import {
   findSelectedPostalOption,
 } from './areaPickerState';
 import type { SelectionStage, StageStatus } from './areaPickerTypes';
+
+const CURRENT_LOCATION_TIMEOUT_MS = Platform.OS === 'web' ? 25000 : 20000;
 
 type UseAreaPickerFlowParams = {
   onComplete: () => void;
@@ -55,6 +58,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const [selectedCity, setSelectedCity] = useState<RegionalRegency | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<RegionalDistrict | null>(null);
   const [selectedPostalLabel, setSelectedPostalLabel] = useState<string | null>(null);
+  const [currentLocationStatus, setCurrentLocationStatus] = useState<string | null>(null);
 
   const resetState = useCallback(() => {
     setStage('province');
@@ -149,16 +153,38 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       district: RegionalDistrict,
       postalCode: string,
     ): Promise<BiteshipArea | null> => {
-      const attempts = [
-        `${postalCode}, ${district.name}, ${regency.name}, ${province.name}`,
+      // Try the most specific search first
+      const primaryInput = `${postalCode}, ${district.name}, ${regency.name}, ${province.name}`;
+      const { data: primaryData, error: primaryError } = await searchBiteshipArea(primaryInput);
+
+      if (!primaryError && primaryData.length > 0) {
+        const exact = primaryData.find(area => {
+          return (
+            normalizePostalCode(area.postal_code) === normalizePostalCode(postalCode) &&
+            matchesHierarchy(area, province.name, regency.name, district.name)
+          );
+        });
+
+        if (exact) {
+          return exact;
+        }
+      }
+
+      // If primary search had a network error, don't retry with broader queries
+      if (primaryError) {
+        return null;
+      }
+
+      // Fallback: try progressively broader searches
+      const fallbackAttempts = [
         `${postalCode}, ${regency.name}, ${province.name}`,
         `${postalCode}, ${district.name}`,
         postalCode,
       ];
 
-      for (const input of attempts) {
+      for (const input of fallbackAttempts) {
         const { data, error } = await searchBiteshipArea(input);
-        if (error) continue;
+        if (error) break;
 
         const exact = data.find(area => {
           return (
@@ -363,15 +389,20 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
     const requestId = ++requestIdRef.current;
     setIsLoadingStage(true);
     setStageStatus({ kind: 'idle' });
+    setCurrentLocationStatus('Mendapatkan lokasi GPS...');
 
     try {
-      const result = await resolveCurrentLocationSelection({
+      const locationPromise = resolveCurrentLocationSelection({
         provinceOptions,
         fetchProvinces: async () => (await getRegionalProvinces()).data,
         fetchRegencies: getRegionalRegenciesByProvince,
         fetchDistricts: getRegionalDistrictsByRegency,
         reverseGeocode: async coords => {
+          setCurrentLocationStatus('Mengenali alamat dari titik lokasi...');
           const { data, error } = await reverseGeocodeCoordinates(coords);
+          if (!error && data) {
+            setCurrentLocationStatus('Mencocokkan alamat dengan database wilayah...');
+          }
           return {
             data: data
               ? {
@@ -389,9 +420,17 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
         resolveAreaByPostal,
       });
 
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('LOCATION_TIMEOUT')), CURRENT_LOCATION_TIMEOUT_MS),
+      );
+
+      const result = await Promise.race([locationPromise, timeoutPromise]);
+
       if (requestId !== requestIdRef.current) {
         return;
       }
+
+      setCurrentLocationStatus(null);
 
       if ('provinceOptions' in result && result.provinceOptions && provinceOptions.length === 0) {
         setProvinceOptions(result.provinceOptions);
@@ -447,13 +486,17 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       if (__DEV__) {
         console.error('handleUseCurrentLocation error:', error);
       }
+      const isTimeout = error instanceof Error && error.message === 'LOCATION_TIMEOUT';
       setStageStatus({
         kind: 'error',
-        message: 'Gagal mendapatkan lokasi saat ini. Silakan coba lagi.',
+        message: isTimeout
+          ? 'Pencarian lokasi membutuhkan waktu terlalu lama. Silakan pilih area secara manual.'
+          : 'Gagal mendapatkan lokasi saat ini. Silakan coba lagi.',
       });
     } finally {
       if (requestId === requestIdRef.current) {
         setIsLoadingStage(false);
+        setCurrentLocationStatus(null);
       }
     }
   }, [handleAreaSelection, provinceOptions, resolveAreaByPostal, resolvePostalOptions]);
@@ -508,6 +551,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
     setQuery,
     isLoadingStage,
     stageStatus,
+    currentLocationStatus,
     selectedProvince,
     selectedCity,
     selectedDistrict,

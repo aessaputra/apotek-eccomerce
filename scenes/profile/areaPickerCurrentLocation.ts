@@ -443,14 +443,56 @@ async function resolveCityPhase(
     };
   }
 
-  const districtSearchResults = await fetchDistrictsForRegencies(regencies, params.fetchDistricts);
-  const matchedRegency = selectRegencyFromCitySignal(regencies, districtSearchResults, address);
+  // Step 1: Try exact name match — no extra API calls needed
+  const exactMatchedRegency = regencies.find(
+    option => normalizeExactAdminName(option.name) === normalizeExactAdminName(address.city),
+  );
 
-  if (!matchedRegency) {
+  if (exactMatchedRegency) {
+    return { matchedRegency: exactMatchedRegency };
+  }
+
+  // Step 2: Try fuzzy name match
+  const fuzzyMatchedRegencies = regencies.filter(option =>
+    adminNamesMatch(option.name, address.city),
+  );
+
+  if (fuzzyMatchedRegencies.length === 1) {
+    return { matchedRegency: fuzzyMatchedRegencies[0] };
+  }
+
+  // Step 3: Only fetch districts for ambiguous fuzzy matches to disambiguate,
+  // not for all regencies in the province (avoids 20-38 unnecessary API calls)
+  if (fuzzyMatchedRegencies.length > 1) {
+    const disambiguationResults = await fetchDistrictsForRegencies(
+      fuzzyMatchedRegencies,
+      params.fetchDistricts,
+    );
+    const disambiguated = disambiguateRegencyByDistrict(
+      fuzzyMatchedRegencies,
+      disambiguationResults,
+      address.district,
+    );
+
+    if (disambiguated) {
+      return { matchedRegency: disambiguated };
+    }
+  }
+
+  if (!address.district) {
     return { fallback: shapeManualCityFallback({ province, cityOptions: regencies }) };
   }
 
-  return { matchedRegency };
+  // Step 4: No city name matched — try to find the regency by checking which one
+  // contains a matching district name (limited to first match to reduce API calls)
+  for (const regency of regencies) {
+    const { data: districts } = await params.fetchDistricts(regency.code);
+    if (districts && districts.some(d => adminNamesMatch(d.name, address.district))) {
+      return { matchedRegency: regency };
+    }
+  }
+
+  return { fallback: shapeManualCityFallback({ province, cityOptions: regencies }) };
 }
 
 function findDistrictByName(
