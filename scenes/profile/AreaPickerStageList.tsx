@@ -2,13 +2,13 @@ import { Check } from '@tamagui/lucide-icons';
 import { Card, Spinner, Text, XStack, YStack } from 'tamagui';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
 import type { PostalOption } from './areaPickerHelpers';
-import type { SelectionStage } from './areaPickerTypes';
+import type { SelectionStage, StageStatus } from './areaPickerTypes';
 
 type AreaPickerStageListProps = {
   stage: SelectionStage;
   stageTitle: string;
   isLoadingStage: boolean;
-  stageError: string | null;
+  stageStatus: StageStatus;
   provinceOptions: RegionalProvince[];
   cityOptions: RegionalRegency[];
   districtOptions: RegionalDistrict[];
@@ -47,11 +47,32 @@ function OptionCard({ label, onPress, selected = false }: OptionCardProps) {
   );
 }
 
-export default function AreaPickerStageList({
+function StageStatusBanner({ stageStatus }: { stageStatus: StageStatus }) {
+  if (stageStatus.kind === 'idle') {
+    return null;
+  }
+
+  if (stageStatus.kind === 'error') {
+    return (
+      <YStack alignItems="center" paddingVertical="$8" gap="$2">
+        <Text fontSize="$3" color="$danger" textAlign="center">
+          {stageStatus.message}
+        </Text>
+      </YStack>
+    );
+  }
+
+  return (
+    <YStack paddingVertical="$3" paddingHorizontal="$2">
+      <Text fontSize="$3" color="$warning" textAlign="center">
+        {stageStatus.message}
+      </Text>
+    </YStack>
+  );
+}
+
+function StageOptionList({
   stage,
-  stageTitle,
-  isLoadingStage,
-  stageError,
   provinceOptions,
   cityOptions,
   districtOptions,
@@ -61,28 +82,7 @@ export default function AreaPickerStageList({
   onCitySelect,
   onDistrictSelect,
   onPostalSelect,
-}: AreaPickerStageListProps) {
-  if (isLoadingStage) {
-    return (
-      <YStack alignItems="center" paddingVertical="$8" gap="$3">
-        <Spinner size="large" color="$primary" />
-        <Text fontSize="$3" color="$colorMuted">
-          Memuat {stageTitle.toLowerCase()}...
-        </Text>
-      </YStack>
-    );
-  }
-
-  if (stageError) {
-    return (
-      <YStack alignItems="center" paddingVertical="$8" gap="$2">
-        <Text fontSize="$3" color="$danger" textAlign="center">
-          {stageError}
-        </Text>
-      </YStack>
-    );
-  }
-
+}: Omit<AreaPickerStageListProps, 'stageTitle' | 'isLoadingStage' | 'stageStatus'>) {
   if (stage === 'province') {
     return provinceOptions.map(option => (
       <OptionCard
@@ -121,4 +121,55 @@ export default function AreaPickerStageList({
       onPress={() => void onPostalSelect(option)}
     />
   ));
+}
+
+export default function AreaPickerStageList({
+  stage,
+  stageTitle,
+  isLoadingStage,
+  stageStatus,
+  provinceOptions,
+  cityOptions,
+  districtOptions,
+  postalOptions,
+  selectedPostalLabel,
+  onProvinceSelect,
+  onCitySelect,
+  onDistrictSelect,
+  onPostalSelect,
+}: AreaPickerStageListProps) {
+  if (isLoadingStage) {
+    return (
+      <YStack alignItems="center" paddingVertical="$8" gap="$3">
+        <Spinner size="large" color="$primary" />
+        <Text fontSize="$3" color="$colorMuted">
+          Memuat {stageTitle.toLowerCase()}...
+        </Text>
+      </YStack>
+    );
+  }
+
+  // Blocking error: show error only, no options
+  if (stageStatus.kind === 'error') {
+    return <StageStatusBanner stageStatus={stageStatus} />;
+  }
+
+  // Guidance or idle: show banner (if guidance) + option list
+  return (
+    <>
+      <StageStatusBanner stageStatus={stageStatus} />
+      <StageOptionList
+        stage={stage}
+        provinceOptions={provinceOptions}
+        cityOptions={cityOptions}
+        districtOptions={districtOptions}
+        postalOptions={postalOptions}
+        selectedPostalLabel={selectedPostalLabel}
+        onProvinceSelect={onProvinceSelect}
+        onCitySelect={onCitySelect}
+        onDistrictSelect={onDistrictSelect}
+        onPostalSelect={onPostalSelect}
+      />
+    </>
+  );
 }

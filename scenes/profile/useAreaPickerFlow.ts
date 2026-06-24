@@ -23,7 +23,7 @@ import {
   filterPostalOptions,
   findSelectedPostalOption,
 } from './areaPickerState';
-import type { SelectionStage } from './areaPickerTypes';
+import type { SelectionStage, StageStatus } from './areaPickerTypes';
 
 type UseAreaPickerFlowParams = {
   onComplete: () => void;
@@ -46,7 +46,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const [stage, setStage] = useState<SelectionStage>('province');
   const [query, setQuery] = useState('');
   const [isLoadingStage, setIsLoadingStage] = useState(false);
-  const [stageError, setStageError] = useState<string | null>(null);
+  const [stageStatus, setStageStatus] = useState<StageStatus>({ kind: 'idle' });
   const [provinceOptions, setProvinceOptions] = useState<RegionalProvince[]>([]);
   const [cityOptions, setCityOptions] = useState<RegionalRegency[]>([]);
   const [districtOptions, setDistrictOptions] = useState<RegionalDistrict[]>([]);
@@ -59,7 +59,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const resetState = useCallback(() => {
     setStage('province');
     setQuery('');
-    setStageError(null);
+    setStageStatus({ kind: 'idle' });
     setCityOptions([]);
     setDistrictOptions([]);
     setPostalOptions([]);
@@ -77,7 +77,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       const { data, error } = await getRegionalProvinces();
       setProvinceOptions(data);
       if (error) {
-        setStageError('Gagal memuat daftar provinsi.');
+        setStageStatus({ kind: 'error', message: 'Gagal memuat daftar provinsi.' });
       }
       setIsLoadingStage(false);
     };
@@ -193,7 +193,10 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       try {
         setPendingAreaSelection(pendingSelection);
       } catch {
-        setStageError('Gagal menyimpan pilihan area. Silakan coba lagi.');
+        setStageStatus({
+          kind: 'error',
+          message: 'Gagal menyimpan pilihan area. Silakan coba lagi.',
+        });
         return;
       }
 
@@ -211,12 +214,15 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const loadCities = useCallback(async (province: RegionalProvince) => {
     const requestId = ++requestIdRef.current;
     setIsLoadingStage(true);
-    setStageError(null);
+    setStageStatus({ kind: 'idle' });
     const { data, error } = await getRegionalRegenciesByProvince(province.code);
     if (requestId !== requestIdRef.current) return;
     setCityOptions(data);
     if (error || data.length === 0) {
-      setStageError('Kota atau kabupaten untuk provinsi ini belum ditemukan.');
+      setStageStatus({
+        kind: 'error',
+        message: 'Kota atau kabupaten untuk provinsi ini belum ditemukan.',
+      });
     }
     setIsLoadingStage(false);
   }, []);
@@ -224,12 +230,15 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const loadDistricts = useCallback(async (regency: RegionalRegency) => {
     const requestId = ++requestIdRef.current;
     setIsLoadingStage(true);
-    setStageError(null);
+    setStageStatus({ kind: 'idle' });
     const { data, error } = await getRegionalDistrictsByRegency(regency.code);
     if (requestId !== requestIdRef.current) return;
     setDistrictOptions(data);
     if (error || data.length === 0) {
-      setStageError('Kecamatan untuk kota atau kabupaten ini belum ditemukan.');
+      setStageStatus({
+        kind: 'error',
+        message: 'Kecamatan untuk kota atau kabupaten ini belum ditemukan.',
+      });
     }
     setIsLoadingStage(false);
   }, []);
@@ -238,16 +247,17 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
     async (province: RegionalProvince, regency: RegionalRegency, district: RegionalDistrict) => {
       const requestId = ++requestIdRef.current;
       setIsLoadingStage(true);
-      setStageError(null);
+      setStageStatus({ kind: 'idle' });
 
       const options = await resolvePostalOptions(province, regency, district);
 
       if (requestId !== requestIdRef.current) return;
       setPostalOptions(options);
       if (options.length === 0) {
-        setStageError(
-          'Kode pos untuk kecamatan ini belum ditemukan. Silakan pilih kecamatan lain.',
-        );
+        setStageStatus({
+          kind: 'error',
+          message: 'Kode pos untuk kecamatan ini belum ditemukan. Silakan pilih kecamatan lain.',
+        });
       }
       setIsLoadingStage(false);
     },
@@ -300,7 +310,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
 
       const requestId = ++requestIdRef.current;
       setIsLoadingStage(true);
-      setStageError(null);
+      setStageStatus({ kind: 'idle' });
       setSelectedPostalLabel(option.label);
       let resolvedArea: BiteshipArea | null = null;
 
@@ -313,9 +323,11 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
         );
       } catch {
         if (requestId === requestIdRef.current) {
-          setStageError(
-            'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
-          );
+          setStageStatus({
+            kind: 'error',
+            message:
+              'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
+          });
         }
         return;
       } finally {
@@ -329,9 +341,11 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       }
 
       if (!resolvedArea) {
-        setStageError(
-          'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
-        );
+        setStageStatus({
+          kind: 'error',
+          message:
+            'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
+        });
         return;
       }
 
@@ -348,7 +362,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const handleUseCurrentLocation = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     setIsLoadingStage(true);
-    setStageError(null);
+    setStageStatus({ kind: 'idle' });
 
     try {
       const result = await resolveCurrentLocationSelection({
@@ -384,7 +398,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       }
 
       if (result.kind === 'error') {
-        setStageError(result.errorMessage);
+        setStageStatus({ kind: 'error', message: result.errorMessage });
         return;
       }
 
@@ -417,7 +431,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
           setPostalOptions(result.postalOptions);
         }
 
-        setStageError(result.errorMessage);
+        setStageStatus({ kind: 'guidance', message: result.errorMessage });
         return;
       }
 
@@ -433,7 +447,10 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       if (__DEV__) {
         console.error('handleUseCurrentLocation error:', error);
       }
-      setStageError('Gagal mendapatkan lokasi saat ini. Silakan coba lagi.');
+      setStageStatus({
+        kind: 'error',
+        message: 'Gagal mendapatkan lokasi saat ini. Silakan coba lagi.',
+      });
     } finally {
       if (requestId === requestIdRef.current) {
         setIsLoadingStage(false);
@@ -446,7 +463,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       const { clearDescendants = true } = options ?? {};
 
       setQuery('');
-      setStageError(null);
+      setStageStatus({ kind: 'idle' });
       setStage(targetStage);
 
       if (clearDescendants) {
@@ -490,7 +507,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
     query,
     setQuery,
     isLoadingStage,
-    stageError,
+    stageStatus,
     selectedProvince,
     selectedCity,
     selectedDistrict,

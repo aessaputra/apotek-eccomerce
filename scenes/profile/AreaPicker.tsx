@@ -30,7 +30,7 @@ export default function AreaPickerScreen() {
     query,
     setQuery,
     isLoadingStage,
-    stageError,
+    stageStatus,
     selectedProvince,
     selectedCity,
     selectedDistrict,
@@ -145,7 +145,7 @@ export default function AreaPickerScreen() {
                 stage={stage}
                 stageTitle={stageTitle}
                 isLoadingStage={isLoadingStage}
-                stageError={stageError}
+                stageStatus={stageStatus}
                 provinceOptions={filteredProvinces}
                 cityOptions={filteredCities}
                 districtOptions={filteredDistricts}
