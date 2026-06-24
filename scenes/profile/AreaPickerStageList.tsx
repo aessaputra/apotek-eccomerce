@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { FlatList } from 'react-native';
 import { Check } from '@tamagui/lucide-icons';
 import { Card, Spinner, Text, XStack, YStack } from 'tamagui';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
@@ -10,6 +11,7 @@ type AreaPickerStageListProps = {
   stageTitle: string;
   isLoadingStage: boolean;
   stageStatus: StageStatus;
+  currentLocationStatus?: string | null;
   provinceOptions: RegionalProvince[];
   cityOptions: RegionalRegency[];
   districtOptions: RegionalDistrict[];
@@ -55,94 +57,19 @@ function StageStatusBanner({ stageStatus }: { stageStatus: StageStatus }) {
     return null;
   }
 
-  if (stageStatus.kind === 'error') {
-    return (
-      <YStack alignItems="center" paddingVertical="$8" gap="$2">
-        <Text fontSize="$3" color="$danger" textAlign="center">
-          {stageStatus.message}
-        </Text>
-      </YStack>
-    );
-  }
-
   return (
-    <YStack paddingVertical="$3" paddingHorizontal="$2">
-      <Text fontSize="$3" color="$warning" textAlign="center">
+    <YStack
+      alignItems="center"
+      paddingVertical={stageStatus.kind === 'error' ? '$8' : '$3'}
+      paddingHorizontal={stageStatus.kind === 'error' ? '$0' : '$2'}
+      gap={stageStatus.kind === 'error' ? '$2' : '$0'}>
+      <Text
+        fontSize="$3"
+        color={stageStatus.kind === 'error' ? '$danger' : '$warning'}
+        textAlign="center">
         {stageStatus.message}
       </Text>
     </YStack>
-  );
-}
-
-function StageOptionList({
-  stage,
-  provinceOptions,
-  cityOptions,
-  districtOptions,
-  postalOptions,
-  selectedPostalLabel,
-  onProvinceSelect,
-  onCitySelect,
-  onDistrictSelect,
-  onPostalSelect,
-}: Omit<AreaPickerStageListProps, 'stageTitle' | 'isLoadingStage' | 'stageStatus'>) {
-  if (stage === 'province') {
-    return (
-      <>
-        {provinceOptions.map(option => (
-          <OptionCard
-            key={option.code}
-            label={option.name.toUpperCase()}
-            value={option}
-            onSelect={onProvinceSelect}
-          />
-        ))}
-      </>
-    );
-  }
-
-  if (stage === 'city') {
-    return (
-      <>
-        {cityOptions.map(option => (
-          <OptionCard
-            key={option.code}
-            label={option.name.toUpperCase()}
-            value={option}
-            onSelect={onCitySelect}
-          />
-        ))}
-      </>
-    );
-  }
-
-  if (stage === 'district') {
-    return (
-      <>
-        {districtOptions.map(option => (
-          <OptionCard
-            key={option.code}
-            label={option.name.toUpperCase()}
-            value={option}
-            onSelect={onDistrictSelect}
-          />
-        ))}
-      </>
-    );
-  }
-
-  return (
-    <>
-      {postalOptions.map(option => (
-        <OptionCard
-          key={option.label}
-          label={option.label}
-          value={option}
-          selected={selectedPostalLabel === option.label}
-          onSelect={onPostalSelect}
-        />
-      ))}
-    </>
   );
 }
 
@@ -151,6 +78,7 @@ export default function AreaPickerStageList({
   stageTitle,
   isLoadingStage,
   stageStatus,
+  currentLocationStatus,
   provinceOptions,
   cityOptions,
   districtOptions,
@@ -161,49 +89,81 @@ export default function AreaPickerStageList({
   onDistrictSelect,
   onPostalSelect,
 }: AreaPickerStageListProps) {
+  const listData = useMemo(() => {
+    switch (stage) {
+      case 'province':
+        return provinceOptions;
+      case 'city':
+        return cityOptions;
+      case 'district':
+        return districtOptions;
+      case 'postal':
+        return postalOptions;
+      default:
+        return [];
+    }
+  }, [stage, provinceOptions, cityOptions, districtOptions, postalOptions]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      switch (stage) {
+        case 'province':
+          return (
+            <OptionCard label={item.name.toUpperCase()} value={item} onSelect={onProvinceSelect} />
+          );
+        case 'city':
+          return (
+            <OptionCard label={item.name.toUpperCase()} value={item} onSelect={onCitySelect} />
+          );
+        case 'district':
+          return (
+            <OptionCard label={item.name.toUpperCase()} value={item} onSelect={onDistrictSelect} />
+          );
+        case 'postal':
+          return (
+            <OptionCard
+              label={item.label}
+              value={item}
+              selected={selectedPostalLabel === item.label}
+              onSelect={onPostalSelect}
+            />
+          );
+        default:
+          return null;
+      }
+    },
+    [stage, onProvinceSelect, onCitySelect, onDistrictSelect, onPostalSelect, selectedPostalLabel],
+  );
+
+  const keyExtractor = useCallback(
+    (item: any) => item.code || item.label || String(Math.random()),
+    [],
+  );
+
   if (isLoadingStage) {
     return (
       <YStack alignItems="center" paddingVertical="$8" gap="$3">
         <Spinner size="large" color="$primary" />
-        <Text fontSize="$3" color="$colorMuted">
-          Memuat {stageTitle.toLowerCase()}...
+        <Text fontSize="$3" color="$colorMuted" textAlign="center">
+          {currentLocationStatus ?? `Memuat ${stageTitle.toLowerCase()}...`}
         </Text>
       </YStack>
     );
   }
 
-  // Check if we have options to display for the current stage
-  const hasOptions =
-    (stage === 'province' && provinceOptions.length > 0) ||
-    (stage === 'city' && cityOptions.length > 0) ||
-    (stage === 'district' && districtOptions.length > 0) ||
-    (stage === 'postal' && postalOptions.length > 0);
-
-  // Blocking error: show error only, no options if we truly have no options
-  if (stageStatus.kind === 'error' && !hasOptions) {
-    return (
-      <YStack>
-        <StageStatusBanner stageStatus={stageStatus} />
-      </YStack>
-    );
-  }
-
-  // Guidance or idle: show banner (if guidance) + option list
   return (
-    <YStack>
+    <YStack flex={1}>
       <StageStatusBanner stageStatus={stageStatus} />
-      <StageOptionList
-        stage={stage}
-        provinceOptions={provinceOptions}
-        cityOptions={cityOptions}
-        districtOptions={districtOptions}
-        postalOptions={postalOptions}
-        selectedPostalLabel={selectedPostalLabel}
-        onProvinceSelect={onProvinceSelect}
-        onCitySelect={onCitySelect}
-        onDistrictSelect={onDistrictSelect}
-        onPostalSelect={onPostalSelect}
-      />
+      {listData.length > 0 && (
+        <FlatList
+          data={listData}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </YStack>
   );
 }

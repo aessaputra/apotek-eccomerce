@@ -417,6 +417,9 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
         resolveAreaByPostal,
       });
 
+      // Prevent unhandled promise rejection if timeout finishes first
+      locationPromise.catch(() => {});
+
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('LOCATION_TIMEOUT')), CURRENT_LOCATION_TIMEOUT_MS),
       );
@@ -471,13 +474,9 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
         return;
       }
 
-      setSelectedProvince(result.province);
-      setSelectedCity(result.regency);
-      setSelectedDistrict(result.district);
-      setPostalOptions(result.postalOptions);
-      setSelectedPostalLabel(result.selectedPostalLabel);
-      setStage('postal');
-      setQuery('');
+      // Skip updating visual state (setStage, setPostalOptions, etc.) when the location is fully resolved.
+      // Updating state here triggers a massive layout calculation at the exact same time router.back() unmounts the screen,
+      // which causes Fabric layout crashes (addViewAt/removeViewAt) on Android.
       handleAreaSelection(result.area, result.hierarchy);
     } catch (error) {
       if (__DEV__) {

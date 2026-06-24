@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Search } from '@tamagui/lucide-icons';
-import { Input, ScrollView, Text, XStack, YStack, styled, useTheme } from 'tamagui';
+import { Input, Text, XStack, YStack, styled, useTheme } from 'tamagui';
 import Button from '@/components/elements/Button';
 import { THEME_FALLBACKS } from '@/constants/ui';
 import type { RouteParams } from '@/types/routes.types';
@@ -31,6 +31,7 @@ export default function AreaPickerScreen() {
     setQuery,
     isLoadingStage,
     stageStatus,
+    currentLocationStatus,
     selectedProvince,
     selectedCity,
     selectedDistrict,
@@ -139,25 +140,24 @@ export default function AreaPickerScreen() {
             onNavigateToStage={navigateToStage}
           />
 
-          <ScrollView flex={1} keyboardShouldPersistTaps="handled">
-            <YStack>
-              <AreaPickerStageList
-                stage={stage}
-                stageTitle={stageTitle}
-                isLoadingStage={isLoadingStage}
-                stageStatus={stageStatus}
-                provinceOptions={filteredProvinces}
-                cityOptions={filteredCities}
-                districtOptions={filteredDistricts}
-                postalOptions={filteredPostalOptions}
-                selectedPostalLabel={selectedPostalLabel}
-                onProvinceSelect={handleProvinceSelect}
-                onCitySelect={handleCitySelect}
-                onDistrictSelect={handleDistrictSelect}
-                onPostalSelect={handlePostalSelect}
-              />
-            </YStack>
-          </ScrollView>
+          <YStack flex={1}>
+            <AreaPickerStageList
+              stage={stage}
+              stageTitle={stageTitle}
+              isLoadingStage={isLoadingStage}
+              stageStatus={stageStatus}
+              currentLocationStatus={currentLocationStatus}
+              provinceOptions={filteredProvinces}
+              cityOptions={filteredCities}
+              districtOptions={filteredDistricts}
+              postalOptions={filteredPostalOptions}
+              selectedPostalLabel={selectedPostalLabel}
+              onProvinceSelect={handleProvinceSelect}
+              onCitySelect={handleCitySelect}
+              onDistrictSelect={handleDistrictSelect}
+              onPostalSelect={handlePostalSelect}
+            />
+          </YStack>
         </YStack>
       </YStack>
     </SafeAreaView>
