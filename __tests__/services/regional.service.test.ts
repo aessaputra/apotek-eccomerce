@@ -8,6 +8,14 @@ import {
 
 const mockFetch = jest.fn<typeof fetch>();
 
+jest.mock('@/utils/config', () => ({
+  __esModule: true,
+  default: {
+    regionalApiUrl: 'https://wilayah.id/api',
+    postalDataUrl:
+      'https://raw.githubusercontent.com/ArrayAccess/Indonesia-Postal-And-Area/master/data/json/area/62',
+  },
+}));
 describe('regional.service', () => {
   beforeEach(() => {
     mockFetch.mockReset();

@@ -171,10 +171,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.android,
       package: androidPackage,
       ...(googleServicesJsonPath ? { googleServicesFile: googleServicesJsonPath } : {}),
-      // Use 'resize' mode for consistent keyboard handling with KeyboardAvoidingView.
-      // This allows the container to resize when keyboard appears, enabling
-      // bottom action buttons to stay above keyboard.
-      // @see https://docs.expo.dev/guides/keyboard-handling
       softwareKeyboardLayoutMode: 'resize',
       adaptiveIcon: {
         foregroundImage: './assets/images/logo.png',
@@ -195,14 +191,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       eas: { projectId: expoProjectId },
       env: appEnvironment,
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
-      regionalApiUrl: process.env.EXPO_PUBLIC_REGIONAL_API_URL ?? 'https://wilayah.id/api',
-      postalDataUrl:
-        process.env.EXPO_PUBLIC_POSTAL_DATA_URL ??
-        'https://raw.githubusercontent.com/ArrayAccess/Indonesia-Postal-And-Area/master/data/json/area/62',
-      googlePlacesApiUrl:
-        process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_URL ?? 'https://places.googleapis.com/v1',
-      googleGeocodingApiUrl:
-        process.env.EXPO_PUBLIC_GOOGLE_GEOCODING_API_URL ?? 'https://maps.googleapis.com/maps/api',
+      regionalApiUrl: process.env.EXPO_PUBLIC_REGIONAL_API_URL ?? '',
+      postalDataUrl: process.env.EXPO_PUBLIC_POSTAL_DATA_URL ?? '',
+      googlePlacesApiUrl: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_URL ?? '',
+      googleGeocodingApiUrl: process.env.EXPO_PUBLIC_GOOGLE_GEOCODING_API_URL ?? '',
       supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '',
       googleApiKey: process.env.EXPO_PUBLIC_GOOGLE_API_KEY ?? '',
     },
@@ -217,6 +209,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           androidGoogleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_API_KEY ?? '',
           iosGoogleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_API_KEY ?? '',
+        },
+      ],
+      [
+        'expo-location',
+        {
+          locationAlwaysAndWhenInUsePermission:
+            'Izinkan SiFarma untuk mengakses lokasi Anda guna mencari area secara otomatis.',
         },
       ],
       [

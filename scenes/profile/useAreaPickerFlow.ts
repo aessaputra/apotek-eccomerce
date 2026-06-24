@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
 import type { BiteshipArea } from '@/types/shipping';
 import {
@@ -25,9 +24,7 @@ import {
   findSelectedPostalOption,
 } from './areaPickerState';
 import type { SelectionStage, StageStatus } from './areaPickerTypes';
-
-const CURRENT_LOCATION_TIMEOUT_MS = Platform.OS === 'web' ? 35000 : 35000;
-
+const CURRENT_LOCATION_TIMEOUT_MS = 35000;
 type UseAreaPickerFlowParams = {
   onComplete: () => void;
 };
