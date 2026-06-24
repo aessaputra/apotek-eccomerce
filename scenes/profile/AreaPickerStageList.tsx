@@ -174,12 +174,16 @@ export default function AreaPickerStageList({
 
   // Blocking error: show error only, no options if we truly have no options
   if (stageStatus.kind === 'error' && !hasOptions) {
-    return <StageStatusBanner stageStatus={stageStatus} />;
+    return (
+      <YStack>
+        <StageStatusBanner stageStatus={stageStatus} />
+      </YStack>
+    );
   }
 
   // Guidance or idle: show banner (if guidance) + option list
   return (
-    <>
+    <YStack>
       <StageStatusBanner stageStatus={stageStatus} />
       <StageOptionList
         stage={stage}
@@ -193,6 +197,6 @@ export default function AreaPickerStageList({
         onDistrictSelect={onDistrictSelect}
         onPostalSelect={onPostalSelect}
       />
-    </>
+    </YStack>
   );
 }
