@@ -21,10 +21,10 @@ jobs:
         node-version: [24.x]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           cache-dependency-path: package-lock.json
           node-version: ${{ matrix.node-version }}
@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get branch name
         id: branch-name
@@ -138,7 +138,7 @@ jobs:
 
       # setup node
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           cache-dependency-path: package-lock.json
           node-version: ${{ matrix.node-version }}
