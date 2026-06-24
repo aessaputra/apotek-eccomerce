@@ -484,12 +484,15 @@ async function resolveCityPhase(
   }
 
   // Step 4: No city name matched — try to find the regency by checking which one
-  // contains a matching district name (limited to first match to reduce API calls)
-  for (const regency of regencies) {
-    const { data: districts } = await params.fetchDistricts(regency.code);
-    if (districts && districts.some(d => adminNamesMatch(d.name, address.district))) {
-      return { matchedRegency: regency };
-    }
+  // contains a matching district name. We do this concurrently (Promise.all)
+  // to avoid the 20-second timeout that happened when doing it sequentially.
+  const allDistricts = await fetchDistrictsForRegencies(regencies, params.fetchDistricts);
+  const matchedByDistrict = allDistricts.find(({ districts }) =>
+    districts.some(d => adminNamesMatch(d.name, address.district)),
+  );
+
+  if (matchedByDistrict) {
+    return { matchedRegency: matchedByDistrict.regency };
   }
 
   return { fallback: shapeManualCityFallback({ province, cityOptions: regencies }) };

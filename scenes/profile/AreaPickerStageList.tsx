@@ -165,8 +165,15 @@ export default function AreaPickerStageList({
     );
   }
 
-  // Blocking error: show error only, no options
-  if (stageStatus.kind === 'error') {
+  // Check if we have options to display for the current stage
+  const hasOptions =
+    (stage === 'province' && provinceOptions.length > 0) ||
+    (stage === 'city' && cityOptions.length > 0) ||
+    (stage === 'district' && districtOptions.length > 0) ||
+    (stage === 'postal' && postalOptions.length > 0);
+
+  // Blocking error: show error only, no options if we truly have no options
+  if (stageStatus.kind === 'error' && !hasOptions) {
     return <StageStatusBanner stageStatus={stageStatus} />;
   }
 
