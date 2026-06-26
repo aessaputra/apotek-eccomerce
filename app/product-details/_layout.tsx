@@ -14,7 +14,7 @@ function ProductDetailsStackLayout() {
   const iconColor = getThemeColor(theme, 'color');
 
   const handleOpenCart = () => {
-    router.push('/(tabs)/cart');
+    router.push('/cart');
   };
 
   return (
