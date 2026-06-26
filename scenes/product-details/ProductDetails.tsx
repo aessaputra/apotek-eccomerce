@@ -376,7 +376,7 @@ export default function ProductDetails() {
   const formattedTotalPrice = formatPrice(product.price * quantity);
   const isOutOfStock = product.stock <= 0;
   const maxQuantity = Math.max(product.stock, 1);
-  const contentBottomPadding = bottomBarHeight;
+  const contentBottomPadding = bottomBarHeight + 32;
 
   return (
     <ScreenRoot>

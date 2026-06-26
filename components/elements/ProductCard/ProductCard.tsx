@@ -93,8 +93,6 @@ function ProductCard({
 }: ProductCardProps) {
   const imageUrl =
     [...item.images].sort((left, right) => left.sort_order - right.sort_order)[0]?.url ?? null;
-  const accentColor = item.category_id ? '$warningSoft' : '$infoSoft';
-
   const handleAddToCart = (event: { stopPropagation: () => void }) => {
     event.stopPropagation();
     if (isAddingToCart) return;
@@ -129,7 +127,7 @@ function ProductCard({
           borderRadius="$3"
           alignItems="center"
           justifyContent="center"
-          backgroundColor={accentColor}
+          backgroundColor="$surfaceSubtle" // Using neutral background for luxury aesthetic
           overflow="hidden">
           {imageUrl ? (
             <Image
