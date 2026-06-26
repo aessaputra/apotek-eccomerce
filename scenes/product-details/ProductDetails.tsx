@@ -392,8 +392,7 @@ export default function ProductDetails() {
                 lineHeight={34}
                 color="$color"
                 fontWeight="800"
-                letterSpacing={-0.6}
-                numberOfLines={2}>
+                letterSpacing={-0.6}>
                 {product.name}
               </Text>
 
@@ -574,7 +573,7 @@ export default function ProductDetails() {
               )}
 
               <YStack flex={1} gap="$1">
-                <Text fontSize="$4" fontWeight="700" color="$color" numberOfLines={2}>
+                <Text fontSize="$4" fontWeight="700" color="$color">
                   {product.name}
                 </Text>
                 <Text fontSize="$2" color="$colorSubtle" fontWeight="600">

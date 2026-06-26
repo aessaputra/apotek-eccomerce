@@ -51,7 +51,7 @@ function OrderDetailItemRow({ item }: { item: OrderDetailItem }) {
       )}
 
       <YStack flex={1} gap="$1">
-        <Text fontSize="$3" color="$color" fontWeight="500" numberOfLines={2}>
+        <Text fontSize="$3" color="$color" fontWeight="500">
           {product?.name ?? 'Produk'}
         </Text>
         <Text fontSize="$2" color="$colorSubtle">
