@@ -19,21 +19,21 @@ const ImageContainer = styled(YStack, {
   overflow: 'hidden',
   position: 'relative',
   borderRadius: '$6',
+  backgroundColor: '$surface', // Anchor color for mobile anti-aliasing
+  borderWidth: 1,
+  borderColor: '$surfaceBorder',
 });
 
-const OrganicShape = styled(View, {
+// Using a clean, subtle radial/linear aesthetic or simple muted background
+// aligns with 'Luxury / Refined' from frontend-design, avoiding 'random decoration'.
+const GalleryBackdrop = styled(View, {
   position: 'absolute',
-  width: '85%',
-  height: '85%',
-  borderRadius: '$8',
-  backgroundColor: '$infoSoft',
-  transform: [{ rotate: '-3deg' }],
-});
-
-const AccentBubble = styled(View, {
-  position: 'absolute',
-  borderRadius: '$10',
-  opacity: 0.95,
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: '$surfaceSubtle',
+  opacity: 0.5,
 });
 
 const SkeletonBlock = styled(YStack, {
@@ -56,13 +56,7 @@ export const ProductDetailsSkeleton = memo(function ProductDetailsSkeleton() {
 });
 
 function DecorativeShapes() {
-  return (
-    <>
-      <OrganicShape />
-      <AccentBubble width={76} height={76} top={18} right={14} backgroundColor="$warningSoft" />
-      <AccentBubble width={58} height={58} bottom={22} left={16} backgroundColor="$successSoft" />
-    </>
-  );
+  return <GalleryBackdrop />;
 }
 
 function ProductImageGallery({
@@ -121,7 +115,15 @@ function ProductImageGallery({
         aspectRatio={aspectRatio}
         alignItems="center"
         justifyContent="center">
-        <Image source={{ uri: item }} width="100%" height="100%" resizeMode="contain" role="img" />
+        <View width="80%" height="80%" alignItems="center" justifyContent="center" zIndex={1}>
+          <Image
+            source={{ uri: item }}
+            width="100%"
+            height="100%"
+            resizeMode="contain"
+            role="img"
+          />
+        </View>
       </View>
     ),
     [containerWidth, aspectRatio],
