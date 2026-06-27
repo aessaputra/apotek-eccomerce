@@ -56,7 +56,7 @@ export default function ProductSearch() {
           setResults(data);
         })
         .catch(err => {
-          setError(err instanceof Error ? err.message : 'Failed to search products');
+          setError(err instanceof Error ? err.message : 'Gagal mencari produk');
         })
         .finally(() => {
           setIsLoading(false);
@@ -85,7 +85,7 @@ export default function ProductSearch() {
       })
       .catch(err => {
         if (!isStale) {
-          setError(err instanceof Error ? err.message : 'Failed to search products');
+          setError(err instanceof Error ? err.message : 'Gagal mencari produk');
           setResults([]);
         }
       })
@@ -122,7 +122,7 @@ export default function ProductSearch() {
             borderRadius="$3"
             onPress={handleRetry}>
             <Text color="$onPrimary" fontSize="$4" fontWeight="600">
-              Retry
+              Coba Lagi
             </Text>
           </Button>
         </YStack>
@@ -134,7 +134,7 @@ export default function ProductSearch() {
         <YStack flex={1} alignItems="center" justifyContent="center" paddingHorizontal="$4">
           <SearchIcon size={64} color={placeholderColor} />
           <Text fontSize="$5" color="$colorSubtle" textAlign="center" marginTop="$4">
-            Start typing to search
+            Mulai ketik untuk mencari
           </Text>
         </YStack>
       );
@@ -144,10 +144,10 @@ export default function ProductSearch() {
       return (
         <YStack flex={1} alignItems="center" justifyContent="center" paddingHorizontal="$4">
           <Text fontSize="$5" color="$color" textAlign="center" marginBottom="$2">
-            No products found
+            Produk tidak ditemukan
           </Text>
           <Text fontSize="$4" color="$colorSubtle" textAlign="center">
-            Try different keywords
+            Coba kata kunci lain
           </Text>
         </YStack>
       );
@@ -191,7 +191,7 @@ export default function ProductSearch() {
               flex={1}
               value={query}
               onChangeText={setQuery}
-              placeholder="Search products..."
+              placeholder="Cari produk..."
               placeholderTextColor={placeholderColor}
               backgroundColor="transparent"
               borderWidth={0}

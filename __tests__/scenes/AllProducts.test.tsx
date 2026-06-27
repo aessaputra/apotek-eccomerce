@@ -129,7 +129,7 @@ describe('<AllProducts />', () => {
 
     render(<AllProducts />);
 
-    expect(screen.getByText('Loading products...')).toBeTruthy();
+    expect(screen.getByText('Memuat produk...')).toBeTruthy();
   });
 
   it('renders empty state when no products', () => {

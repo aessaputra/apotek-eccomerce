@@ -89,7 +89,7 @@ function LoadingState() {
     <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
       <Spinner size="large" color="$primary" />
       <Text fontSize="$4" color="$colorSubtle">
-        Loading products...
+        Memuat produk...
       </Text>
     </YStack>
   );
@@ -125,7 +125,7 @@ function ListFooter({
     <YStack alignItems="center" justifyContent="center" py="$3" gap="$2">
       <Spinner color="$primary" size="small" />
       <Text fontSize="$2" color="$colorSubtle">
-        {isFetchingMore ? 'Loading more products...' : 'Refreshing product cache...'}
+        {isFetchingMore ? 'Memuat produk lainnya...' : 'Menyegarkan data produk...'}
       </Text>
     </YStack>
   );
