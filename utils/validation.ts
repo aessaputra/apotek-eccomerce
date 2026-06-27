@@ -144,3 +144,26 @@ export function getPasswordStrength(password: string): PasswordStrengthResult {
   // Strong: meets medium length or longer AND has complexity
   return { strength: PasswordStrength.STRONG, text: 'Kuat' };
 }
+
+/**
+ * Validates an Indonesian phone number.
+ * Must contain only digits and be between 9 and 15 characters long.
+ *
+ * @param phone - Phone number string to validate
+ * @returns true if valid, false otherwise
+ */
+export function validatePhoneNumber(phone: string): boolean {
+  const phoneRegex = /^[0-9]{9,15}$/;
+  return phoneRegex.test(phone.trim());
+}
+
+/**
+ * Validates a full name.
+ * Must be at least 3 characters long and not just whitespace.
+ *
+ * @param name - Name string to validate
+ * @returns true if valid, false otherwise
+ */
+export function validateFullName(name: string): boolean {
+  return name.trim().length >= 3;
+}

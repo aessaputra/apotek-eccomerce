@@ -51,13 +51,15 @@ describe('<SignUp />', () => {
 
     fireEvent.press(screen.getByLabelText('Buat akun'));
 
-    expect(screen.getByText('Email dan password wajib diisi.')).toBeTruthy();
+    expect(screen.getByText('Nama lengkap, email, dan password wajib diisi.')).toBeTruthy();
     expect(mockSignUp).not.toHaveBeenCalled();
   });
 
   it('shows the invalid-email message before calling the service', () => {
     render(<SignUp />);
 
+    fireEvent.changeText(screen.getByTestId('fullname-input'), 'John Doe');
+    fireEvent.changeText(screen.getByTestId('phone-input'), '081234567890');
     fireEvent.changeText(screen.getByTestId('email-input'), 'not-an-email');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
     fireEvent.press(screen.getByLabelText('Buat akun'));
@@ -69,6 +71,8 @@ describe('<SignUp />', () => {
   it('shows the minimum password length policy message', () => {
     render(<SignUp />);
 
+    fireEvent.changeText(screen.getByTestId('fullname-input'), 'John Doe');
+    fireEvent.changeText(screen.getByTestId('phone-input'), '081234567890');
     fireEvent.changeText(screen.getByTestId('email-input'), 'user@example.com');
     fireEvent.changeText(screen.getByTestId('password-input'), 'a1');
     fireEvent.press(screen.getByLabelText('Buat akun'));
@@ -83,6 +87,8 @@ describe('<SignUp />', () => {
   ])('shows the password complexity policy message when the password is %s', (_case, password) => {
     render(<SignUp />);
 
+    fireEvent.changeText(screen.getByTestId('fullname-input'), 'John Doe');
+    fireEvent.changeText(screen.getByTestId('phone-input'), '081234567890');
     fireEvent.changeText(screen.getByTestId('email-input'), 'user@example.com');
     fireEvent.changeText(screen.getByTestId('password-input'), password);
     fireEvent.press(screen.getByLabelText('Buat akun'));
@@ -101,6 +107,8 @@ describe('<SignUp />', () => {
     }));
     render(<SignUp />);
 
+    fireEvent.changeText(screen.getByTestId('fullname-input'), 'John Doe');
+    fireEvent.changeText(screen.getByTestId('phone-input'), '081234567890');
     fireEvent.changeText(screen.getByTestId('email-input'), 'registered@example.com');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
     fireEvent.press(screen.getByLabelText('Buat akun'));
@@ -112,6 +120,12 @@ describe('<SignUp />', () => {
       expect(mockSignUp).toHaveBeenCalledWith({
         email: 'registered@example.com',
         password: 'password1',
+        options: {
+          data: {
+            full_name: 'John Doe',
+            phone_number: '081234567890',
+          },
+        },
       });
     });
     expect(mockPush).not.toHaveBeenCalled();
@@ -127,6 +141,8 @@ describe('<SignUp />', () => {
     }));
     render(<SignUp />);
 
+    fireEvent.changeText(screen.getByTestId('fullname-input'), 'John Doe');
+    fireEvent.changeText(screen.getByTestId('phone-input'), '081234567890');
     fireEvent.changeText(screen.getByTestId('email-input'), 'new@example.com');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
     fireEvent.press(screen.getByLabelText('Buat akun'));
@@ -159,6 +175,7 @@ describe('<SignUp />', () => {
     }));
     render(<SignUp />);
 
+    fireEvent.changeText(screen.getByTestId('fullname-input'), 'John Doe');
     fireEvent.changeText(screen.getByTestId('email-input'), '  new@example.com  ');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
     fireEvent.press(screen.getByLabelText('Buat akun'));
@@ -167,6 +184,12 @@ describe('<SignUp />', () => {
       expect(mockSignUp).toHaveBeenCalledWith({
         email: 'new@example.com',
         password: 'password1',
+        options: {
+          data: {
+            full_name: 'John Doe',
+            phone_number: undefined,
+          },
+        },
       });
       expect(mockPush).toHaveBeenCalledWith({
         pathname: '/(auth)/verify-email',
@@ -185,6 +208,8 @@ describe('<SignUp />', () => {
     }));
     render(<SignUp />);
 
+    fireEvent.changeText(screen.getByTestId('fullname-input'), 'John Doe');
+    fireEvent.changeText(screen.getByTestId('phone-input'), '081234567890');
     fireEvent.changeText(screen.getByTestId('email-input'), '  session@example.com  ');
     fireEvent.changeText(screen.getByTestId('password-input'), 'password1');
     fireEvent.press(screen.getByLabelText('Buat akun'));
@@ -193,6 +218,12 @@ describe('<SignUp />', () => {
       expect(mockSignUp).toHaveBeenCalledWith({
         email: 'session@example.com',
         password: 'password1',
+        options: {
+          data: {
+            full_name: 'John Doe',
+            phone_number: '081234567890',
+          },
+        },
       });
     });
     expect(mockPush).not.toHaveBeenCalledWith({

@@ -2,7 +2,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { getAuthErrorMessage, isUserAlreadyExistsError } from '@/constants/auth.errors';
 import { signUp } from '@/services/auth.service';
-import { getPasswordStrength, validateEmail } from '@/utils/validation';
+import {
+  getPasswordStrength,
+  validateEmail,
+  validateFullName,
+  validatePhoneNumber,
+} from '@/utils/validation';
 import {
   buildVerifyEmailRouteParams,
   normalizeAuthEmail,
@@ -11,14 +16,18 @@ import {
 
 const SIGN_UP_EXCEPTION_MESSAGE = 'Belum berhasil membuat akun. Silakan coba lagi.';
 
-type SignUpField = 'email' | 'password';
+type SignUpField = 'email' | 'password' | 'fullName' | 'phoneNumber';
 
 type SignUpFieldErrors = {
+  fullName: boolean;
+  phoneNumber: boolean;
   email: boolean;
   password: boolean;
 };
 
 type SignUpFormValues = {
+  fullName: string;
+  phoneNumber: string;
   email: string;
   password: string;
 };
@@ -35,6 +44,8 @@ type SignUpValidationResult =
     };
 
 const EMPTY_FIELD_ERRORS: SignUpFieldErrors = {
+  fullName: false,
+  phoneNumber: false,
   email: false,
   password: false,
 };
@@ -42,13 +53,37 @@ const EMPTY_FIELD_ERRORS: SignUpFieldErrors = {
 function validateSignUpForm(values: SignUpFormValues): SignUpValidationResult {
   const trimmedEmail = normalizeAuthEmail(values.email);
 
-  if (!trimmedEmail || !values.password) {
+  if (!values.fullName || !trimmedEmail || !values.password) {
     return {
       valid: false,
-      message: 'Email dan password wajib diisi.',
+      message: 'Nama lengkap, email, dan password wajib diisi.',
       fieldErrors: {
+        fullName: !values.fullName,
+        phoneNumber: false,
         email: !trimmedEmail,
         password: !values.password,
+      },
+    };
+  }
+
+  if (!validateFullName(values.fullName)) {
+    return {
+      valid: false,
+      message: 'Nama lengkap minimal 3 karakter.',
+      fieldErrors: {
+        ...EMPTY_FIELD_ERRORS,
+        fullName: true,
+      },
+    };
+  }
+
+  if (values.phoneNumber && !validatePhoneNumber(values.phoneNumber)) {
+    return {
+      valid: false,
+      message: 'Nomor telepon tidak valid (hanya angka, 9-15 digit).',
+      fieldErrors: {
+        ...EMPTY_FIELD_ERRORS,
+        phoneNumber: true,
       },
     };
   }
@@ -85,10 +120,14 @@ function validateSignUpForm(values: SignUpFormValues): SignUpValidationResult {
 
 export function useSignUpForm() {
   const router = useRouter();
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fullNameError, setFullNameError] = useState(false);
+  const [phoneNumberError, setPhoneNumberError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
   const [focusedField, setFocusedField] = useState<SignUpField | null>(null);
@@ -96,6 +135,20 @@ export function useSignUpForm() {
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
   const dismissError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const handleFullNameChange = useCallback((text: string) => {
+    setFullName(text);
+    setFullNameError(false);
+    setError(null);
+  }, []);
+
+  const handlePhoneNumberChange = useCallback((text: string) => {
+    // Only allow digits
+    const cleaned = text.replace(/[^0-9]/g, '');
+    setPhoneNumber(cleaned);
+    setPhoneNumberError(false);
     setError(null);
   }, []);
 
@@ -109,6 +162,14 @@ export function useSignUpForm() {
     setPassword(text);
     setPasswordError(false);
     setError(null);
+  }, []);
+
+  const handleFullNameFocus = useCallback(() => {
+    setFocusedField('fullName');
+  }, []);
+
+  const handlePhoneNumberFocus = useCallback(() => {
+    setFocusedField('phoneNumber');
   }, []);
 
   const handleEmailFocus = useCallback(() => {
@@ -125,16 +186,20 @@ export function useSignUpForm() {
 
   const applyValidationError = useCallback((message: string, fieldErrors: SignUpFieldErrors) => {
     setError(message);
+    setFullNameError(fieldErrors.fullName);
+    setPhoneNumberError(fieldErrors.phoneNumber);
     setEmailError(fieldErrors.email);
     setPasswordError(fieldErrors.password);
   }, []);
 
   const handleSubmit = useCallback(async () => {
     setError(null);
+    setFullNameError(false);
+    setPhoneNumberError(false);
     setEmailError(false);
     setPasswordError(false);
 
-    const validation = validateSignUpForm({ email, password });
+    const validation = validateSignUpForm({ fullName, phoneNumber, email, password });
 
     if (!validation.valid) {
       applyValidationError(validation.message, validation.fieldErrors);
@@ -147,6 +212,12 @@ export function useSignUpForm() {
       const { data, error: signUpError } = await signUp({
         email: validation.email,
         password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+            phone_number: phoneNumber ? phoneNumber : undefined,
+          },
+        },
       });
 
       if (signUpError) {
@@ -170,20 +241,28 @@ export function useSignUpForm() {
     } finally {
       setLoading(false);
     }
-  }, [applyValidationError, email, password, router]);
+  }, [applyValidationError, fullName, phoneNumber, email, password, router]);
 
   return {
+    fullName,
+    phoneNumber,
     email,
     password,
     loading,
     error,
+    fullNameError,
+    phoneNumberError,
     emailError,
     passwordError,
     focusedField,
     passwordStrength,
     dismissError,
+    handleFullNameChange,
+    handlePhoneNumberChange,
     handleEmailChange,
     handlePasswordChange,
+    handleFullNameFocus,
+    handlePhoneNumberFocus,
     handleEmailFocus,
     handlePasswordFocus,
     handleFieldBlur,
