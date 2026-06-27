@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
-import { WalletIcon } from '@/components/icons';
+import EmptyOrdersIllustration from '@/components/elements/EmptyOrdersIllustration';
 import { useUnpaidOrdersPaginated } from '@/hooks/useUnpaidOrdersPaginated';
 import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
@@ -69,7 +69,7 @@ export function UnpaidOrders() {
       isLoadingMore={isFetchingMore}
       hasMore={hasMore}
       error={error}
-      EmptyIcon={WalletIcon}
+      EmptyIcon={EmptyOrdersIllustration}
       emptyTitle={EMPTY_TITLE}
       emptyDescription={EMPTY_DESCRIPTION}
       onRefresh={refresh}

@@ -103,7 +103,7 @@ const EmptyState = React.memo(function EmptyState({
           <Icon size={48} color="$colorMuted" />
         </YStack>
       ) : (
-        <Icon size={80} color="$colorSubtle" />
+        <Icon size={120} color="$colorSubtle" />
       )}
       <YStack gap={isFramed ? '$2' : undefined} alignItems="center">
         <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">

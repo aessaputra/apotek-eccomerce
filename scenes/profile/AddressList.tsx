@@ -20,6 +20,7 @@ import {
   getBottomBarShadow,
 } from '@/constants/ui';
 import { MapPinIcon } from '@/components/icons';
+import EmptyAddressIllustration from '@/components/elements/EmptyAddressIllustration';
 import {
   ENTRANCE_STAGGER_DELAY_MS,
   ENTRANCE_DURATION_MS,
@@ -134,7 +135,7 @@ export default function AddressList() {
   const renderEmpty = useCallback(() => {
     return (
       <YStack flex={1} ai="center" jc="center" py="$10" gap="$4">
-        <MapPinIcon size={EMPTY_STATE_ICON_SIZE} color="$primary" />
+        <EmptyAddressIllustration size={120} />
         <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
           Belum ada alamat tersimpan
         </Text>

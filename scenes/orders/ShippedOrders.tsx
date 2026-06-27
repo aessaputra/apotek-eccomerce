@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
-import { TruckIcon } from '@/components/icons';
+import EmptyOrdersIllustration from '@/components/elements/EmptyOrdersIllustration';
 import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
@@ -69,7 +69,7 @@ export default function ShippedOrders() {
       isLoadingMore={isFetchingMore}
       hasMore={hasMore}
       error={error}
-      EmptyIcon={TruckIcon}
+      EmptyIcon={EmptyOrdersIllustration}
       emptyTitle={EMPTY_TITLE}
       emptyDescription={EMPTY_DESCRIPTION}
       onRefresh={refresh}
