@@ -6,9 +6,8 @@ describe('<SupportScreen />', () => {
   it('renders the current support copy', () => {
     render(<SupportScreen />);
 
-    expect(screen.getByText('Dukungan')).not.toBeNull();
-    expect(screen.getByText('Untuk pertanyaan atau bantuan, hubungi kami:')).not.toBeNull();
-    expect(screen.getByText('Email: support@apotek.com')).not.toBeNull();
-    expect(screen.getByText('Telepon: (021) 1234-5678')).not.toBeNull();
+    expect(screen.getByText('Pusat Bantuan & Feedback Pelanggan')).not.toBeNull();
+    expect(screen.getByText('Kirim Feedback')).not.toBeNull();
+    expect(screen.getByText('support@sinarfarma.biz.id')).not.toBeNull();
   });
 });

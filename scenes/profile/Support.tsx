@@ -97,7 +97,7 @@ export default function SupportScreen() {
           <HeadsetIcon size={48} color="$primary" strokeWidth={1.5} />
           <YStack alignItems="center" gap="$2">
             <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
-              Pusat Bantuan
+              Pusat Bantuan & Feedback Pelanggan
             </Text>
             <Text
               fontSize="$4"

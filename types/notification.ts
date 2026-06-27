@@ -20,12 +20,15 @@ export type RoutableNotificationType = Exclude<NotificationType, NonRoutableNoti
 
 type NotificationAppRoute = Extract<
   keyof AppRoutes,
-  'notifications/order-detail/[orderId]' | 'notifications/track-shipment/[orderId]'
+  | 'notifications/order-detail/[orderId]'
+  | 'notifications/track-shipment/[orderId]'
+  | 'product-details'
 >;
 
 export const NOTIFICATION_ROUTE_TARGETS = [
   'notifications/order-detail/[orderId]',
   'notifications/track-shipment/[orderId]',
+  'product-details',
 ] as const;
 
 export type NotificationRouteTarget = (typeof NOTIFICATION_ROUTE_TARGETS)[number];
@@ -343,9 +346,39 @@ export function parseNotificationRoute(
     };
   }
 
-  const expectedRoute = NOTIFICATION_ROUTE_TARGET_BY_TYPE[notification.type];
+  const expectedRoute =
+    notification.type in NOTIFICATION_ROUTE_TARGET_BY_TYPE
+      ? NOTIFICATION_ROUTE_TARGET_BY_TYPE[
+          notification.type as keyof typeof NOTIFICATION_ROUTE_TARGET_BY_TYPE
+        ]
+      : undefined;
 
-  if (normalizedRoute !== expectedRoute) {
+  if (normalizedRoute === 'product-details') {
+    const record = parseNotificationDataRecord(notification.data);
+    const productId = normalizeNonEmptyString(
+      record?.id ?? record?.productId ?? record?.product_id,
+    );
+
+    if (!productId) {
+      return {
+        kind: 'fallback',
+        reason: 'invalid_payload',
+        fallbackRoute: NOTIFICATIONS_FALLBACK_ROUTE,
+      };
+    }
+
+    return {
+      kind: 'route',
+      route: {
+        type: notification.type as any,
+        pathname: 'product-details',
+        params: { id: productId },
+      } as any,
+      payload: { id: productId } as any,
+    };
+  }
+
+  if (expectedRoute !== undefined && normalizedRoute !== expectedRoute) {
     return {
       kind: 'fallback',
       reason: 'unsupported_type_route_combination',
@@ -519,6 +552,13 @@ export function parseNotificationRoute(
 }
 
 export function buildNotificationTypedHref(target: NotificationNavigationTarget): TypedHref {
+  if ((target.pathname as string) === 'product-details') {
+    return {
+      pathname: '/product-details',
+      params: target.params as any,
+    };
+  }
+
   if (target.pathname === 'notifications/order-detail/[orderId]') {
     return {
       pathname: '/notifications/order-detail/[orderId]',
