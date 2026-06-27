@@ -9,17 +9,22 @@ import {
   ChevronRight,
   Chrome,
   Clock,
+  Copy,
   CreditCard,
   Eye,
   EyeOff,
   Grid2x2,
+  Headset,
   Heart,
   History,
   Home,
   Lock,
+  Mail,
   MapPin,
+  MessageSquare,
   MoreHorizontal,
   Package,
+  Phone,
   Pencil,
   Pill,
   Search,
@@ -28,6 +33,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Star,
+  ExternalLink,
   Trash2,
   Truck,
   User,
@@ -177,4 +183,28 @@ export function ClockIcon(props: IconProps) {
 
 export function ShoppingBagIcon(props: IconProps) {
   return <ShoppingBag {...props} />;
+}
+
+export function HeadsetIcon(props: IconProps) {
+  return <Headset {...props} />;
+}
+
+export function MailIcon(props: IconProps) {
+  return <Mail {...props} />;
+}
+
+export function PhoneIcon(props: IconProps) {
+  return <Phone {...props} />;
+}
+
+export function MessageSquareIcon(props: IconProps) {
+  return <MessageSquare {...props} />;
+}
+
+export function ExternalLinkIcon(props: IconProps) {
+  return <ExternalLink {...props} />;
+}
+
+export function CopyIcon(props: IconProps) {
+  return <Copy {...props} />;
 }
