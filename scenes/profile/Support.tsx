@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Linking, Platform } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 import { YStack, XStack, Text, Card, styled, ScrollView } from 'tamagui';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop, G, Path } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedProps,
+  useAnimatedStyle,
   withRepeat,
   withTiming,
   Easing,
+  interpolate,
 } from 'react-native-reanimated';
 import {
   HeadsetIcon,
@@ -22,6 +24,7 @@ import {
 import { copyTextToClipboard } from '@/utils/clipboard';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedG = Animated.createAnimatedComponent(G);
 
 const SafeAreaView = styled(RNSafeAreaView, {
   flex: 1,
@@ -31,31 +34,146 @@ const SafeAreaView = styled(RNSafeAreaView, {
 const OPNFORM_URL = 'https://opnform.com/forms/formulir-umpan-balik-bantuan-sinar-farma-qohroj';
 const SUPPORT_EMAIL = 'support@sinarfarma.biz.id';
 
-function BreathingGlow() {
-  const radius = useSharedValue(30);
+function SupportHeroAnimation() {
+  const pulse = useSharedValue(0);
+  const rotate = useSharedValue(0);
+  const float1 = useSharedValue(0);
+  const float2 = useSharedValue(0);
 
   useEffect(() => {
-    radius.value = withRepeat(
-      withTiming(45, { duration: 2000, easing: Easing.inOut(Easing.quad) }),
+    pulse.value = withRepeat(
+      withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    );
+    rotate.value = withRepeat(
+      withTiming(360, { duration: 15000, easing: Easing.linear }),
+      -1,
+      false,
+    );
+    float1.value = withRepeat(
+      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+    float2.value = withRepeat(
+      withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
       -1,
       true,
     );
   }, []);
 
-  const animatedProps = useAnimatedProps(() => ({
-    r: radius.value,
+  const blobProps = useAnimatedProps(() => ({
+    rotation: rotate.value,
+  }));
+
+  const pulseRing1 = useAnimatedProps(() => ({
+    r: interpolate(pulse.value, [0, 1], [60, 85]),
+    opacity: interpolate(pulse.value, [0, 1], [0.6, 0]),
+  }));
+
+  const pulseRing2 = useAnimatedProps(() => ({
+    r: interpolate(pulse.value, [0, 1], [70, 100]),
+    opacity: interpolate(pulse.value, [0, 1], [0.3, 0]),
+  }));
+
+  const floatStyle1 = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(float1.value, [0, 1], [-6, 6]) }],
+  }));
+
+  const floatStyle2 = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(float2.value, [0, 1], [8, -8]) }],
   }));
 
   return (
-    <Svg width={100} height={100} style={{ position: 'absolute', top: -10 }}>
-      <Defs>
-        <RadialGradient id="glow" cx="50%" cy="50%" rx="50%" ry="50%">
-          <Stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
-          <Stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      <AnimatedCircle cx="50" cy="50" fill="url(#glow)" animatedProps={animatedProps} />
-    </Svg>
+    <YStack alignItems="center" justifyContent="center" height={180} width="100%">
+      {/* Background SVG Animation */}
+      <View style={{ position: 'absolute' }}>
+        <Svg width={240} height={240} viewBox="0 0 240 240">
+          <Defs>
+            <LinearGradient id="blobGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="var(--primary)" stopOpacity="0.15" />
+              <Stop offset="100%" stopColor="var(--primary)" stopOpacity="0.05" />
+            </LinearGradient>
+          </Defs>
+
+          <G x="120" y="120">
+            {/* Pulsing rings */}
+            <AnimatedCircle fill="var(--primary)" animatedProps={pulseRing1} />
+            <AnimatedCircle fill="var(--primary)" animatedProps={pulseRing2} />
+
+            {/* Slowly rotating blob */}
+            <AnimatedG animatedProps={blobProps}>
+              <Path
+                d="M 45 -55 C 65 -35 75 -10 65 15 C 55 40 30 55 5 60 C -20 65 -45 50 -60 25 C -75 0 -70 -35 -50 -55 C -30 -75 25 -75 45 -55 Z"
+                fill="url(#blobGrad)"
+              />
+              <Path
+                d="M -30 -45 C -10 -65 20 -70 45 -50 C 70 -30 75 10 55 35 C 35 60 -10 70 -35 50 C -60 30 -50 -25 -30 -45 Z"
+                fill="var(--primary)"
+                opacity={0.08}
+              />
+            </AnimatedG>
+            <Circle r="48" fill="var(--primary)" opacity={0.1} />
+          </G>
+        </Svg>
+      </View>
+
+      {/* Floating Foreground: Main Icon */}
+      <Animated.View style={floatStyle1}>
+        <YStack
+          width={80}
+          height={80}
+          borderRadius={40}
+          backgroundColor="$primary"
+          alignItems="center"
+          justifyContent="center"
+          shadowColor="$primary"
+          shadowOpacity={0.4}
+          shadowRadius={15}
+          shadowOffset={{ width: 0, height: 8 }}>
+          <HeadsetIcon size={40} color="white" strokeWidth={1.5} />
+        </YStack>
+      </Animated.View>
+
+      {/* Floating Chat Bubble */}
+      <Animated.View style={[{ position: 'absolute', right: '22%', top: '15%' }, floatStyle2]}>
+        <YStack
+          width={36}
+          height={36}
+          borderRadius={18}
+          backgroundColor="$surface"
+          alignItems="center"
+          justifyContent="center"
+          shadowColor="$shadowColor"
+          shadowOpacity={0.15}
+          shadowRadius={8}
+          shadowOffset={{ width: 0, height: 4 }}
+          borderWidth={1}
+          borderColor="$surfaceBorder">
+          <MessageSquareIcon size={18} color="$primary" strokeWidth={2} />
+        </YStack>
+      </Animated.View>
+
+      {/* Floating Mail Icon */}
+      <Animated.View style={[{ position: 'absolute', left: '22%', bottom: '20%' }, floatStyle2]}>
+        <YStack
+          width={32}
+          height={32}
+          borderRadius={16}
+          backgroundColor="$surface"
+          alignItems="center"
+          justifyContent="center"
+          shadowColor="$shadowColor"
+          shadowOpacity={0.15}
+          shadowRadius={8}
+          shadowOffset={{ width: 0, height: 4 }}
+          borderWidth={1}
+          borderColor="$surfaceBorder">
+          <MailIcon size={16} color="$colorHover" strokeWidth={2} />
+        </YStack>
+      </Animated.View>
+    </YStack>
   );
 }
 
@@ -93,8 +211,7 @@ export default function SupportScreen() {
         showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <YStack alignItems="center" gap="$4" marginTop="$4" marginBottom="$6">
-          <BreathingGlow />
-          <HeadsetIcon size={48} color="$primary" strokeWidth={1.5} />
+          <SupportHeroAnimation />
           <YStack alignItems="center" gap="$2">
             <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
               Pusat Bantuan & Feedback Pelanggan
