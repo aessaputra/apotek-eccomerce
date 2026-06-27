@@ -5,6 +5,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Spinner, Text, YStack, styled, useMedia, useTheme } from 'tamagui';
 import ProductCard from '@/components/elements/ProductCard';
+import EmptyProductIllustration from '@/components/elements/EmptyProductIllustration';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useProductsPaginated } from '@/hooks';
 import { addProductToCart, type ProductListItem } from '@/services';
@@ -298,14 +299,15 @@ export default function CategoryProductList() {
             <ErrorState message={error} />
           ) : (
             <ContentStack px={horizontalPadding}>
-              <EmptyState>
+              <EmptyState py="$6">
+                <EmptyProductIllustration style={{ marginBottom: 8 }} />
                 <Text fontSize={16} fontWeight="700" color="$color" textAlign="center">
-                  No products found
+                  Produk Tidak Ditemukan
                 </Text>
                 <Text fontSize={13} color="$colorSubtle" textAlign="center">
                   {categoryName
-                    ? `${categoryName} has no active products with stock.`
-                    : 'This category has no active products with stock.'}
+                    ? `Belum ada produk obat yang tersedia dengan stok aktif di kategori ${categoryName}.`
+                    : 'Belum ada produk obat yang tersedia dengan stok aktif di kategori ini.'}
                 </Text>
               </EmptyState>
             </ContentStack>
