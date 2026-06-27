@@ -208,8 +208,15 @@ export function isNotificationRouteTarget(value: string): value is NotificationR
 }
 
 function normalizeNotificationRouteTargetValue(value: string): NotificationRouteTarget | null {
-  const normalizedValue = value.startsWith('/') ? value.slice(1) : value;
-  return isNotificationRouteTarget(normalizedValue) ? normalizedValue : null;
+  let normalizedValue = value.startsWith('/') ? value.slice(1) : value;
+
+  if (normalizedValue.startsWith('orders/')) {
+    normalizedValue = normalizedValue.replace(/^orders\//, 'notifications/');
+  }
+
+  return isNotificationRouteTarget(normalizedValue)
+    ? (normalizedValue as NotificationRouteTarget)
+    : null;
 }
 
 export function parseNotificationPayload<T extends NotificationType>(
