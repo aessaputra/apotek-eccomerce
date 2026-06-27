@@ -6,6 +6,7 @@ import { WebView } from 'react-native-webview';
 import { Spinner, Text, XStack, YStack, Button as TamaguiButton } from 'tamagui';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { CloseIcon, LockIcon } from '@/components/icons';
+import PaymentStatusAnimation from '@/components/elements/PaymentStatusAnimation';
 import { useAppSlice } from '@/slices';
 import type { RouteParams } from '@/types/routes.types';
 import { useDataPersist } from '@/hooks/useDataPersist';
@@ -262,7 +263,7 @@ export default function Payment() {
           padding="$4"
           role="alert"
           aria-live="polite">
-          <Spinner size="large" color="$primary" />
+          <PaymentStatusAnimation status={paymentResult === 'success' ? 'success' : 'verifying'} />
           <Text textAlign="center" color="$color" fontWeight="700" fontSize="$5">
             {paymentResult === 'success'
               ? 'Pembayaran berhasil! Memverifikasi pesanan...'
