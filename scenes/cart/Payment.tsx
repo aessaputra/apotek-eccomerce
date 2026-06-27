@@ -49,7 +49,6 @@ export default function Payment() {
     finalizePaymentFlow,
     isPolling,
     paymentError,
-    paymentResult,
     postPaymentMessage,
     postPaymentState,
     setConfirmCloseDialogOpen,
@@ -263,14 +262,12 @@ export default function Payment() {
           padding="$4"
           role="alert"
           aria-live="polite">
-          <PaymentStatusAnimation status={paymentResult === 'success' ? 'success' : 'verifying'} />
+          <PaymentStatusAnimation status="verifying" />
           <Text textAlign="center" color="$color" fontWeight="700" fontSize="$5">
-            {paymentResult === 'success'
-              ? 'Pembayaran berhasil! Memverifikasi pesanan...'
-              : 'Memverifikasi status pembayaran...'}
+            Memproses Pembayaran...
           </Text>
           <Text textAlign="center" color="$colorPress" fontSize="$3">
-            Mohon tunggu sebentar, kami sedang memastikan status pembayaran dari server.
+            Mohon tunggu sebentar.
           </Text>
         </YStack>
       ) : postPaymentState === 'timeout' ? (
@@ -286,7 +283,7 @@ export default function Payment() {
             Pembayaran sedang diproses
           </Text>
           <Text textAlign="center" color="$colorPress" fontSize="$3">
-            {postPaymentMessage ?? 'Pembayaran sedang diproses. Cek status di halaman Pesanan.'}
+            {postPaymentMessage ?? 'Cek status terbaru di halaman Pesanan.'}
           </Text>
           <TamaguiButton
             backgroundColor="$primary"
