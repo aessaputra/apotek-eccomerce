@@ -144,7 +144,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_shipped',
-        cta_route: 'orders/track-shipment/[orderId]',
+        cta_route: 'notifications/track-shipment/[orderId]',
         data: { orderId: 'order-42', shipmentStage: 'shipped' },
       }),
     );
@@ -163,7 +163,7 @@ describe('RootLayout notification lifecycle', () => {
       expect(mockBootstrapNotificationsAsync).toHaveBeenCalled();
       expect(mockAddNotificationResponseReceivedListener).toHaveBeenCalled();
       expect(mockNavigate).toHaveBeenCalledWith({
-        pathname: '/orders/track-shipment/[orderId]',
+        pathname: '/notifications/track-shipment/[orderId]',
         params: { orderId: 'order-42' },
       });
     });
@@ -177,7 +177,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_shipped',
-        cta_route: 'orders/order-detail/[orderId]',
+        cta_route: 'notifications/order-detail/[orderId]',
         data: { orderId: 'order-42', shipmentStage: 'shipped' },
       }),
     );
@@ -200,7 +200,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_shipped',
-        cta_route: 'orders/order-detail/[orderId]',
+        cta_route: 'notifications/order-detail/[orderId]',
         data: { orderId: 'order-42', shipmentStage: 'shipped' },
       }),
     );
@@ -231,7 +231,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_shipped',
-        cta_route: 'orders/order-detail/[orderId]',
+        cta_route: 'notifications/order-detail/[orderId]',
         data: { orderId: 'order-42', shipmentStage: 'shipped' },
       }),
     );
@@ -404,7 +404,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_shipped',
-        cta_route: 'orders/order-detail/[orderId]',
+        cta_route: 'notifications/order-detail/[orderId]',
         data: { orderId: 'order-42', shipmentStage: 'shipped' },
       }),
     );
@@ -429,7 +429,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_shipped',
-        cta_route: 'orders/order-detail/[orderId]',
+        cta_route: 'notifications/order-detail/[orderId]',
         data: { orderId: 'order-42', shipmentStage: 'shipped' },
       }),
     );
@@ -458,7 +458,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_shipped',
-        cta_route: 'orders/order-detail/[orderId]',
+        cta_route: 'notifications/order-detail/[orderId]',
         data: { orderId: 'order-42', shipmentStage: 'shipped' },
       }),
     );
@@ -488,7 +488,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_shipped',
-        cta_route: 'orders/order-detail/[orderId]',
+        cta_route: 'notifications/order-detail/[orderId]',
         data: { orderId: 'order-42', shipmentStage: 'shipped' },
       }),
     );
@@ -532,7 +532,7 @@ describe('RootLayout notification lifecycle', () => {
       listener?.(
         createNotificationResponse({
           type: 'order_completed',
-          cta_route: 'orders/order-detail/[orderId]',
+          cta_route: 'notifications/order-detail/[orderId]',
           data: { orderId: 'order-77' },
         }),
       );
@@ -541,7 +541,7 @@ describe('RootLayout notification lifecycle', () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({
-        pathname: '/orders/order-detail/[orderId]',
+        pathname: '/notifications/order-detail/[orderId]',
         params: { orderId: 'order-77' },
       });
     });
@@ -557,7 +557,7 @@ describe('RootLayout notification lifecycle', () => {
     mockGetLastNotificationResponseAsync.mockImplementation(async () =>
       createNotificationResponse({
         type: 'order_completed',
-        cta_route: 'orders/order-detail/[orderId]',
+        cta_route: 'notifications/order-detail/[orderId]',
         data: { orderId: 'order-99' },
       }),
     );
@@ -605,7 +605,7 @@ describe('RootLayout notification lifecycle', () => {
       listener?.(
         createNotificationResponse({
           type: 'order_completed',
-          cta_route: 'orders/order-detail/[orderId]',
+          cta_route: 'notifications/order-detail/[orderId]',
           data: { orderId: 'order-88' },
         }),
       );
@@ -614,7 +614,7 @@ describe('RootLayout notification lifecycle', () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({
-        pathname: '/orders/order-detail/[orderId]',
+        pathname: '/notifications/order-detail/[orderId]',
         params: { orderId: 'order-88' },
       });
     });

@@ -20,12 +20,12 @@ export type RoutableNotificationType = Exclude<NotificationType, NonRoutableNoti
 
 type NotificationAppRoute = Extract<
   keyof AppRoutes,
-  'orders/order-detail/[orderId]' | 'orders/track-shipment/[orderId]'
+  'notifications/order-detail/[orderId]' | 'notifications/track-shipment/[orderId]'
 >;
 
 export const NOTIFICATION_ROUTE_TARGETS = [
-  'orders/order-detail/[orderId]',
-  'orders/track-shipment/[orderId]',
+  'notifications/order-detail/[orderId]',
+  'notifications/track-shipment/[orderId]',
 ] as const;
 
 export type NotificationRouteTarget = (typeof NOTIFICATION_ROUTE_TARGETS)[number];
@@ -35,13 +35,13 @@ export const NOTIFICATIONS_FALLBACK_ROUTE = '/notifications';
 export type NotificationFallbackRoute = typeof NOTIFICATIONS_FALLBACK_ROUTE;
 
 export interface NotificationRouteTargetByType {
-  payment_settlement: 'orders/order-detail/[orderId]';
-  payment_failed_or_expired: 'orders/order-detail/[orderId]';
-  order_processing: 'orders/order-detail/[orderId]';
-  order_awaiting_shipment: 'orders/order-detail/[orderId]';
-  order_shipped: 'orders/track-shipment/[orderId]';
-  order_delivered_action_required: 'orders/order-detail/[orderId]';
-  order_completed: 'orders/order-detail/[orderId]';
+  payment_settlement: 'notifications/order-detail/[orderId]';
+  payment_failed_or_expired: 'notifications/order-detail/[orderId]';
+  order_processing: 'notifications/order-detail/[orderId]';
+  order_awaiting_shipment: 'notifications/order-detail/[orderId]';
+  order_shipped: 'notifications/track-shipment/[orderId]';
+  order_delivered_action_required: 'notifications/order-detail/[orderId]';
+  order_completed: 'notifications/order-detail/[orderId]';
 }
 
 export type NotificationRouteTargetForType<T extends RoutableNotificationType> =
@@ -147,13 +147,13 @@ export interface NotificationRouteFallback {
 export type NotificationRouteParseResult = ParsedNotificationRoute | NotificationRouteFallback;
 
 export const NOTIFICATION_ROUTE_TARGET_BY_TYPE = {
-  payment_settlement: 'orders/order-detail/[orderId]',
-  payment_failed_or_expired: 'orders/order-detail/[orderId]',
-  order_processing: 'orders/order-detail/[orderId]',
-  order_awaiting_shipment: 'orders/order-detail/[orderId]',
-  order_shipped: 'orders/track-shipment/[orderId]',
-  order_delivered_action_required: 'orders/order-detail/[orderId]',
-  order_completed: 'orders/order-detail/[orderId]',
+  payment_settlement: 'notifications/order-detail/[orderId]',
+  payment_failed_or_expired: 'notifications/order-detail/[orderId]',
+  order_processing: 'notifications/order-detail/[orderId]',
+  order_awaiting_shipment: 'notifications/order-detail/[orderId]',
+  order_shipped: 'notifications/track-shipment/[orderId]',
+  order_delivered_action_required: 'notifications/order-detail/[orderId]',
+  order_completed: 'notifications/order-detail/[orderId]',
 } as const satisfies NotificationRouteTargetByType;
 
 const NOTIFICATION_ROUTE_SET = new Set<string>(NOTIFICATION_ROUTE_TARGETS);
@@ -300,14 +300,14 @@ export function createNotificationNavigationTarget<T extends RoutableNotificatio
   if (type === 'order_shipped') {
     return {
       type,
-      pathname: 'orders/track-shipment/[orderId]',
+      pathname: 'notifications/track-shipment/[orderId]',
       params: { orderId: payload.orderId },
     } as NotificationNavigationTarget<T>;
   }
 
   return {
     type,
-    pathname: 'orders/order-detail/[orderId]',
+    pathname: 'notifications/order-detail/[orderId]',
     params: { orderId: payload.orderId },
   } as NotificationNavigationTarget<T>;
 }
@@ -369,7 +369,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'payment_settlement',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -391,7 +391,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'payment_failed_or_expired',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -413,7 +413,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_processing',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -435,7 +435,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_awaiting_shipment',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -457,7 +457,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_shipped',
-          pathname: 'orders/track-shipment/[orderId]',
+          pathname: 'notifications/track-shipment/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -482,7 +482,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_delivered_action_required',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -504,7 +504,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_completed',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -519,15 +519,15 @@ export function parseNotificationRoute(
 }
 
 export function buildNotificationTypedHref(target: NotificationNavigationTarget): TypedHref {
-  if (target.pathname === 'orders/order-detail/[orderId]') {
+  if (target.pathname === 'notifications/order-detail/[orderId]') {
     return {
-      pathname: '/orders/order-detail/[orderId]',
+      pathname: '/notifications/order-detail/[orderId]',
       params: target.params,
     };
   }
 
   return {
-    pathname: '/orders/track-shipment/[orderId]',
+    pathname: '/notifications/track-shipment/[orderId]',
     params: target.params,
   };
 }

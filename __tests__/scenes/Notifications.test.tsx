@@ -33,7 +33,7 @@ function createNotification(id: string, overrides: Partial<NotificationRow> = {}
     type: 'order_completed',
     title: `Notifikasi ${id}`,
     body: `Isi notifikasi ${id}`,
-    cta_route: 'orders/order-detail/[orderId]',
+    cta_route: 'notifications/order-detail/[orderId]',
     data: { orderId: `order-${id}` },
     priority: 'high',
     source_event_key: `event-${id}`,
@@ -249,7 +249,7 @@ describe('<Notifications />', () => {
             title: 'Pesanan dikirim',
             body: 'Pesanan Anda sedang menuju alamat tujuan.',
             type: 'order_shipped',
-            cta_route: 'orders/track-shipment/[orderId]',
+            cta_route: 'notifications/track-shipment/[orderId]',
             data: { orderId: 'order-1', shipmentStage: 'shipped' },
           }),
           createNotification('02', {
@@ -279,7 +279,7 @@ describe('<Notifications />', () => {
     await waitFor(() => {
       expect(markAsRead).toHaveBeenCalledWith('01');
       expect(mockPush).toHaveBeenCalledWith({
-        pathname: '/orders/track-shipment/[orderId]',
+        pathname: '/notifications/track-shipment/[orderId]',
         params: { orderId: 'order-1' },
       });
     });

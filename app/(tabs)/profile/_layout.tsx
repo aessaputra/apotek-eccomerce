@@ -65,6 +65,14 @@ function ProfileStackLayout() {
         }}
       />
       <Stack.Screen
+        name="track-shipment/[orderId]"
+        options={{
+          title: 'Lacak Pengiriman',
+          headerTitleAlign: 'center',
+          headerBackTitle: 'Detail Pesanan',
+        }}
+      />
+      <Stack.Screen
         name="support"
         options={{
           title: 'Dukungan',

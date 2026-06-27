@@ -11,7 +11,7 @@ function createNotificationRouteSource(
 ): NotificationRouteSource {
   return {
     type: 'order_processing',
-    cta_route: 'orders/order-detail/[orderId]',
+    cta_route: 'notifications/order-detail/[orderId]',
     data: { orderId: 'order-1' },
     ...overrides,
   };
@@ -32,14 +32,14 @@ describe('notification routing contract', () => {
 
     if (processingRoute.kind === 'route') {
       expect(buildNotificationTypedHref(processingRoute.route)).toEqual({
-        pathname: '/orders/order-detail/[orderId]',
+        pathname: '/notifications/order-detail/[orderId]',
         params: { orderId: 'order-1' },
       });
     }
 
     if (awaitingShipmentRoute.kind === 'route') {
       expect(buildNotificationTypedHref(awaitingShipmentRoute.route)).toEqual({
-        pathname: '/orders/order-detail/[orderId]',
+        pathname: '/notifications/order-detail/[orderId]',
         params: { orderId: 'order-2' },
       });
     }
@@ -50,7 +50,7 @@ describe('notification routing contract', () => {
       resolveNotificationNavigationHref({
         notification_id: 'notification-77',
         type: 'order_shipped',
-        cta_route: 'orders/track-shipment/[orderId]',
+        cta_route: 'notifications/track-shipment/[orderId]',
         data: {
           orderId: 'order-77',
           shipmentStage: 'shipped',
@@ -58,7 +58,7 @@ describe('notification routing contract', () => {
         source_event_key: 'order_shipped:manual:order-77',
       }),
     ).toEqual({
-      pathname: '/orders/track-shipment/[orderId]',
+      pathname: '/notifications/track-shipment/[orderId]',
       params: { orderId: 'order-77' },
     });
   });

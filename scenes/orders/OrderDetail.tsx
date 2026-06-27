@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, RefreshControl } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useSegments } from 'expo-router';
 import { Button, Separator, Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
 import { PackageIcon, AlertCircleIcon } from '@/components/icons';
 import OrderSectionCard from '@/components/elements/OrderSectionCard';
@@ -39,6 +39,7 @@ export default function OrderDetail() {
     typeof orderIdParam === 'string' && orderIdParam.trim() ? orderIdParam : undefined;
   const theme = useTheme();
   const router = useRouter();
+  const segments = useSegments();
   const { order, status, isLoading, isRefreshing, isConfirming, error, refresh, confirmReceived } =
     useOrderDetail(orderId);
   const [isPaymentExpired, setIsPaymentExpired] = useState(false);
@@ -61,11 +62,20 @@ export default function OrderDetail() {
       return;
     }
 
+    const currentTab = (segments as string[])[1];
+    const pathname = (
+      currentTab === 'profile'
+        ? '/profile/track-shipment/[orderId]'
+        : currentTab === 'notifications'
+          ? '/notifications/track-shipment/[orderId]'
+          : '/orders/track-shipment/[orderId]'
+    ) as any;
+
     router.push({
-      pathname: '/orders/track-shipment/[orderId]',
+      pathname,
       params: { orderId: order.id },
     });
-  }, [order?.id, router]);
+  }, [order?.id, router, segments]);
 
   const handleResumePayment = useCallback(() => {
     const paymentUrl = order?.snap_redirect_url?.trim() || '';
