@@ -226,14 +226,18 @@ export function parseNotificationPayload<T extends NotificationType>(
     return null;
   }
 
-  const orderId = normalizeNonEmptyString(record.orderId);
+  const orderId = normalizeNonEmptyString(record.orderId ?? record.order_id);
 
   if (!orderId) {
     return null;
   }
 
-  const paymentStatus = parseNotificationPaymentStatus(record.paymentStatus);
-  const shipmentStage = parseNotificationShipmentStage(record.shipmentStage);
+  const paymentStatus = parseNotificationPaymentStatus(
+    record.paymentStatus ?? record.payment_status,
+  );
+  const shipmentStage = parseNotificationShipmentStage(
+    record.shipmentStage ?? record.shipment_stage,
+  );
 
   switch (type) {
     case 'payment_settlement':
