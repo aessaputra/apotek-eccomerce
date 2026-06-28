@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Linking, Platform, View } from 'react-native';
-import { YStack, XStack, Text, Card, styled, ScrollView } from 'tamagui';
+import { YStack, XStack, Text, Card, styled, ScrollView, useTheme } from 'tamagui';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
+import { getThemeColor } from '@/utils/theme';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Defs, LinearGradient, Stop, G, Path } from 'react-native-svg';
 import Animated, {
@@ -35,6 +36,9 @@ const OPNFORM_URL = 'https://opnform.com/forms/formulir-umpan-balik-bantuan-sina
 const SUPPORT_EMAIL = 'support@sinarfarma.biz.id';
 
 function SupportHeroAnimation() {
+  const theme = useTheme();
+  const primaryColor = getThemeColor(theme, 'primary');
+
   const pulse = useSharedValue(0);
   const rotate = useSharedValue(0);
   const float1 = useSharedValue(0);
@@ -92,15 +96,15 @@ function SupportHeroAnimation() {
         <Svg width={240} height={240} viewBox="0 0 240 240">
           <Defs>
             <LinearGradient id="blobGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="var(--primary)" stopOpacity="0.15" />
-              <Stop offset="100%" stopColor="var(--primary)" stopOpacity="0.05" />
+              <Stop offset="0%" stopColor={primaryColor} stopOpacity="0.15" />
+              <Stop offset="100%" stopColor={primaryColor} stopOpacity="0.05" />
             </LinearGradient>
           </Defs>
 
           <G x="120" y="120">
             {/* Pulsing rings */}
-            <AnimatedCircle fill="var(--primary)" animatedProps={pulseRing1} />
-            <AnimatedCircle fill="var(--primary)" animatedProps={pulseRing2} />
+            <AnimatedCircle fill={primaryColor} animatedProps={pulseRing1} />
+            <AnimatedCircle fill={primaryColor} animatedProps={pulseRing2} />
 
             {/* Slowly rotating blob */}
             <AnimatedG animatedProps={blobProps}>
@@ -110,11 +114,11 @@ function SupportHeroAnimation() {
               />
               <Path
                 d="M -30 -45 C -10 -65 20 -70 45 -50 C 70 -30 75 10 55 35 C 35 60 -10 70 -35 50 C -60 30 -50 -25 -30 -45 Z"
-                fill="var(--primary)"
+                fill={primaryColor}
                 opacity={0.08}
               />
             </AnimatedG>
-            <Circle r="48" fill="var(--primary)" opacity={0.1} />
+            <Circle r="48" fill={primaryColor} opacity={0.1} />
           </G>
         </Svg>
       </View>
@@ -306,7 +310,12 @@ export default function SupportScreen() {
                   <Text fontSize="$3" color="$colorPress" marginBottom="$1">
                     Email
                   </Text>
-                  <Text fontSize="$4" fontWeight="600" color="$color">
+                  <Text
+                    fontSize="$4"
+                    fontWeight="600"
+                    color="$color"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit>
                     {SUPPORT_EMAIL}
                   </Text>
                 </YStack>

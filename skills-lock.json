@@ -67,6 +67,12 @@
       "skillPath": "skills/design-md/SKILL.md",
       "computedHash": "d3a4c7d2f2715a33662c8b06ffc16035d01965a8b4ed81c2958fb22ae94760f8"
     },
+    "docs-writer": {
+      "source": "google-gemini/gemini-cli",
+      "sourceType": "github",
+      "skillPath": ".gemini/skills/docs-writer/SKILL.md",
+      "computedHash": "ddb3671168efa5f2fe481740a57ca147619ffffe2cf764ada6229bde01fed3df"
+    },
     "drawio-logical-diagrams": {
       "source": "giuseppe-trisciuoglio/developer-kit",
       "sourceType": "github",
