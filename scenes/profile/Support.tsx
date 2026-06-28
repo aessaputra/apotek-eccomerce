@@ -259,17 +259,17 @@ export default function SupportScreen() {
             <XStack alignItems="center" justifyContent="space-between">
               <YStack flex={1} gap="$2" paddingRight="$4">
                 <XStack alignItems="center" gap="$2">
-                  <MessageSquareIcon size={24} color="white" />
-                  <Text fontSize="$5" fontWeight="700" color="white">
+                  <MessageSquareIcon size={24} color="$onPrimary" />
+                  <Text fontSize="$5" fontWeight="700" color="$onPrimary">
                     Kirim Feedback
                   </Text>
                 </XStack>
-                <Text fontSize={13} color="white" opacity={0.9} lineHeight={18}>
+                <Text fontSize={13} color="$onPrimary" opacity={0.9} lineHeight={18}>
                   Laporkan kendala pesanan, keluhan, atau berikan saran untuk perbaikan.
                 </Text>
               </YStack>
               <YStack backgroundColor="rgba(255,255,255,0.2)" padding="$3" borderRadius={100}>
-                <ExternalLinkIcon size={20} color="white" />
+                <ExternalLinkIcon size={20} color="$onPrimary" />
               </YStack>
             </XStack>
           </Card>
