@@ -61,6 +61,12 @@
       "skillPath": "skills/create-specification/SKILL.md",
       "computedHash": "45b9ef98b0fb82ba0e1aee65dfb464fa1f8494a14a557b9788d73aae87e9e618"
     },
+    "design-doc-mermaid": {
+      "source": "spillwavesolutions/design-doc-mermaid",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "3610d5b13abec895fe1676a917b1a8a94dfd1286adf99476697d4a31e09227ac"
+    },
     "design-md": {
       "source": "google-labs-code/stitch-skills",
       "sourceType": "github",
@@ -132,6 +138,12 @@
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/native-data-fetching/SKILL.md",
       "computedHash": "21253dd72e2afa0cc0a6693295f043af3b149fa250c7aedef4d33144e69258ff"
+    },
+    "obsidian-markdown": {
+      "source": "kepano/obsidian-skills",
+      "sourceType": "github",
+      "skillPath": "skills/obsidian-markdown/SKILL.md",
+      "computedHash": "0f47297035d7824e7bf0f1984e8145a59a123e2258b5d54c9ac9642f9f77e177"
     },
     "push-notification-setup": {
       "source": "aj-geddes/useful-ai-prompts",
