@@ -320,7 +320,7 @@ export default function TrackShipment() {
                   Lacak Resi Manual
                 </Text>
                 <Text fontSize="$3" color="$colorSubtle">
-                  Gunakan form di bawah untuk melacak pesanan Anda pada sistem cekresi.com.
+                  Gunakan tombol di bawah untuk melacak pesanan Anda pada sistem cekresi.com.
                 </Text>
               </YStack>
 
