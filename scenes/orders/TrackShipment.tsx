@@ -2,7 +2,6 @@ import React, { useCallback, useMemo } from 'react';
 import { Linking, RefreshControl, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { WebView } from 'react-native-webview';
 import { useToastController } from '@tamagui/toast';
 import { Button, Separator, Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
 import { ArrowUpRight, Clock3, Copy } from '@tamagui/lucide-icons';
@@ -24,31 +23,6 @@ import {
 } from './trackShipmentViewModel';
 
 const TRACKING_CONTENT_CONTAINER_STYLE = { paddingVertical: 16, paddingBottom: 24 } as const;
-
-const getCekResiHtml = () => `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <style>
-    body {
-      margin: 0;
-      padding: 16px;
-      display: flex;
-      justify-content: center;
-      background-color: transparent;
-    }
-  </style>
-</head>
-<body>
-  <div id="cekresicom_id"></div>
-  <script type="text/javascript" src="https://cekresi.com/widget/widgetcekresicom_v1.js"></script>
-  <script type="text/javascript">
-    init_widget_cekresicom('w1',380,110);
-  </script>
-</body>
-</html>
-`;
 
 export default function TrackShipment() {
   const params = useLocalSearchParams<{ orderId?: string | string[] }>();
@@ -360,21 +334,16 @@ export default function TrackShipment() {
                 Salin Resi: {order.waybill_number}
               </Button>
 
-              <YStack
-                height={500}
-                overflow="hidden"
-                borderRadius="$4"
-                borderWidth={1}
-                borderColor="$borderColor"
-                backgroundColor="$background">
-                <WebView
-                  source={{ html: getCekResiHtml() }}
-                  originWhitelist={['*']}
-                  style={{ flex: 1, backgroundColor: 'transparent' }}
-                  scrollEnabled={true}
-                  showsVerticalScrollIndicator={false}
-                />
-              </YStack>
+              <Button
+                size="$4"
+                backgroundColor="$primary"
+                color="$onPrimary"
+                iconAfter={<ArrowUpRight size={16} color="$onPrimary" />}
+                onPress={() =>
+                  Linking.openURL(`https://cekresi.com/?noresi=${order.waybill_number}`)
+                }>
+                Lacak di cekresi.com
+              </Button>
             </YStack>
           </OrderSectionCard>
         ) : isTrackingLoading && !tracking ? (

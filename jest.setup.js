@@ -21,14 +21,6 @@ jest.mock('react-native-reanimated', () => {
   return Reanimated;
 });
 
-// Mock react-native-webview
-jest.mock('react-native-webview', () => {
-  const { View } = require('react-native');
-  return {
-    WebView: View,
-  };
-});
-
 // Mock @react-native-async-storage/async-storage
 jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn(() => Promise.resolve()),
