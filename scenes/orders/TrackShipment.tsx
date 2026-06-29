@@ -406,9 +406,6 @@ export default function TrackShipment() {
                     </YStack>
                     <YStack flex={1} gap="$1">
                       <Text fontSize="$3" fontWeight="600" color="$color">
-                        {formatTrackingStatusLabel(event.status)}
-                      </Text>
-                      <Text fontSize="$2" color="$colorSubtle">
                         {formatTrackingDate(event.updated_at)}
                       </Text>
                       <Text fontSize="$3" color="$colorSubtle">

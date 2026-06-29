@@ -62,6 +62,7 @@ export interface Order {
   shipping_etd: string | null;
   waybill_number: string | null;
   waybill_source: string | null;
+  latest_biteship_status: string | null;
   snap_redirect_url: string | null;
 }
 export const ORDERS_PAGE_SIZE = 20;
@@ -90,6 +91,7 @@ const ORDER_READ_MODEL_SELECT = `
   shipping_etd,
   waybill_number,
   waybill_source,
+  latest_biteship_status,
   snap_redirect_url
 `;
 
@@ -174,6 +176,7 @@ export interface OrderListItem {
   courier_service: string | null;
   payment_status: string;
   status: string;
+  latest_biteship_status: string | null;
   customer_completion_stage: CustomerCompletionStage | null;
   customer_order_bucket: CustomerOrderBucket | null;
   order_items: OrderListOrderItem[];
@@ -1257,11 +1260,33 @@ export function isBackendExpired(expiredAt: string | null | undefined): boolean 
   return new Date(expiredAt) < new Date();
 }
 
+export function getBiteshipStatusDisplay(status: string): OrderStatusDisplay {
+  const displays: Record<string, OrderStatusDisplay> = {
+    confirmed: { label: 'Terkonfirmasi', variant: 'primary' },
+    scheduled: { label: 'Terjadwal', variant: 'primary' },
+    allocated: { label: 'Teralokasi', variant: 'primary' },
+    picking_up: { label: 'Dalam Penjemputan', variant: 'primary' },
+    picked: { label: 'Berhasil Dijemput', variant: 'primary' },
+    cancelled: { label: 'Dibatalkan', variant: 'danger' },
+    on_hold: { label: 'Ditahan', variant: 'warning' },
+    dropping_off: { label: 'Dalam Pengantaran', variant: 'primary' },
+    return_in_transit: { label: 'Dalam Pengembalian', variant: 'warning' },
+    returned: { label: 'Dikembalikan', variant: 'neutral' },
+    rejected: { label: 'Paket Ditolak', variant: 'danger' },
+    disposed: { label: 'Dihancurkan', variant: 'danger' },
+    courier_not_found: { label: 'Kurir Tidak Ditemukan', variant: 'danger' },
+    delivered: { label: 'Berhasil Dikirim', variant: 'success' },
+  };
+
+  return displays[status] || { label: status, variant: 'neutral' };
+}
+
 export function getOrderPrimaryStatusDisplay(
   orderStatus: string,
   paymentStatus: string,
   expiredAt?: string | null,
   customerCompletionStage?: CustomerCompletionStage | null,
+  latestBiteshipStatus?: string | null,
 ): OrderStatusDisplay {
   if (orderStatus === 'cancelled') {
     return getOrderStatusDisplay(orderStatus);
@@ -1283,6 +1308,10 @@ export function getOrderPrimaryStatusDisplay(
 
   if (REFUND_STATES.includes(paymentStatus)) {
     return { label: getPaymentStatusLabel(paymentStatus), variant: 'warning' };
+  }
+
+  if (latestBiteshipStatus) {
+    return getBiteshipStatusDisplay(latestBiteshipStatus);
   }
 
   return getOrderStatusDisplay(orderStatus, customerCompletionStage);

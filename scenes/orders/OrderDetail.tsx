@@ -227,6 +227,7 @@ export default function OrderDetail() {
     order.payment_status,
     order.expired_at,
     order.customer_completion_stage,
+    order.latest_biteship_status,
   );
   const secondaryStatusDisplay = getOrderSecondaryStatusDisplay(order.status, order.payment_status);
 
