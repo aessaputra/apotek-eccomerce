@@ -25,8 +25,7 @@ const mockGetCartItemWithProduct = getCartItemWithProduct as jest.MockedFunction
 
 let mockLatestRealtimeHandler: ((event: CartRealtimeChange) => void) | null = null;
 let mockLatestConnectionHandler:
-  | ((state: 'connecting' | 'connected' | 'reconnecting' | 'disconnected') => void)
-  | null = null;
+  ((state: 'connecting' | 'connected' | 'reconnecting' | 'disconnected') => void) | null = null;
 const mockUnsubscribe = jest.fn();
 
 jest.mock('@/services/cart.service', () => ({

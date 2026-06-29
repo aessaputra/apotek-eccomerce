@@ -137,11 +137,7 @@ export interface InvalidateOrdersByStatusCachePayload {
 }
 
 export type AuthPhase =
-  | 'initializing'
-  | 'signed-out'
-  | 'checking-mfa'
-  | 'requires-mfa'
-  | 'authenticated';
+  'initializing' | 'signed-out' | 'checking-mfa' | 'requires-mfa' | 'authenticated';
 
 export interface AppState {
   checked: boolean;

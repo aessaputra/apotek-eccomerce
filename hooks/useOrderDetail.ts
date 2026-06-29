@@ -7,12 +7,7 @@ import type { Dispatch } from '@/utils/store';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 
 export type OrderDetailStatus =
-  | 'idle'
-  | 'loading'
-  | 'refreshing'
-  | 'success'
-  | 'not-found'
-  | 'error';
+  'idle' | 'loading' | 'refreshing' | 'success' | 'not-found' | 'error';
 
 export interface UseOrderDetailState {
   order: OrderWithItems | null;
