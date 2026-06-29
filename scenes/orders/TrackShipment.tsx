@@ -1,8 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
 import { Linking, RefreshControl, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
+import { WebView } from 'react-native-webview';
+import { useToastController } from '@tamagui/toast';
 import { Button, Separator, Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
-import { ArrowUpRight, Clock3 } from '@tamagui/lucide-icons';
+import { ArrowUpRight, Clock3, Copy } from '@tamagui/lucide-icons';
 import OrderSectionCard from '@/components/elements/OrderSectionCard';
 import { AlertCircleIcon, PackageIcon, TruckIcon } from '@/components/icons';
 import { StatusBadge } from '@/components/elements/StatusBadge';
@@ -22,6 +25,31 @@ import {
 
 const TRACKING_CONTENT_CONTAINER_STYLE = { paddingVertical: 16, paddingBottom: 24 } as const;
 
+const getCekResiHtml = () => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      background-color: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div id="cekresicom_id"></div>
+  <script type="text/javascript" src="https://cekresi.com/widget/widgetcekresicom_v1.js"></script>
+  <script type="text/javascript">
+    init_widget_cekresicom('w1',380,110);
+  </script>
+</body>
+</html>
+`;
+
 export default function TrackShipment() {
   const params = useLocalSearchParams<{ orderId?: string | string[] }>();
   const orderIdParam = Array.isArray(params.orderId) ? params.orderId[0] : params.orderId;
@@ -31,7 +59,20 @@ export default function TrackShipment() {
   const primaryColor = getThemeColor(theme, 'primary');
 
   const { order, status, isLoading, isRefreshing, error, refresh } = useOrderDetail(orderId);
-  const canFetchTracking = Boolean(order?.waybill_number?.trim());
+  const toast = useToastController();
+
+  const isManualWaybill = order?.waybill_source === 'manual';
+  const canFetchTracking = Boolean(order?.waybill_number?.trim() && !isManualWaybill);
+
+  const handleCopyWaybill = useCallback(async () => {
+    if (order?.waybill_number) {
+      await Clipboard.setStringAsync(order.waybill_number);
+      toast.show('Resi disalin', {
+        message: `Nomor resi ${order.waybill_number} disalin ke clipboard.`,
+        native: false,
+      });
+    }
+  }, [order?.waybill_number, toast]);
   const {
     tracking,
     error: trackingError,
@@ -295,6 +336,45 @@ export default function TrackShipment() {
               <Text fontSize="$3" color="$colorSubtle">
                 Tracking akan tersedia setelah kurir memberikan nomor resi untuk pesanan ini.
               </Text>
+            </YStack>
+          </OrderSectionCard>
+        ) : isManualWaybill ? (
+          <OrderSectionCard>
+            <YStack padding="$4" gap="$4">
+              <YStack gap="$2">
+                <Text fontSize="$4" fontWeight="600" color="$color">
+                  Lacak Resi Manual
+                </Text>
+                <Text fontSize="$3" color="$colorSubtle">
+                  Gunakan form di bawah untuk melacak pesanan Anda pada sistem cekresi.com.
+                </Text>
+              </YStack>
+
+              <Button
+                size="$4"
+                variant="outlined"
+                borderColor="$borderColor"
+                backgroundColor="$background"
+                iconAfter={<Copy size={16} color="$color" />}
+                onPress={handleCopyWaybill}>
+                Salin Resi: {order.waybill_number}
+              </Button>
+
+              <YStack
+                height={500}
+                overflow="hidden"
+                borderRadius="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+                backgroundColor="$background">
+                <WebView
+                  source={{ html: getCekResiHtml() }}
+                  originWhitelist={['*']}
+                  style={{ flex: 1, backgroundColor: 'transparent' }}
+                  scrollEnabled={true}
+                  showsVerticalScrollIndicator={false}
+                />
+              </YStack>
             </YStack>
           </OrderSectionCard>
         ) : isTrackingLoading && !tracking ? (

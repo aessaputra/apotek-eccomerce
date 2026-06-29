@@ -61,6 +61,7 @@ export interface Order {
   courier_service: string | null;
   shipping_etd: string | null;
   waybill_number: string | null;
+  waybill_source: string | null;
   snap_redirect_url: string | null;
 }
 export const ORDERS_PAGE_SIZE = 20;
@@ -88,6 +89,7 @@ const ORDER_READ_MODEL_SELECT = `
   courier_service,
   shipping_etd,
   waybill_number,
+  waybill_source,
   snap_redirect_url
 `;
 
@@ -426,6 +428,7 @@ function normalizeOrderReadModelRow(row: OrderReadModelRow): Order {
     courier_service: row.courier_service,
     shipping_etd: row.shipping_etd,
     waybill_number: row.waybill_number,
+    waybill_source: row.waybill_source,
     snap_redirect_url: row.snap_redirect_url,
   };
 }
