@@ -523,7 +523,8 @@ describe('RootLayout notification lifecycle', () => {
     });
 
     const listener = mockAddNotificationResponseReceivedListener.mock.calls[0]?.[0] as
-      ((response: ReturnType<typeof createNotificationResponse>) => void) | undefined;
+      | ((response: ReturnType<typeof createNotificationResponse>) => void)
+      | undefined;
 
     expect(listener).toBeDefined();
 
@@ -595,7 +596,8 @@ describe('RootLayout notification lifecycle', () => {
     });
 
     const listener = mockAddNotificationResponseReceivedListener.mock.calls[0]?.[0] as
-      ((response: ReturnType<typeof createNotificationResponse>) => void) | undefined;
+      | ((response: ReturnType<typeof createNotificationResponse>) => void)
+      | undefined;
 
     expect(listener).toBeDefined();
 

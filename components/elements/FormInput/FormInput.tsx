@@ -37,7 +37,12 @@ export interface FormInputProps {
   value?: string;
   /** Keyboard type */
   keyboardType?:
-    'default' | 'email-address' | 'numeric' | 'phone-pad' | 'number-pad' | 'decimal-pad';
+    | 'default'
+    | 'email-address'
+    | 'numeric'
+    | 'phone-pad'
+    | 'number-pad'
+    | 'decimal-pad';
   /** Auto capitalize */
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   /** Auto correct */

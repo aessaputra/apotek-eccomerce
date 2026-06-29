@@ -95,10 +95,15 @@ export interface NotificationPage {
 const notificationStorage = new LargeSecureStore();
 
 export type NotificationPermissionStatus =
-  Awaited<ReturnType<ExpoNotificationsModule['getPermissionsAsync']>>['status'] | 'unavailable';
+  | Awaited<ReturnType<ExpoNotificationsModule['getPermissionsAsync']>>['status']
+  | 'unavailable';
 
 export type NotificationRealtimeConnectionState =
-  'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'unavailable';
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'disconnected'
+  | 'unavailable';
 
 export interface NotificationRealtimeChange {
   type: 'INSERT' | 'UPDATE' | 'DELETE';

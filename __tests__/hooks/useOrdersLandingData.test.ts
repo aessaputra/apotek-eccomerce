@@ -65,9 +65,11 @@ describe('useOrdersLandingData', () => {
     const counts = createCounts();
     const products = [createPastProduct()];
     let resolveCounts:
-      ((value: { data: OrderTabCounts | null; error: Error | null }) => void) | null = null;
+      | ((value: { data: OrderTabCounts | null; error: Error | null }) => void)
+      | null = null;
     let resolveProducts:
-      ((value: { data: PastPurchaseProduct[]; error: Error | null }) => void) | null = null;
+      | ((value: { data: PastPurchaseProduct[]; error: Error | null }) => void)
+      | null = null;
 
     mockGetOrderTabCounts.mockImplementation(
       () =>

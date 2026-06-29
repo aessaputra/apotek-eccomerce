@@ -207,7 +207,8 @@ describe('useOrdersPaginated', () => {
     };
 
     let resolveSecondPage:
-      ((value: OrderListResult | PromiseLike<OrderListResult>) => void) | null = null;
+      | ((value: OrderListResult | PromiseLike<OrderListResult>) => void)
+      | null = null;
 
     mockGetOrdersOptimized
       .mockResolvedValueOnce({

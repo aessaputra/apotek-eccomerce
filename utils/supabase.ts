@@ -36,9 +36,7 @@ type ViewsWithRelationships = {
 };
 
 type FunctionsCompatible = {
-  [
-    FunctionName in keyof PublicSchema['Functions']
-  ]: PublicSchema['Functions'][FunctionName] extends {
+  [FunctionName in keyof PublicSchema['Functions']]: PublicSchema['Functions'][FunctionName] extends {
     Args: infer Args;
     Returns: infer Returns;
   }

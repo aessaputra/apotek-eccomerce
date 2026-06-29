@@ -65,7 +65,10 @@ export interface CartRealtimeChange {
 }
 
 export type CartRealtimeConnectionState =
-  'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'disconnected';
 
 /**
  * Minimal cart item fields needed for paginated list display.

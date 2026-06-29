@@ -49,7 +49,11 @@ interface FactorsState {
 }
 
 type EnrollmentMode =
-  'idle' | 'enrolling-password' | 'enrolling-qr' | 'enrolling-verify' | 'disabling-password';
+  | 'idle'
+  | 'enrolling-password'
+  | 'enrolling-qr'
+  | 'enrolling-verify'
+  | 'disabling-password';
 
 interface EnrollmentData {
   factorId: string | null;
