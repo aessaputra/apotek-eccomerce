@@ -4,6 +4,7 @@ import Image from '@/components/elements/Image';
 import { CartIcon, PillIcon } from '@/components/icons';
 import type { PastPurchaseProduct } from '@/services/order.service';
 import { formatPrice } from '@/services/home.service';
+import { MIN_TOUCH_TARGET } from '@/constants/ui';
 
 const IMAGE_SIZE = 120;
 
@@ -49,7 +50,7 @@ export const BuyAgainCard = React.memo<BuyAgainCardProps>(
             borderRadius="$3"
             alignItems="center"
             justifyContent="center"
-            backgroundColor="$infoSoft"
+            backgroundColor="$surfaceSubtle"
             overflow="hidden">
             {product.imageUrl ? (
               <Image
@@ -60,7 +61,7 @@ export const BuyAgainCard = React.memo<BuyAgainCardProps>(
               />
             ) : (
               <>
-                <PillIcon size={34} color="$primary" />
+                <PillIcon size={34} color="$colorSubtle" />
                 <XStack width={28} height={4} borderRadius="$10" backgroundColor="$surface" />
               </>
             )}
@@ -78,8 +79,8 @@ export const BuyAgainCard = React.memo<BuyAgainCardProps>(
             {formatPrice(product.price)}
           </Text>
           <XStack
-            width={36}
-            height={36}
+            width={MIN_TOUCH_TARGET}
+            height={MIN_TOUCH_TARGET}
             borderRadius="$8"
             backgroundColor="$primary"
             alignItems="center"
