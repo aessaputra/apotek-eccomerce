@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Text, YStack } from 'tamagui';
 import { ShoppingBag } from '@tamagui/lucide-icons';
-import EmptyCartIllustration from '../EmptyCartIllustration';
+import { EmptyCartIllustration } from '../EmptyCartIllustration';
 
 export interface EmptyCartStateProps {
   onBrowse: () => void;

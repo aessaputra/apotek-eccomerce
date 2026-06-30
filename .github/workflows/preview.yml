@@ -147,7 +147,7 @@ jobs:
 
       # setup expo
       - name: Setup Expo
-        uses: expo/expo-github-action@v8
+        uses: expo/expo-github-action@v9
         with:
           expo-version: latest
           eas-version: latest
@@ -179,7 +179,7 @@ jobs:
           EXPO_PUBLIC_POSTAL_DATA_URL: ${{ secrets.EXPO_PUBLIC_POSTAL_DATA_URL }}
           EXPO_PUBLIC_GOOGLE_PLACES_API_URL: ${{ secrets.EXPO_PUBLIC_GOOGLE_PLACES_API_URL }}
           EXPO_PUBLIC_GOOGLE_GEOCODING_API_URL: ${{ secrets.EXPO_PUBLIC_GOOGLE_GEOCODING_API_URL }}
-        uses: expo/expo-github-action/preview@v8
+        uses: expo/expo-github-action/preview@v9
         with:
           command: eas update --auto
 

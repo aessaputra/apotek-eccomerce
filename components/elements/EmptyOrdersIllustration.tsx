@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { SvgProps, Rect, Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { SvgProps, Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from 'tamagui';
 import { getThemeColor } from '@/utils/theme';
 
