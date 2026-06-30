@@ -138,30 +138,29 @@ export function usePaymentFlow({
       return;
     }
 
-    const channel = supabase
-      .channel(`payment-status-${resolvedOrderId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'order_read_model',
-          filter: `id=eq.${resolvedOrderId}`,
-        },
-        payload => {
-          const newPaymentStatus = payload.new.payment_status;
-          const terminalStates = [...PAYMENT_SUCCESS_STATUSES, ...PAYMENT_FAILED_STATUSES];
+    // Supabase Realtime does not support listening to Views (order_read_model).
+    // As a fallback to achieve Webhook Automation without manual user clicks,
+    // we poll the read model while the payment webview is open.
+    const intervalId = setInterval(async () => {
+      const { data, error } = await supabase
+        .from('order_read_model')
+        .select('payment_status')
+        .eq('id', resolvedOrderId)
+        .single();
 
-          if (terminalStates.includes(newPaymentStatus)) {
-            // Automatically finalize flow when backend webhook updates the status
-            void finalizePaymentFlow('pending');
-          }
-        },
-      )
-      .subscribe();
+      if (!error && data) {
+        const newPaymentStatus = data.payment_status ?? '';
+        const terminalStates = [...PAYMENT_SUCCESS_STATUSES, ...PAYMENT_FAILED_STATUSES];
+
+        if (terminalStates.includes(newPaymentStatus)) {
+          // Automatically finalize flow when backend webhook updates the status
+          void finalizePaymentFlow('pending');
+        }
+      }
+    }, 3000);
 
     return () => {
-      void supabase.removeChannel(channel);
+      clearInterval(intervalId);
     };
   }, [resolvedOrderId, finalizePaymentFlow, postPaymentState, isPolling]);
 
