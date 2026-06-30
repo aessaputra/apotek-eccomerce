@@ -40,7 +40,7 @@ function findAncestorWithStyle(
 }
 
 describe('<OrderStatusTabs />', () => {
-  test('renders tab labels in order and non-zero status badge counts', () => {
+  test('renders tab labels in order', () => {
     render(<OrderStatusTabs activeTab="shipped" counts={counts} onTabChange={() => {}} />);
 
     const labels = screen
@@ -55,11 +55,6 @@ describe('<OrderStatusTabs />', () => {
       'Selesai',
       'Dibatalkan',
     ]);
-    expect(screen.getByText('2')).toBeTruthy();
-    expect(screen.getByText('99+')).toBeTruthy();
-    expect(screen.getByText('1')).toBeTruthy();
-    expect(screen.getByText('3')).toBeTruthy();
-    expect(screen.queryByText('0')).toBeNull();
   });
 
   test('marks all tab active and calls onTabChange when pressed', () => {
@@ -85,19 +80,6 @@ describe('<OrderStatusTabs />', () => {
     fireEvent.press(screen.getByText('Dibatalkan'));
 
     expect(onTabChange).toHaveBeenCalledWith('cancelled');
-  });
-
-  test('never renders a badge for all orders even if an extra all count is provided', () => {
-    const countsWithAll = {
-      ...counts,
-      all: 107,
-    };
-
-    render(<OrderStatusTabs activeTab="all" counts={countsWithAll} onTabChange={() => {}} />);
-
-    expect(screen.queryByText('107')).toBeNull();
-    expect(screen.getByText('2')).toBeTruthy();
-    expect(screen.getByText('99+')).toBeTruthy();
   });
 
   test('keeps tabs in a horizontal scroll row', () => {

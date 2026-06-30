@@ -157,6 +157,12 @@
       "skillPath": "skills/react-native/SKILL.md",
       "computedHash": "bce560b25029037d424b5ec55bb9b3ec2b399ef98fd12c572327292744de84fe"
     },
+    "react-native-architecture": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/frontend-mobile-development/skills/react-native-architecture/SKILL.md",
+      "computedHash": "a83762db6ab371eb25e1b33e49d7895bb73df9d3952e26a3bdca90903d6ac91a"
+    },
     "react-native-reanimated": {
       "source": "dralgorhythm/claude-agentic-framework",
       "sourceType": "github",

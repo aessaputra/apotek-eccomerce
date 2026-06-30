@@ -157,26 +157,6 @@ const TabLabel = styled(Text, {
   },
 });
 
-const Badge = styled(YStack, {
-  position: 'absolute',
-  top: 4,
-  right: 4,
-  backgroundColor: '$danger',
-  borderRadius: '$10',
-  minWidth: 18,
-  height: 18,
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingHorizontal: '$1',
-});
-
-const BadgeText = styled(Text, {
-  fontSize: 10,
-  fontWeight: '700',
-  color: 'white',
-  lineHeight: 14,
-});
-
 const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
   tab,
   count,
@@ -207,11 +187,6 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
       <TabLabel active={isActive} numberOfLines={2}>
         {tab.label}
       </TabLabel>
-      {count !== undefined && count > 0 && (
-        <Badge>
-          <BadgeText>{count > 99 ? '99+' : count}</BadgeText>
-        </Badge>
-      )}
     </TabButton>
   );
 });
