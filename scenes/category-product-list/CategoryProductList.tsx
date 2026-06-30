@@ -1,11 +1,12 @@
 import React, { useCallback, useMemo } from 'react';
 import { useToastController } from '@tamagui/toast';
 import { FlatList, Platform, RefreshControl, useWindowDimensions } from 'react-native';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Spinner, Text, YStack, styled, useMedia, useTheme } from 'tamagui';
 import ProductCard from '@/components/elements/ProductCard';
 import EmptyProductIllustration from '@/components/elements/EmptyProductIllustration';
+import HeaderCartIcon from '@/components/layouts/HeaderCartIcon';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useProductsPaginated } from '@/hooks';
 import { addProductToCart, type ProductListItem } from '@/services';
@@ -245,6 +246,7 @@ export default function CategoryProductList() {
   if (!categoryId.trim()) {
     return (
       <ScreenRoot>
+        <Stack.Screen options={{ headerRight: () => <HeaderCartIcon forHeaderRight /> }} />
         <YStack pt={topPadding}>
           <ErrorState message="Missing category id." />
         </YStack>
@@ -255,6 +257,7 @@ export default function CategoryProductList() {
   if (isInitialLoading && products.length === 0) {
     return (
       <ScreenRoot>
+        <Stack.Screen options={{ headerRight: () => <HeaderCartIcon forHeaderRight /> }} />
         <YStack pt={topPadding} flex={1}>
           <LoadingState />
         </YStack>
@@ -264,6 +267,7 @@ export default function CategoryProductList() {
 
   return (
     <ScreenRoot>
+      <Stack.Screen options={{ headerRight: () => <HeaderCartIcon forHeaderRight /> }} />
       <FlatList
         data={products}
         key={columns}

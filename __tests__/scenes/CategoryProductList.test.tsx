@@ -32,6 +32,9 @@ jest.mock('expo-router', () => ({
     categoryName: 'Obat Demam',
   }),
   useFocusEffect: (callback: () => void) => callback(),
+  Stack: {
+    Screen: () => null,
+  },
 }));
 
 jest.mock('react-native-safe-area-context', () => {
