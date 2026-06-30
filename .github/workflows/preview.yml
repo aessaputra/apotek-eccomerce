@@ -18,13 +18,13 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [24.x]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           cache-dependency-path: package-lock.json
           node-version: ${{ matrix.node-version }}
@@ -54,7 +54,7 @@ jobs:
       pull-requests: write
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [24.x]
     steps:
       # EXPO_TOKEN must be from the Expo account that OWNS this project (see app.json "owner").
       # If you see "Entity not authorized", see docs/EAS_GITHUB_ACTIONS.md.
@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get branch name
         id: branch-name
@@ -136,9 +136,10 @@ jobs:
           echo "$UPDATE_BRANCH" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+
       # setup node
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           cache-dependency-path: package-lock.json
           node-version: ${{ matrix.node-version }}
@@ -174,6 +175,10 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
           EXPO_PUBLIC_GOOGLE_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_API_KEY }}
+          EXPO_PUBLIC_REGIONAL_API_URL: ${{ secrets.EXPO_PUBLIC_REGIONAL_API_URL }}
+          EXPO_PUBLIC_POSTAL_DATA_URL: ${{ secrets.EXPO_PUBLIC_POSTAL_DATA_URL }}
+          EXPO_PUBLIC_GOOGLE_PLACES_API_URL: ${{ secrets.EXPO_PUBLIC_GOOGLE_PLACES_API_URL }}
+          EXPO_PUBLIC_GOOGLE_GEOCODING_API_URL: ${{ secrets.EXPO_PUBLIC_GOOGLE_GEOCODING_API_URL }}
         uses: expo/expo-github-action/preview@v8
         with:
           command: eas update --auto
@@ -191,6 +196,10 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
           EXPO_PUBLIC_GOOGLE_API_KEY: ${{ secrets.EXPO_PUBLIC_GOOGLE_API_KEY }}
+          EXPO_PUBLIC_REGIONAL_API_URL: ${{ secrets.EXPO_PUBLIC_REGIONAL_API_URL }}
+          EXPO_PUBLIC_POSTAL_DATA_URL: ${{ secrets.EXPO_PUBLIC_POSTAL_DATA_URL }}
+          EXPO_PUBLIC_GOOGLE_PLACES_API_URL: ${{ secrets.EXPO_PUBLIC_GOOGLE_PLACES_API_URL }}
+          EXPO_PUBLIC_GOOGLE_GEOCODING_API_URL: ${{ secrets.EXPO_PUBLIC_GOOGLE_GEOCODING_API_URL }}
           UPDATE_MSG: ${{ github.event.head_commit.message }}
         run: |
           SAFE_MSG="${UPDATE_MSG//\"/\'}"

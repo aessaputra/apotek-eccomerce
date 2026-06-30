@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useTheme } from 'tamagui';
-import { ShoppingBagIcon } from '@/components/icons';
+import EmptyOrdersIllustration from '@/components/elements/EmptyOrdersIllustration';
 import { useOrdersPaginated } from '@/hooks/useOrdersPaginated';
 import { useAppSlice } from '@/slices';
 import type { OrderListItem } from '@/services';
@@ -64,7 +64,7 @@ export function AllOrders() {
       isLoadingMore={isFetchingMore}
       hasMore={hasMore}
       error={error}
-      EmptyIcon={ShoppingBagIcon}
+      EmptyIcon={EmptyOrdersIllustration}
       emptyTitle={EMPTY_TITLE}
       emptyDescription={EMPTY_DESCRIPTION}
       onRefresh={refresh}

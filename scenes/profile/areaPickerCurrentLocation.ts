@@ -122,7 +122,7 @@ async function resolveCurrentCoordinates(
         accuracy: locationModule.Accuracy.Balanced,
         mayShowUserSettingsDialog: true,
       }),
-      15000,
+      10000,
     );
   } catch {
     current = null;
@@ -356,12 +356,21 @@ async function fetchDistrictsForRegencies(
   regencies: RegionalRegency[],
   fetchDistricts: ResolveCurrentLocationSelectionParams['fetchDistricts'],
 ): Promise<DistrictSearchResult[]> {
-  return Promise.all(
-    regencies.map(async regency => {
-      const { data: districts } = await fetchDistricts(regency.code);
-      return { regency, districts: districts || [] };
-    }),
-  );
+  const CHUNK_SIZE = 5;
+  const results: DistrictSearchResult[] = [];
+
+  for (let i = 0; i < regencies.length; i += CHUNK_SIZE) {
+    const chunk = regencies.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map(async regency => {
+        const { data: districts } = await fetchDistricts(regency.code);
+        return { regency, districts: districts || [] };
+      }),
+    );
+    results.push(...chunkResults);
+  }
+
+  return results;
 }
 
 function findCorroboratedFuzzyRegency(
@@ -394,38 +403,6 @@ function disambiguateRegencyByDistrict(
   return disambiguatedRegency?.regency;
 }
 
-function selectRegencyFromCitySignal(
-  regencies: RegionalRegency[],
-  districtSearchResults: DistrictSearchResult[],
-  address: CurrentLocationAddress,
-): RegionalRegency | undefined {
-  const exactMatchedRegency = regencies.find(option => {
-    return normalizeExactAdminName(option.name) === normalizeExactAdminName(address.city);
-  });
-
-  if (exactMatchedRegency) {
-    return exactMatchedRegency;
-  }
-
-  const fuzzyMatchedRegencies = regencies.filter(option =>
-    adminNamesMatch(option.name, address.city),
-  );
-
-  if (fuzzyMatchedRegencies.length === 1) {
-    return fuzzyMatchedRegencies[0];
-  }
-
-  if (fuzzyMatchedRegencies.length > 1) {
-    return disambiguateRegencyByDistrict(
-      fuzzyMatchedRegencies,
-      districtSearchResults,
-      address.district,
-    );
-  }
-
-  return undefined;
-}
-
 async function resolveCityPhase(
   params: ResolveCurrentLocationSelectionParams,
   province: RegionalProvince,
@@ -443,14 +420,59 @@ async function resolveCityPhase(
     };
   }
 
-  const districtSearchResults = await fetchDistrictsForRegencies(regencies, params.fetchDistricts);
-  const matchedRegency = selectRegencyFromCitySignal(regencies, districtSearchResults, address);
+  // Step 1: Try exact name match — no extra API calls needed
+  const exactMatchedRegency = regencies.find(
+    option => normalizeExactAdminName(option.name) === normalizeExactAdminName(address.city),
+  );
 
-  if (!matchedRegency) {
+  if (exactMatchedRegency) {
+    return { matchedRegency: exactMatchedRegency };
+  }
+
+  // Step 2: Try fuzzy name match
+  const fuzzyMatchedRegencies = regencies.filter(option =>
+    adminNamesMatch(option.name, address.city),
+  );
+
+  if (fuzzyMatchedRegencies.length === 1) {
+    return { matchedRegency: fuzzyMatchedRegencies[0] };
+  }
+
+  // Step 3: Only fetch districts for ambiguous fuzzy matches to disambiguate,
+  // not for all regencies in the province (avoids 20-38 unnecessary API calls)
+  if (fuzzyMatchedRegencies.length > 1) {
+    const disambiguationResults = await fetchDistrictsForRegencies(
+      fuzzyMatchedRegencies,
+      params.fetchDistricts,
+    );
+    const disambiguated = disambiguateRegencyByDistrict(
+      fuzzyMatchedRegencies,
+      disambiguationResults,
+      address.district,
+    );
+
+    if (disambiguated) {
+      return { matchedRegency: disambiguated };
+    }
+  }
+
+  if (!address.district) {
     return { fallback: shapeManualCityFallback({ province, cityOptions: regencies }) };
   }
 
-  return { matchedRegency };
+  // Step 4: No city name matched — try to find the regency by checking which one
+  // contains a matching district name. We do this concurrently (Promise.all)
+  // to avoid the 20-second timeout that happened when doing it sequentially.
+  const allDistricts = await fetchDistrictsForRegencies(regencies, params.fetchDistricts);
+  const matchedByDistrict = allDistricts.find(({ districts }) =>
+    districts.some(d => adminNamesMatch(d.name, address.district)),
+  );
+
+  if (matchedByDistrict) {
+    return { matchedRegency: matchedByDistrict.regency };
+  }
+
+  return { fallback: shapeManualCityFallback({ province, cityOptions: regencies }) };
 }
 
 function findDistrictByName(

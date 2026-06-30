@@ -1,8 +1,10 @@
 import React, { useCallback, useMemo } from 'react';
 import { Linking, RefreshControl, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
+import { useToastController } from '@tamagui/toast';
 import { Button, Separator, Spinner, Text, XStack, YStack, useTheme } from 'tamagui';
-import { ArrowUpRight, Clock3 } from '@tamagui/lucide-icons';
+import { ArrowUpRight, Clock3, Copy } from '@tamagui/lucide-icons';
 import OrderSectionCard from '@/components/elements/OrderSectionCard';
 import { AlertCircleIcon, PackageIcon, TruckIcon } from '@/components/icons';
 import { StatusBadge } from '@/components/elements/StatusBadge';
@@ -31,7 +33,20 @@ export default function TrackShipment() {
   const primaryColor = getThemeColor(theme, 'primary');
 
   const { order, status, isLoading, isRefreshing, error, refresh } = useOrderDetail(orderId);
-  const canFetchTracking = Boolean(order?.waybill_number?.trim());
+  const toast = useToastController();
+
+  const isManualWaybill = order?.waybill_source === 'manual';
+  const canFetchTracking = Boolean(order?.waybill_number?.trim() && !isManualWaybill);
+
+  const handleCopyWaybill = useCallback(async () => {
+    if (order?.waybill_number) {
+      await Clipboard.setStringAsync(order.waybill_number);
+      toast.show('Resi disalin', {
+        message: `Nomor resi ${order.waybill_number} disalin ke clipboard.`,
+        native: false,
+      });
+    }
+  }, [order?.waybill_number, toast]);
   const {
     tracking,
     error: trackingError,
@@ -297,6 +312,40 @@ export default function TrackShipment() {
               </Text>
             </YStack>
           </OrderSectionCard>
+        ) : isManualWaybill ? (
+          <OrderSectionCard>
+            <YStack padding="$4" gap="$4">
+              <YStack gap="$2">
+                <Text fontSize="$4" fontWeight="600" color="$color">
+                  Lacak Resi Manual
+                </Text>
+                <Text fontSize="$3" color="$colorSubtle">
+                  Gunakan tombol di bawah untuk melacak pesanan Anda pada sistem cekresi.com.
+                </Text>
+              </YStack>
+
+              <Button
+                size="$4"
+                variant="outlined"
+                borderColor="$borderColor"
+                backgroundColor="$background"
+                iconAfter={<Copy size={16} color="$color" />}
+                onPress={handleCopyWaybill}>
+                Salin Resi: {order.waybill_number}
+              </Button>
+
+              <Button
+                size="$4"
+                backgroundColor="$primary"
+                color="$onPrimary"
+                iconAfter={<ArrowUpRight size={16} color="$onPrimary" />}
+                onPress={() =>
+                  Linking.openURL(`https://cekresi.com/?noresi=${order.waybill_number}`)
+                }>
+                Lacak di cekresi.com
+              </Button>
+            </YStack>
+          </OrderSectionCard>
         ) : isTrackingLoading && !tracking ? (
           <OrderSectionCard>
             <YStack padding="$4" gap="$2" alignItems="center">
@@ -357,9 +406,6 @@ export default function TrackShipment() {
                     </YStack>
                     <YStack flex={1} gap="$1">
                       <Text fontSize="$3" fontWeight="600" color="$color">
-                        {formatTrackingStatusLabel(event.status)}
-                      </Text>
-                      <Text fontSize="$2" color="$colorSubtle">
                         {formatTrackingDate(event.updated_at)}
                       </Text>
                       <Text fontSize="$3" color="$colorSubtle">

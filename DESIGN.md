@@ -1,5 +1,5 @@
 ---
-name: Apotek Online
+name: SiFarma
 description: Warm clinical mobile pharmacy commerce for Indonesian customers.
 colors:
   primary-teal: "#0F766E"
@@ -104,7 +104,7 @@ components:
     height: "32px"
 ---
 
-# Design System: Apotek Online
+# Design System: SiFarma
 
 ## 1. Overview
 

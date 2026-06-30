@@ -172,3 +172,11 @@ describe('order.service lifecycle helpers', () => {
     consoleWarnSpy.mockRestore();
   });
 });
+test('returns biteship status when latest_biteship_status is provided', () => {
+  expect(
+    getOrderPrimaryStatusDisplay('shipped', 'settlement', null, 'completed', 'picking_up'),
+  ).toEqual({
+    label: 'Dalam Penjemputan',
+    variant: 'primary',
+  });
+});

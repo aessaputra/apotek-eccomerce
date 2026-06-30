@@ -54,6 +54,7 @@ const baseOrder: OrderWithItems = {
   courier_service: 'reg',
   shipping_etd: '2-3 hari',
   waybill_number: 'JNE123',
+  waybill_source: null,
   snap_redirect_url: null,
   order_items: [],
   addresses: null,

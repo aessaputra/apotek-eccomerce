@@ -125,8 +125,7 @@ jest.mock('@/utils/config', () => ({
     supabasePublishableKey: 'publishable-key',
     googleApiKey: '',
     regionalApiUrl: 'https://wilayah.id/api',
-    postalDataUrl:
-      'https://raw.githubusercontent.com/ArrayAccess/Indonesia-Postal-And-Area/master/data/json/area/62',
+    postalDataUrl: 'https://idn-area.aes.my.id/data/json/area/62',
     googlePlacesApiUrl: 'https://places.googleapis.com/v1',
     googleGeocodingApiUrl: 'https://maps.googleapis.com/maps/api',
   },

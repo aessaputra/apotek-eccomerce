@@ -73,7 +73,7 @@ In Google Cloud Console > APIs & Services > Library, enable the APIs you need:
 ## Script Location
 
 ```
-~/.agents/skills/google-maps-api/scripts/gmaps.py
+~/.claude/skills/google-maps-api/scripts/gmaps.py
 ```
 
 No external dependencies required - uses only Python standard library (`urllib`, `json`, `ssl`).
@@ -84,31 +84,31 @@ No external dependencies required - uses only Python standard library (`urllib`,
 
 **Forward geocode** - address to coordinates:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py geocode "1600 Amphitheatre Parkway, Mountain View, CA"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py geocode "Tokyo Tower" --language ja --region jp
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py geocode "Paris" --components "country:FR"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py geocode "1600 Amphitheatre Parkway, Mountain View, CA"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py geocode "Tokyo Tower" --language ja --region jp
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py geocode "Paris" --components "country:FR"
 ```
 
 **Reverse geocode** - coordinates to address:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py reverse-geocode 37.4224 -122.0856
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py reverse-geocode 48.8584 2.2945 --language fr
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py reverse-geocode 37.4224 -122.0856
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py reverse-geocode 48.8584 2.2945 --language fr
 ```
 
 ### 2. Routes & Directions
 
 **Get directions** between two locations:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py directions "New York, NY" "Boston, MA"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py directions "LAX" "SFO" --mode transit
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py directions "Seattle" "Portland" --alternatives --avoid-tolls
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py directions "A" "D" --waypoints "B" "C"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py directions "Home" "Work" --mode bicycling --units imperial
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py directions "New York, NY" "Boston, MA"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py directions "LAX" "SFO" --mode transit
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py directions "Seattle" "Portland" --alternatives --avoid-tolls
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py directions "A" "D" --waypoints "B" "C"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py directions "Home" "Work" --mode bicycling --units imperial
 ```
 
 **Distance matrix** - multiple origins/destinations:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py distance-matrix \
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py distance-matrix \
   --origins "New York" "Boston" \
   --destinations "Philadelphia" "Washington DC"
 ```
@@ -117,58 +117,58 @@ python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py distance-matrix \
 
 **Text search** - find places by query:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py places-search "best pizza in Chicago"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py places-search "pharmacy" --location "40.714,-74.006" --radius 1000
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py places-search "5-star hotels" --min-rating 4.5 --open-now
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py places-search "EV charging" --type "electric_vehicle_charging_station"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py places-search "best pizza in Chicago"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py places-search "pharmacy" --location "40.714,-74.006" --radius 1000
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py places-search "5-star hotels" --min-rating 4.5 --open-now
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py places-search "EV charging" --type "electric_vehicle_charging_station"
 ```
 
 **Nearby search** - find places near coordinates:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py places-nearby 40.7128 -74.0060 --type restaurant --radius 800
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py places-nearby 34.0522 -118.2437 --type cafe --max-results 5
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py places-nearby 40.7128 -74.0060 --type restaurant --radius 800
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py places-nearby 34.0522 -118.2437 --type cafe --max-results 5
 ```
 
 **Place details** - full info for a place:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py place-details ChIJN1t_tDeuEmsRUsoyG83frY4
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py place-details ChIJN1t_tDeuEmsRUsoyG83frY4
 ```
 
 **Autocomplete** - type-ahead suggestions:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py autocomplete "star" --location "37.7749,-122.4194"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py autocomplete "central p" --types "park"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py autocomplete "star" --location "37.7749,-122.4194"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py autocomplete "central p" --types "park"
 ```
 
 **Place photo** - get photo URL:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py place-photo "places/PLACE_ID/photos/PHOTO_REF" --max-width 800
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py place-photo "places/PLACE_ID/photos/PHOTO_REF" --max-width 800
 ```
 
 ### 4. Air Quality
 
 **Current conditions**:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py air-quality 40.7128 -74.0060
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py air-quality 40.7128 -74.0060 --health --pollutants
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py air-quality 40.7128 -74.0060
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py air-quality 40.7128 -74.0060 --health --pollutants
 ```
 
 **Historical data** (up to 30 days):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py air-quality-history 40.7128 -74.0060 --hours 48
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py air-quality-history 40.7128 -74.0060 --hours 48
 ```
 
 **Forecast** (up to 96 hours):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py air-quality-forecast 40.7128 -74.0060
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py air-quality-forecast 40.7128 -74.0060
 ```
 
 ### 5. Pollen
 
 **Pollen forecast** (up to 5 days, grass/weed/tree):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py pollen 40.7128 -74.0060
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py pollen 34.0522 -118.2437 --days 5
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py pollen 40.7128 -74.0060
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py pollen 34.0522 -118.2437 --days 5
 ```
 Returns: Universal Pollen Index (UPI) for 3 plant types and 15 species.
 
@@ -176,59 +176,59 @@ Returns: Universal Pollen Index (UPI) for 3 plant types and 15 species.
 
 **Building solar potential**:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py solar 37.4219 -122.0841
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py solar 37.4219 -122.0841 --quality HIGH
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py solar 37.4219 -122.0841
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py solar 37.4219 -122.0841 --quality HIGH
 ```
 Returns: roof area, sunlight hours, optimal panel layout, energy/cost estimates.
 
 **Solar data layers** (DSM, flux, shade rasters):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py solar-layers 37.4219 -122.0841 --radius 100
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py solar-layers 37.4219 -122.0841 --radius 100
 ```
 
 ### 7. Weather
 
 **Current conditions**:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060 --mode current
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060 --mode current
 ```
 
 **Hourly forecast** (up to 240 hours):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060 --mode hourly --hours 48
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060 --mode hourly --hours 48
 ```
 
 **Daily forecast** (up to 10 days):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060 --mode daily --days 7
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060 --mode daily --days 7
 ```
 
 **Recent history** (up to 24 hours):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060 --mode history --hours 12
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py weather 40.7128 -74.0060 --mode history --hours 12
 ```
 
 ### 8. Elevation
 
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py elevation 39.7392 -104.9903
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py elevation --locations "39.7392,-104.9903|36.4555,-116.8666"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py elevation --path "36.578,-118.292|36.606,-118.099" --samples 20
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py elevation 39.7392 -104.9903
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py elevation --locations "39.7392,-104.9903|36.4555,-116.8666"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py elevation --path "36.578,-118.292|36.606,-118.099" --samples 20
 ```
 
 ### 9. Time Zone
 
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py timezone 40.7128 -74.0060
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py timezone 35.6762 139.6503 --language ja
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py timezone 40.7128 -74.0060
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py timezone 35.6762 139.6503 --language ja
 ```
 
 ### 10. Address Validation
 
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py validate-address "1600 Amphitheatre Pkwy, Mountain View, CA 94043"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py validate-address "123 Main St" --region US --enable-usps
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py validate-address "1600 Amphitheatre Pkwy, Mountain View, CA 94043"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py validate-address "123 Main St" --region US --enable-usps
 ```
 Returns: deliverability verdict, corrected address, component-level confirmation, USPS CASS data.
 
@@ -236,22 +236,22 @@ Returns: deliverability verdict, corrected address, component-level confirmation
 
 **Snap to roads** - align GPS traces:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py snap-roads "60.170,-24.942|60.171,-24.941|60.172,-24.940"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py snap-roads "60.170,-24.942|60.172,-24.940" --interpolate
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py snap-roads "60.170,-24.942|60.171,-24.941|60.172,-24.940"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py snap-roads "60.170,-24.942|60.172,-24.940" --interpolate
 ```
 
 **Nearest roads**:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py nearest-roads "60.170,-24.942|60.171,-24.941"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py nearest-roads "60.170,-24.942|60.171,-24.941"
 ```
 
 ### 12. Street View
 
 **CLI data use** (server-side image download, costs $7/1,000):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py streetview --lat 46.414 --lng 10.013 --heading 90
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py streetview --location "Eiffel Tower, Paris" --size 800x600
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py streetview --pano CAoSLEFGMVFpcE... --output paris_sv.jpg
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py streetview --lat 46.414 --lng 10.013 --heading 90
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py streetview --location "Eiffel Tower, Paris" --size 800x600
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py streetview --pano CAoSLEFGMVFpcE... --output paris_sv.jpg
 ```
 
 **For HTML pages** — ALWAYS use a direct Google Maps link instead (zero cost, zero key exposure):
@@ -265,31 +265,31 @@ See "Street View in HTML" section below for details.
 ### 13. Static Maps
 
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py static-map --lat 40.714 --lng -74.006 --zoom 13
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py static-map --center "Tokyo" --maptype satellite --zoom 12
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py static-map --center "NYC" --markers "color:red|40.714,-74.006" --size 800x600
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py static-map --lat 40.714 --lng -74.006 --zoom 13
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py static-map --center "Tokyo" --maptype satellite --zoom 12
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py static-map --center "NYC" --markers "color:red|40.714,-74.006" --size 800x600
 ```
 
 ### 14. Geolocation
 
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py geolocation
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py geolocation --wifi "00:11:22:33:44:55,-65" "66:77:88:99:AA:BB,-72"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py geolocation
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py geolocation --wifi "00:11:22:33:44:55,-65" "66:77:88:99:AA:BB,-72"
 ```
 
 ### 15. Aerial View (US only)
 
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py aerial-view check --address "1600 Amphitheatre Pkwy, Mountain View"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py aerial-view render --address "1600 Amphitheatre Pkwy, Mountain View"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py aerial-view get --video-id VIDEO_ID
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py aerial-view check --address "1600 Amphitheatre Pkwy, Mountain View"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py aerial-view render --address "1600 Amphitheatre Pkwy, Mountain View"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py aerial-view get --video-id VIDEO_ID
 ```
 
 ### 16. Route Optimization
 
 Solve vehicle routing problems (VRP):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py route-optimize problem.json --project my-gcp-project
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py route-optimize problem.json --project my-gcp-project
 ```
 
 Input JSON format: `{"model": {"shipments": [...], "vehicles": [...]}}` per Google Route Optimization API spec.
@@ -298,17 +298,17 @@ Input JSON format: `{"model": {"shipments": [...], "vehicles": [...]}}` per Goog
 
 Count or list places matching filters in an area:
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py places-aggregate --location "40.714,-74.006" --radius 5000 --type restaurant
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py places-aggregate --location "34.052,-118.244" --type cafe --min-rating 4.0 --insight INSIGHT_PLACES
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py places-aggregate --location "40.714,-74.006" --radius 5000 --type restaurant
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py places-aggregate --location "34.052,-118.244" --type cafe --min-rating 4.0 --insight INSIGHT_PLACES
 ```
 
 ### 18. Maps Embed URL (Free)
 
 Generate embeddable map URLs (free, unlimited):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py embed-url --mode place --query "Eiffel Tower"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py embed-url --mode directions --origin "NYC" --destination "Boston"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py embed-url --mode streetview --lat 46.414 --lng 10.013
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py embed-url --mode place --query "Eiffel Tower"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py embed-url --mode directions --origin "NYC" --destination "Boston"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py embed-url --mode streetview --lat 46.414 --lng 10.013
 ```
 
 ## Usage Patterns for Claude
@@ -652,9 +652,9 @@ When users want to download or share HTML pages (email, Slack, etc.), generate a
 
 To generate embed URLs (free, unlimited):
 ```bash
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py embed-url --mode place --query "Marea Restaurant NYC"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py embed-url --mode directions --origin "JFK" --destination "The Plaza Hotel NYC"
-python3 ~/.agents/skills/google-maps-api/scripts/gmaps.py embed-url --mode streetview --lat 40.76545 --lng -73.98115
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py embed-url --mode place --query "Marea Restaurant NYC"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py embed-url --mode directions --origin "JFK" --destination "The Plaza Hotel NYC"
+python3 ~/.claude/skills/google-maps-api/scripts/gmaps.py embed-url --mode streetview --lat 40.76545 --lng -73.98115
 ```
 
 ### Security Summary

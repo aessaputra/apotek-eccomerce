@@ -51,6 +51,12 @@ jest.mock('@tamagui/lucide-icons', () => {
     Wrench: createMockIcon('Wrench'),
     X: createMockIcon('X'),
     XCircle: createMockIcon('XCircle'),
+    Copy: createMockIcon('Copy'),
+    Headset: createMockIcon('Headset'),
+    Mail: createMockIcon('Mail'),
+    MessageSquare: createMockIcon('MessageSquare'),
+    ExternalLink: createMockIcon('ExternalLink'),
+    Phone: createMockIcon('Phone'),
   };
 });
 

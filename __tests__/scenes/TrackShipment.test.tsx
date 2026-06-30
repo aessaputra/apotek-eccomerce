@@ -154,7 +154,7 @@ describe('<TrackShipment />', () => {
     expect(screen.getByText('Budi')).not.toBeNull();
     expect(screen.getByText('Paket sudah sampai di hub tujuan')).not.toBeNull();
     expect(screen.getByText('Paket sedang diantar ke alamat tujuan')).not.toBeNull();
-    expect(screen.getByText(/14 Apr 2026/)).not.toBeNull();
+    expect(screen.getByText(/14-04-2026/)).not.toBeNull();
     expect(texts.indexOf('Paket sudah sampai di hub tujuan')).toBeLessThan(
       texts.indexOf('Paket sedang diantar ke alamat tujuan'),
     );
@@ -179,7 +179,7 @@ describe('<TrackShipment />', () => {
 
     expect(screen.getByText('Status pengiriman belum memiliki riwayat detail.')).not.toBeNull();
     expect(screen.getAllByText('Sedang Dikirim').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/16 Jan 2024/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/16-01-2024/).length).toBeGreaterThan(0);
   });
 
   test('renders waiting state when waybill is unavailable', () => {

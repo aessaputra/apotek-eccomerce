@@ -1,4 +1,5 @@
 import { supabase } from './supabase.service';
+import { resolveProductMediaUrl } from './home.service';
 import type { Database, Tables } from '@/types/supabase';
 import { classifyError, isRetryableError, translateErrorMessage } from '@/utils/error';
 import { withRetry } from '@/utils/retry';
@@ -60,6 +61,8 @@ export interface Order {
   courier_service: string | null;
   shipping_etd: string | null;
   waybill_number: string | null;
+  waybill_source: string | null;
+  latest_biteship_status: string | null;
   snap_redirect_url: string | null;
 }
 export const ORDERS_PAGE_SIZE = 20;
@@ -87,6 +90,8 @@ const ORDER_READ_MODEL_SELECT = `
   courier_service,
   shipping_etd,
   waybill_number,
+  waybill_source,
+  latest_biteship_status,
   snap_redirect_url
 `;
 
@@ -171,6 +176,7 @@ export interface OrderListItem {
   courier_service: string | null;
   payment_status: string;
   status: string;
+  latest_biteship_status: string | null;
   customer_completion_stage: CustomerCompletionStage | null;
   customer_order_bucket: CustomerOrderBucket | null;
   order_items: OrderListOrderItem[];
@@ -425,6 +431,7 @@ function normalizeOrderReadModelRow(row: OrderReadModelRow): Order {
     courier_service: row.courier_service,
     shipping_etd: row.shipping_etd,
     waybill_number: row.waybill_number,
+    waybill_source: row.waybill_source,
     snap_redirect_url: row.snap_redirect_url,
   };
 }
@@ -587,7 +594,7 @@ async function fetchProductsById(productIds: string[]): Promise<Map<string, Orde
     'product_id' | 'url' | 'sort_order'
   >[]) {
     const existing = imagesByProductId.get(image.product_id) ?? [];
-    existing.push({ url: image.url, sort_order: image.sort_order });
+    existing.push({ url: resolveProductMediaUrl(image.url), sort_order: image.sort_order });
     imagesByProductId.set(image.product_id, existing);
   }
 
@@ -638,7 +645,7 @@ async function fetchDetailedProductsById(
     'product_id' | 'url' | 'sort_order'
   >[]) {
     const existing = imagesByProductId.get(image.product_id) ?? [];
-    existing.push({ url: image.url, sort_order: image.sort_order });
+    existing.push({ url: resolveProductMediaUrl(image.url), sort_order: image.sort_order });
     imagesByProductId.set(image.product_id, existing);
   }
 
@@ -719,7 +726,7 @@ async function fetchPastPurchaseProductsById(productIds: string[]): Promise<
     'product_id' | 'url' | 'sort_order'
   >[]) {
     const existing = imagesByProductId.get(image.product_id) ?? [];
-    existing.push({ url: image.url, sort_order: image.sort_order });
+    existing.push({ url: resolveProductMediaUrl(image.url), sort_order: image.sort_order });
     imagesByProductId.set(image.product_id, existing);
   }
 
@@ -1253,11 +1260,33 @@ export function isBackendExpired(expiredAt: string | null | undefined): boolean 
   return new Date(expiredAt) < new Date();
 }
 
+export function getBiteshipStatusDisplay(status: string): OrderStatusDisplay {
+  const displays: Record<string, OrderStatusDisplay> = {
+    confirmed: { label: 'Terkonfirmasi', variant: 'primary' },
+    scheduled: { label: 'Terjadwal', variant: 'primary' },
+    allocated: { label: 'Teralokasi', variant: 'primary' },
+    picking_up: { label: 'Dalam Penjemputan', variant: 'primary' },
+    picked: { label: 'Berhasil Dijemput', variant: 'primary' },
+    cancelled: { label: 'Dibatalkan', variant: 'danger' },
+    on_hold: { label: 'Ditahan', variant: 'warning' },
+    dropping_off: { label: 'Dalam Pengantaran', variant: 'primary' },
+    return_in_transit: { label: 'Dalam Pengembalian', variant: 'warning' },
+    returned: { label: 'Dikembalikan', variant: 'neutral' },
+    rejected: { label: 'Paket Ditolak', variant: 'danger' },
+    disposed: { label: 'Dihancurkan', variant: 'danger' },
+    courier_not_found: { label: 'Kurir Tidak Ditemukan', variant: 'danger' },
+    delivered: { label: 'Berhasil Dikirim', variant: 'success' },
+  };
+
+  return displays[status] || { label: status, variant: 'neutral' };
+}
+
 export function getOrderPrimaryStatusDisplay(
   orderStatus: string,
   paymentStatus: string,
   expiredAt?: string | null,
   customerCompletionStage?: CustomerCompletionStage | null,
+  latestBiteshipStatus?: string | null,
 ): OrderStatusDisplay {
   if (orderStatus === 'cancelled') {
     return getOrderStatusDisplay(orderStatus);
@@ -1279,6 +1308,10 @@ export function getOrderPrimaryStatusDisplay(
 
   if (REFUND_STATES.includes(paymentStatus)) {
     return { label: getPaymentStatusLabel(paymentStatus), variant: 'warning' };
+  }
+
+  if (latestBiteshipStatus) {
+    return getBiteshipStatusDisplay(latestBiteshipStatus);
   }
 
   return getOrderStatusDisplay(orderStatus, customerCompletionStage);

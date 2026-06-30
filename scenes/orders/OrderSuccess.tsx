@@ -11,9 +11,10 @@ import {
   Separator,
   styled,
 } from 'tamagui';
-import { CheckCircle, Package, Clock3, ReceiptText } from '@tamagui/lucide-icons';
+import { Package, Clock3, ReceiptText } from '@tamagui/lucide-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '@/components/elements/Button';
+import AnimatedCheckCircle from '@/components/elements/AnimatedCheckCircle';
 import { formatOrderDateTime } from '@/utils/orderDate';
 import { formatOrderNumber } from '@/utils/orderNumber';
 import { getThemeColor } from '@/utils/theme';
@@ -115,7 +116,7 @@ function getHeroContent(
     description:
       'Terima kasih! Pesanan Anda sudah kami terima dan sedang disiapkan untuk diproses.',
     summaryNote: 'Pembayaran telah berhasil dikonfirmasi',
-    icon: CheckCircle,
+    icon: AnimatedCheckCircle,
     colorToken: 'success',
     softToken: '$successSoft',
   };

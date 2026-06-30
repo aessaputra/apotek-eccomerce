@@ -20,12 +20,15 @@ export type RoutableNotificationType = Exclude<NotificationType, NonRoutableNoti
 
 type NotificationAppRoute = Extract<
   keyof AppRoutes,
-  'orders/order-detail/[orderId]' | 'orders/track-shipment/[orderId]'
+  | 'notifications/order-detail/[orderId]'
+  | 'notifications/track-shipment/[orderId]'
+  | 'product-details'
 >;
 
 export const NOTIFICATION_ROUTE_TARGETS = [
-  'orders/order-detail/[orderId]',
-  'orders/track-shipment/[orderId]',
+  'notifications/order-detail/[orderId]',
+  'notifications/track-shipment/[orderId]',
+  'product-details',
 ] as const;
 
 export type NotificationRouteTarget = (typeof NOTIFICATION_ROUTE_TARGETS)[number];
@@ -35,13 +38,13 @@ export const NOTIFICATIONS_FALLBACK_ROUTE = '/notifications';
 export type NotificationFallbackRoute = typeof NOTIFICATIONS_FALLBACK_ROUTE;
 
 export interface NotificationRouteTargetByType {
-  payment_settlement: 'orders/order-detail/[orderId]';
-  payment_failed_or_expired: 'orders/order-detail/[orderId]';
-  order_processing: 'orders/order-detail/[orderId]';
-  order_awaiting_shipment: 'orders/order-detail/[orderId]';
-  order_shipped: 'orders/track-shipment/[orderId]';
-  order_delivered_action_required: 'orders/order-detail/[orderId]';
-  order_completed: 'orders/order-detail/[orderId]';
+  payment_settlement: 'notifications/order-detail/[orderId]';
+  payment_failed_or_expired: 'notifications/order-detail/[orderId]';
+  order_processing: 'notifications/order-detail/[orderId]';
+  order_awaiting_shipment: 'notifications/order-detail/[orderId]';
+  order_shipped: 'notifications/track-shipment/[orderId]';
+  order_delivered_action_required: 'notifications/order-detail/[orderId]';
+  order_completed: 'notifications/order-detail/[orderId]';
 }
 
 export type NotificationRouteTargetForType<T extends RoutableNotificationType> =
@@ -147,13 +150,13 @@ export interface NotificationRouteFallback {
 export type NotificationRouteParseResult = ParsedNotificationRoute | NotificationRouteFallback;
 
 export const NOTIFICATION_ROUTE_TARGET_BY_TYPE = {
-  payment_settlement: 'orders/order-detail/[orderId]',
-  payment_failed_or_expired: 'orders/order-detail/[orderId]',
-  order_processing: 'orders/order-detail/[orderId]',
-  order_awaiting_shipment: 'orders/order-detail/[orderId]',
-  order_shipped: 'orders/track-shipment/[orderId]',
-  order_delivered_action_required: 'orders/order-detail/[orderId]',
-  order_completed: 'orders/order-detail/[orderId]',
+  payment_settlement: 'notifications/order-detail/[orderId]',
+  payment_failed_or_expired: 'notifications/order-detail/[orderId]',
+  order_processing: 'notifications/order-detail/[orderId]',
+  order_awaiting_shipment: 'notifications/order-detail/[orderId]',
+  order_shipped: 'notifications/track-shipment/[orderId]',
+  order_delivered_action_required: 'notifications/order-detail/[orderId]',
+  order_completed: 'notifications/order-detail/[orderId]',
 } as const satisfies NotificationRouteTargetByType;
 
 const NOTIFICATION_ROUTE_SET = new Set<string>(NOTIFICATION_ROUTE_TARGETS);
@@ -205,8 +208,15 @@ export function isNotificationRouteTarget(value: string): value is NotificationR
 }
 
 function normalizeNotificationRouteTargetValue(value: string): NotificationRouteTarget | null {
-  const normalizedValue = value.startsWith('/') ? value.slice(1) : value;
-  return isNotificationRouteTarget(normalizedValue) ? normalizedValue : null;
+  let normalizedValue = value.startsWith('/') ? value.slice(1) : value;
+
+  if (normalizedValue.startsWith('orders/')) {
+    normalizedValue = normalizedValue.replace(/^orders\//, 'notifications/');
+  }
+
+  return isNotificationRouteTarget(normalizedValue)
+    ? (normalizedValue as NotificationRouteTarget)
+    : null;
 }
 
 export function parseNotificationPayload<T extends NotificationType>(
@@ -223,14 +233,18 @@ export function parseNotificationPayload<T extends NotificationType>(
     return null;
   }
 
-  const orderId = normalizeNonEmptyString(record.orderId);
+  const orderId = normalizeNonEmptyString(record.orderId ?? record.order_id);
 
   if (!orderId) {
     return null;
   }
 
-  const paymentStatus = parseNotificationPaymentStatus(record.paymentStatus);
-  const shipmentStage = parseNotificationShipmentStage(record.shipmentStage);
+  const paymentStatus = parseNotificationPaymentStatus(
+    record.paymentStatus ?? record.payment_status,
+  );
+  const shipmentStage = parseNotificationShipmentStage(
+    record.shipmentStage ?? record.shipment_stage,
+  );
 
   switch (type) {
     case 'payment_settlement':
@@ -300,14 +314,14 @@ export function createNotificationNavigationTarget<T extends RoutableNotificatio
   if (type === 'order_shipped') {
     return {
       type,
-      pathname: 'orders/track-shipment/[orderId]',
+      pathname: 'notifications/track-shipment/[orderId]',
       params: { orderId: payload.orderId },
     } as NotificationNavigationTarget<T>;
   }
 
   return {
     type,
-    pathname: 'orders/order-detail/[orderId]',
+    pathname: 'notifications/order-detail/[orderId]',
     params: { orderId: payload.orderId },
   } as NotificationNavigationTarget<T>;
 }
@@ -343,9 +357,39 @@ export function parseNotificationRoute(
     };
   }
 
-  const expectedRoute = NOTIFICATION_ROUTE_TARGET_BY_TYPE[notification.type];
+  const expectedRoute =
+    notification.type in NOTIFICATION_ROUTE_TARGET_BY_TYPE
+      ? NOTIFICATION_ROUTE_TARGET_BY_TYPE[
+          notification.type as keyof typeof NOTIFICATION_ROUTE_TARGET_BY_TYPE
+        ]
+      : undefined;
 
-  if (normalizedRoute !== expectedRoute) {
+  if (normalizedRoute === 'product-details') {
+    const record = parseNotificationDataRecord(notification.data);
+    const productId = normalizeNonEmptyString(
+      record?.id ?? record?.productId ?? record?.product_id,
+    );
+
+    if (!productId) {
+      return {
+        kind: 'fallback',
+        reason: 'invalid_payload',
+        fallbackRoute: NOTIFICATIONS_FALLBACK_ROUTE,
+      };
+    }
+
+    return {
+      kind: 'route',
+      route: {
+        type: notification.type as any,
+        pathname: 'product-details',
+        params: { id: productId },
+      } as any,
+      payload: { id: productId } as any,
+    };
+  }
+
+  if (expectedRoute !== undefined && normalizedRoute !== expectedRoute) {
     return {
       kind: 'fallback',
       reason: 'unsupported_type_route_combination',
@@ -369,7 +413,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'payment_settlement',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -391,7 +435,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'payment_failed_or_expired',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -413,7 +457,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_processing',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -435,7 +479,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_awaiting_shipment',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -457,7 +501,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_shipped',
-          pathname: 'orders/track-shipment/[orderId]',
+          pathname: 'notifications/track-shipment/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -482,7 +526,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_delivered_action_required',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -504,7 +548,7 @@ export function parseNotificationRoute(
         kind: 'route',
         route: {
           type: 'order_completed',
-          pathname: 'orders/order-detail/[orderId]',
+          pathname: 'notifications/order-detail/[orderId]',
           params: { orderId: payload.orderId },
         },
         payload,
@@ -519,15 +563,22 @@ export function parseNotificationRoute(
 }
 
 export function buildNotificationTypedHref(target: NotificationNavigationTarget): TypedHref {
-  if (target.pathname === 'orders/order-detail/[orderId]') {
+  if ((target.pathname as string) === 'product-details') {
     return {
-      pathname: '/orders/order-detail/[orderId]',
+      pathname: '/product-details',
+      params: target.params as any,
+    };
+  }
+
+  if (target.pathname === 'notifications/order-detail/[orderId]') {
+    return {
+      pathname: '/notifications/order-detail/[orderId]',
       params: target.params,
     };
   }
 
   return {
-    pathname: '/orders/track-shipment/[orderId]',
+    pathname: '/notifications/track-shipment/[orderId]',
     params: target.params,
   };
 }

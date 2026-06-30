@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
-import { CheckCircleIcon } from '@/components/icons';
+import EmptyOrdersIllustration from '@/components/elements/EmptyOrdersIllustration';
 import { useOrdersByStatusPaginated } from '@/hooks/useOrdersByStatusPaginated';
 import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
@@ -68,7 +68,7 @@ export default function CompletedOrders() {
       isLoadingMore={isFetchingMore}
       hasMore={hasMore}
       error={error}
-      EmptyIcon={CheckCircleIcon}
+      EmptyIcon={EmptyOrdersIllustration}
       emptyTitle={EMPTY_TITLE}
       emptyDescription={EMPTY_DESCRIPTION}
       onRefresh={refresh}

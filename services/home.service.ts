@@ -211,7 +211,7 @@ function normalizeProductListRow(
     category_id: product.category_id,
     created_at: product.created_at,
     images: (product.product_images ?? []).map(image => ({
-      url: image.url,
+      url: resolveProductMediaUrl(image.url),
       sort_order: image.sort_order,
     })),
   };
@@ -268,6 +268,26 @@ function hasVisibleBannerPayload(record: {
 
 function matchesBannerMediaPrefix(mediaPath: string, placementKey: HomeBannerPlacement): boolean {
   return mediaPath.startsWith(HOME_BANNER_MEDIA_PREFIX_BY_PLACEMENT[placementKey]);
+}
+
+export const PRODUCT_MEDIA_BUCKET = 'media';
+
+export function resolveProductMediaUrl(mediaPath: string | null): string {
+  const normalizedPath = normalizeOptionalText(mediaPath);
+
+  if (!normalizedPath) {
+    return '';
+  }
+
+  if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+    return normalizedPath;
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(PRODUCT_MEDIA_BUCKET).getPublicUrl(normalizedPath);
+
+  return publicUrl;
 }
 
 export function resolveHomeBannerMediaUrl(mediaPath: string | null): string | null {
@@ -395,6 +415,24 @@ export async function getHomeBannersByPlacement(): Promise<HomeBannersByPlacemen
   }
 }
 
+export function resolveCategoryMediaUrl(mediaPath: string | null): string | null {
+  const normalizedPath = normalizeOptionalText(mediaPath);
+
+  if (!normalizedPath) {
+    return null;
+  }
+
+  if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+    return normalizedPath;
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(PRODUCT_MEDIA_BUCKET).getPublicUrl(normalizedPath);
+
+  return publicUrl;
+}
+
 /**
  * Fetch all active categories from Supabase
  */
@@ -409,7 +447,10 @@ export async function getCategories(): Promise<CategoryRow[]> {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(category => ({
+      ...category,
+      logo_url: resolveCategoryMediaUrl(category.logo_url),
+    }));
   } catch (error) {
     logHomeServiceError('getCategories error', error);
     throw toUserError(error, 'Failed to load categories. Please try again.');
@@ -645,7 +686,10 @@ export async function getLatestProductsWithImages(
     const imagesByProduct = images.reduce(
       (acc, image) => {
         if (!acc[image.product_id]) acc[image.product_id] = [];
-        acc[image.product_id].push({ url: image.url, sort_order: image.sort_order });
+        acc[image.product_id].push({
+          url: resolveProductMediaUrl(image.url),
+          sort_order: image.sort_order,
+        });
         return acc;
       },
       {} as Record<string, { url: string; sort_order: number }[]>,
@@ -703,7 +747,10 @@ export async function searchProducts(query: string): Promise<ProductWithImages[]
   const imagesByProduct = images.reduce(
     (acc, image) => {
       if (!acc[image.product_id]) acc[image.product_id] = [];
-      acc[image.product_id].push({ url: image.url, sort_order: image.sort_order });
+      acc[image.product_id].push({
+        url: resolveProductMediaUrl(image.url),
+        sort_order: image.sort_order,
+      });
       return acc;
     },
     {} as Record<string, { url: string; sort_order: number }[]>,
@@ -791,12 +838,12 @@ export async function getProductDetailsById(productId: string): Promise<ProductD
       updated_at: product.updated_at,
       weight: product.weight,
       images: (imagesResult.data || []).map(image => ({
-        url: image.url,
+        url: resolveProductMediaUrl(image.url),
         sort_order: image.sort_order,
       })),
       category_name: categoryResult.data?.name ?? null,
       category_slug: categoryResult.data?.slug ?? null,
-      category_logo_url: categoryResult.data?.logo_url ?? null,
+      category_logo_url: resolveCategoryMediaUrl(categoryResult.data?.logo_url ?? null),
     };
   } catch (error) {
     if (__DEV__) console.warn('[HomeService] getProductDetailsById error:', error);

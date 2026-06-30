@@ -31,17 +31,25 @@ export default function SignUp() {
   const {
     email,
     password,
+    fullName,
+    phoneNumber,
     loading,
     error,
     emailError,
     passwordError,
+    fullNameError,
+    phoneNumberError,
     focusedField,
     passwordStrength,
     dismissError,
     handleEmailChange,
     handlePasswordChange,
+    handleFullNameChange,
+    handlePhoneNumberChange,
     handleEmailFocus,
     handlePasswordFocus,
+    handleFullNameFocus,
+    handlePhoneNumberFocus,
     handleFieldBlur,
     handleSubmit,
   } = useSignUpForm();
@@ -123,6 +131,62 @@ export default function SignUp() {
                 <ErrorMessage message={error} onDismiss={dismissError} dismissible={true} />
 
                 <YStack gap="$4">
+                  {/* Nama Lengkap Input */}
+                  <YStack gap="$2">
+                    <Text
+                      fontSize={14}
+                      fontWeight="600"
+                      color="$color"
+                      letterSpacing={0.2}
+                      opacity={focusedField === 'fullName' ? 1 : 0.85}>
+                      Nama Lengkap
+                      <Text fontSize={13} fontWeight="400" color="$danger" opacity={0.9}>
+                        {' '}
+                        *
+                      </Text>
+                    </Text>
+                    <EmailInput
+                      value={fullName}
+                      onChangeText={handleFullNameChange}
+                      placeholder="Masukkan Nama Lengkap"
+                      error={fullNameError}
+                      disabled={loading}
+                      keyboardType="default"
+                      autoCapitalize="words"
+                      aria-label="Nama Lengkap"
+                      testID="fullname-input"
+                      onFocus={handleFullNameFocus}
+                      onBlur={handleFieldBlur}
+                    />
+                  </YStack>
+
+                  {/* Nomor Telepon Input */}
+                  <YStack gap="$2">
+                    <Text
+                      fontSize={14}
+                      fontWeight="600"
+                      color="$color"
+                      letterSpacing={0.2}
+                      opacity={focusedField === 'phoneNumber' ? 1 : 0.85}>
+                      Nomor Telepon{' '}
+                      <Text color="$colorSubtle" fontWeight="400" fontSize={13}>
+                        (Opsional)
+                      </Text>
+                    </Text>
+                    <EmailInput
+                      value={phoneNumber}
+                      onChangeText={handlePhoneNumberChange}
+                      placeholder="08123456789"
+                      error={phoneNumberError}
+                      disabled={loading}
+                      keyboardType="phone-pad"
+                      aria-label="Nomor Telepon"
+                      testID="phone-input"
+                      onFocus={handlePhoneNumberFocus}
+                      onBlur={handleFieldBlur}
+                    />
+                  </YStack>
+
                   {/* Email Input dengan label dan enhanced focus states */}
                   <YStack gap="$2">
                     <Text

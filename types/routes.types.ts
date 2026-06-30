@@ -69,6 +69,14 @@ export type PaymentSuccessRoutes = {
   'payment-success': { orderId?: string };
 };
 
+// Notifications routes
+export type NotificationsRoutes = {
+  notifications: undefined;
+  'notifications/index': undefined;
+  'notifications/order-detail/[orderId]': { orderId: string };
+  'notifications/track-shipment/[orderId]': { orderId: string };
+};
+
 // Profile routes
 export type ProfileRoutes = {
   profile: undefined;
@@ -91,6 +99,7 @@ export type ProfileRoutes = {
   'profile/details': undefined;
   'profile/support': undefined;
   'profile/order-detail/[orderId]': { orderId: string };
+  'profile/track-shipment/[orderId]': { orderId: string };
 };
 
 // Google auth callback
@@ -104,6 +113,7 @@ export type AppRoutes = AuthRoutes &
   CartRoutes &
   OrdersRoutes &
   PaymentSuccessRoutes &
+  NotificationsRoutes &
   ProfileRoutes &
   GoogleAuthRoutes;
 
@@ -127,6 +137,7 @@ export type ProfileStackParams = {
   details: undefined;
   support: undefined;
   'order-detail/[orderId]': { orderId: string };
+  'track-shipment/[orderId]': { orderId: string };
 };
 
 export type HomeStackParams = {
@@ -159,6 +170,12 @@ export type OrdersStackParams = {
   shipped: undefined;
   completed: undefined;
   cancelled: undefined;
+  'order-detail/[orderId]': { orderId: string };
+  'track-shipment/[orderId]': { orderId: string };
+};
+
+export type NotificationsStackParams = {
+  index: undefined;
   'order-detail/[orderId]': { orderId: string };
   'track-shipment/[orderId]': { orderId: string };
 };

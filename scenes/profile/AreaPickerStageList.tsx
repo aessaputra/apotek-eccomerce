@@ -1,14 +1,17 @@
+import { useCallback, useMemo } from 'react';
+import { FlatList } from 'react-native';
 import { Check } from '@tamagui/lucide-icons';
 import { Card, Spinner, Text, XStack, YStack } from 'tamagui';
 import type { RegionalDistrict, RegionalProvince, RegionalRegency } from '@/types/regional';
 import type { PostalOption } from './areaPickerHelpers';
-import type { SelectionStage } from './areaPickerTypes';
+import type { SelectionStage, StageStatus } from './areaPickerTypes';
 
 type AreaPickerStageListProps = {
   stage: SelectionStage;
   stageTitle: string;
   isLoadingStage: boolean;
-  stageError: string | null;
+  stageStatus: StageStatus;
+  currentLocationStatus?: string | null;
   provinceOptions: RegionalProvince[];
   cityOptions: RegionalRegency[];
   districtOptions: RegionalDistrict[];
@@ -20,13 +23,15 @@ type AreaPickerStageListProps = {
   onPostalSelect: (option: PostalOption) => void | Promise<void>;
 };
 
-type OptionCardProps = {
+type OptionCardProps<T> = {
   label: string;
-  onPress: () => void;
+  value: T;
+  onSelect: (value: T) => void | Promise<void>;
   selected?: boolean;
 };
 
-function OptionCard({ label, onPress, selected = false }: OptionCardProps) {
+function OptionCard<T>({ label, value, onSelect, selected = false }: OptionCardProps<T>) {
+  const handlePress = useCallback(() => onSelect(value), [onSelect, value]);
   return (
     <Card
       borderRadius="$0"
@@ -36,7 +41,7 @@ function OptionCard({ label, onPress, selected = false }: OptionCardProps) {
       backgroundColor="$background"
       paddingVertical="$4"
       paddingHorizontal="$1"
-      onPress={onPress}>
+      onPress={handlePress}>
       <XStack justifyContent="space-between" alignItems="center">
         <Text fontSize="$5" color={selected ? '$primary' : '$color'}>
           {label}
@@ -47,11 +52,33 @@ function OptionCard({ label, onPress, selected = false }: OptionCardProps) {
   );
 }
 
+function StageStatusBanner({ stageStatus }: { stageStatus: StageStatus }) {
+  if (stageStatus.kind === 'idle') {
+    return null;
+  }
+
+  return (
+    <YStack
+      alignItems="center"
+      paddingVertical={stageStatus.kind === 'error' ? '$8' : '$3'}
+      paddingHorizontal={stageStatus.kind === 'error' ? '$0' : '$2'}
+      gap={stageStatus.kind === 'error' ? '$2' : '$0'}>
+      <Text
+        fontSize="$3"
+        color={stageStatus.kind === 'error' ? '$danger' : '$warning'}
+        textAlign="center">
+        {stageStatus.message}
+      </Text>
+    </YStack>
+  );
+}
+
 export default function AreaPickerStageList({
   stage,
   stageTitle,
   isLoadingStage,
-  stageError,
+  stageStatus,
+  currentLocationStatus,
   provinceOptions,
   cityOptions,
   districtOptions,
@@ -62,63 +89,81 @@ export default function AreaPickerStageList({
   onDistrictSelect,
   onPostalSelect,
 }: AreaPickerStageListProps) {
+  const listData = useMemo(() => {
+    switch (stage) {
+      case 'province':
+        return provinceOptions;
+      case 'city':
+        return cityOptions;
+      case 'district':
+        return districtOptions;
+      case 'postal':
+        return postalOptions;
+      default:
+        return [];
+    }
+  }, [stage, provinceOptions, cityOptions, districtOptions, postalOptions]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      switch (stage) {
+        case 'province':
+          return (
+            <OptionCard label={item.name.toUpperCase()} value={item} onSelect={onProvinceSelect} />
+          );
+        case 'city':
+          return (
+            <OptionCard label={item.name.toUpperCase()} value={item} onSelect={onCitySelect} />
+          );
+        case 'district':
+          return (
+            <OptionCard label={item.name.toUpperCase()} value={item} onSelect={onDistrictSelect} />
+          );
+        case 'postal':
+          return (
+            <OptionCard
+              label={item.label}
+              value={item}
+              selected={selectedPostalLabel === item.label}
+              onSelect={onPostalSelect}
+            />
+          );
+        default:
+          return null;
+      }
+    },
+    [stage, onProvinceSelect, onCitySelect, onDistrictSelect, onPostalSelect, selectedPostalLabel],
+  );
+
+  const keyExtractor = useCallback(
+    (item: any) => item.code || item.label || String(Math.random()),
+    [],
+  );
+
   if (isLoadingStage) {
     return (
       <YStack alignItems="center" paddingVertical="$8" gap="$3">
         <Spinner size="large" color="$primary" />
-        <Text fontSize="$3" color="$colorMuted">
-          Memuat {stageTitle.toLowerCase()}...
+        <Text fontSize="$3" color="$colorMuted" textAlign="center">
+          {currentLocationStatus ?? `Memuat ${stageTitle.toLowerCase()}...`}
         </Text>
       </YStack>
     );
   }
 
-  if (stageError) {
-    return (
-      <YStack alignItems="center" paddingVertical="$8" gap="$2">
-        <Text fontSize="$3" color="$danger" textAlign="center">
-          {stageError}
-        </Text>
-      </YStack>
-    );
-  }
-
-  if (stage === 'province') {
-    return provinceOptions.map(option => (
-      <OptionCard
-        key={option.code}
-        label={option.name.toUpperCase()}
-        onPress={() => void onProvinceSelect(option)}
-      />
-    ));
-  }
-
-  if (stage === 'city') {
-    return cityOptions.map(option => (
-      <OptionCard
-        key={option.code}
-        label={option.name.toUpperCase()}
-        onPress={() => void onCitySelect(option)}
-      />
-    ));
-  }
-
-  if (stage === 'district') {
-    return districtOptions.map(option => (
-      <OptionCard
-        key={option.code}
-        label={option.name.toUpperCase()}
-        onPress={() => void onDistrictSelect(option)}
-      />
-    ));
-  }
-
-  return postalOptions.map(option => (
-    <OptionCard
-      key={option.label}
-      label={option.label}
-      selected={option.label === selectedPostalLabel}
-      onPress={() => void onPostalSelect(option)}
-    />
-  ));
+  return (
+    <YStack flex={1}>
+      <StageStatusBanner stageStatus={stageStatus} />
+      {listData.length > 0 && (
+        <FlatList
+          data={listData}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+    </YStack>
+  );
 }

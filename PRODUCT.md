@@ -1,4 +1,4 @@
-# PRODUCT.md — Apotek Online
+# PRODUCT.md — SiFarma
 
 **Status:** Active Development | **Last Updated:** 2026-05-05 | **Owner:** Engineering & Product Team
 
@@ -37,7 +37,7 @@ To become Indonesia's leading mobile-first pharmacy e-commerce platform that bri
 
 ## 2. Product Overview
 
-Apotek Online is a cross-platform pharmacy e-commerce application (iOS, Android, Web) that enables users to:
+SiFarma is a cross-platform pharmacy e-commerce application (iOS, Android, Web) that enables users to:
 
 - Browse health product and medicine catalogs
 - Upload doctor prescriptions for verification

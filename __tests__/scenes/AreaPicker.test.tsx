@@ -475,9 +475,10 @@ describe('useAreaPickerFlow orchestration', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.stageError).toBe(
-        'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
-      );
+      expect(result.current.stageStatus).toEqual({
+        kind: 'error',
+        message: 'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
+      });
     });
     expect(result.current.isLoadingStage).toBe(false);
     expect(result.current.selectedPostalLabel).toBe('42184');
@@ -489,9 +490,10 @@ describe('useAreaPickerFlow orchestration', () => {
 
     expect(mockSetPendingAreaSelection).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
-    expect(result.current.stageError).toBe(
-      'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
-    );
+    expect(result.current.stageStatus).toEqual({
+      kind: 'error',
+      message: 'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
+    });
     expect(result.current.isLoadingStage).toBe(false);
     expect(result.current.selectedPostalLabel).toBe('42184');
   });
@@ -567,7 +569,7 @@ describe('useAreaPickerFlow orchestration', () => {
     await waitFor(() => {
       expect(onComplete).toHaveBeenCalledTimes(1);
     });
-    expect(result.current.stageError).toBeNull();
+    expect(result.current.stageStatus).toEqual({ kind: 'idle' });
     expect(result.current.isLoadingStage).toBe(false);
     expect(result.current.selectedPostalLabel).toBe('42184');
 
@@ -585,7 +587,7 @@ describe('useAreaPickerFlow orchestration', () => {
       postalCode: '42184',
     });
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(result.current.stageError).toBeNull();
+    expect(result.current.stageStatus).toEqual({ kind: 'idle' });
     expect(result.current.isLoadingStage).toBe(false);
     expect(result.current.selectedPostalLabel).toBe('42184');
   });
@@ -662,7 +664,7 @@ describe('useAreaPickerFlow orchestration', () => {
     await waitFor(() => {
       expect(onComplete).toHaveBeenCalledTimes(1);
     });
-    expect(result.current.stageError).toBeNull();
+    expect(result.current.stageStatus).toEqual({ kind: 'idle' });
     expect(result.current.isLoadingStage).toBe(false);
     expect(result.current.selectedPostalLabel).toBe('42184');
 
@@ -680,7 +682,7 @@ describe('useAreaPickerFlow orchestration', () => {
       postalCode: '42184',
     });
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(result.current.stageError).toBeNull();
+    expect(result.current.stageStatus).toEqual({ kind: 'idle' });
     expect(result.current.isLoadingStage).toBe(false);
     expect(result.current.selectedPostalLabel).toBe('42184');
   });
@@ -725,7 +727,10 @@ describe('useAreaPickerFlow orchestration', () => {
       await result.current.handlePostalSelect({ label: '42183' });
     });
 
-    expect(result.current.stageError).toBe('Gagal menyimpan pilihan area. Silakan coba lagi.');
+    expect(result.current.stageStatus).toEqual({
+      kind: 'error',
+      message: 'Gagal menyimpan pilihan area. Silakan coba lagi.',
+    });
     expect(onComplete).not.toHaveBeenCalled();
   });
 

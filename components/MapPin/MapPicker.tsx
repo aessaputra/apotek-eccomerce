@@ -76,6 +76,8 @@ function MapPicker({
     hasInteracted.current = false;
 
     const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+      // Prevent unhandled promise rejection if timeout finishes first
+      promise.catch(() => {});
       return Promise.race([
         promise,
         new Promise<T>((_, reject) =>

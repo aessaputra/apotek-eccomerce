@@ -5,6 +5,7 @@ import { Button, Card, Spinner, Text, XStack, YStack, styled, useTheme } from 't
 import { MIN_TOUCH_TARGET } from '@/constants/ui';
 import ErrorMessage from '@/components/elements/ErrorMessage';
 import { AlertCircleIcon, BellIcon, CheckCircleIcon, ChevronRightIcon } from '@/components/icons';
+import EmptyNotificationIllustration from '@/components/elements/EmptyNotificationIllustration';
 import { useNotificationsContext } from '@/providers';
 import { useAppSlice } from '@/slices';
 import {
@@ -106,9 +107,7 @@ const LoadingState = React.memo(function LoadingState() {
 const EmptyState = React.memo(function EmptyState() {
   return (
     <StateContainer>
-      <IconCircle backgroundColor="$surfaceSubtle">
-        <BellIcon size={40} color="$colorSubtle" />
-      </IconCircle>
+      <EmptyNotificationIllustration size={120} />
       <YStack gap="$2" alignItems="center">
         <Text fontSize="$6" fontWeight="700" color="$color" textAlign="center">
           Belum ada notifikasi

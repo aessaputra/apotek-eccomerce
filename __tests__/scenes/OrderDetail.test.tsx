@@ -15,6 +15,7 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  useSegments: () => ['(tabs)', 'orders'],
 }));
 
 jest.mock('@/hooks/useOrderDetail', () => ({

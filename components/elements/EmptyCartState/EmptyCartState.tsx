@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, Text, YStack } from 'tamagui';
-import { ShoppingCart, ShoppingBag } from '@tamagui/lucide-icons';
+import { ShoppingBag } from '@tamagui/lucide-icons';
+import EmptyCartIllustration from '../EmptyCartIllustration';
 
 export interface EmptyCartStateProps {
   onBrowse: () => void;
@@ -9,7 +10,7 @@ export interface EmptyCartStateProps {
 export const EmptyCartState: React.FC<EmptyCartStateProps> = ({ onBrowse }) => {
   return (
     <YStack flex={1} justifyContent="center" alignItems="center" padding="$6" gap="$4">
-      <ShoppingCart size={64} color="$primary" />
+      <EmptyCartIllustration style={{ marginBottom: 12 }} />
 
       <YStack alignItems="center" gap="$1" marginBottom="$2">
         <Text fontSize="$5" fontWeight="700" color="$color">

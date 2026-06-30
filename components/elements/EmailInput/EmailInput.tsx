@@ -24,6 +24,7 @@ export interface EmailInputProps {
     | 'decimal-pad';
   editable?: boolean;
   'aria-label'?: string;
+  testID?: string;
 }
 
 /**
@@ -44,6 +45,7 @@ function EmailInput({
   keyboardType = 'email-address',
   editable = true,
   'aria-label': ariaLabel,
+  testID = 'email-input',
 }: EmailInputProps) {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -96,7 +98,7 @@ function EmailInput({
           onBlur?.();
         }}
         aria-label={ariaLabel || placeholder || 'Email'}
-        testID="email-input"
+        testID={testID}
       />
     </XStack>
   );

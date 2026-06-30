@@ -25,6 +25,22 @@ function NotificationsStackLayout() {
           headerRight: () => <NotificationsHeaderRight />,
         }}
       />
+      <Stack.Screen
+        name="order-detail/[orderId]"
+        options={{
+          title: 'Detail Pesanan',
+          headerTitleAlign: 'center',
+          headerBackTitle: 'Notifikasi',
+        }}
+      />
+      <Stack.Screen
+        name="track-shipment/[orderId]"
+        options={{
+          title: 'Lacak Pengiriman',
+          headerTitleAlign: 'center',
+          headerBackTitle: 'Detail Pesanan',
+        }}
+      />
     </Stack>
   );
 }

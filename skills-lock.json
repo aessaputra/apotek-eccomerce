@@ -4,52 +4,68 @@
     "android-adb": {
       "source": "httprunner/skills",
       "sourceType": "github",
+      "skillPath": "android-adb/SKILL.md",
       "computedHash": "8bfc27c21a6c3b20ec258d1525c2b6e9b16644e2a2b48530e3dd125b36b627f9"
     },
     "auth-implementation-patterns": {
       "source": "wshobson/agents",
       "sourceType": "github",
-      "computedHash": "d38d7eef32534d75370b72be089faee9f58e84a33b7273d601e42eb308017dfb"
+      "skillPath": "plugins/developer-essentials/skills/auth-implementation-patterns/SKILL.md",
+      "computedHash": "f97118b792830d928ce691a44d0f38fb55a2032e2fa15b22b482c229d2853e87"
     },
     "checkout-payments": {
       "source": "santiagoxor/pintureria-digital",
       "sourceType": "github",
+      "skillPath": ".cursor/skills/checkout-payments/SKILL.md",
       "computedHash": "6a70d32b4e4553c8559c2493cc6e4a685dae0534855bec37f1b6b3f4d0125e55"
     },
     "clean-code": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
-      "computedHash": "14ba8e7d8477723eca6d48a79a1924337f4a1f5f1c7ab9b0a7acc073268ecd5a"
+      "skillPath": "skills/clean-code/SKILL.md",
+      "computedHash": "74bf6ded4f61ddcb593e7a29beb96c284f888cbe0639ad6e23710447c36ff19a"
     },
     "code-smell-detector": {
       "source": "rysweet/amplihack",
       "sourceType": "github",
+      "skillPath": "skills/code-smell-detector/SKILL.md",
       "computedHash": "c225f62ccfc0dc6c70f0eea5ce18602329b04338fec18bea380c524f8bb09a69"
     },
     "context7-auto-research": {
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
+      "skillPath": "cli-tool/components/skills/ai-research/context7-auto-research/SKILL.md",
       "computedHash": "556f3bd3b59be46990bab40f922eb6ebfb711979a11836a6f78c78d658e82a41"
     },
     "copy-editing": {
       "source": "coreyhaines31/marketingskills",
       "sourceType": "github",
-      "computedHash": "f1a31dc20a44b62d9a8b0e2c976e4cfaf12dd87e1c8a4ee8344bbf5aa8a73f63"
+      "skillPath": "skills/copy-editing/SKILL.md",
+      "computedHash": "ba4e44a8470b3ae2add3e0ffa74c85d8b0357db4ca2cf8cfa7b4abc9d94fc602"
     },
     "copywriting": {
       "source": "coreyhaines31/marketingskills",
       "sourceType": "github",
-      "computedHash": "2e83eda2221e97166172a0798e9b0379e34080595e107e2fc0cf580e9b3bbf7b"
+      "skillPath": "skills/copywriting/SKILL.md",
+      "computedHash": "c8d63b1f77be04fd54981720de65697988810bd28331097dbe0aaf3e166d638a"
     },
     "create-agentsmd": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
+      "skillPath": "skills/create-agentsmd/SKILL.md",
       "computedHash": "bfbdbb76b17cca970d1d624e36ce72b6847860d740581c8865da796c1fef8552"
     },
     "create-specification": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
+      "skillPath": "skills/create-specification/SKILL.md",
       "computedHash": "45b9ef98b0fb82ba0e1aee65dfb464fa1f8494a14a557b9788d73aae87e9e618"
+    },
+    "design-doc-mermaid": {
+      "source": "spillwavesolutions/design-doc-mermaid",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "3610d5b13abec895fe1676a917b1a8a94dfd1286adf99476697d4a31e09227ac"
     },
     "design-md": {
       "source": "google-labs-code/stitch-skills",
@@ -57,9 +73,16 @@
       "skillPath": "skills/design-md/SKILL.md",
       "computedHash": "d3a4c7d2f2715a33662c8b06ffc16035d01965a8b4ed81c2958fb22ae94760f8"
     },
+    "docs-writer": {
+      "source": "google-gemini/gemini-cli",
+      "sourceType": "github",
+      "skillPath": ".gemini/skills/docs-writer/SKILL.md",
+      "computedHash": "ddb3671168efa5f2fe481740a57ca147619ffffe2cf764ada6229bde01fed3df"
+    },
     "drawio-logical-diagrams": {
       "source": "giuseppe-trisciuoglio/developer-kit",
       "sourceType": "github",
+      "skillPath": "plugins/developer-kit-core/skills/drawio-logical-diagrams/SKILL.md",
       "computedHash": "cc9be80cb2718b656378763bf429332922445026f3e30809c56b7229636e2ae6"
     },
     "e2e-testing-patterns": {
@@ -71,6 +94,7 @@
     "eraser-diagrams": {
       "source": "eraserlabs/eraser-io",
       "sourceType": "github",
+      "skillPath": "skills/eraser-diagrams/SKILL.md",
       "computedHash": "6c14b60c461d8b290caa9e82dd42239b9b03c045edbdc7ded3bffea65ba8ad43"
     },
     "expo-cicd-workflows": {
@@ -82,17 +106,20 @@
     "expo-deployment": {
       "source": "expo/skills",
       "sourceType": "github",
-      "computedHash": "9ea9f16374765c1b16764a51bd43a64098921b33f48e94d9c5c1cce24b335c10"
+      "skillPath": "plugins/expo/skills/expo-deployment/SKILL.md",
+      "computedHash": "f70cd561a2d726f329f45eb0ad262f298c57676a80d7ecf288dc3919a6a7a50d"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
-      "computedHash": "d31e234f0c90694a670222cdd1dafa853e051d7066beda389f1097c22dadd461"
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "781bd6d3f9b19f8c9af6b53d8d0e4876d0183841b565db34ca7092ffa412d111"
     },
     "google-maps-api": {
       "source": "tivojn/google-maps-api-skill",
       "sourceType": "github",
-      "computedHash": "5e052e505bfac4945d2f19f32125242233d29428233c8c71f6ce08a827d8b681"
+      "skillPath": "SKILL.md",
+      "computedHash": "9583ebf69dedead0d1e0c9904858813839ffbed7e4cff54b2878e76f3e1f3f6b"
     },
     "jest-react-testing": {
       "source": "manutej/luxor-claude-marketplace",
@@ -109,7 +136,14 @@
     "native-data-fetching": {
       "source": "expo/skills",
       "sourceType": "github",
-      "computedHash": "3cd0ba91f359f9f84cd40f36f356287994a0e952520fac6e03ef7952d0397879"
+      "skillPath": "plugins/expo/skills/native-data-fetching/SKILL.md",
+      "computedHash": "21253dd72e2afa0cc0a6693295f043af3b149fa250c7aedef4d33144e69258ff"
+    },
+    "obsidian-markdown": {
+      "source": "kepano/obsidian-skills",
+      "sourceType": "github",
+      "skillPath": "skills/obsidian-markdown/SKILL.md",
+      "computedHash": "0f47297035d7824e7bf0f1984e8145a59a123e2258b5d54c9ac9642f9f77e177"
     },
     "push-notification-setup": {
       "source": "aj-geddes/useful-ai-prompts",
@@ -120,41 +154,61 @@
     "react-native": {
       "source": "vercel-labs/json-render",
       "sourceType": "github",
-      "computedHash": "1cfeffbd71f8fc350e7fdb5cd1f76067d64b60f2fef2300fd83181ad90148451"
+      "skillPath": "skills/react-native/SKILL.md",
+      "computedHash": "bce560b25029037d424b5ec55bb9b3ec2b399ef98fd12c572327292744de84fe"
     },
     "react-native-reanimated": {
       "source": "dralgorhythm/claude-agentic-framework",
       "sourceType": "github",
+      "skillPath": ".claude/skills/languages/reanimated/SKILL.md",
       "computedHash": "456790e1db75301d220f2b03252d5885ab62ba1b1773b3549a65c96fe677075a"
     },
     "react-ui-patterns": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
-      "computedHash": "6d4eb6b0bda3479324f508314a737ed7cac0c4ed60538bd7bf892b1977a3e09e"
+      "skillPath": "skills/react-ui-patterns/SKILL.md",
+      "computedHash": "6cf16ff01d66cf827c99ea0fdd215e6f2a62b1999737baabc4a85fb8e28adf94"
     },
     "refactor": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
+      "skillPath": "skills/refactor/SKILL.md",
       "computedHash": "87789a786b96f99ba0680e89345a975106e10e7db1071c7cdc2e76d507c449d6"
     },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
-      "computedHash": "cb675a889c60172febe84740e7c22b600c8241c390deaff3d368c408f10dffdf"
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "d414d598b9428b3e851c4ce61898649906b19e55aa7415bb42a286bd9ca2ab32"
     },
     "supabase-auth": {
       "source": "nice-wolf-studio/claude-code-supabase-skills",
       "sourceType": "github",
+      "skillPath": "skills/supabase-auth/SKILL.md",
       "computedHash": "8c0e53a0cb9739954966c689ac714608ae8d4d1a1c2c65321eddde1cb12ece71"
     },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
-      "computedHash": "9c87c315aed143ee3b34bec8117100f5035e0df09e6b23e1ecc772cff434c9ad"
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "0d2c4857a7d6fdcd3fbc46e458fa4c497f029cab89a01548b3defce203003932"
+    },
+    "svg-animations": {
+      "source": "supermemoryai/skills",
+      "sourceType": "github",
+      "skillPath": "svg-animations/SKILL.md",
+      "computedHash": "9be4b3e0afe9d3cbb1bcf238f8504f9a23552f742350fbef9483070112ac1977"
+    },
+    "svg-illustration": {
+      "source": "narumiruna/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/svg-illustration/SKILL.md",
+      "computedHash": "898377e029f2ea90096de58f306014bf70641c29639ec66ed1c3869aa28e8503"
     },
     "testing-strategy": {
       "source": "anthropics/knowledge-work-plugins",
       "sourceType": "github",
+      "skillPath": "engineering/skills/testing-strategy/SKILL.md",
       "computedHash": "2fe64e97a596e862cd946bb8cddbbf4e9f1e1f21ca817f586111a25af474d0f8"
     },
     "using-git-worktrees": {
@@ -172,11 +226,13 @@
     "vercel-react-native-skills": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
-      "computedHash": "2e9088a7333666d8c2833b8ff58bd51b955501c42b4c7244f72b4cbf22dafcc4"
+      "skillPath": "skills/react-native-skills/SKILL.md",
+      "computedHash": "41d24eafa7c3d82e270439808f7cfbc4d51aeb2d14f2809a2267c16275784d06"
     },
     "webhook-integration": {
       "source": "dodopayments/skills",
       "sourceType": "github",
+      "skillPath": "dodo-payments/webhook-integration/SKILL.md",
       "computedHash": "e67e26dc8c509a9dc768d2b63f5a7dc0e91be74d929e26193afb49956bf6dd1e"
     }
   }

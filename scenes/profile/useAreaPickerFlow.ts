@@ -23,8 +23,8 @@ import {
   filterPostalOptions,
   findSelectedPostalOption,
 } from './areaPickerState';
-import type { SelectionStage } from './areaPickerTypes';
-
+import type { SelectionStage, StageStatus } from './areaPickerTypes';
+const CURRENT_LOCATION_TIMEOUT_MS = 35000;
 type UseAreaPickerFlowParams = {
   onComplete: () => void;
 };
@@ -46,7 +46,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const [stage, setStage] = useState<SelectionStage>('province');
   const [query, setQuery] = useState('');
   const [isLoadingStage, setIsLoadingStage] = useState(false);
-  const [stageError, setStageError] = useState<string | null>(null);
+  const [stageStatus, setStageStatus] = useState<StageStatus>({ kind: 'idle' });
   const [provinceOptions, setProvinceOptions] = useState<RegionalProvince[]>([]);
   const [cityOptions, setCityOptions] = useState<RegionalRegency[]>([]);
   const [districtOptions, setDistrictOptions] = useState<RegionalDistrict[]>([]);
@@ -55,11 +55,12 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const [selectedCity, setSelectedCity] = useState<RegionalRegency | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<RegionalDistrict | null>(null);
   const [selectedPostalLabel, setSelectedPostalLabel] = useState<string | null>(null);
+  const [currentLocationStatus, setCurrentLocationStatus] = useState<string | null>(null);
 
   const resetState = useCallback(() => {
     setStage('province');
     setQuery('');
-    setStageError(null);
+    setStageStatus({ kind: 'idle' });
     setCityOptions([]);
     setDistrictOptions([]);
     setPostalOptions([]);
@@ -77,7 +78,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       const { data, error } = await getRegionalProvinces();
       setProvinceOptions(data);
       if (error) {
-        setStageError('Gagal memuat daftar provinsi.');
+        setStageStatus({ kind: 'error', message: 'Gagal memuat daftar provinsi.' });
       }
       setIsLoadingStage(false);
     };
@@ -149,16 +150,38 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       district: RegionalDistrict,
       postalCode: string,
     ): Promise<BiteshipArea | null> => {
-      const attempts = [
-        `${postalCode}, ${district.name}, ${regency.name}, ${province.name}`,
+      // Try the most specific search first
+      const primaryInput = `${postalCode}, ${district.name}, ${regency.name}, ${province.name}`;
+      const { data: primaryData, error: primaryError } = await searchBiteshipArea(primaryInput);
+
+      if (!primaryError && primaryData.length > 0) {
+        const exact = primaryData.find(area => {
+          return (
+            normalizePostalCode(area.postal_code) === normalizePostalCode(postalCode) &&
+            matchesHierarchy(area, province.name, regency.name, district.name)
+          );
+        });
+
+        if (exact) {
+          return exact;
+        }
+      }
+
+      // If primary search had a network error, don't retry with broader queries
+      if (primaryError) {
+        return null;
+      }
+
+      // Fallback: try progressively broader searches
+      const fallbackAttempts = [
         `${postalCode}, ${regency.name}, ${province.name}`,
         `${postalCode}, ${district.name}`,
         postalCode,
       ];
 
-      for (const input of attempts) {
+      for (const input of fallbackAttempts) {
         const { data, error } = await searchBiteshipArea(input);
-        if (error) continue;
+        if (error) break;
 
         const exact = data.find(area => {
           return (
@@ -193,7 +216,10 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       try {
         setPendingAreaSelection(pendingSelection);
       } catch {
-        setStageError('Gagal menyimpan pilihan area. Silakan coba lagi.');
+        setStageStatus({
+          kind: 'error',
+          message: 'Gagal menyimpan pilihan area. Silakan coba lagi.',
+        });
         return;
       }
 
@@ -211,12 +237,15 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const loadCities = useCallback(async (province: RegionalProvince) => {
     const requestId = ++requestIdRef.current;
     setIsLoadingStage(true);
-    setStageError(null);
+    setStageStatus({ kind: 'idle' });
     const { data, error } = await getRegionalRegenciesByProvince(province.code);
     if (requestId !== requestIdRef.current) return;
     setCityOptions(data);
     if (error || data.length === 0) {
-      setStageError('Kota atau kabupaten untuk provinsi ini belum ditemukan.');
+      setStageStatus({
+        kind: 'error',
+        message: 'Kota atau kabupaten untuk provinsi ini belum ditemukan.',
+      });
     }
     setIsLoadingStage(false);
   }, []);
@@ -224,12 +253,15 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const loadDistricts = useCallback(async (regency: RegionalRegency) => {
     const requestId = ++requestIdRef.current;
     setIsLoadingStage(true);
-    setStageError(null);
+    setStageStatus({ kind: 'idle' });
     const { data, error } = await getRegionalDistrictsByRegency(regency.code);
     if (requestId !== requestIdRef.current) return;
     setDistrictOptions(data);
     if (error || data.length === 0) {
-      setStageError('Kecamatan untuk kota atau kabupaten ini belum ditemukan.');
+      setStageStatus({
+        kind: 'error',
+        message: 'Kecamatan untuk kota atau kabupaten ini belum ditemukan.',
+      });
     }
     setIsLoadingStage(false);
   }, []);
@@ -238,16 +270,17 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
     async (province: RegionalProvince, regency: RegionalRegency, district: RegionalDistrict) => {
       const requestId = ++requestIdRef.current;
       setIsLoadingStage(true);
-      setStageError(null);
+      setStageStatus({ kind: 'idle' });
 
       const options = await resolvePostalOptions(province, regency, district);
 
       if (requestId !== requestIdRef.current) return;
       setPostalOptions(options);
       if (options.length === 0) {
-        setStageError(
-          'Kode pos untuk kecamatan ini belum ditemukan. Silakan pilih kecamatan lain.',
-        );
+        setStageStatus({
+          kind: 'error',
+          message: 'Kode pos untuk kecamatan ini belum ditemukan. Silakan pilih kecamatan lain.',
+        });
       }
       setIsLoadingStage(false);
     },
@@ -300,7 +333,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
 
       const requestId = ++requestIdRef.current;
       setIsLoadingStage(true);
-      setStageError(null);
+      setStageStatus({ kind: 'idle' });
       setSelectedPostalLabel(option.label);
       let resolvedArea: BiteshipArea | null = null;
 
@@ -313,9 +346,11 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
         );
       } catch {
         if (requestId === requestIdRef.current) {
-          setStageError(
-            'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
-          );
+          setStageStatus({
+            kind: 'error',
+            message:
+              'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
+          });
         }
         return;
       } finally {
@@ -329,9 +364,11 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       }
 
       if (!resolvedArea) {
-        setStageError(
-          'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
-        );
+        setStageStatus({
+          kind: 'error',
+          message:
+            'Area pengiriman untuk kode pos ini tidak ditemukan. Silakan pilih kode pos lain.',
+        });
         return;
       }
 
@@ -348,16 +385,21 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
   const handleUseCurrentLocation = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     setIsLoadingStage(true);
-    setStageError(null);
+    setStageStatus({ kind: 'idle' });
+    setCurrentLocationStatus('Mendapatkan lokasi GPS...');
 
     try {
-      const result = await resolveCurrentLocationSelection({
+      const locationPromise = resolveCurrentLocationSelection({
         provinceOptions,
         fetchProvinces: async () => (await getRegionalProvinces()).data,
         fetchRegencies: getRegionalRegenciesByProvince,
         fetchDistricts: getRegionalDistrictsByRegency,
         reverseGeocode: async coords => {
+          setCurrentLocationStatus('Mengenali alamat dari titik lokasi...');
           const { data, error } = await reverseGeocodeCoordinates(coords);
+          if (!error && data) {
+            setCurrentLocationStatus('Mencocokkan alamat dengan database wilayah...');
+          }
           return {
             data: data
               ? {
@@ -375,16 +417,27 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
         resolveAreaByPostal,
       });
 
+      // Prevent unhandled promise rejection if timeout finishes first
+      locationPromise.catch(() => {});
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('LOCATION_TIMEOUT')), CURRENT_LOCATION_TIMEOUT_MS),
+      );
+
+      const result = await Promise.race([locationPromise, timeoutPromise]);
+
       if (requestId !== requestIdRef.current) {
         return;
       }
+
+      setCurrentLocationStatus(null);
 
       if ('provinceOptions' in result && result.provinceOptions && provinceOptions.length === 0) {
         setProvinceOptions(result.provinceOptions);
       }
 
       if (result.kind === 'error') {
-        setStageError(result.errorMessage);
+        setStageStatus({ kind: 'error', message: result.errorMessage });
         return;
       }
 
@@ -417,26 +470,29 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
           setPostalOptions(result.postalOptions);
         }
 
-        setStageError(result.errorMessage);
+        setStageStatus({ kind: 'guidance', message: result.errorMessage });
         return;
       }
 
-      setSelectedProvince(result.province);
-      setSelectedCity(result.regency);
-      setSelectedDistrict(result.district);
-      setPostalOptions(result.postalOptions);
-      setSelectedPostalLabel(result.selectedPostalLabel);
-      setStage('postal');
-      setQuery('');
+      // Skip updating visual state (setStage, setPostalOptions, etc.) when the location is fully resolved.
+      // Updating state here triggers a massive layout calculation at the exact same time router.back() unmounts the screen,
+      // which causes Fabric layout crashes (addViewAt/removeViewAt) on Android.
       handleAreaSelection(result.area, result.hierarchy);
     } catch (error) {
       if (__DEV__) {
         console.error('handleUseCurrentLocation error:', error);
       }
-      setStageError('Gagal mendapatkan lokasi saat ini. Silakan coba lagi.');
+      const isTimeout = error instanceof Error && error.message === 'LOCATION_TIMEOUT';
+      setStageStatus({
+        kind: 'error',
+        message: isTimeout
+          ? 'Pencarian lokasi membutuhkan waktu terlalu lama. Silakan pilih area secara manual.'
+          : 'Gagal mendapatkan lokasi saat ini. Silakan coba lagi.',
+      });
     } finally {
       if (requestId === requestIdRef.current) {
         setIsLoadingStage(false);
+        setCurrentLocationStatus(null);
       }
     }
   }, [handleAreaSelection, provinceOptions, resolveAreaByPostal, resolvePostalOptions]);
@@ -446,7 +502,7 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
       const { clearDescendants = true } = options ?? {};
 
       setQuery('');
-      setStageError(null);
+      setStageStatus({ kind: 'idle' });
       setStage(targetStage);
 
       if (clearDescendants) {
@@ -490,7 +546,8 @@ export function useAreaPickerFlow({ onComplete }: UseAreaPickerFlowParams) {
     query,
     setQuery,
     isLoadingStage,
-    stageError,
+    stageStatus,
+    currentLocationStatus,
     selectedProvince,
     selectedCity,
     selectedDistrict,

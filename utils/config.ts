@@ -19,12 +19,10 @@ const config = {
   supabaseUrl: extra?.supabaseUrl ?? '',
   supabasePublishableKey: extra?.supabasePublishableKey ?? '',
   googleApiKey: extra?.googleApiKey ?? '',
-  regionalApiUrl: extra?.regionalApiUrl ?? 'https://wilayah.id/api',
-  postalDataUrl:
-    extra?.postalDataUrl ??
-    'https://raw.githubusercontent.com/ArrayAccess/Indonesia-Postal-And-Area/master/data/json/area/62',
-  googlePlacesApiUrl: extra?.googlePlacesApiUrl ?? 'https://places.googleapis.com/v1',
-  googleGeocodingApiUrl: extra?.googleGeocodingApiUrl ?? 'https://maps.googleapis.com/maps/api',
+  regionalApiUrl: extra?.regionalApiUrl ?? '',
+  postalDataUrl: extra?.postalDataUrl ?? '',
+  googlePlacesApiUrl: extra?.googlePlacesApiUrl ?? '',
+  googleGeocodingApiUrl: extra?.googleGeocodingApiUrl ?? '',
 } as const satisfies {
   env: Env;
   supabaseUrl: string;
