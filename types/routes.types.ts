@@ -27,6 +27,7 @@ export type HomeRoutes = {
   'home/index': undefined;
   'home/category-product-list': { categoryId: string; categoryName?: string };
   'home/all-products': undefined;
+  'home/search': undefined;
 };
 
 export type ProductDetailsRoutes = {

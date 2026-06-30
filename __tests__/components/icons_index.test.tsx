@@ -41,6 +41,7 @@ jest.mock('@tamagui/lucide-icons', () => {
     Search: createMockIcon('Search'),
     Send: createMockIcon('Send'),
     Settings2: createMockIcon('Settings2'),
+    Share2: createMockIcon('Share2'),
     ShoppingBag: createMockIcon('ShoppingBag'),
     ShoppingCart: createMockIcon('ShoppingCart'),
     Star: createMockIcon('Star'),

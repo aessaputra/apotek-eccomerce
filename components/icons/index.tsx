@@ -30,6 +30,7 @@ import {
   Search,
   Send,
   Settings2,
+  Share2,
   ShoppingBag,
   ShoppingCart,
   Star,
@@ -55,6 +56,10 @@ export function SearchIcon(props: IconProps) {
 
 export function CartIcon(props: IconProps) {
   return <ShoppingCart {...props} />;
+}
+
+export function ShareIcon(props: IconProps) {
+  return <Share2 {...props} />;
 }
 
 export function UserIcon(props: IconProps) {
