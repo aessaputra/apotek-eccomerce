@@ -1,9 +1,10 @@
 import React, { useCallback } from 'react';
 import { useToastController } from '@tamagui/toast';
 import { FlatList, Platform, RefreshControl, useWindowDimensions } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Spinner, Text, YStack, styled, useMedia, useTheme } from 'tamagui';
+import HeaderCartIcon from '@/components/layouts/HeaderCartIcon';
 import ProductCard from '@/components/elements/ProductCard';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useAllProductsPaginated } from '@/hooks';
@@ -241,6 +242,7 @@ export default function AllProducts() {
 
   return (
     <ScreenRoot>
+      <Stack.Screen options={{ headerRight: () => <HeaderCartIcon forHeaderRight /> }} />
       <FlatList
         data={products}
         key={columns}

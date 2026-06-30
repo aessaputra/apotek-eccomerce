@@ -28,6 +28,9 @@ jest.mock('expo-router', () => ({
     push: mockPush,
   }),
   useFocusEffect: (callback: () => void) => callback(),
+  Stack: {
+    Screen: () => null,
+  },
 }));
 
 jest.mock('react-native-safe-area-context', () => {
