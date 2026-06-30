@@ -138,9 +138,6 @@ export function usePaymentFlow({
       return;
     }
 
-    // Supabase Realtime does not support listening to Views (order_read_model).
-    // As a fallback to achieve Webhook Automation without manual user clicks,
-    // we poll the read model while the payment webview is open.
     const intervalId = setInterval(async () => {
       const { data, error } = await supabase
         .from('order_read_model')
@@ -153,7 +150,6 @@ export function usePaymentFlow({
         const terminalStates = [...PAYMENT_SUCCESS_STATUSES, ...PAYMENT_FAILED_STATUSES];
 
         if (terminalStates.includes(newPaymentStatus)) {
-          // Automatically finalize flow when backend webhook updates the status
           void finalizePaymentFlow('pending');
         }
       }
