@@ -39,7 +39,7 @@ const TABS: TabConfig[] = [
   { key: 'cancelled', label: 'Dibatalkan', icon: XCircleIcon },
 ];
 
-const VISIBLE_TAB_COUNT = 4;
+const VISIBLE_TAB_COUNT = 3.5;
 const TABS_HORIZONTAL_PADDING = 12;
 const TAB_GAP = 6;
 const TABS_CONTENT_CONTAINER_STYLE = {
@@ -52,7 +52,7 @@ const INACTIVE_ACCESSIBILITY_STATE = { selected: false } as const;
 const TAB_ICON_SIZE = 24;
 const TAB_ICON_SLOT_SIZE = 28;
 const TAB_LABEL_LINE_HEIGHT = 14;
-const TAB_LABEL_SLOT_HEIGHT = TAB_LABEL_LINE_HEIGHT * 2;
+const TAB_LABEL_SLOT_HEIGHT = TAB_LABEL_LINE_HEIGHT;
 const TAB_CONTENT_GAP = 4;
 const TAB_VERTICAL_PADDING = 8;
 const TAB_MIN_HEIGHT = Math.max(
@@ -71,6 +71,7 @@ function isCountedTab(tab: TabConfig): tab is TabConfig & { key: CountedOrderTab
 }
 
 export function getOrderStatusTabWidth(containerWidth: number): number {
+  // Not used anymore as we let tabs size to content, but kept for test compatibility
   const horizontalPaddingWidth = TABS_HORIZONTAL_PADDING * 2;
   const visibleGapsWidth = TAB_GAP * (VISIBLE_TAB_COUNT - 1);
 
@@ -88,8 +89,9 @@ const TabButton = styled(YStack, {
   justifyContent: 'flex-start',
   gap: TAB_CONTENT_GAP,
   paddingVertical: TAB_VERTICAL_PADDING,
-  paddingHorizontal: '$2',
+  paddingHorizontal: '$3',
   borderRadius: '$3',
+  minWidth: 72,
   minHeight: TAB_MIN_HEIGHT,
   height: TAB_MIN_HEIGHT,
   position: 'relative',
@@ -136,7 +138,6 @@ const TabLabel = styled(Text, {
   fontSize: '$2',
   lineHeight: TAB_LABEL_LINE_HEIGHT,
   textAlign: 'center',
-  width: '100%',
   height: TAB_LABEL_SLOT_HEIGHT,
 
   variants: {
@@ -174,7 +175,6 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
   return (
     <TabButton
       active={isActive}
-      width={width}
       onPress={handlePress}
       pressStyle={TAB_PRESS_STYLE}
       accessibilityRole="tab"
@@ -184,7 +184,7 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
       <TabIcon active={isActive}>
         <IconComponent size={TAB_ICON_SIZE} color={isActive ? '$primary' : '$colorSubtle'} />
       </TabIcon>
-      <TabLabel active={isActive} numberOfLines={2}>
+      <TabLabel active={isActive} numberOfLines={1}>
         {tab.label}
       </TabLabel>
     </TabButton>

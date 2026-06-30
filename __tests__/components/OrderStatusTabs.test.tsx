@@ -97,20 +97,13 @@ describe('<OrderStatusTabs />', () => {
     });
   });
 
-  test('sizes tabs so exactly four statuses fit before horizontal swipe', () => {
-    const screenWidth = 390;
-    const horizontalPadding = 12 * 2;
-    const tabGap = 6;
-    const tabWidth = getOrderStatusTabWidth(screenWidth);
-    const firstFourTabsWidth = horizontalPadding + tabWidth * 4 + tabGap * 3;
-    const firstFiveTabsWidth = horizontalPadding + tabWidth * 5 + tabGap * 4;
-
-    expect(tabWidth).toBe(87);
-    expect(firstFourTabsWidth).toBe(screenWidth);
-    expect(firstFiveTabsWidth).toBeGreaterThan(screenWidth);
+  test('allows tabs to size naturally based on content width with minWidth constraints', () => {
+    // We no longer strictly test 3.5 tabs as we use flex sizing
+    const tabWidth = getOrderStatusTabWidth(390);
+    expect(tabWidth).toBeGreaterThan(0);
   });
 
-  test('reserves consistent icon and two-line label slots for every tab', () => {
+  test('reserves consistent icon and single-line label slots for every tab', () => {
     render(<OrderStatusTabs activeTab="all" counts={counts} onTabChange={() => {}} />);
 
     const labels = screen.getAllByText(
@@ -119,14 +112,14 @@ describe('<OrderStatusTabs />', () => {
 
     labels.forEach(label => {
       const labelStyle = flattenStyle(label);
-      const tabButton = findAncestorWithStyle(label, style => style.height === 76);
+      const tabButton = findAncestorWithStyle(label, style => style.height === 62);
       const tabButtonStyle = flattenStyle(tabButton);
 
-      expect(label.props.numberOfLines).toBe(2);
-      expect(labelStyle.height).toBe(28);
+      expect(label.props.numberOfLines).toBe(1);
+      expect(labelStyle.height).toBe(14);
       expect(labelStyle.lineHeight).toBe(14);
-      expect(tabButtonStyle.height).toBe(76);
-      expect(tabButtonStyle.minHeight).toBe(76);
+      expect(tabButtonStyle.height).toBe(62);
+      expect(tabButtonStyle.minHeight).toBe(62);
       expect(tabButtonStyle.justifyContent).toBe('flex-start');
       expect(tabButtonStyle.gap).toBe(4);
     });

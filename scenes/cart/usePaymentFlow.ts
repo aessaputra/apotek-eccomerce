@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { supabase } from '@/utils/supabase';
 import { appActions } from '@/slices';
 import { pollOrderPaymentStatus } from '@/services/checkout.service';
 import { DataPersistKeys } from '@/hooks/useDataPersist';
@@ -7,6 +8,7 @@ import {
   isPollingTimeoutError,
   ORDERS_ROUTE,
   PAYMENT_SUCCESS_STATUSES,
+  PAYMENT_FAILED_STATUSES,
   translateCheckoutError,
 } from './payment.utils';
 
@@ -130,6 +132,38 @@ export function usePaymentFlow({
     },
     [dispatch, markCartRefreshRequested, removePersistData, resolvedOrderId, router, userId],
   );
+
+  useEffect(() => {
+    if (!resolvedOrderId || postPaymentState !== 'idle' || isPolling) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`payment-status-${resolvedOrderId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'order_read_model',
+          filter: `id=eq.${resolvedOrderId}`,
+        },
+        payload => {
+          const newPaymentStatus = payload.new.payment_status;
+          const terminalStates = [...PAYMENT_SUCCESS_STATUSES, ...PAYMENT_FAILED_STATUSES];
+
+          if (terminalStates.includes(newPaymentStatus)) {
+            // Automatically finalize flow when backend webhook updates the status
+            void finalizePaymentFlow('pending');
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [resolvedOrderId, finalizePaymentFlow, postPaymentState, isPolling]);
 
   return {
     confirmCloseDialogOpen,
