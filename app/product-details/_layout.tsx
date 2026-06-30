@@ -43,8 +43,8 @@ function ProductDetailsStackLayout() {
                 alignItems="center"
                 justifyContent="center"
                 pressStyle={{ opacity: 0.7 }}
-                onPress={() => {}}>
-                <ShareIcon size={24} color={iconColor} />
+                onPress={handleOpenSearch}>
+                <SearchIcon size={24} color={iconColor} />
               </Button>
               <Button
                 width={40}
@@ -55,8 +55,8 @@ function ProductDetailsStackLayout() {
                 alignItems="center"
                 justifyContent="center"
                 pressStyle={{ opacity: 0.7 }}
-                onPress={handleOpenSearch}>
-                <SearchIcon size={24} color={iconColor} />
+                onPress={() => {}}>
+                <ShareIcon size={24} color={iconColor} />
               </Button>
               <Button
                 width={40}
