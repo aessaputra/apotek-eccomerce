@@ -184,7 +184,7 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
       <TabIcon active={isActive}>
         <IconComponent size={TAB_ICON_SIZE} color={isActive ? '$primary' : '$colorSubtle'} />
       </TabIcon>
-      <TabLabel active={isActive} numberOfLines={2}>
+      <TabLabel active={isActive} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
         {tab.label}
       </TabLabel>
     </TabButton>
