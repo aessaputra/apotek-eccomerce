@@ -1,6 +1,7 @@
 import { useCallback, useId } from 'react';
-import { YStack, XStack, Text } from 'tamagui';
+import { YStack, XStack, Text, useTheme } from 'tamagui';
 import { ChevronRight } from '@tamagui/lucide-icons';
+import Svg, { Path, Circle } from 'react-native-svg';
 import type { TextInput as RNTextInput } from 'react-native';
 import { Platform } from 'react-native';
 import FormInput from '@/components/elements/FormInput';
@@ -51,6 +52,7 @@ function AddressForm({
   onStreetAddressPress,
   onMapPress,
 }: AddressFormProps) {
+  const theme = useTheme();
   const streetAddressErrorId = useId();
 
   const handleReceiverNameChange = useCallback(
@@ -229,22 +231,20 @@ function AddressForm({
                 }}>
                 <YStack alignItems="center">
                   <YStack
-                    width={36}
-                    height={36}
-                    backgroundColor="$danger"
-                    borderRadius={18}
-                    borderBottomRightRadius={2}
-                    rotate="-45deg"
-                    alignItems="center"
-                    justifyContent="center"
                     shadowColor="$danger"
-                    shadowOffset={{ width: 2, height: 4 }}
+                    shadowOffset={{ width: 0, height: 4 }}
                     shadowOpacity={0.3}
                     shadowRadius={6}
-                    elevation={5}
-                    borderWidth={3}
-                    borderColor="white">
-                    <YStack width={12} height={12} borderRadius={6} backgroundColor="white" />
+                    elevation={5}>
+                    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                        fill={theme.danger?.val || '#e3242b'}
+                        stroke="white"
+                        strokeWidth="1.5"
+                      />
+                      <Circle cx="12" cy="9" r="4" fill="white" />
+                    </Svg>
                   </YStack>
                   <YStack
                     width={12}

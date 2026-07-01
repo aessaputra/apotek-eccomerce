@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
-import { YStack, XStack, Text } from 'tamagui';
+import { YStack, XStack, Text, useTheme } from 'tamagui';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,6 +16,7 @@ import * as Location from 'expo-location';
 import Button from '@/components/elements/Button';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
+import Svg, { Path, Circle } from 'react-native-svg';
 
 let MapView: typeof import('react-native-maps').default | null = null;
 
@@ -50,6 +51,8 @@ const DEFAULT_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
 function BouncingMapPin({ isDraggingMap }: { isDraggingMap: boolean }) {
   const reducedMotion = useReducedMotion();
   const bounceY = useSharedValue(0);
+  const theme = useTheme();
+  const dangerColor = theme.danger?.val || '#e3242b';
 
   useEffect(() => {
     if (reducedMotion) return;
@@ -79,44 +82,48 @@ function BouncingMapPin({ isDraggingMap }: { isDraggingMap: boolean }) {
       justifyContent="center"
       pointerEvents="none">
       <YStack alignItems="center" marginTop={-44}>
-        <YStack opacity={isDraggingMap ? 0.6 : 1} animation="quick" alignItems="center">
+        <YStack animation="quick" alignItems="center">
           <Animated.View style={bounceStyle}>
             <YStack alignItems="center">
               <YStack
-                backgroundColor="$danger"
-                paddingHorizontal="$3"
-                paddingVertical="$1.5"
-                borderRadius="$4">
-                <Text color="white" fontSize="$2" fontWeight="600">
-                  Alamatmu di sini
-                </Text>
+                opacity={isDraggingMap ? 0 : 1}
+                scale={isDraggingMap ? 0.8 : 1}
+                animation="quick"
+                alignItems="center">
+                <YStack
+                  backgroundColor="$danger"
+                  paddingHorizontal="$3"
+                  paddingVertical="$1.5"
+                  borderRadius="$4">
+                  <Text color="white" fontSize="$2" fontWeight="600">
+                    Alamatmu di sini
+                  </Text>
+                </YStack>
+                <YStack
+                  width={10}
+                  height={10}
+                  backgroundColor="$danger"
+                  rotate="45deg"
+                  marginTop={-5}
+                  marginBottom={4}
+                  zIndex={-1}
+                />
               </YStack>
               <YStack
-                width={10}
-                height={10}
-                backgroundColor="$danger"
-                rotate="45deg"
-                marginTop={-5}
-                marginBottom={4}
-                zIndex={-1}
-              />
-              <YStack
-                width={36}
-                height={36}
-                backgroundColor="$danger"
-                borderRadius={18}
-                borderBottomRightRadius={2}
-                rotate="-45deg"
-                alignItems="center"
-                justifyContent="center"
                 shadowColor="$danger"
-                shadowOffset={{ width: 2, height: 4 }}
+                shadowOffset={{ width: 0, height: 4 }}
                 shadowOpacity={0.3}
                 shadowRadius={6}
-                elevation={5}
-                borderWidth={3}
-                borderColor="white">
-                <YStack width={12} height={12} borderRadius={6} backgroundColor="white" />
+                elevation={5}>
+                <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
+                  <Path
+                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                    fill={dangerColor}
+                    stroke="white"
+                    strokeWidth="1.5"
+                  />
+                  <Circle cx="12" cy="9" r="4" fill="white" />
+                </Svg>
               </YStack>
             </YStack>
           </Animated.View>
