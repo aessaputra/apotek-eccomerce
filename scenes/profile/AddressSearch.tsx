@@ -29,6 +29,9 @@ const SafeAreaView = styled(RNSafeAreaView, {
   backgroundColor: '$background',
 });
 
+const SCROLL_STYLE = { flex: 1 };
+const SCROLL_CONTENT_STYLE = { paddingBottom: 24 };
+
 export default function AddressSearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<RouteParams<'profile/address-search'>>();
@@ -87,9 +90,13 @@ export default function AddressSearchScreen() {
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      let position = await Location.getLastKnownPositionAsync();
+
+      if (!position) {
+        position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+      }
 
       const gpsLocation = {
         latitude: position.coords.latitude,
@@ -227,8 +234,8 @@ export default function AddressSearchScreen() {
             </XStack>
 
             <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: 24 }}
+              style={SCROLL_STYLE}
+              contentContainerStyle={SCROLL_CONTENT_STYLE}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
               showsVerticalScrollIndicator={false}>

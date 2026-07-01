@@ -30,6 +30,7 @@ jest.mock('expo-location', () => ({
   __esModule: true,
   requestForegroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
+  getLastKnownPositionAsync: jest.fn(),
   PermissionStatus: {
     GRANTED: 'granted',
     DENIED: 'denied',

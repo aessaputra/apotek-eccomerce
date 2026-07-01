@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Spinner, Text, YStack, XStack } from 'tamagui';
 import { MapPin, Search, SearchX, AlertCircle } from '@tamagui/lucide-icons';
 import { MIN_TOUCH_TARGET } from '@/constants/ui';
@@ -15,6 +16,49 @@ export interface AddressSuggestionListProps {
   showInitialRecommendations?: boolean;
   onSelect: (suggestion: AddressSuggestion) => void;
 }
+
+const ITEM_PRESS_STYLE = { opacity: 0.7, backgroundColor: '$backgroundHover' };
+
+const AddressSuggestionListItem = memo(
+  ({
+    suggestion,
+    isSelecting,
+    onSelect,
+  }: {
+    suggestion: AddressSuggestion;
+    isSelecting: boolean;
+    onSelect: (suggestion: AddressSuggestion) => void;
+  }) => {
+    return (
+      <XStack
+        paddingVertical="$3"
+        paddingHorizontal="$2"
+        gap="$3"
+        alignItems="flex-start"
+        minHeight={MIN_TOUCH_TARGET}
+        role="button"
+        aria-label={`Pilih alamat ${suggestion.primaryText}, ${suggestion.secondaryText}`}
+        aria-disabled={isSelecting}
+        pressStyle={ITEM_PRESS_STYLE}
+        borderRadius="$3"
+        disabled={isSelecting}
+        onPress={() => onSelect(suggestion)}>
+        <YStack paddingTop="$0.5">
+          <MapPin size={18} color="$colorMuted" />
+        </YStack>
+        <YStack flex={1} gap="$0.5">
+          <Text fontSize="$4" color="$color" fontWeight="600" flexShrink={1}>
+            {suggestion.primaryText}
+          </Text>
+          <Text fontSize="$3" color="$colorSubtle" flexShrink={1}>
+            {suggestion.secondaryText}
+          </Text>
+        </YStack>
+      </XStack>
+    );
+  },
+);
+AddressSuggestionListItem.displayName = 'AddressSuggestionListItem';
 
 function AddressSuggestionList({
   query,
@@ -158,32 +202,12 @@ function AddressSuggestionList({
 
       <YStack gap="$1">
         {displayedResults.map(suggestion => (
-          <XStack
+          <AddressSuggestionListItem
             key={suggestion.id}
-            paddingVertical="$3"
-            paddingHorizontal="$2"
-            gap="$3"
-            alignItems="flex-start"
-            minHeight={MIN_TOUCH_TARGET}
-            role="button"
-            aria-label={`Pilih alamat ${suggestion.primaryText}, ${suggestion.secondaryText}`}
-            aria-disabled={isSelecting}
-            pressStyle={{ opacity: 0.7, backgroundColor: '$backgroundHover' }}
-            borderRadius="$3"
-            disabled={isSelecting}
-            onPress={() => onSelect(suggestion)}>
-            <YStack paddingTop="$0.5">
-              <MapPin size={18} color="$colorMuted" />
-            </YStack>
-            <YStack flex={1} gap="$0.5">
-              <Text fontSize="$4" color="$color" fontWeight="600" flexShrink={1}>
-                {suggestion.primaryText}
-              </Text>
-              <Text fontSize="$3" color="$colorSubtle" flexShrink={1}>
-                {suggestion.secondaryText}
-              </Text>
-            </YStack>
-          </XStack>
+            suggestion={suggestion}
+            isSelecting={isSelecting}
+            onSelect={onSelect}
+          />
         ))}
       </YStack>
     </YStack>
