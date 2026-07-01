@@ -358,7 +358,19 @@ export function convertPlaceDetailsToAddressValue(placeDetails: GooglePlaceDetai
   );
 
   const streetParts = [route, streetNumber].filter(Boolean);
-  const rawStreetAddress = streetParts.length > 0 ? streetParts.join(' ') : placeDetails.name;
+  let rawStreetAddress = streetParts.length > 0 ? streetParts.join(' ') : placeDetails.name;
+
+  const hasDistinctBuildingName =
+    streetParts.length > 0 &&
+    placeDetails.name &&
+    placeDetails.name !== 'Lokasi' &&
+    normalizeAddressText(placeDetails.name) !== normalizeAddressText(route) &&
+    normalizeAddressText(placeDetails.name) !== normalizeAddressText(rawStreetAddress);
+
+  if (hasDistinctBuildingName) {
+    rawStreetAddress = `${placeDetails.name}, ${rawStreetAddress}`;
+  }
+
   const sanitizedRaw = sanitizeAddressCandidate(rawStreetAddress);
   const sanitizedFallback = sanitizeAddressCandidate(placeDetails.formattedAddress.split(',')[0]);
   const streetAddress = sanitizedRaw || sanitizedFallback || 'Lokasi';
@@ -393,7 +405,18 @@ export function mapReverseGeocodeResultToAddress(
   );
 
   const streetParts = [route, streetNumber].filter(Boolean);
-  const sanitizedFromParts = sanitizeAddressCandidate(streetParts.join(' '));
+  let rawFromParts = streetParts.join(' ');
+
+  const hasDistinctPremise =
+    premise && normalizeAddressText(premise) !== normalizeAddressText(route);
+
+  if (hasDistinctPremise && rawFromParts) {
+    rawFromParts = `${premise}, ${rawFromParts}`;
+  } else if (premise && !rawFromParts) {
+    rawFromParts = premise;
+  }
+
+  const sanitizedFromParts = sanitizeAddressCandidate(rawFromParts);
   const sanitizedFallback = sanitizeAddressCandidate(result.formatted_address.split(',')[0]);
   const streetAddress = sanitizedFromParts || sanitizedFallback || 'Lokasi';
 

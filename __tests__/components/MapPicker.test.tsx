@@ -13,16 +13,33 @@ jest.mock('react-native-maps', () => {
       {
         children,
         onPress,
+        onRegionChangeComplete,
       }: {
         children: React.ReactNode;
         onPress?: (event: {
           nativeEvent: { coordinate: { latitude: number; longitude: number } };
         }) => void;
+        onRegionChangeComplete?: (region: {
+          latitude: number;
+          longitude: number;
+          latitudeDelta: number;
+          longitudeDelta: number;
+        }) => void;
       },
-      ref: React.ForwardedRef<{ animateToRegion: (region: unknown) => void }>,
+      ref: React.ForwardedRef<any>,
     ) => {
       React.useImperativeHandle(ref, () => ({
         animateToRegion: () => undefined,
+        animateCamera: (camera: any) => {
+          if (onRegionChangeComplete && camera?.center) {
+            onRegionChangeComplete({
+              latitude: camera.center.latitude,
+              longitude: camera.center.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            });
+          }
+        },
       }));
 
       return (

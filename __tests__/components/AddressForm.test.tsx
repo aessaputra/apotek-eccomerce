@@ -3,6 +3,17 @@ import { fireEvent, render, screen } from '@/test-utils/renderWithTheme';
 import AddressForm from '@/components/AddressForm/AddressForm';
 import { initialFormErrors, initialFormValues } from '@/utils/addressValidation';
 
+jest.mock('react-native-maps', () => {
+  const React = jest.requireActual('react') as typeof import('react');
+  const { View } = jest.requireActual('react-native') as typeof import('react-native');
+  return {
+    __esModule: true,
+    default: ({ children }: any) => <View testID="map-view">{children}</View>,
+    Marker: ({ children }: any) => <View testID="map-marker">{children}</View>,
+    PROVIDER_GOOGLE: 'google',
+  };
+});
+
 describe('<AddressForm />', () => {
   it('keeps receiver and phone fields accessible without visible duplicate labels', () => {
     render(

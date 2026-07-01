@@ -2,10 +2,23 @@ import { useCallback, useId } from 'react';
 import { YStack, XStack, Text } from 'tamagui';
 import { ChevronRight } from '@tamagui/lucide-icons';
 import type { TextInput as RNTextInput } from 'react-native';
+import { Platform } from 'react-native';
 import FormInput from '@/components/elements/FormInput';
 import { AreaPickerTrigger } from '@/components/AreaPicker';
 import type { AddressFormErrors, AddressFormValues } from '@/utils/addressValidation';
 import { ADDRESS_PLACEHOLDER_STREET } from '@/constants/address';
+
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: typeof import('react-native-maps').PROVIDER_GOOGLE | undefined = undefined;
+
+if (Platform.OS !== 'web') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+}
 
 export interface AddressFormProps {
   values: AddressFormValues;
@@ -179,6 +192,75 @@ function AddressForm({
           returnKeyType="done"
           aria-label="Detail lainnya"
         />
+
+        {values.latitude && values.longitude ? (
+          <YStack
+            height={160}
+            borderRadius="$4"
+            overflow="hidden"
+            borderWidth={1.5}
+            borderColor="$surfaceBorder"
+            opacity={isSaving ? 0.5 : 1}
+            onPress={isSaving ? undefined : handleOpenStreetSearch}
+            pressStyle={{ opacity: 0.9, scale: 0.995 }}
+            animation="quick"
+            marginTop="$2">
+            <MapView
+              provider={PROVIDER_GOOGLE}
+              style={{ flex: 1 }}
+              initialRegion={{
+                latitude: values.latitude,
+                longitude: values.longitude,
+                latitudeDelta: 0.005,
+                longitudeDelta: 0.005,
+              }}
+              scrollEnabled={false}
+              pitchEnabled={false}
+              rotateEnabled={false}
+              zoomEnabled={false}
+              pointerEvents="none">
+              <Marker
+                coordinate={{
+                  latitude: values.latitude,
+                  longitude: values.longitude,
+                }}>
+                <YStack alignItems="center">
+                  <YStack
+                    backgroundColor="$danger"
+                    paddingHorizontal="$3"
+                    paddingVertical="$1.5"
+                    borderRadius="$4">
+                    <Text color="white" fontSize="$2" fontWeight="600">
+                      Alamatmu di sini
+                    </Text>
+                  </YStack>
+                  <YStack
+                    width={10}
+                    height={10}
+                    backgroundColor="$danger"
+                    rotate="45deg"
+                    marginTop={-5}
+                    zIndex={-1}
+                  />
+                  <YStack
+                    width={14}
+                    height={14}
+                    borderRadius={7}
+                    backgroundColor="$danger"
+                    marginTop={2}
+                    borderWidth={2}
+                    borderColor="white"
+                    shadowColor="#000"
+                    shadowOffset={{ width: 0, height: 1 }}
+                    shadowOpacity={0.2}
+                    shadowRadius={2}
+                    elevation={3}
+                  />
+                </YStack>
+              </Marker>
+            </MapView>
+          </YStack>
+        ) : null}
       </YStack>
     </YStack>
   );

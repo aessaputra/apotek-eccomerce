@@ -640,7 +640,7 @@ describe('googlePlaces.service', () => {
 
       const result = convertPlaceDetailsToAddress(details);
 
-      expect(result.streetAddress).toBe('Jalan Sudirman 1');
+      expect(result.streetAddress).toBe('Test Location, Jalan Sudirman 1');
       expect(result.city).toBe('Jakarta');
       expect(result.province).toBe('DKI Jakarta');
       expect(result.postalCode).toBe('12345');

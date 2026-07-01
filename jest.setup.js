@@ -18,6 +18,7 @@ jest.mock('@react-native-community/netinfo', () => ({
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');
   Reanimated.default.call = () => {};
+  Reanimated.useReducedMotion = () => false;
   return Reanimated;
 });
 

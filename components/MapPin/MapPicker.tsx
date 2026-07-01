@@ -1,6 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { MapPin, X } from '@tamagui/lucide-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -9,17 +18,14 @@ import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { PRIMARY_BUTTON_TITLE_STYLE } from '@/constants/ui';
 
 let MapView: typeof import('react-native-maps').default | null = null;
-let Marker: typeof import('react-native-maps').Marker | null = null;
 
 if (Platform.OS !== 'web') {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Maps = require('react-native-maps');
   MapView = Maps.default;
-  Marker = Maps.Marker;
 }
 
 type MapPressEvent = import('react-native-maps').MapPressEvent;
-type MarkerDragStartEndEvent = import('react-native-maps').MarkerDragStartEndEvent;
 
 export interface MapCoords {
   latitude: number;
@@ -41,6 +47,80 @@ export interface MapPickerProps {
 const JAKARTA_FALLBACK: MapCoords = { latitude: -6.2088, longitude: 106.8456 };
 const DEFAULT_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
 
+function BouncingMapPin({ isDraggingMap }: { isDraggingMap: boolean }) {
+  const reducedMotion = useReducedMotion();
+  const bounceY = useSharedValue(0);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+
+    bounceY.value = withRepeat(
+      withSequence(
+        withTiming(-6, { duration: 500, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(0, { duration: 500, easing: Easing.inOut(Easing.cubic) }),
+      ),
+      -1,
+      true,
+    );
+  }, [reducedMotion, bounceY]);
+
+  const bounceStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: bounceY.value }],
+  }));
+
+  return (
+    <YStack
+      position="absolute"
+      top={0}
+      bottom={0}
+      left={0}
+      right={0}
+      alignItems="center"
+      justifyContent="center"
+      pointerEvents="none">
+      <YStack alignItems="center" marginTop={-40}>
+        <YStack opacity={isDraggingMap ? 0 : 1} animation="quick" alignItems="center">
+          <Animated.View style={bounceStyle}>
+            <YStack alignItems="center">
+              <YStack
+                backgroundColor="$danger"
+                paddingHorizontal="$3"
+                paddingVertical="$1.5"
+                borderRadius="$4">
+                <Text color="white" fontSize="$2" fontWeight="600">
+                  Alamatmu di sini
+                </Text>
+              </YStack>
+              <YStack
+                width={10}
+                height={10}
+                backgroundColor="$danger"
+                rotate="45deg"
+                marginTop={-5}
+                zIndex={-1}
+              />
+            </YStack>
+          </Animated.View>
+        </YStack>
+        <YStack
+          width={14}
+          height={14}
+          borderRadius={7}
+          backgroundColor="$danger"
+          marginTop={2}
+          borderWidth={2}
+          borderColor="white"
+          shadowColor="#000"
+          shadowOffset={{ width: 0, height: 1 }}
+          shadowOpacity={0.2}
+          shadowRadius={2}
+          elevation={3}
+        />
+      </YStack>
+    </YStack>
+  );
+}
+
 function MapPicker({
   initialCoords,
   selectedAddressSummary,
@@ -55,6 +135,7 @@ function MapPicker({
   const [selectedCoords, setSelectedCoords] = useState<MapCoords>(
     initialCoords ?? JAKARTA_FALLBACK,
   );
+  const [isDraggingMap, setIsDraggingMap] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
@@ -182,12 +263,19 @@ function MapPicker({
 
   const handleMapPress = useCallback((event: MapPressEvent) => {
     hasInteracted.current = true;
-    setSelectedCoords(event.nativeEvent.coordinate);
+    if (mapRef.current) {
+      mapRef.current.animateCamera({ center: event.nativeEvent.coordinate }, { duration: 300 });
+    }
   }, []);
 
-  const handleMarkerDragEnd = useCallback((event: MarkerDragStartEndEvent) => {
+  const handleRegionChange = useCallback(() => {
     hasInteracted.current = true;
-    setSelectedCoords(event.nativeEvent.coordinate);
+    setIsDraggingMap(true);
+  }, []);
+
+  const handleRegionChangeComplete = useCallback((region: import('react-native-maps').Region) => {
+    setIsDraggingMap(false);
+    setSelectedCoords({ latitude: region.latitude, longitude: region.longitude });
   }, []);
 
   const handleConfirmRequest = useCallback(() => {
@@ -228,19 +316,23 @@ function MapPicker({
   return (
     <YStack flex={1} backgroundColor="$background">
       <YStack flex={1} overflow="hidden">
-        {MapView && Marker ? (
-          <MapView
-            ref={mapRef}
-            style={{ flex: 1 }}
-            initialRegion={{
-              ...selectedCoords,
-              ...DEFAULT_DELTA,
-            }}
-            onPress={handleMapPress}
-            showsUserLocation
-            showsMyLocationButton>
-            <Marker coordinate={selectedCoords} draggable onDragEnd={handleMarkerDragEnd} />
-          </MapView>
+        {MapView ? (
+          <YStack flex={1}>
+            <MapView
+              ref={mapRef}
+              style={{ flex: 1 }}
+              initialRegion={{
+                ...selectedCoords,
+                ...DEFAULT_DELTA,
+              }}
+              onRegionChange={handleRegionChange}
+              onRegionChangeComplete={handleRegionChangeComplete}
+              onPress={handleMapPress}
+              showsUserLocation
+              showsMyLocationButton
+            />
+            <BouncingMapPin isDraggingMap={isDraggingMap} />
+          </YStack>
         ) : (
           <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$3">
             <Text fontSize="$5" color="$colorSubtle" textAlign="center" fontWeight="500">
