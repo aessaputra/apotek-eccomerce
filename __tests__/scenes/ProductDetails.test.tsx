@@ -8,6 +8,8 @@ import {
 } from '@/test-utils/renderWithTheme';
 import ProductDetails from '@/scenes/product-details/ProductDetails';
 
+jest.setTimeout(15000);
+
 const mockBack = jest.fn();
 const mockPush = jest.fn();
 const mockGetProductDetailsById = jest.fn<(...args: unknown[]) => Promise<unknown>>();

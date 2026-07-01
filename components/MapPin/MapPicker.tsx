@@ -78,8 +78,8 @@ function BouncingMapPin({ isDraggingMap }: { isDraggingMap: boolean }) {
       alignItems="center"
       justifyContent="center"
       pointerEvents="none">
-      <YStack alignItems="center" marginTop={-40}>
-        <YStack opacity={isDraggingMap ? 0 : 1} animation="quick" alignItems="center">
+      <YStack alignItems="center" marginTop={-44}>
+        <YStack opacity={isDraggingMap ? 0.6 : 1} animation="quick" alignItems="center">
           <Animated.View style={bounceStyle}>
             <YStack alignItems="center">
               <YStack
@@ -97,24 +97,38 @@ function BouncingMapPin({ isDraggingMap }: { isDraggingMap: boolean }) {
                 backgroundColor="$danger"
                 rotate="45deg"
                 marginTop={-5}
+                marginBottom={4}
                 zIndex={-1}
               />
+              <YStack
+                width={36}
+                height={36}
+                backgroundColor="$danger"
+                borderRadius={18}
+                borderBottomRightRadius={2}
+                rotate="-45deg"
+                alignItems="center"
+                justifyContent="center"
+                shadowColor="$danger"
+                shadowOffset={{ width: 2, height: 4 }}
+                shadowOpacity={0.3}
+                shadowRadius={6}
+                elevation={5}
+                borderWidth={3}
+                borderColor="white">
+                <YStack width={12} height={12} borderRadius={6} backgroundColor="white" />
+              </YStack>
             </YStack>
           </Animated.View>
         </YStack>
         <YStack
-          width={14}
-          height={14}
-          borderRadius={7}
-          backgroundColor="$danger"
-          marginTop={2}
-          borderWidth={2}
-          borderColor="white"
-          shadowColor="#000"
-          shadowOffset={{ width: 0, height: 1 }}
-          shadowOpacity={0.2}
-          shadowRadius={2}
-          elevation={3}
+          width={12}
+          height={4}
+          borderRadius={6}
+          backgroundColor="rgba(0,0,0,0.15)"
+          marginTop={4}
+          scale={isDraggingMap ? 0.8 : 1}
+          animation="quick"
         />
       </YStack>
     </YStack>
@@ -444,7 +458,7 @@ function MapPicker({
           gap="$1"
           alignItems="center">
           <Text fontSize="$3" color="$color" fontWeight="600" textAlign="center">
-            Alamatmu di sini
+            Lokasi Peta
           </Text>
           <Text fontSize="$2" color="$colorSubtle" textAlign="center">
             Mohon periksa kembali lokasi peta

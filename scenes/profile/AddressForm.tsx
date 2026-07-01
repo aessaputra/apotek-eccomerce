@@ -403,6 +403,7 @@ export default function AddressFormScreen() {
                 onFieldValidate={validateField}
                 onAreaPickerPress={handleOpenAreaPicker}
                 onStreetAddressPress={handleOpenStreetAddressSearch}
+                onMapPress={handleOpenMap}
               />
 
               <DefaultAddressToggle

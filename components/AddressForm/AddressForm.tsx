@@ -37,6 +37,7 @@ export interface AddressFormProps {
   onFieldValidate: (field: keyof AddressFormErrors, value: string) => void;
   onAreaPickerPress?: () => void;
   onStreetAddressPress?: () => void;
+  onMapPress?: () => void;
 }
 
 function AddressForm({
@@ -48,6 +49,7 @@ function AddressForm({
   onFieldValidate,
   onAreaPickerPress,
   onStreetAddressPress,
+  onMapPress,
 }: AddressFormProps) {
   const streetAddressErrorId = useId();
 
@@ -201,7 +203,7 @@ function AddressForm({
             borderWidth={1.5}
             borderColor="$surfaceBorder"
             opacity={isSaving ? 0.5 : 1}
-            onPress={isSaving ? undefined : handleOpenStreetSearch}
+            onPress={isSaving ? undefined : onMapPress}
             pressStyle={{ opacity: 0.9, scale: 0.995 }}
             animation="quick"
             marginTop="$2">
@@ -220,41 +222,36 @@ function AddressForm({
               zoomEnabled={false}
               pointerEvents="none">
               <Marker
+                anchor={{ x: 0.5, y: 1 }}
                 coordinate={{
                   latitude: values.latitude,
                   longitude: values.longitude,
                 }}>
                 <YStack alignItems="center">
                   <YStack
+                    width={36}
+                    height={36}
                     backgroundColor="$danger"
-                    paddingHorizontal="$3"
-                    paddingVertical="$1.5"
-                    borderRadius="$4">
-                    <Text color="white" fontSize="$2" fontWeight="600">
-                      Alamatmu di sini
-                    </Text>
+                    borderRadius={18}
+                    borderBottomRightRadius={2}
+                    rotate="-45deg"
+                    alignItems="center"
+                    justifyContent="center"
+                    shadowColor="$danger"
+                    shadowOffset={{ width: 2, height: 4 }}
+                    shadowOpacity={0.3}
+                    shadowRadius={6}
+                    elevation={5}
+                    borderWidth={3}
+                    borderColor="white">
+                    <YStack width={12} height={12} borderRadius={6} backgroundColor="white" />
                   </YStack>
                   <YStack
-                    width={10}
-                    height={10}
-                    backgroundColor="$danger"
-                    rotate="45deg"
-                    marginTop={-5}
-                    zIndex={-1}
-                  />
-                  <YStack
-                    width={14}
-                    height={14}
-                    borderRadius={7}
-                    backgroundColor="$danger"
-                    marginTop={2}
-                    borderWidth={2}
-                    borderColor="white"
-                    shadowColor="#000"
-                    shadowOffset={{ width: 0, height: 1 }}
-                    shadowOpacity={0.2}
-                    shadowRadius={2}
-                    elevation={3}
+                    width={12}
+                    height={4}
+                    borderRadius={6}
+                    backgroundColor="rgba(0,0,0,0.15)"
+                    marginTop={4}
                   />
                 </YStack>
               </Marker>
