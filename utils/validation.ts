@@ -7,6 +7,11 @@
 export const PASSWORD_MIN_LENGTH = 6;
 export const PASSWORD_MEDIUM_LENGTH = 8;
 
+// Profile field length constants (must match DB CHECK constraints in public.profiles)
+export const FULL_NAME_MIN_LENGTH = 2;
+export const FULL_NAME_MAX_LENGTH = 100;
+export const PHONE_NUMBER_MAX_LENGTH = 20;
+
 /**
  * Password strength levels
  */
@@ -159,11 +164,13 @@ export function validatePhoneNumber(phone: string): boolean {
 
 /**
  * Validates a full name.
- * Must be at least 3 characters long and not just whitespace.
+ * Must be between 2 and 100 characters (trimmed), not just whitespace.
+ * Mirrors DB CHECK constraints: profiles_full_name_min_len_chk + profiles_full_name_max_len_chk.
  *
  * @param name - Name string to validate
  * @returns true if valid, false otherwise
  */
 export function validateFullName(name: string): boolean {
-  return name.trim().length >= 3;
+  const trimmed = name.trim();
+  return trimmed.length >= FULL_NAME_MIN_LENGTH && trimmed.length <= FULL_NAME_MAX_LENGTH;
 }

@@ -69,7 +69,7 @@ function validateSignUpForm(values: SignUpFormValues): SignUpValidationResult {
   if (!validateFullName(values.fullName)) {
     return {
       valid: false,
-      message: 'Nama lengkap minimal 3 karakter.',
+      message: 'Nama lengkap harus 2\u2013100 karakter.',
       fieldErrors: {
         ...EMPTY_FIELD_ERRORS,
         fullName: true,

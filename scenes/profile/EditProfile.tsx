@@ -13,6 +13,7 @@ import Avatar from '@/components/elements/Avatar';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
 import { updateProfile, uploadAvatar } from '@/services/profile.service';
+import { FULL_NAME_MIN_LENGTH, FULL_NAME_MAX_LENGTH } from '@/utils/validation';
 import { windowWidth } from '@/utils/deviceInfo';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
 import { useAndroidKeyboardInset } from './useAndroidKeyboardInset';
@@ -70,11 +71,11 @@ export default function EditProfile() {
     if (trimmed.length === 0) {
       return 'Nama lengkap wajib diisi';
     }
-    if (trimmed.length < 2) {
-      return 'Nama harus minimal 2 karakter';
+    if (trimmed.length < FULL_NAME_MIN_LENGTH) {
+      return `Nama harus minimal ${FULL_NAME_MIN_LENGTH} karakter`;
     }
-    if (trimmed.length > 100) {
-      return 'Nama maksimal 100 karakter';
+    if (trimmed.length > FULL_NAME_MAX_LENGTH) {
+      return `Nama maksimal ${FULL_NAME_MAX_LENGTH} karakter`;
     }
     return null;
   }, []);
