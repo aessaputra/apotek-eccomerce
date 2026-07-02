@@ -166,10 +166,13 @@ export async function uploadAvatar(
     const arrayBuffer = decode(base64);
 
     const d = new Date();
-    const yyyymmdd = d.getFullYear().toString() + (d.getMonth() + 1).toString().padStart(2, '0') + d.getDate().toString().padStart(2, '0');
+    const yyyymmdd =
+      d.getFullYear().toString() +
+      (d.getMonth() + 1).toString().padStart(2, '0') +
+      d.getDate().toString().padStart(2, '0');
     const randomHex = Math.random().toString(36).substring(2, 8);
     const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-    
+
     const fileName = `USR_${yyyymmdd}_${randomHex}.${fileExt}`;
     const filePath = `avatars/${fileName}`;
 
