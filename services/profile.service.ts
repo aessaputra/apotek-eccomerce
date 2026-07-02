@@ -165,10 +165,12 @@ export async function uploadAvatar(
     // Convert base64 ke ArrayBuffer (required untuk Supabase Storage di React Native)
     const arrayBuffer = decode(base64);
 
-    const timestamp = Date.now();
+    const d = new Date();
+    const yyyymmdd = d.getFullYear().toString() + (d.getMonth() + 1).toString().padStart(2, '0') + d.getDate().toString().padStart(2, '0');
+    const randomHex = Math.random().toString(36).substring(2, 8);
     const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-    const safeFilename = `${getSafeFilename(imageUri)}.${fileExt}`;
-    const fileName = `${userId}-${timestamp}-${safeFilename}`;
+    
+    const fileName = `USR_${yyyymmdd}_${randomHex}.${fileExt}`;
     const filePath = `avatars/${fileName}`;
 
     // Determine content type
