@@ -45,11 +45,12 @@ export async function ensureProfile(
   email: string,
   fullName?: string | null,
   avatarUrl?: string | null,
+  phoneNumber?: string | null,
 ): Promise<ProfileRow | null> {
   const inflight = ensureProfileInFlight.get(userId);
   if (inflight) return inflight;
 
-  const ensurePromise = ensureProfileInternal(userId, email, fullName, avatarUrl);
+  const ensurePromise = ensureProfileInternal(userId, email, fullName, avatarUrl, phoneNumber);
   ensureProfileInFlight.set(userId, ensurePromise);
 
   try {
@@ -64,6 +65,7 @@ async function ensureProfileInternal(
   email: string,
   fullName?: string | null,
   avatarUrl?: string | null,
+  phoneNumber?: string | null,
 ): Promise<ProfileRow | null> {
   // Try fetching existing profile first
   const existing = await getProfile(userId);
@@ -85,6 +87,7 @@ async function ensureProfileInternal(
     id: userId,
     full_name: fullName ?? email.split('@')[0] ?? null,
     avatar_url: avatarUrl ?? null,
+    phone_number: phoneNumber ?? null,
     role: 'customer',
     is_banned: false,
   };

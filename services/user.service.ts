@@ -38,6 +38,7 @@ export async function getCurrentUser(
       session.user.email ?? '',
       meta?.full_name ?? meta?.name ?? null,
       meta?.avatar_url ?? meta?.picture ?? null,
+      meta?.phone_number ?? null,
     );
   } else {
     profile = await getProfile(session.user.id);
