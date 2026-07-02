@@ -12,7 +12,7 @@ import FormInput from '@/components/elements/FormInput';
 import Avatar from '@/components/elements/Avatar';
 import BottomActionBar from '@/components/layouts/BottomActionBar';
 import { useAppSlice } from '@/slices';
-import { updateProfile, uploadAvatar } from '@/services/profile.service';
+import { updateProfile, uploadAvatar, resolveAvatarUrl } from '@/services/profile.service';
 import { FULL_NAME_MIN_LENGTH, FULL_NAME_MAX_LENGTH } from '@/utils/validation';
 import { windowWidth } from '@/utils/deviceInfo';
 import { BOTTOM_BAR_HEIGHT, FORM_SCROLL_PADDING } from '@/constants/ui';
@@ -228,7 +228,7 @@ export default function EditProfile() {
                 aria-label="Foto profil"
                 accessibilityHint="Ketuk untuk mengubah foto profil">
                 <Avatar
-                  avatarUrl={user.avatar_url}
+                  avatarUrl={resolveAvatarUrl(user.avatar_url)}
                   name={user.full_name || user.name || user.email}
                   size={avatarSize}
                   editable={true}

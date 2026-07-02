@@ -59,6 +59,7 @@ jest.mock('@/slices', () => ({
 jest.mock('@/services/profile.service', () => ({
   updateProfile: (...args: unknown[]) => mockUpdateProfile(...args),
   uploadAvatar: (...args: unknown[]) => mockUploadAvatar(...args),
+  resolveAvatarUrl: (url: string | null) => url,
 }));
 
 jest.mock('@/components/elements/Avatar', () => {

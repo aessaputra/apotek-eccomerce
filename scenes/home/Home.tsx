@@ -20,6 +20,7 @@ import { HOME_BANNER_CTA_ROUTE_MAP } from '@/constants/homeBanner.constants';
 import { TAB_BAR_HEIGHT } from '@/constants/ui';
 import { useAppSlice } from '@/slices';
 import { useHomeData, useCartPaginated } from '@/hooks';
+import { resolveAvatarUrl } from '@/services/profile.service';
 import { addProductToCart } from '@/services';
 import type { HomeBannerCTA } from '@/types/homeBanner';
 import {
@@ -207,7 +208,7 @@ export default function Home() {
 
   const userName =
     user?.full_name || user?.name || user?.email?.split('@')[0] || HOME_COPY.defaultUserName;
-  const userAvatarUrl = user?.avatar_url;
+  const userAvatarUrl = resolveAvatarUrl(user?.avatar_url);
   const userInitial = userName.charAt(0).toUpperCase();
   const cartAccessibilityLabel =
     cartSnapshot.itemCount > 0

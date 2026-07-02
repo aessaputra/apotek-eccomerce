@@ -9,6 +9,7 @@ import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { useAppSlice } from '@/slices';
 import { useDataPersist, DataPersistKeys } from '@/hooks';
 import { signOut as authSignOut } from '@/services/auth.service';
+import { resolveAvatarUrl } from '@/services/profile.service';
 import {
   ChevronRightIcon,
   CircleHelpIcon,
@@ -144,7 +145,7 @@ export default function Profile() {
         {/* Avatar, Nama lengkap, Bergabung */}
         <YStack alignItems="center" marginBottom="$5" gap="$3" aria-label="Foto profil">
           <Avatar
-            avatarUrl={user.avatar_url}
+            avatarUrl={resolveAvatarUrl(user.avatar_url)}
             name={user.full_name || user.name || user.email}
             size={avatarSize}
             editable={false}

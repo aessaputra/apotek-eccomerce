@@ -18,6 +18,17 @@ export async function getProfile(userId: string): Promise<ProfileRow | null> {
   }
 }
 
+export function resolveAvatarUrl(avatarPath: string | null | undefined): string | null {
+  if (!avatarPath) return null;
+  if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+    return avatarPath;
+  }
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from('media').getPublicUrl(avatarPath);
+  return publicUrl;
+}
+
 /**
  * Ensure a profile row exists for the given auth user.
  * If the profile doesn't exist (e.g. new Google OAuth user where the DB trigger
@@ -138,16 +149,11 @@ function getSafeFilename(uri: string): string {
   return sanitized || 'image';
 }
 
-/**
- * Upload avatar image ke Supabase Storage dan return public URL
- * Menggunakan expo-file-system dengan base64 untuk React Native compatibility
- */
 export async function uploadAvatar(
   userId: string,
   imageUri: string,
 ): Promise<{ url: string | null; error: Error | null }> {
   try {
-    // Validasi file
     const file = new File(imageUri);
     if (!file.exists) {
       return { url: null, error: new Error('File tidak ditemukan') };
@@ -159,10 +165,8 @@ export async function uploadAvatar(
       return { url: null, error: new Error(validation.error || 'File tidak valid') };
     }
 
-    // Baca file sebagai base64 (recommended untuk React Native)
     const base64 = await file.base64();
 
-    // Convert base64 ke ArrayBuffer (required untuk Supabase Storage di React Native)
     const arrayBuffer = decode(base64);
 
     const d = new Date();
@@ -176,7 +180,6 @@ export async function uploadAvatar(
     const fileName = `USR_${yyyymmdd}_${randomHex}.${fileExt}`;
     const filePath = `avatars/${fileName}`;
 
-    // Determine content type
     const contentTypeMap: Record<string, string> = {
       jpg: 'image/jpeg',
       jpeg: 'image/jpeg',
@@ -185,24 +188,18 @@ export async function uploadAvatar(
     };
     const contentType = contentTypeMap[fileExt] || 'image/jpeg';
 
-    // Upload ke Supabase Storage bucket 'media' (path: avatars/)
     const { error: uploadError } = await supabase.storage
       .from('media')
       .upload(filePath, arrayBuffer, {
         contentType,
-        upsert: true, // Replace existing file if exists
+        upsert: true,
       });
 
     if (uploadError) {
       return { url: null, error: uploadError as unknown as Error };
     }
 
-    // Get public URL from 'media' bucket
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('media').getPublicUrl(filePath);
-
-    return { url: publicUrl, error: null };
+    return { url: filePath, error: null };
   } catch (error) {
     return { url: null, error: error as Error };
   }
