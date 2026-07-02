@@ -201,11 +201,11 @@ describe('<EditProfile />', () => {
     expect(await screen.findByText('Nama harus minimal 2 karakter')).not.toBeNull();
     expect(screen.getByText('Format nomor telepon tidak valid')).not.toBeNull();
 
-    fireEvent.changeText(screen.getByLabelText('Input nama lengkap'), 'A'.repeat(101));
+    fireEvent.changeText(screen.getByLabelText('Input nama lengkap'), 'A'.repeat(61));
     fireEvent.changeText(screen.getByLabelText('Input nomor telepon'), '1234567');
     fireEvent.press(screen.getByLabelText('Simpan perubahan profil'));
 
-    expect(await screen.findByText('Nama maksimal 100 karakter')).not.toBeNull();
+    expect(await screen.findByText('Nama maksimal 60 karakter')).not.toBeNull();
     expect(screen.getByText('Nomor telepon harus minimal 8 digit')).not.toBeNull();
 
     fireEvent.changeText(screen.getByLabelText('Input nama lengkap'), 'Siti Aminah');
