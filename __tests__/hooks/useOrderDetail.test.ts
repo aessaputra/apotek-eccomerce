@@ -75,7 +75,7 @@ describe('useOrderDetail confirmReceived', () => {
         customer_completed_at: '2026-04-21T09:00:00.000Z',
         customer_completion_stage: 'completed',
         customer_order_bucket: 'completed',
-  latest_biteship_status: null,
+        latest_biteship_status: null,
       },
       error: null,
     });

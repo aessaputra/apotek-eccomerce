@@ -24,7 +24,7 @@ const mockOrders: OrderListItem[] = [
     status: 'pending',
     customer_completion_stage: null,
     customer_order_bucket: 'unpaid',
-  latest_biteship_status: null,
+    latest_biteship_status: null,
     order_items: [
       {
         id: 'item-1',
@@ -53,7 +53,7 @@ const mockOrders: OrderListItem[] = [
     status: 'pending',
     customer_completion_stage: null,
     customer_order_bucket: 'unpaid',
-  latest_biteship_status: null,
+    latest_biteship_status: null,
     order_items: [
       {
         id: 'item-2',
