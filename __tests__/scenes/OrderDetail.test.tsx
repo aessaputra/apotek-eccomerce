@@ -53,6 +53,7 @@ const mockOrder = {
   customer_completion_source: null,
   customer_completion_stage: 'not_applicable',
   customer_order_bucket: 'packing',
+  latest_biteship_status: null,
   payment_status: 'settlement',
   gross_amount: 150000,
   total_amount: 150000,

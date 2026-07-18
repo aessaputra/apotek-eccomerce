@@ -58,6 +58,7 @@ function createOrder(index: number): OrderListItem {
     status: 'processing',
     customer_completion_stage: 'not_applicable',
     customer_order_bucket: 'packing',
+  latest_biteship_status: null,
     order_items: [],
   };
 }
@@ -162,6 +163,7 @@ describe('useOrdersByStatusPaginated', () => {
               ...createOrder(99),
               id: 'completed-order',
               customer_order_bucket: 'completed',
+  latest_biteship_status: null,
             },
           ],
           offset: 0,
@@ -179,6 +181,7 @@ describe('useOrdersByStatusPaginated', () => {
         {
           ...createOrder(1),
           customer_order_bucket: 'cancelled',
+  latest_biteship_status: null,
         },
       ],
       error: null,

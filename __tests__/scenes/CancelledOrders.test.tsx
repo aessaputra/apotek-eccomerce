@@ -22,6 +22,7 @@ const createOrder = (id: string, productName: string): OrderListItem => ({
   status: 'cancelled',
   customer_completion_stage: null,
   customer_order_bucket: 'cancelled',
+  latest_biteship_status: null,
   order_items: [
     {
       id: `${id}-item`,

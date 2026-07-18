@@ -46,6 +46,7 @@ const baseOrder: OrderWithItems = {
   customer_completed_at: null,
   customer_completion_stage: 'awaiting_customer',
   customer_order_bucket: 'shipped',
+  latest_biteship_status: null,
   expired_at: null,
   payment_status: 'settlement',
   midtrans_order_id: 'MID-1',
@@ -74,6 +75,7 @@ describe('useOrderDetail confirmReceived', () => {
         customer_completed_at: '2026-04-21T09:00:00.000Z',
         customer_completion_stage: 'completed',
         customer_order_bucket: 'completed',
+  latest_biteship_status: null,
       },
       error: null,
     });

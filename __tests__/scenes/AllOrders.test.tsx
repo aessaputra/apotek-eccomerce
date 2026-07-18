@@ -42,6 +42,7 @@ const createOrder = (id: string, productName: string): OrderListItem => ({
   status: 'processing',
   customer_completion_stage: null,
   customer_order_bucket: 'packing',
+  latest_biteship_status: null,
   order_items: [
     {
       id: `${id}-item`,

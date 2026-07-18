@@ -73,6 +73,7 @@ function createOrder(index: number): OrderListItem {
     status: 'processing',
     customer_completion_stage: null,
     customer_order_bucket: null,
+  latest_biteship_status: null,
     order_items: [
       {
         id: `order-item-${index}`,

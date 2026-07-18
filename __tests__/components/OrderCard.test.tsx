@@ -19,6 +19,7 @@ const order: OrderListItem = {
   status: 'delivered',
   customer_completion_stage: 'completed',
   customer_order_bucket: 'completed',
+  latest_biteship_status: null,
   order_items: [
     {
       id: 'item-1',

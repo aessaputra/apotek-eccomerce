@@ -236,19 +236,31 @@ export default function Payment() {
           const base64Data = data.url.split(',')[1];
           if (!base64Data) return;
           const filename = data.filename || `qris-${Date.now()}.png`;
-          const file = new File(Paths.cache, filename);
-          file.write(base64Data, {
-            encoding: 'base64',
-          });
-
-          const isAvailable = await Sharing.isAvailableAsync();
-          if (isAvailable) {
-            await Sharing.shareAsync(file.uri, {
-              mimeType: 'image/png',
-              dialogTitle: 'Simpan QRIS',
+          
+          try {
+            const file = new File(Paths.cache, filename);
+            if (!file.exists) {
+              file.create();
+            }
+            
+            file.write(base64Data, {
+              encoding: 'base64',
             });
-          } else {
-            setPaymentError('Fitur berbagi tidak didukung di perangkat ini.');
+
+            const isAvailable = await Sharing.isAvailableAsync();
+            if (isAvailable) {
+              await Sharing.shareAsync(file.uri, {
+                mimeType: 'image/png',
+                dialogTitle: 'Simpan QRIS',
+              });
+            } else {
+              setPaymentError('Fitur berbagi tidak didukung di perangkat ini.');
+            }
+          } catch (fileError) {
+            if (__DEV__) {
+              console.warn('[Payment] File write error:', fileError);
+            }
+            setPaymentError('Gagal menyimpan file QRIS.');
           }
         }
       } catch (e) {

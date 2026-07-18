@@ -432,6 +432,7 @@ function normalizeOrderReadModelRow(row: OrderReadModelRow): Order {
     shipping_etd: row.shipping_etd,
     waybill_number: row.waybill_number,
     waybill_source: row.waybill_source,
+    latest_biteship_status: row.latest_biteship_status,
     snap_redirect_url: row.snap_redirect_url,
   };
 }
@@ -454,6 +455,7 @@ function normalizeOrderListRow(
     status: normalized.status,
     customer_completion_stage: normalized.customer_completion_stage,
     customer_order_bucket: normalized.customer_order_bucket,
+    latest_biteship_status: normalized.latest_biteship_status,
     order_items: orderItems,
   };
 }
