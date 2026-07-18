@@ -10,6 +10,8 @@ export const DEEP_LINK_PATTERNS = [
   'shopeeid://',
   'gopay://',
   '//wsa.wallet.airpay.co.id/',
+  'dana://',
+  'ovo://',
 ];
 
 export const TRUSTED_PAYMENT_HOSTS = [
@@ -42,7 +44,10 @@ export function isDeepLink(url: string): boolean {
 export function isTrustedPaymentUrl(url: string): boolean {
   try {
     const urlObj = new URL(url);
-    return TRUSTED_PAYMENT_HOSTS.some(host => urlObj.hostname === host);
+    const hostname = urlObj.hostname;
+    return (
+      TRUSTED_PAYMENT_HOSTS.some(host => hostname === host) || hostname.endsWith('.midtrans.com')
+    );
   } catch {
     return false;
   }

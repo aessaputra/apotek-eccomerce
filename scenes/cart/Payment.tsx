@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AccessibilityInfo, BackHandler, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { Spinner, Text, XStack, YStack, Button as TamaguiButton } from 'tamagui';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
 import { CloseIcon, LockIcon } from '@/components/icons';
@@ -26,6 +28,41 @@ export {
   parsePaymentNavigationStatus,
   translateCheckoutError,
 } from '@/scenes/cart/payment.utils';
+
+const INJECTED_JAVASCRIPT = `
+  (function() {
+    document.addEventListener('click', function(e) {
+      var target = e.target.closest('a');
+      if (target && target.hasAttribute('download')) {
+        var url = target.href;
+        if (url.startsWith('data:')) {
+          e.preventDefault();
+          e.stopPropagation();
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'DOWNLOAD_QRIS',
+            url: url,
+            filename: target.getAttribute('download') || 'qris.png'
+          }));
+        } else if (url.startsWith('blob:')) {
+          e.preventDefault();
+          e.stopPropagation();
+          fetch(url).then(function(res) { return res.blob(); }).then(function(blob) {
+            var reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = function() {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'DOWNLOAD_QRIS',
+                url: reader.result,
+                filename: target.getAttribute('download') || 'qris.png'
+              }));
+            }
+          });
+        }
+      }
+    }, true);
+  })();
+  true;
+`;
 
 export default function Payment() {
   const router = useRouter();
@@ -191,6 +228,39 @@ export default function Payment() {
     void finalizePaymentFlow('pending');
   }, [finalizePaymentFlow]);
 
+  const handleWebViewMessage = useCallback(
+    async (event: WebViewMessageEvent) => {
+      try {
+        const data = JSON.parse(event.nativeEvent.data);
+        if (data.type === 'DOWNLOAD_QRIS' && data.url) {
+          const base64Data = data.url.split(',')[1];
+          if (!base64Data) return;
+          const filename = data.filename || `qris-${Date.now()}.png`;
+          const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+
+          await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          const isAvailable = await Sharing.isAvailableAsync();
+          if (isAvailable) {
+            await Sharing.shareAsync(fileUri, {
+              mimeType: 'image/png',
+              dialogTitle: 'Simpan QRIS',
+            });
+          } else {
+            setPaymentError('Fitur berbagi tidak didukung di perangkat ini.');
+          }
+        }
+      } catch (e) {
+        if (__DEV__) {
+          console.warn('[Payment] Failed to process webview message:', e);
+        }
+      }
+    },
+    [setPaymentError],
+  );
+
   if (!resolvedPaymentUrl || !isValidPaymentUrl) {
     return (
       <YStack
@@ -304,6 +374,8 @@ export default function Payment() {
             source={{ uri: resolvedPaymentUrl }}
             style={{ flex: 1 }}
             startInLoadingState
+            injectedJavaScript={INJECTED_JAVASCRIPT}
+            onMessage={handleWebViewMessage}
             onLoadStart={handleWebViewLoadStart}
             onLoadProgress={handleWebViewLoadProgress}
             onLoadEnd={handleWebViewLoadEnd}
