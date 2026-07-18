@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AccessibilityInfo, BackHandler, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { Spinner, Text, XStack, YStack, Button as TamaguiButton } from 'tamagui';
@@ -236,15 +236,14 @@ export default function Payment() {
           const base64Data = data.url.split(',')[1];
           if (!base64Data) return;
           const filename = data.filename || `qris-${Date.now()}.png`;
-          const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-
-          await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-            encoding: FileSystem.EncodingType.Base64,
+          const file = new File(Paths.cache, filename);
+          file.write(base64Data, {
+            encoding: 'base64',
           });
 
           const isAvailable = await Sharing.isAvailableAsync();
           if (isAvailable) {
-            await Sharing.shareAsync(fileUri, {
+            await Sharing.shareAsync(file.uri, {
               mimeType: 'image/png',
               dialogTitle: 'Simpan QRIS',
             });
