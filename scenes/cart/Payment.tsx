@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AccessibilityInfo, BackHandler, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { Spinner, Text, XStack, YStack, Button as TamaguiButton } from 'tamagui';
 import AppAlertDialog from '@/components/elements/AppAlertDialog';
@@ -238,6 +236,7 @@ export default function Payment() {
           const filename = data.filename || `qris-${Date.now()}.png`;
 
           try {
+            const { File, Paths } = require('expo-file-system');
             const file = new File(Paths.cache, filename);
             if (!file.exists) {
               file.create();
@@ -247,18 +246,29 @@ export default function Payment() {
               encoding: 'base64',
             });
 
-            const isAvailable = await Sharing.isAvailableAsync();
-            if (isAvailable) {
-              await Sharing.shareAsync(file.uri, {
-                mimeType: 'image/png',
-                dialogTitle: 'Simpan QRIS',
-              });
-            } else {
-              setPaymentError('Fitur berbagi tidak didukung di perangkat ini.');
+            try {
+              const Sharing = require('expo-sharing');
+              const isAvailable = await Sharing.isAvailableAsync();
+              if (isAvailable) {
+                await Sharing.shareAsync(file.uri, {
+                  mimeType: 'image/png',
+                  dialogTitle: 'Simpan QRIS',
+                });
+              } else {
+                setPaymentError('Fitur berbagi tidak didukung di perangkat ini.');
+              }
+            } catch (sharingModuleError) {
+              if (__DEV__) {
+                console.warn(
+                  '[Payment] expo-sharing module not found or failed:',
+                  sharingModuleError,
+                );
+              }
+              setPaymentError('Fitur berbagi tidak didukung (modul belum terinstall).');
             }
           } catch (fileError) {
             if (__DEV__) {
-              console.warn('[Payment] File write error:', fileError);
+              console.warn('[Payment] File write error or file-system module error:', fileError);
             }
             setPaymentError('Gagal menyimpan file QRIS.');
           }
