@@ -18,7 +18,8 @@ import {
   resolveRouteParam,
 } from '@/scenes/cart/payment.utils';
 import { usePaymentFlow } from '@/scenes/cart/usePaymentFlow';
-
+import { File, Paths } from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 export {
   isDeepLink,
   isPollingTimeoutError,
@@ -236,42 +237,28 @@ export default function Payment() {
           const filename = data.filename || `qris-${Date.now()}.png`;
 
           try {
-            const { File, Paths } = require('expo-file-system');
             const file = new File(Paths.cache, filename);
             if (!file.exists) {
               file.create();
             }
-
             file.write(base64Data, {
               encoding: 'base64',
             });
 
-            try {
-              const MediaLibrary = require('expo-media-library');
-              const { status } = await MediaLibrary.requestPermissionsAsync();
+            const { status } = await MediaLibrary.requestPermissionsAsync();
 
-              if (status === 'granted') {
-                await MediaLibrary.saveToLibraryAsync(file.uri);
-                Alert.alert('Sukses', 'QRIS berhasil disimpan ke galeri foto Anda.');
-              } else {
-                setPaymentError('Izin akses galeri ditolak. Tidak dapat mengunduh QRIS.');
-              }
-            } catch (mediaModuleError) {
-              if (__DEV__) {
-                console.warn(
-                  '[Payment] expo-media-library module not found or failed:',
-                  mediaModuleError,
-                );
-              }
-              setPaymentError(
-                'Fitur unduh langsung tidak didukung (modul belum terinstall). Silakan build ulang aplikasi Android Anda.',
-              );
+            if (status === 'granted') {
+              await MediaLibrary.saveToLibraryAsync(file.uri);
+              Alert.alert('Sukses', 'QRIS berhasil disimpan ke galeri foto Anda.');
+            } else {
+              setPaymentError('Izin akses galeri ditolak. Tidak dapat mengunduh QRIS.');
             }
-          } catch (fileError) {
+          } catch (err: any) {
             if (__DEV__) {
-              console.warn('[Payment] File write error or file-system module error:', fileError);
+              console.error('[Payment] Download/Save Error:', err);
             }
-            setPaymentError('Gagal menyimpan file QRIS.');
+            const errMsg = err?.message || 'Gagal memproses file';
+            setPaymentError(`Gagal menyimpan file QRIS: ${errMsg}`);
           }
         }
       } catch (e) {
