@@ -246,6 +246,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           defaultChannel: 'default',
         },
       ],
+      [
+        'expo-media-library',
+        {
+          photosPermission: 'Izinkan SiFarma menyimpan QRIS ke galeri foto Anda.',
+          savePhotosPermission: 'Izinkan SiFarma menyimpan QRIS ke galeri foto Anda.',
+          isAccessMediaLocationEnabled: false,
+        },
+      ],
     ],
   };
   return expoConfig;
