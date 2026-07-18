@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, BackHandler, Linking } from 'react-native';
+import { AccessibilityInfo, BackHandler, Linking, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
@@ -247,24 +247,25 @@ export default function Payment() {
             });
 
             try {
-              const Sharing = require('expo-sharing');
-              const isAvailable = await Sharing.isAvailableAsync();
-              if (isAvailable) {
-                await Sharing.shareAsync(file.uri, {
-                  mimeType: 'image/png',
-                  dialogTitle: 'Simpan QRIS',
-                });
+              const MediaLibrary = require('expo-media-library');
+              const { status } = await MediaLibrary.requestPermissionsAsync();
+
+              if (status === 'granted') {
+                await MediaLibrary.saveToLibraryAsync(file.uri);
+                Alert.alert('Sukses', 'QRIS berhasil disimpan ke galeri foto Anda.');
               } else {
-                setPaymentError('Fitur berbagi tidak didukung di perangkat ini.');
+                setPaymentError('Izin akses galeri ditolak. Tidak dapat mengunduh QRIS.');
               }
-            } catch (sharingModuleError) {
+            } catch (mediaModuleError) {
               if (__DEV__) {
                 console.warn(
-                  '[Payment] expo-sharing module not found or failed:',
-                  sharingModuleError,
+                  '[Payment] expo-media-library module not found or failed:',
+                  mediaModuleError,
                 );
               }
-              setPaymentError('Fitur berbagi tidak didukung (modul belum terinstall).');
+              setPaymentError(
+                'Fitur unduh langsung tidak didukung (modul belum terinstall). Silakan build ulang aplikasi Android Anda.',
+              );
             }
           } catch (fileError) {
             if (__DEV__) {
