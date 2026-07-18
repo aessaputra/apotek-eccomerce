@@ -236,13 +236,13 @@ export default function Payment() {
           const base64Data = data.url.split(',')[1];
           if (!base64Data) return;
           const filename = data.filename || `qris-${Date.now()}.png`;
-          
+
           try {
             const file = new File(Paths.cache, filename);
             if (!file.exists) {
               file.create();
             }
-            
+
             file.write(base64Data, {
               encoding: 'base64',
             });
