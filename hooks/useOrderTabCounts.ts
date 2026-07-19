@@ -32,11 +32,6 @@ export function clearOrderTabCountsCache(): void {
   countsCache.clear();
 }
 
-/**
- * Invalidates the cached count for a specific user so that the next
- * focus or manual refresh will always fetch fresh data from the network.
- * Call this after any event that changes order counts (e.g. payment success).
- */
 export function invalidateOrderTabCountsCache(userId: string): void {
   countsCache.delete(userId);
 }

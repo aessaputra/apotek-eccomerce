@@ -42,14 +42,11 @@ function invalidateOrderCaches(dispatch: PaymentFlowDispatch, userId?: string) {
     return;
   }
 
-  // Invalidate Redux order caches so lists refetch on next focus
   dispatch(appActions.invalidateUnpaidOrdersCache(userId));
   ORDER_STATUS_CACHE_KEYS_TO_INVALIDATE.forEach(cacheKey => {
     dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey, userId }));
   });
 
-  // Invalidate the module-level tab count cache so counts refresh immediately
-  // on next screen focus, without requiring an app restart.
   invalidateOrderTabCountsCache(userId);
 }
 
