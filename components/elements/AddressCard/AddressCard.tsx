@@ -105,6 +105,12 @@ export default function AddressCard({
           {formattedAddress}
         </Text>
 
+        {address.address_note ? (
+          <Text fontSize="$3" color="$colorSubtle" fontStyle="italic">
+            Catatan: {address.address_note}
+          </Text>
+        ) : null}
+
         {displayBadge && (
           <XStack
             alignSelf="flex-start"

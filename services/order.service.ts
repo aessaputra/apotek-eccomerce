@@ -214,6 +214,7 @@ export interface OrderWithItems extends Order {
     city: string;
     province: string | null;
     postal_code: string;
+    area_name?: string | null;
   } | null;
 }
 
@@ -480,6 +481,7 @@ function normalizeOrderDetailRow(
           city: address.city,
           province: address.province,
           postal_code: address.postal_code,
+          area_name: address.area_name,
         }
       : null,
   };

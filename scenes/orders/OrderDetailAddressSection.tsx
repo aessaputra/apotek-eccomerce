@@ -4,6 +4,7 @@ import { TruckIcon } from '@/components/icons';
 import OrderSectionCard from '@/components/elements/OrderSectionCard';
 import type { OrderWithItems } from '@/services';
 import { cleanStreetAddress } from '@/utils/address';
+import { formatLevel3Display } from '@/utils/areaFormatters';
 
 interface OrderDetailAddressSectionProps {
   address: OrderWithItems['addresses'];
@@ -14,13 +15,20 @@ export default function OrderDetailAddressSection({ address }: OrderDetailAddres
     return null;
   }
 
+  const district = address.area_name ? address.area_name.split(',')[0].trim() : undefined;
   const cleanedStreet = cleanStreetAddress(
     address.street_address || '',
     address.city || '',
     address.province || '',
     address.postal_code || '',
-    undefined,
+    district,
   );
+
+  const isDistrictRedundant =
+    district &&
+    (district.toLowerCase() === address.city?.toLowerCase() ||
+      district.toLowerCase() === `kecamatan ${address.city?.toLowerCase()}`);
+  const displayDistrict = district && !isDistrictRedundant ? formatLevel3Display(district) : '';
 
   return (
     <OrderSectionCard>
@@ -44,9 +52,14 @@ export default function OrderDetailAddressSection({ address }: OrderDetailAddres
           <Text fontSize="$3" color="$colorSubtle">
             {cleanedStreet}
           </Text>
-          {address.address_note ? (
+          {displayDistrict ? (
             <Text fontSize="$3" color="$colorSubtle">
-              {address.address_note}
+              {displayDistrict}
+            </Text>
+          ) : null}
+          {address.address_note ? (
+            <Text fontSize="$3" color="$colorSubtle" fontStyle="italic">
+              Catatan: {address.address_note}
             </Text>
           ) : null}
           <Text fontSize="$3" color="$colorSubtle">

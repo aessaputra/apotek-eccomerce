@@ -270,6 +270,11 @@ export default function CheckoutReview() {
               <Text color="$colorSubtle" fontSize="$3" numberOfLines={3}>
                 {selectedAddressFullText}
               </Text>
+              {selectedAddress.address_note ? (
+                <Text color="$colorSubtle" fontSize="$3" fontStyle="italic" numberOfLines={1}>
+                  Catatan: {selectedAddress.address_note}
+                </Text>
+              ) : null}
             </YStack>
           </ReviewSection>
 

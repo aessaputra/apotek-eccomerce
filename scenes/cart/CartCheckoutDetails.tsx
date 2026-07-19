@@ -111,6 +111,11 @@ export function CartCheckoutDetails({
               <Text color="$colorSubtle" numberOfLines={2}>
                 {selectedAddressFullText}
               </Text>
+              {selectedAddress.address_note ? (
+                <Text color="$colorSubtle" fontSize="$3" fontStyle="italic" numberOfLines={1}>
+                  Catatan: {selectedAddress.address_note}
+                </Text>
+              ) : null}
             </YStack>
 
             <XStack alignItems="center" justifyContent="center">

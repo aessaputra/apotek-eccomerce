@@ -1,4 +1,5 @@
 import type { Address } from '@/types/address';
+import { formatLevel3Display } from './areaFormatters';
 
 export function cleanStreetAddress(
   street: string,
@@ -35,7 +36,6 @@ export function cleanStreetAddress(
 
 export function formatAddress(address: Address): string {
   const street = address.street_address || '';
-  const note = address.address_note || '';
   const city = address.city || '';
   const province = address.province || '';
   const postal = address.postal_code || '';
@@ -43,7 +43,16 @@ export function formatAddress(address: Address): string {
 
   const cleanedStreet = cleanStreetAddress(street, city, province, postal, district);
 
-  return [cleanedStreet, note, city, province, postal].filter(Boolean).join(', ');
+  const isDistrictRedundant =
+    district &&
+    (district.toLowerCase() === city.toLowerCase() ||
+      district.toLowerCase() === `kecamatan ${city.toLowerCase()}`);
+  const displayDistrict = district && !isDistrictRedundant ? formatLevel3Display(district) : '';
+
+  return [cleanedStreet, displayDistrict, city, province, postal]
+    .map(part => part?.trim())
+    .filter(Boolean)
+    .join(', ');
 }
 
 export function resolveBadgeText(address: Address): string | null {

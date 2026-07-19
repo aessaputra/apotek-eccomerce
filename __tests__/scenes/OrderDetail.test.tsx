@@ -232,7 +232,7 @@ describe('<OrderDetail />', () => {
     expect(screen.getByText('Produk')).not.toBeNull();
     expect(screen.getByText('Alamat Pengiriman')).not.toBeNull();
     expect(screen.getByText('John Doe')).not.toBeNull();
-    expect(screen.getByText('Blok B dekat pos satpam')).not.toBeNull();
+    expect(screen.getByText(/Blok B dekat pos satpam/)).not.toBeNull();
     expect(screen.getByText('Metode Pengiriman')).not.toBeNull();
     expect(screen.getByText('Total')).not.toBeNull();
   });
@@ -269,7 +269,7 @@ describe('<OrderDetail />', () => {
 
     renderOrderDetail();
 
-    expect(screen.queryByText('Blok B dekat pos satpam')).toBeNull();
+    expect(screen.queryByText(/Blok B dekat pos satpam/)).toBeNull();
   });
 
   test('renders payment status label for settled payment', () => {

@@ -61,7 +61,7 @@ describe('address utilities', () => {
 
       const result = formatAddress(address);
       expect(result).toBe(
-        'JCO DONUTS & COFFEE - SERANG 2, Dekat lobby, Kota Serang, Banten, 42111',
+        'JCO DONUTS & COFFEE - SERANG 2, Kecamatan Serang, Kota Serang, Banten, 42111',
       );
     });
   });
