@@ -184,7 +184,7 @@ const AUTOCOMPLETE_FIELD_MASK =
   'suggestions.placePrediction.place,suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat,suggestions.placePrediction.types';
 // Essentials SKU fields only (excluding displayName which triggers Pro SKU)
 // Cost: $0.007/request vs $0.015/request with displayName
-const PLACE_DETAILS_FIELD_MASK = 'id,formattedAddress,addressComponents,location,types';
+const PLACE_DETAILS_FIELD_MASK = 'id,displayName,formattedAddress,addressComponents,location,types';
 const NEARBY_SEARCH_FIELD_MASK =
   'places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.primaryType,places.primaryTypeDisplayName,places.postalAddress,places.addressComponents,places.location';
 
