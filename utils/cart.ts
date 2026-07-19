@@ -2,6 +2,7 @@ import type { CartSnapshot } from '@/types/cart';
 
 export const EMPTY_CART_SNAPSHOT: CartSnapshot = {
   itemCount: 0,
+  productCount: 0,
   estimatedWeightGrams: 0,
   packageValue: 0,
 };
@@ -25,6 +26,7 @@ export function buildCartSnapshot<T extends CartSnapshotSourceItem>(
       }
 
       snapshot.itemCount += item.quantity;
+      snapshot.productCount += 1;
       snapshot.estimatedWeightGrams += item.quantity * (item.product.weight || defaultWeightGrams);
       snapshot.packageValue += item.quantity * item.product.price;
 

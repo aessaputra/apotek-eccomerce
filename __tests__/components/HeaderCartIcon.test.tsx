@@ -17,7 +17,7 @@ jest.mock('@/hooks', () => ({
   useCartPaginated: jest.fn(() => ({
     cartId: 'cart-1',
     items: [],
-    snapshot: { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+    snapshot: { itemCount: 0, productCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
     error: null,
     isLoading: false,
     isRefreshing: false,
@@ -36,7 +36,7 @@ function createCartHookReturn(itemCount: number): UseCartPaginatedReturn {
   return {
     cartId: 'cart-1',
     items: [],
-    snapshot: { itemCount, estimatedWeightGrams: 0, packageValue: 0 },
+    snapshot: { itemCount, productCount: itemCount, estimatedWeightGrams: 0, packageValue: 0 },
     error: null,
     isLoading: false,
     isRefreshing: false,

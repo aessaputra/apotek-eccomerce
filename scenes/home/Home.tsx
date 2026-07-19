@@ -211,8 +211,8 @@ export default function Home() {
   const userAvatarUrl = resolveAvatarUrl(user?.avatar_url);
   const userInitial = userName.charAt(0).toUpperCase();
   const cartAccessibilityLabel =
-    cartSnapshot.itemCount > 0
-      ? `${HOME_COPY.cartLabel}, ${cartSnapshot.itemCount} produk di keranjang`
+    cartSnapshot.productCount > 0
+      ? `${HOME_COPY.cartLabel}, ${cartSnapshot.productCount} produk di keranjang`
       : `${HOME_COPY.cartLabel}, keranjang kosong`;
 
   const handleBannerCTAPress = useCallback(
@@ -284,7 +284,7 @@ export default function Home() {
                 accessibilityHint={HOME_COPY.cartHint}
                 aria-label={cartAccessibilityLabel}>
                 <CartIcon size={20} color={iconColor} />
-                {cartSnapshot.itemCount > 0 && (
+                {cartSnapshot.productCount > 0 && (
                   <YStack
                     position="absolute"
                     top={4}
@@ -297,11 +297,11 @@ export default function Home() {
                     height={18}
                     justifyContent="center"
                     alignItems="center"
-                    px={cartSnapshot.itemCount > 9 ? '$1.5' : 0}
+                    px={cartSnapshot.productCount > 9 ? '$1.5' : 0}
                     zIndex={10}
                     pointerEvents="none">
                     <Text color="$onPrimary" fontSize={9} fontWeight="900" lineHeight={11}>
-                      {cartSnapshot.itemCount > 99 ? '99+' : cartSnapshot.itemCount}
+                      {cartSnapshot.productCount > 99 ? '99+' : cartSnapshot.productCount}
                     </Text>
                   </YStack>
                 )}

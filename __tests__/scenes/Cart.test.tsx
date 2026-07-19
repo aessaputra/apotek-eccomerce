@@ -33,7 +33,12 @@ let mockNetworkState: {
 const mockCartHookState: {
   cartId: string | null;
   items: CartItemWithProduct[];
-  snapshot: { itemCount: number; estimatedWeightGrams: number; packageValue: number };
+  snapshot: {
+    itemCount: number;
+    productCount: number;
+    estimatedWeightGrams: number;
+    packageValue: number;
+  };
   error: string | null;
   isLoading: boolean;
   isRefreshing: boolean;
@@ -42,7 +47,7 @@ const mockCartHookState: {
 } = {
   cartId: 'cart-1',
   items: [],
-  snapshot: { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+  snapshot: { itemCount: 0, productCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
   error: null,
   isLoading: false,
   isRefreshing: false,
@@ -52,7 +57,7 @@ const mockCartHookState: {
 
 const mockCartQuantityHookState = {
   items: [] as CartItemWithProduct[],
-  snapshot: { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+  snapshot: { itemCount: 0, productCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
   updateQuantity: jest.fn(),
 };
 
@@ -455,10 +460,11 @@ function setCartItems(items: CartItemWithProduct[]) {
   mockCartHookState.snapshot = items.reduce(
     (cartSnapshot, item) => ({
       itemCount: cartSnapshot.itemCount + item.quantity,
+      productCount: cartSnapshot.productCount + 1,
       estimatedWeightGrams: cartSnapshot.estimatedWeightGrams + item.quantity * item.product.weight,
       packageValue: cartSnapshot.packageValue + item.quantity * item.product.price,
     }),
-    { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+    { itemCount: 0, productCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
   );
   mockCartQuantityHookState.items = mockCartHookState.items;
   mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
@@ -675,6 +681,7 @@ describe('<Cart />', () => {
     ]);
     expect(JSON.parse(params.snapshotPayload ?? '{}')).toEqual({
       itemCount: 1,
+      productCount: 1,
       estimatedWeightGrams: 100,
       packageValue: 10002,
     });
@@ -693,6 +700,7 @@ describe('<Cart />', () => {
           selectedCartItemIds: ['cart-item-2'],
           snapshot: {
             itemCount: 1,
+            productCount: 1,
             estimatedWeightGrams: 100,
             packageValue: 10002,
           },
@@ -703,6 +711,7 @@ describe('<Cart />', () => {
           selectedCartItemIds: ['cart-item-2'],
           snapshot: {
             itemCount: 1,
+            productCount: 1,
             estimatedWeightGrams: 100,
             packageValue: 10002,
           },
@@ -775,7 +784,12 @@ describe('<Cart />', () => {
 
   it('does not show the empty-cart state when fetch fails with no cart items', () => {
     mockCartHookState.items = [];
-    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartHookState.snapshot = {
+      itemCount: 0,
+      productCount: 0,
+      estimatedWeightGrams: 0,
+      packageValue: 0,
+    };
     mockCartHookState.error = 'Gagal sinkronisasi keranjang';
     mockCartQuantityHookState.items = [];
     mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
@@ -789,7 +803,12 @@ describe('<Cart />', () => {
 
   it('does not show the empty-cart state while offline with no cached cart data', () => {
     mockCartHookState.items = [];
-    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartHookState.snapshot = {
+      itemCount: 0,
+      productCount: 0,
+      estimatedWeightGrams: 0,
+      packageValue: 0,
+    };
     mockCartQuantityHookState.items = [];
     mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
     mockNetworkState = {
@@ -811,7 +830,12 @@ describe('<Cart />', () => {
 
   it('routes empty-cart browse action directly to /home', () => {
     mockCartHookState.items = [];
-    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartHookState.snapshot = {
+      itemCount: 0,
+      productCount: 0,
+      estimatedWeightGrams: 0,
+      packageValue: 0,
+    };
     mockCartQuantityHookState.items = [];
     mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
 
@@ -840,7 +864,12 @@ describe('<Cart />', () => {
 
   it('shows the skeleton during the initial cart load', () => {
     mockCartHookState.items = [];
-    mockCartHookState.snapshot = { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 };
+    mockCartHookState.snapshot = {
+      itemCount: 0,
+      productCount: 0,
+      estimatedWeightGrams: 0,
+      packageValue: 0,
+    };
     mockCartHookState.isLoading = true;
     mockCartQuantityHookState.items = [];
     mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
@@ -862,7 +891,12 @@ describe('<Cart />', () => {
 
   it('does not show the skeleton while refreshing an existing cart', () => {
     mockCartHookState.items = [createItem(1)];
-    mockCartHookState.snapshot = { itemCount: 1, estimatedWeightGrams: 100, packageValue: 10001 };
+    mockCartHookState.snapshot = {
+      itemCount: 1,
+      productCount: 1,
+      estimatedWeightGrams: 100,
+      packageValue: 10001,
+    };
     mockCartHookState.isLoading = true;
     mockCartQuantityHookState.items = mockCartHookState.items;
     mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
@@ -875,7 +909,12 @@ describe('<Cart />', () => {
 
   it('silently refreshes the cart after successfully removing an item', async () => {
     mockCartHookState.items = [createItem(1)];
-    mockCartHookState.snapshot = { itemCount: 1, estimatedWeightGrams: 100, packageValue: 10001 };
+    mockCartHookState.snapshot = {
+      itemCount: 1,
+      productCount: 1,
+      estimatedWeightGrams: 100,
+      packageValue: 10001,
+    };
     mockCartQuantityHookState.items = mockCartHookState.items;
     mockCartQuantityHookState.snapshot = mockCartHookState.snapshot;
 

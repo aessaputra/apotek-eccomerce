@@ -42,6 +42,7 @@ export interface CartItemWithProduct {
  */
 export interface CartSnapshot {
   itemCount: number;
+  productCount: number;
   estimatedWeightGrams: number;
   packageValue: number;
 }

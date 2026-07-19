@@ -46,7 +46,10 @@ jest.mock('react-native-safe-area-context', () => {
 
 jest.mock('@/hooks', () => ({
   useHomeData: () => mockUseHomeData(),
-  useCartPaginated: () => ({ snapshot: { itemCount: 0, items: [] } }),
+  useCartPaginated: () => ({
+    snapshot: { itemCount: 0, productCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+    items: [],
+  }),
 }));
 
 jest.mock('@/services', () => ({

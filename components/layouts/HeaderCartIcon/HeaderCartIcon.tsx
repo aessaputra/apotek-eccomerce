@@ -24,7 +24,7 @@ export default function HeaderCartIcon({
   const { user } = useAppSlice();
   const { snapshot: cartSnapshot } = useCartPaginated({ userId: user?.id });
 
-  const cartItemCount = cartSnapshot.itemCount;
+  const cartItemCount = cartSnapshot.productCount;
   const cartItemCountLabel = cartItemCount > 99 ? '99+' : cartItemCount;
 
   return (

@@ -57,10 +57,11 @@ function getSelectedCartSnapshot(items: CartItemWithProduct[]): CartSnapshot {
   return items.reduce<CartSnapshot>(
     (cartSnapshot, item) => ({
       itemCount: cartSnapshot.itemCount + item.quantity,
+      productCount: cartSnapshot.productCount + 1,
       estimatedWeightGrams: cartSnapshot.estimatedWeightGrams + item.quantity * item.product.weight,
       packageValue: cartSnapshot.packageValue + item.quantity * item.product.price,
     }),
-    { itemCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
+    { itemCount: 0, productCount: 0, estimatedWeightGrams: 0, packageValue: 0 },
   );
 }
 

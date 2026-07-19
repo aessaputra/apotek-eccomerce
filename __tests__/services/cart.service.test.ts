@@ -180,6 +180,7 @@ describe('cart.service snapshot behavior', () => {
     expect(result.error).toBeNull();
     expect(result.snapshot).toEqual({
       itemCount: 7,
+      productCount: 3,
       estimatedWeightGrams: 1300,
       packageValue: 35000,
     });
@@ -211,6 +212,7 @@ describe('cart.service snapshot behavior', () => {
     expect(result.error).toBeNull();
     expect(result.data?.snapshot).toEqual({
       itemCount: 3,
+      productCount: 2,
       estimatedWeightGrams: 700,
       packageValue: 25000,
     });
@@ -229,6 +231,7 @@ describe('cart.service snapshot behavior', () => {
     expect(result.error).toBeNull();
     expect(result.data?.snapshot).toEqual({
       itemCount: 5,
+      productCount: 2,
       estimatedWeightGrams: 950,
       packageValue: 48000,
     });
@@ -253,6 +256,7 @@ describe('cart.service snapshot behavior', () => {
     expect(result.metrics?.hasMore).toBe(true);
     expect(result.data?.snapshot).toEqual({
       itemCount: 50,
+      productCount: 50,
       estimatedWeightGrams: 10000,
       packageValue: 500000,
     });
@@ -374,6 +378,7 @@ describe('cart.service snapshot behavior', () => {
       ],
       snapshot: {
         itemCount: 2,
+        productCount: 1,
         estimatedWeightGrams: 400,
         packageValue: 20000,
       },

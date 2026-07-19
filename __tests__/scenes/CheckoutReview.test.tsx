@@ -44,6 +44,7 @@ const validParams = {
   selectedShippingKey: 'jne-reg',
   snapshotPayload: JSON.stringify({
     itemCount: 3,
+    productCount: 2,
     estimatedWeightGrams: 400,
     packageValue: 50000,
   }),
@@ -133,7 +134,7 @@ describe('<CheckoutReview />', () => {
     expect(mockUseCartCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
         selectedCartItemIds: ['cart-item-1', 'cart-item-2'],
-        snapshot: expect.objectContaining({ itemCount: 3, packageValue: 50000 }),
+        snapshot: expect.objectContaining({ itemCount: 3, productCount: 2, packageValue: 50000 }),
       }),
     );
 

@@ -75,6 +75,7 @@ const selectedShippingOption: ShippingOption = {
 
 const snapshot: CartSnapshot = {
   itemCount: 2,
+  productCount: 2,
   estimatedWeightGrams: 400,
   packageValue: 50000,
 };

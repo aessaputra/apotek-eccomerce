@@ -47,6 +47,7 @@ function createItem(quantity: number): CartItemWithProduct {
 function createSnapshot(quantity: number): CartSnapshot {
   return {
     itemCount: quantity,
+    productCount: quantity > 0 ? 1 : 0,
     estimatedWeightGrams: quantity * 200,
     packageValue: quantity * 10000,
   };

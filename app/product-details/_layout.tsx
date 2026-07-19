@@ -69,7 +69,7 @@ function ProductDetailsStackLayout() {
                 pressStyle={{ opacity: 0.7 }}
                 onPress={handleOpenCart}>
                 <CartIcon size={24} color={iconColor} />
-                {cartSnapshot.itemCount > 0 && (
+                {cartSnapshot.productCount > 0 && (
                   <YStack
                     position="absolute"
                     top={4}
@@ -82,11 +82,11 @@ function ProductDetailsStackLayout() {
                     height={18}
                     justifyContent="center"
                     alignItems="center"
-                    px={cartSnapshot.itemCount > 9 ? '$1.5' : 0}
+                    px={cartSnapshot.productCount > 9 ? '$1.5' : 0}
                     zIndex={10}
                     pointerEvents="none">
                     <Text color="$onPrimary" fontSize={9} fontWeight="900" lineHeight={11}>
-                      {cartSnapshot.itemCount > 99 ? '99+' : cartSnapshot.itemCount}
+                      {cartSnapshot.productCount > 99 ? '99+' : cartSnapshot.productCount}
                     </Text>
                   </YStack>
                 )}

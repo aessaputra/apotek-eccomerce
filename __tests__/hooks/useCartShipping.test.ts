@@ -44,6 +44,7 @@ const baseAddress: Address = {
 
 const snapshot: CartSnapshot = {
   itemCount: 2,
+  productCount: 2,
   estimatedWeightGrams: 400,
   packageValue: 50000,
 };
@@ -242,6 +243,7 @@ describe('useCartShipping', () => {
   it('sends selected-only aggregate values when requesting shipping rates', async () => {
     const selectedSnapshot: CartSnapshot = {
       itemCount: 3,
+      productCount: 1,
       estimatedWeightGrams: 750,
       packageValue: 123456,
     };
@@ -288,6 +290,7 @@ describe('useCartShipping', () => {
     }>();
     const selectedOnlySnapshot: CartSnapshot = {
       itemCount: 1,
+      productCount: 1,
       estimatedWeightGrams: 100,
       packageValue: 10000,
     };

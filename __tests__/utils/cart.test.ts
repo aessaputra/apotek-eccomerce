@@ -18,6 +18,7 @@ describe('cart utils', () => {
 
     expect(result).toEqual({
       itemCount: 7,
+      productCount: 3,
       estimatedWeightGrams: 1300,
       packageValue: 35000,
     });
@@ -34,6 +35,7 @@ describe('cart utils', () => {
 
     expect(result).toEqual({
       itemCount: 3,
+      productCount: 1,
       estimatedWeightGrams: 600,
       packageValue: 36000,
     });

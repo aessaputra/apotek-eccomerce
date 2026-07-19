@@ -79,6 +79,7 @@ function createCart(items: CartItemWithProduct[]): CartWithItems {
     items,
     snapshot: {
       itemCount: items.reduce((total, item) => total + item.quantity, 0),
+      productCount: items.length,
       estimatedWeightGrams: items.reduce(
         (total, item) => total + item.quantity * item.product.weight,
         0,
@@ -119,6 +120,7 @@ describe('useCartPaginated', () => {
     expect(result.current.items).toEqual([]);
     expect(result.current.snapshot).toEqual({
       itemCount: 0,
+      productCount: 0,
       estimatedWeightGrams: 0,
       packageValue: 0,
     });
