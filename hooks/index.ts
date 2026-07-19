@@ -7,7 +7,7 @@ export { useHomeData } from './useHomeData';
 export { useAllProductsPaginated } from './useAllProductsPaginated';
 export { useOrdersPaginated } from './useOrdersPaginated';
 export { useOrdersLandingData } from './useOrdersLandingData';
-export { useOrderTabCounts } from './useOrderTabCounts';
+export { useOrderTabCounts, invalidateOrderTabCountsCache } from './useOrderTabCounts';
 export { useUnpaidOrdersPaginated } from './useUnpaidOrdersPaginated';
 export { useOrderDetail } from './useOrderDetail';
 export { useOrderTracking } from './useOrderTracking';

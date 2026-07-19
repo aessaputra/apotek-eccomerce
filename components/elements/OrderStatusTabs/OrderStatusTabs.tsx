@@ -16,6 +16,9 @@ export type OrderTab = 'all' | 'unpaid' | 'packing' | 'shipped' | 'completed' | 
 type CountedOrderTab = Exclude<OrderTab, 'all'>;
 export type OrderStatusTabCounts = Partial<Record<CountedOrderTab, number>>;
 
+// Only these tabs show a count badge (active action-required states)
+const BADGE_TABS = new Set<OrderTab>(['unpaid', 'packing', 'shipped']);
+
 interface TabConfig {
   key: OrderTab;
   label: string;
@@ -68,6 +71,10 @@ interface OrderStatusTabsProps {
 
 function isCountedTab(tab: TabConfig): tab is TabConfig & { key: CountedOrderTab } {
   return tab.key !== 'all';
+}
+
+function isBadgeTab(tab: TabConfig): boolean {
+  return BADGE_TABS.has(tab.key);
 }
 
 export function getOrderStatusTabWidth(containerWidth: number): number {
@@ -250,7 +257,8 @@ export function OrderStatusTabs({ activeTab, counts, onTabChange }: OrderStatusT
         contentContainerStyle={TABS_CONTENT_CONTAINER_STYLE}>
         {TABS.map(tab => {
           const isActive = activeTab === tab.key;
-          const count = isCountedTab(tab) ? (counts[tab.key] ?? 0) : undefined;
+          // Only badge-eligible tabs (unpaid, packing, shipped) receive a count
+          const count = isBadgeTab(tab) && isCountedTab(tab) ? (counts[tab.key] ?? 0) : undefined;
 
           return (
             <OrderStatusTabItem
