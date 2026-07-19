@@ -10,6 +10,19 @@ export function normalizeAddressText(value: string): string {
     .trim();
 }
 
+export function normalizeAbbreviations(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[.,\-/]/g, ' ')
+    .replace(/\b(jl|jln)\b/g, 'jalan')
+    .replace(/\b(jend|jendr)\b/g, 'jendral')
+    .replace(/\bgg\b/g, 'gang')
+    .replace(/\bkav\b/g, 'kavling')
+    .replace(/\bno\b/g, 'nomor')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function getLeadingAddressSegment(value: string): string {
   return value.split(',')[0]?.trim() ?? '';
 }

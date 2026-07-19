@@ -13,6 +13,7 @@ import {
   normalizePlaceId,
   sanitizeAddressCandidate,
   startsWithPlusCode,
+  normalizeAbbreviations,
 } from './googlePlaces.shared';
 import { cleanStreetAddress } from '@/utils/address';
 
@@ -361,12 +362,18 @@ export function convertPlaceDetailsToAddressValue(placeDetails: GooglePlaceDetai
   const streetParts = [route, streetNumber].filter(Boolean);
   let rawStreetAddress = streetParts.length > 0 ? streetParts.join(' ') : placeDetails.name;
 
+  const normName = normalizeAbbreviations(placeDetails.name);
+  const normRoute = normalizeAbbreviations(route);
+  const normStreet = normalizeAbbreviations(rawStreetAddress);
+
   const hasDistinctBuildingName =
     streetParts.length > 0 &&
     placeDetails.name &&
     placeDetails.name !== 'Lokasi' &&
-    normalizeAddressText(placeDetails.name) !== normalizeAddressText(route) &&
-    normalizeAddressText(placeDetails.name) !== normalizeAddressText(rawStreetAddress);
+    normName !== normRoute &&
+    normName !== normStreet &&
+    !normRoute.includes(normName) &&
+    !normName.includes(normRoute);
 
   if (hasDistinctBuildingName) {
     rawStreetAddress = `${placeDetails.name}, ${rawStreetAddress}`;
@@ -420,8 +427,14 @@ export function mapReverseGeocodeResultToAddress(
   const streetParts = [route, streetNumber].filter(Boolean);
   let rawFromParts = streetParts.join(' ');
 
+  const normPremise = normalizeAbbreviations(premise);
+  const normRoute = normalizeAbbreviations(route);
+
   const hasDistinctPremise =
-    premise && normalizeAddressText(premise) !== normalizeAddressText(route);
+    premise &&
+    normPremise !== normRoute &&
+    !normRoute.includes(normPremise) &&
+    !normPremise.includes(normRoute);
 
   if (hasDistinctPremise && rawFromParts) {
     rawFromParts = `${premise}, ${rawFromParts}`;

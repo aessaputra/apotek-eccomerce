@@ -639,11 +639,34 @@ describe('googlePlaces.service', () => {
       };
 
       const result = convertPlaceDetailsToAddress(details);
-
       expect(result.streetAddress).toBe('Test Location, Jalan Sudirman 1');
       expect(result.city).toBe('Jakarta');
       expect(result.province).toBe('DKI Jakarta');
       expect(result.postalCode).toBe('12345');
+    });
+
+    test('does not duplicate street name when place name is an abbreviated form of the route', () => {
+      const details = {
+        placeId: 'ChIJ123',
+        name: 'Jl. Jend. Sudirman',
+        formattedAddress: 'Jl. Jend. Sudirman, Serang, Kota Serang, Banten, 42118',
+        coordinates: { latitude: -6.12, longitude: 106.15 },
+        addressComponents: [
+          { longName: 'Jalan Jendral Sudirman', shortName: 'Jl. Jend. Sudirman', types: ['route'] },
+          { longName: 'Serang', shortName: 'Serang', types: ['administrative_area_level_3'] },
+          {
+            longName: 'Kota Serang',
+            shortName: 'Kota Serang',
+            types: ['administrative_area_level_2'],
+          },
+          { longName: 'Banten', shortName: 'Banten', types: ['administrative_area_level_1'] },
+          { longName: '42118', shortName: '42118', types: ['postal_code'] },
+        ],
+      };
+
+      const result = convertPlaceDetailsToAddress(details);
+
+      expect(result.streetAddress).toBe('Jalan Jendral Sudirman');
     });
 
     test('uses fallback chain for city', () => {
