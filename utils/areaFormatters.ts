@@ -38,11 +38,20 @@ export function formatLevel2Display(name: string, type?: string): string {
   return name;
 }
 
+export function formatLevel3Display(name: string): string {
+  const trimmed = (name ?? '').trim();
+  if (!trimmed) return '';
+  const cleaned = trimmed.replace(/^(kecamatan|kec\.?)\s+/i, '').trim();
+  return `Kecamatan ${cleaned}`;
+}
+
 export function resolveAreaNames(selectedArea: SelectedArea) {
   const area = selectedArea.area;
+  const rawDistrict =
+    selectedArea.districtName || area.administrative_division_level_3_name || area.name;
 
   return {
-    district: selectedArea.districtName || area.administrative_division_level_3_name || area.name,
+    district: formatLevel3Display(rawDistrict),
     regency: selectedArea.regencyName || area.administrative_division_level_2_name || '',
     province: selectedArea.provinceName || area.administrative_division_level_1_name || '',
     postalCode: selectedArea.postalCode || area.postal_code?.toString() || '',

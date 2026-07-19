@@ -3,6 +3,7 @@ import { Text, XStack, YStack, Separator } from 'tamagui';
 import { TruckIcon } from '@/components/icons';
 import OrderSectionCard from '@/components/elements/OrderSectionCard';
 import type { OrderWithItems } from '@/services';
+import { cleanStreetAddress } from '@/utils/address';
 
 interface OrderDetailAddressSectionProps {
   address: OrderWithItems['addresses'];
@@ -12,6 +13,14 @@ export default function OrderDetailAddressSection({ address }: OrderDetailAddres
   if (!address) {
     return null;
   }
+
+  const cleanedStreet = cleanStreetAddress(
+    address.street_address || '',
+    address.city || '',
+    address.province || '',
+    address.postal_code || '',
+    undefined,
+  );
 
   return (
     <OrderSectionCard>
@@ -33,7 +42,7 @@ export default function OrderDetailAddressSection({ address }: OrderDetailAddres
             {address.phone_number}
           </Text>
           <Text fontSize="$3" color="$colorSubtle">
-            {address.street_address}
+            {cleanedStreet}
           </Text>
           {address.address_note ? (
             <Text fontSize="$3" color="$colorSubtle">

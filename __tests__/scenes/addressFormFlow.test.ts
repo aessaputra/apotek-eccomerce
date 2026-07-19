@@ -68,7 +68,7 @@ describe('addressFormFlow', () => {
 
     expect(setArea).toHaveBeenCalledWith({
       id: 'area-1',
-      name: 'Walantaka, Kota Serang, Banten, 42183',
+      name: 'Kecamatan Walantaka, Kota Serang, Banten, 42183',
       city: 'Kota Serang',
       province: 'Banten',
       postalCode: '42183',
@@ -180,7 +180,7 @@ describe('addressFormFlow', () => {
       expect.any(Object),
       expect.objectContaining({
         areaId: 'area-1',
-        areaName: 'Walantaka',
+        areaName: 'Kecamatan Walantaka',
       }),
     );
     expect(applyMapPickerResult).toHaveBeenCalledTimes(1);
@@ -200,7 +200,7 @@ describe('addressFormFlow', () => {
       }),
     ).toEqual({
       areaId: 'area-2',
-      areaName: 'Ciruas, Kab. Serang, Banten, 42182',
+      areaName: 'Kecamatan Ciruas, Kab. Serang, Banten, 42182',
       city: 'Kabupaten Serang',
       province: 'Banten',
       postalCode: '42182',

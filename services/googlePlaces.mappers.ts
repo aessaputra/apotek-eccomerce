@@ -14,6 +14,7 @@ import {
   sanitizeAddressCandidate,
   startsWithPlusCode,
 } from './googlePlaces.shared';
+import { cleanStreetAddress } from '@/utils/address';
 
 export interface NearbyPlaceResult {
   places?: Array<{
@@ -373,10 +374,22 @@ export function convertPlaceDetailsToAddressValue(placeDetails: GooglePlaceDetai
 
   const sanitizedRaw = sanitizeAddressCandidate(rawStreetAddress);
   const sanitizedFallback = sanitizeAddressCandidate(placeDetails.formattedAddress.split(',')[0]);
-  const streetAddress = sanitizedRaw || sanitizedFallback || 'Lokasi';
+  const rawStreet = sanitizedRaw || sanitizedFallback || 'Lokasi';
+
+  const cleanedStreet = cleanStreetAddress(rawStreet, city, province, postalCode, district);
+
+  const normalizedSublocality = subLocality ? normalizeAddressText(subLocality) : '';
+  const normalizedDistrict = district ? normalizeAddressText(district) : '';
+  const normalizedCity = city ? normalizeAddressText(city) : '';
+
+  const isSublocalityRedundant =
+    normalizedSublocality === normalizedDistrict || normalizedSublocality === normalizedCity;
+
+  const finalStreetAddress =
+    subLocality && !isSublocalityRedundant ? `${cleanedStreet}, ${subLocality}` : cleanedStreet;
 
   return {
-    streetAddress: subLocality ? `${streetAddress}, ${subLocality}` : streetAddress,
+    streetAddress: finalStreetAddress,
     city,
     district,
     province,
@@ -418,13 +431,25 @@ export function mapReverseGeocodeResultToAddress(
 
   const sanitizedFromParts = sanitizeAddressCandidate(rawFromParts);
   const sanitizedFallback = sanitizeAddressCandidate(result.formatted_address.split(',')[0]);
-  const streetAddress = sanitizedFromParts || sanitizedFallback || 'Lokasi';
+  const rawStreet = sanitizedFromParts || sanitizedFallback || 'Lokasi';
+
+  const cleanedStreet = cleanStreetAddress(rawStreet, city, province, postalCode, district);
+
+  const normalizedSublocality = subLocality ? normalizeAddressText(subLocality) : '';
+  const normalizedDistrict = district ? normalizeAddressText(district) : '';
+  const normalizedCity = city ? normalizeAddressText(city) : '';
+
+  const isSublocalityRedundant =
+    normalizedSublocality === normalizedDistrict || normalizedSublocality === normalizedCity;
+
+  const finalStreetAddress =
+    subLocality && !isSublocalityRedundant ? `${cleanedStreet}, ${subLocality}` : cleanedStreet;
 
   return {
     id: result.place_id,
     placeId: result.place_id,
     fullAddress: result.formatted_address,
-    streetAddress: subLocality ? `${streetAddress}, ${subLocality}` : streetAddress,
+    streetAddress: finalStreetAddress,
     city,
     province,
     postalCode,

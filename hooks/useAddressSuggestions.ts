@@ -9,6 +9,7 @@ import {
   convertPlaceDetailsToAddress,
   getAddressRecommendations,
 } from '@/services/googlePlaces.service';
+import { cleanStreetAddress } from '@/utils/address';
 import type {
   AddressSuggestion,
   GeocodingProximity,
@@ -252,6 +253,14 @@ export function useAddressSuggestions(
             ? fallbackStreetAddress
             : address.streetAddress;
 
+        const cleanedStreetAddress = cleanStreetAddress(
+          resolvedStreetAddress,
+          address.city,
+          address.province,
+          address.postalCode,
+          address.district,
+        );
+
         setQuery('');
         setResults([]);
         setError(null);
@@ -261,7 +270,7 @@ export function useAddressSuggestions(
           id: suggestion.id,
           placeId: suggestion.placeId,
           fullAddress: data.formattedAddress,
-          streetAddress: resolvedStreetAddress,
+          streetAddress: cleanedStreetAddress,
           city: address.city,
           district: address.district,
           province: address.province,

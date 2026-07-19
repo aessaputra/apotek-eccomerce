@@ -1,0 +1,84 @@
+import { describe, expect, test } from '@jest/globals';
+import { cleanStreetAddress, formatAddress } from '@/utils/address';
+import { formatLevel3Display } from '@/utils/areaFormatters';
+import type { Address } from '@/types/address';
+
+describe('address utilities', () => {
+  describe('cleanStreetAddress', () => {
+    test('removes trailing postal code, province, city, district, and country', () => {
+      const street = 'JCO DONUTS & COFFEE - SERANG 2, Serang, Kota Serang, Banten, 42111';
+      const cleaned = cleanStreetAddress(
+        street,
+        'Kota Serang',
+        'Banten',
+        '42111',
+        'Kecamatan Serang',
+      );
+      expect(cleaned).toBe('JCO DONUTS & COFFEE - SERANG 2');
+    });
+
+    test('removes trailing city and province correctly with variations', () => {
+      const street = 'Jalan Jendral Sudirman, Serang, Kota Serang, Banten, 42118';
+      const cleaned = cleanStreetAddress(street, 'Kota Serang', 'Banten', '42118', 'Serang');
+      expect(cleaned).toBe('Jalan Jendral Sudirman');
+    });
+
+    test('handles addresses without trailing duplicates without altering them', () => {
+      const street = 'Jalan Jendral Sudirman No. 24';
+      const cleaned = cleanStreetAddress(street, 'Kota Serang', 'Banten', '42118', 'Serang');
+      expect(cleaned).toBe('Jalan Jendral Sudirman No. 24');
+    });
+
+    test('ignores case differences during removal', () => {
+      const street = 'Grand City Mall, SURABAYA, Jawa Timur, 60272, Indonesia';
+      const cleaned = cleanStreetAddress(street, 'Surabaya', 'Jawa Timur', '60272', 'Genteng');
+      expect(cleaned).toBe('Grand City Mall');
+    });
+  });
+
+  describe('formatAddress', () => {
+    test('defensively formats address details by deduplicating components', () => {
+      const address: Address = {
+        id: 'addr-1',
+        profile_id: 'prof-1',
+        receiver_name: 'John Doe',
+        phone_number: '08123456789',
+        street_address: 'JCO DONUTS & COFFEE - SERANG 2, Serang, Kota Serang, Banten, 42111',
+        address_note: 'Dekat lobby',
+        city: 'Kota Serang',
+        province: 'Banten',
+        postal_code: '42111',
+        area_id: 'area-1',
+        area_name: 'Serang, Kota Serang, Banten, 42111',
+        latitude: -6.12,
+        longitude: 106.15,
+        country_code: 'ID',
+        is_default: true,
+        city_id: 'city-1',
+        province_id: 'prov-1',
+        created_at: new Date().toISOString(),
+      };
+
+      const result = formatAddress(address);
+      expect(result).toBe(
+        'JCO DONUTS & COFFEE - SERANG 2, Dekat lobby, Kota Serang, Banten, 42111',
+      );
+    });
+  });
+
+  describe('formatLevel3Display (Kecamatan)', () => {
+    test('adds Kecamatan prefix if not present', () => {
+      expect(formatLevel3Display('Serang')).toBe('Kecamatan Serang');
+    });
+
+    test('standardizes existing Kecamatan / Kec prefix', () => {
+      expect(formatLevel3Display('Kec. Serang')).toBe('Kecamatan Serang');
+      expect(formatLevel3Display('Kecamatan Serang')).toBe('Kecamatan Serang');
+      expect(formatLevel3Display('kecamatan serang')).toBe('Kecamatan serang');
+    });
+
+    test('returns empty string for empty input', () => {
+      expect(formatLevel3Display('')).toBe('');
+    });
+  });
+});
