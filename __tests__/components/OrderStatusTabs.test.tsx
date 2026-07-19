@@ -124,4 +124,25 @@ describe('<OrderStatusTabs />', () => {
       expect(tabButtonStyle.gap).toBe(4);
     });
   });
+
+  test('renders badge counts correctly when count > 0', () => {
+    const testCounts = {
+      unpaid: 5,
+      packing: 0,
+      shipped: 105,
+      completed: 0,
+      cancelled: 0,
+    };
+
+    render(<OrderStatusTabs activeTab="all" counts={testCounts} onTabChange={() => {}} />);
+
+    // Unpaid tab has count 5 -> should show '5'
+    expect(screen.getByText('5')).toBeTruthy();
+
+    // Shipped tab has count 105 -> should show '99+'
+    expect(screen.getByText('99+')).toBeTruthy();
+
+    // Packing tab has count 0 -> should not show '0' or any badge
+    expect(screen.queryByText('0')).toBeNull();
+  });
 });

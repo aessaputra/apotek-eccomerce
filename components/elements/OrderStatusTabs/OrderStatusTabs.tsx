@@ -117,6 +117,7 @@ const TabIcon = styled(YStack, {
   height: TAB_ICON_SLOT_SIZE,
   alignItems: 'center',
   justifyContent: 'center',
+  position: 'relative',
 
   variants: {
     active: {
@@ -158,6 +159,45 @@ const TabLabel = styled(Text, {
   },
 });
 
+const TabBadge = styled(YStack, {
+  position: 'absolute',
+  top: -4,
+  right: -4,
+  backgroundColor: '$primary',
+  borderRadius: 100,
+  borderWidth: 1.5,
+  minWidth: 16,
+  height: 16,
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 10,
+  pointerEvents: 'none',
+
+  variants: {
+    active: {
+      true: {
+        borderColor: '$surfaceElevated',
+      },
+      false: {
+        borderColor: '$background',
+      },
+    },
+    wide: {
+      true: {
+        px: '$1.5',
+      },
+      false: {
+        px: 0,
+      },
+    },
+  } as const,
+
+  defaultVariants: {
+    active: false,
+    wide: false,
+  },
+});
+
 const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
   tab,
   count,
@@ -183,6 +223,13 @@ const OrderStatusTabItem = React.memo(function OrderStatusTabItem({
       accessibilityHint={accessibilityHint}>
       <TabIcon active={isActive}>
         <IconComponent size={TAB_ICON_SIZE} color={isActive ? '$primary' : '$colorSubtle'} />
+        {count !== undefined && count > 0 ? (
+          <TabBadge active={isActive} wide={count > 9}>
+            <Text color="$onPrimary" fontSize={8} fontWeight="700" lineHeight={10}>
+              {count > 99 ? '99+' : count}
+            </Text>
+          </TabBadge>
+        ) : null}
       </TabIcon>
       <TabLabel active={isActive} numberOfLines={1}>
         {tab.label}
