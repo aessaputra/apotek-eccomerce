@@ -84,6 +84,7 @@ export default function Payment() {
   const {
     confirmCloseDialogOpen,
     finalizePaymentFlow,
+    handleUserClose,
     isPolling,
     paymentError,
     postPaymentMessage,
@@ -342,7 +343,26 @@ export default function Payment() {
         </XStack>
       )}
 
-      {postPaymentState === 'verifying' || isPolling ? (
+      {postPaymentState === 'closing' ? (
+        <YStack
+          flex={1}
+          alignItems="center"
+          justifyContent="center"
+          gap="$4"
+          padding="$4"
+          role="alert"
+          aria-live="polite">
+          <Spinner size="large" color="$primary" />
+          <YStack gap="$2" alignItems="center">
+            <Text textAlign="center" color="$color" fontWeight="700" fontSize="$5">
+              Memeriksa Status Pembayaran...
+            </Text>
+            <Text textAlign="center" color="$colorPress" fontSize="$3">
+              Mohon tunggu sebentar.
+            </Text>
+          </YStack>
+        </YStack>
+      ) : postPaymentState === 'verifying' || isPolling ? (
         <YStack
           flex={1}
           alignItems="center"
@@ -485,7 +505,7 @@ export default function Payment() {
           confirmTextColor="$danger"
           confirmBorderColor="$danger"
           onConfirm={() => {
-            void finalizePaymentFlow('pending');
+            void handleUserClose();
           }}
         />
       ) : null}

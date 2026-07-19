@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import { appActions } from '@/slices';
-import { pollOrderPaymentStatus } from '@/services/checkout.service';
+import { getOrderPaymentStatus, pollOrderPaymentStatus } from '@/services/checkout.service';
 import { DataPersistKeys } from '@/hooks/useDataPersist';
 import type { PaymentResult } from '@/types/payment';
 import {
@@ -57,9 +57,9 @@ export function usePaymentFlow({
 }: UsePaymentFlowParams) {
   const [isPolling, setIsPolling] = useState(false);
   const [paymentResult, setPaymentResult] = useState<PaymentResult['status'] | null>(null);
-  const [postPaymentState, setPostPaymentState] = useState<'idle' | 'verifying' | 'timeout'>(
-    'idle',
-  );
+  const [postPaymentState, setPostPaymentState] = useState<
+    'idle' | 'verifying' | 'closing' | 'timeout'
+  >('idle');
   const [postPaymentMessage, setPostPaymentMessage] = useState<string | null>(null);
   const [confirmCloseDialogOpen, setConfirmCloseDialogOpen] = useState(false);
   const [webviewLoading, setWebviewLoading] = useState(true);
@@ -133,6 +133,39 @@ export function usePaymentFlow({
     [dispatch, markCartRefreshRequested, removePersistData, resolvedOrderId, router, userId],
   );
 
+  const handleUserClose = useCallback(async () => {
+    if (finalizeOnceRef.current) {
+      return;
+    }
+
+    finalizeOnceRef.current = true;
+    setConfirmCloseDialogOpen(false);
+    setWebviewLoading(false);
+    setPaymentError(null);
+    setPostPaymentState('closing');
+    setPostPaymentMessage(null);
+
+    await removePersistData(DataPersistKeys.CHECKOUT_SESSION);
+
+    if (!resolvedOrderId) {
+      router.replace(ORDERS_ROUTE);
+      return;
+    }
+
+    const { data, error } = await getOrderPaymentStatus(resolvedOrderId);
+    const paymentStatus = data?.payment_status ?? '';
+
+    if (!error && PAYMENT_SUCCESS_STATUSES.includes(paymentStatus)) {
+      invalidateOrderCaches(dispatch, userId);
+      dispatch(markCartRefreshRequested(Date.now()));
+      router.replace(`/payment-success?orderId=${resolvedOrderId}`);
+      return;
+    }
+
+    invalidateOrderCaches(dispatch, userId);
+    router.replace(ORDERS_ROUTE);
+  }, [dispatch, markCartRefreshRequested, removePersistData, resolvedOrderId, router, userId]);
+
   useEffect(() => {
     if (!resolvedOrderId || postPaymentState !== 'idle' || isPolling) {
       return;
@@ -163,6 +196,7 @@ export function usePaymentFlow({
   return {
     confirmCloseDialogOpen,
     finalizePaymentFlow,
+    handleUserClose,
     isPolling,
     paymentError,
     paymentResult,

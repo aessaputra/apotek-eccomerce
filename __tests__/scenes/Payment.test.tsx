@@ -14,6 +14,7 @@ import Payment, {
 const mockReplace = jest.fn();
 const mockUseLocalSearchParams = jest.fn();
 const mockPollOrderPaymentStatus = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockGetOrderPaymentStatus = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockRemovePersistData = jest.fn<(...args: unknown[]) => Promise<boolean>>();
 const mockDispatch = jest.fn();
 const mockMarkCartRefreshRequested = jest.fn((timestamp: number) => ({
@@ -83,6 +84,7 @@ jest.mock('@/hooks/useDataPersist', () => ({
 
 jest.mock('@/services/checkout.service', () => ({
   pollOrderPaymentStatus: (...args: unknown[]) => mockPollOrderPaymentStatus(...args),
+  getOrderPaymentStatus: (...args: unknown[]) => mockGetOrderPaymentStatus(...args),
 }));
 
 jest.mock('@/slices', () => ({
@@ -118,6 +120,7 @@ describe('<Payment />', () => {
     mockUseLocalSearchParams.mockReset();
     mockPollOrderPaymentStatus.mockReset();
     mockRemovePersistData.mockReset();
+    mockGetOrderPaymentStatus.mockReset();
     mockDispatch.mockReset();
     mockMarkCartRefreshRequested.mockClear();
     mockInvalidateUnpaidOrdersCache.mockClear();
@@ -411,14 +414,14 @@ describe('<Payment />', () => {
     });
   });
 
-  test('opens the close confirmation dialog and finalizes pending state on confirm', async () => {
+  test('opens the close confirmation dialog and checks status once on user close', async () => {
     mockUseLocalSearchParams.mockReturnValue({
       paymentUrl: 'https://snap.midtrans.com/v1/token',
       orderId: 'order-1',
     });
-    mockPollOrderPaymentStatus.mockResolvedValue({
-      data: null,
-      error: new Error('Status pembayaran masih diproses'),
+    mockGetOrderPaymentStatus.mockResolvedValue({
+      data: { payment_status: 'pending' },
+      error: null,
     });
 
     render(<Payment />);
@@ -432,8 +435,37 @@ describe('<Payment />', () => {
     });
 
     await waitFor(() => {
-      expect(mockPollOrderPaymentStatus).toHaveBeenCalledWith('order-1', 12, 2000);
-      expect(screen.getByText('Pembayaran sedang diproses')).toBeTruthy();
+      expect(mockGetOrderPaymentStatus).toHaveBeenCalledWith('order-1');
+      expect(mockRemovePersistData).toHaveBeenCalledWith('CHECKOUT_SESSION');
+      expect(mockReplace).toHaveBeenCalledWith('/orders');
     });
+
+    expect(mockPollOrderPaymentStatus).not.toHaveBeenCalled();
+  });
+
+  test('redirects to payment success if user closes but payment already settled', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      paymentUrl: 'https://snap.midtrans.com/v1/token',
+      orderId: 'order-1',
+    });
+    mockGetOrderPaymentStatus.mockResolvedValue({
+      data: { payment_status: 'settlement' },
+      error: null,
+    });
+
+    render(<Payment />);
+
+    fireEvent.press(screen.getByText('Tutup'));
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Batalkan & Keluar'));
+    });
+
+    await waitFor(() => {
+      expect(mockGetOrderPaymentStatus).toHaveBeenCalledWith('order-1');
+      expect(mockReplace).toHaveBeenCalledWith('/payment-success?orderId=order-1');
+    });
+
+    expect(mockPollOrderPaymentStatus).not.toHaveBeenCalled();
   });
 });
