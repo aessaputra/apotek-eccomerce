@@ -30,6 +30,8 @@ export {
 
 const INJECTED_JAVASCRIPT = `
   (function() {
+    if (window.hasQRISDownloadListener) return;
+    window.hasQRISDownloadListener = true;
     document.addEventListener('click', function(e) {
       var target = e.target.closest('a');
       if (target && target.hasAttribute('download')) {
