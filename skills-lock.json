@@ -229,6 +229,12 @@
       "skillPath": "engineering/skills/testing-strategy/SKILL.md",
       "computedHash": "2fe64e97a596e862cd946bb8cddbbf4e9f1e1f21ca817f586111a25af474d0f8"
     },
+    "to-spec": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/to-spec/SKILL.md",
+      "computedHash": "0f544cd0c099c06f0dd0b7b9ee98b4237218e7e95fd3d3c02e791efbaf74bacb"
+    },
     "using-git-worktrees": {
       "source": "obra/superpowers",
       "sourceType": "github",
