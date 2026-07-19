@@ -234,7 +234,19 @@ export default function Payment() {
         if (data.type === 'DOWNLOAD_QRIS' && data.url) {
           const base64Data = data.url.split(',')[1];
           if (!base64Data) return;
-          const filename = data.filename || `qris-${Date.now()}.png`;
+          let filename = data.filename || `qris-${Date.now()}.png`;
+          if (!/\.[a-zA-Z0-9]+$/.test(filename)) {
+            const mimeType = data.url.split(';')[0]?.split(':')[1];
+            const ext =
+              mimeType === 'image/jpeg'
+                ? '.jpg'
+                : mimeType === 'image/webp'
+                  ? '.webp'
+                  : mimeType === 'image/gif'
+                    ? '.gif'
+                    : '.png';
+            filename += ext;
+          }
 
           try {
             const fileUri = `${FileSystem.cacheDirectory}${filename}`;
