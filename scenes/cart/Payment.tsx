@@ -18,7 +18,7 @@ import {
   resolveRouteParam,
 } from '@/scenes/cart/payment.utils';
 import { usePaymentFlow } from '@/scenes/cart/usePaymentFlow';
-import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 export {
   isDeepLink,
@@ -237,18 +237,15 @@ export default function Payment() {
           const filename = data.filename || `qris-${Date.now()}.png`;
 
           try {
-            const file = new File(Paths.cache, filename);
-            if (!file.exists) {
-              file.create();
-            }
-            file.write(base64Data, {
-              encoding: 'base64',
+            const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+            await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+              encoding: FileSystem.EncodingType.Base64,
             });
 
             const { status } = await MediaLibrary.requestPermissionsAsync();
 
             if (status === 'granted') {
-              await MediaLibrary.saveToLibraryAsync(file.uri);
+              await MediaLibrary.saveToLibraryAsync(fileUri);
               Alert.alert('Sukses', 'QRIS berhasil disimpan ke galeri foto Anda.');
             } else {
               setPaymentError('Izin akses galeri ditolak. Tidak dapat mengunduh QRIS.');
