@@ -57,14 +57,14 @@ export default function OrderDetailAddressSection({ address }: OrderDetailAddres
               {displayDistrict}
             </Text>
           ) : null}
+          <Text fontSize="$3" color="$colorSubtle">
+            {address.city}, {address.province} {address.postal_code}
+          </Text>
           {address.address_note ? (
             <Text fontSize="$3" color="$colorSubtle" fontStyle="italic">
               Catatan: {address.address_note}
             </Text>
           ) : null}
-          <Text fontSize="$3" color="$colorSubtle">
-            {address.city}, {address.province} {address.postal_code}
-          </Text>
         </YStack>
       </YStack>
     </OrderSectionCard>
