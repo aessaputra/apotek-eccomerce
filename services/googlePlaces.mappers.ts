@@ -268,7 +268,7 @@ export function mapPlaceDetailsResponseToDetails(
 ): GooglePlaceDetails {
   return {
     placeId: normalizePlaceId(data.id) || fallbackPlaceId,
-    name: data.formattedAddress?.split(',')[0] ?? 'Lokasi',
+    name: data.displayName?.text ?? data.formattedAddress?.split(',')[0] ?? 'Lokasi',
     formattedAddress: data.formattedAddress ?? '',
     coordinates: {
       latitude: data.location?.latitude ?? 0,

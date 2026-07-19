@@ -288,6 +288,7 @@ describe('googlePlaces.service', () => {
         ok: true,
         json: async () => ({
           id: 'places/ChIJ123',
+          displayName: { text: 'Test Pharmacy' },
           formattedAddress: 'Jl. Sudirman, Jakarta',
           addressComponents: [{ longText: 'Jakarta', shortText: 'Jakarta', types: ['locality'] }],
           location: { latitude: -6.2088, longitude: 106.8456 },
@@ -298,7 +299,7 @@ describe('googlePlaces.service', () => {
       const result = await getPlaceDetails('ChIJ123', 'session-123');
 
       expect(result.data?.placeId).toBe('ChIJ123');
-      expect(result.data?.name).toBe('Jl. Sudirman');
+      expect(result.data?.name).toBe('Test Pharmacy');
       expect(result.data?.coordinates.latitude).toBe(-6.2088);
     });
 
