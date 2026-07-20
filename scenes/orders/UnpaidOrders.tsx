@@ -3,6 +3,7 @@ import { useTheme } from 'tamagui';
 import { useRouter } from 'expo-router';
 import EmptyOrdersIllustration from '@/components/elements/EmptyOrdersIllustration';
 import { useUnpaidOrdersPaginated } from '@/hooks/useUnpaidOrdersPaginated';
+import { invalidateOrderTabCountsCache } from '@/hooks/useOrderTabCounts';
 import { useAppSlice } from '@/slices';
 import { getThemeColor } from '@/utils/theme';
 import type { OrderListItem } from '@/services';
@@ -58,8 +59,11 @@ export function UnpaidOrders() {
   }, [router]);
 
   const handleOrderExpired = useCallback(() => {
+    if (user?.id) {
+      invalidateOrderTabCountsCache(user.id);
+    }
     void refresh();
-  }, [refresh]);
+  }, [refresh, user?.id]);
 
   return (
     <OrderStatusList

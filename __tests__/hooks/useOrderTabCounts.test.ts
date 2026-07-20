@@ -23,7 +23,11 @@ jest.mock('@/services', () => ({
   getOrderTabCounts: mockGetOrderTabCounts,
 }));
 
-const { clearOrderTabCountsCache, useOrderTabCounts } = require('@/hooks/useOrderTabCounts');
+const {
+  clearOrderTabCountsCache,
+  invalidateOrderTabCountsCache,
+  useOrderTabCounts,
+} = require('@/hooks/useOrderTabCounts');
 
 function createCounts(): OrderTabCounts {
   return {
@@ -95,5 +99,34 @@ describe('useOrderTabCounts', () => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe('failed to load counts');
     });
+  });
+
+  it('refetches fresh counts when invalidateOrderTabCountsCache is invoked', async () => {
+    const initialCounts = createCounts();
+    const updatedCounts = { ...initialCounts, unpaid: 0, packing: 2 };
+
+    mockGetOrderTabCounts.mockResolvedValueOnce({ data: initialCounts, error: null });
+
+    const { result } = renderHook(() => useOrderTabCounts('user-1'));
+
+    act(() => {
+      mockLatestFocusCallback?.();
+    });
+
+    await waitFor(() => {
+      expect(result.current.counts).toEqual(initialCounts);
+    });
+
+    mockGetOrderTabCounts.mockResolvedValueOnce({ data: updatedCounts, error: null });
+
+    act(() => {
+      invalidateOrderTabCountsCache('user-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.counts).toEqual(updatedCounts);
+    });
+
+    expect(mockGetOrderTabCounts).toHaveBeenCalledTimes(2);
   });
 });

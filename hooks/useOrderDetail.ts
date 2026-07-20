@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useFocusEffect } from 'expo-router';
 import { confirmOrderReceived, getOrderById, type OrderWithItems } from '@/services/order.service';
 import { appActions } from '@/slices/app.slice';
+import { invalidateOrderTabCountsCache } from './useOrderTabCounts';
 import type { Dispatch } from '@/utils/store';
 import { classifyError, translateErrorMessage } from '@/utils/error';
 
@@ -197,6 +198,7 @@ export function useOrderDetail(orderId?: string): UseOrderDetailReturn {
       if (userId) {
         dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey: 'shipped', userId }));
         dispatch(appActions.invalidateOrdersByStatusCache({ cacheKey: 'completed', userId }));
+        invalidateOrderTabCountsCache(userId);
       }
 
       await fetchOrder('refresh');

@@ -29,6 +29,7 @@ jest.mock('@/services', () => ({
 
 const {
   clearOrdersLandingDataCache,
+  invalidateOrdersLandingDataCache,
   useOrdersLandingData,
 } = require('@/hooks/useOrdersLandingData');
 
@@ -105,5 +106,37 @@ describe('useOrdersLandingData', () => {
       expect(result.current.counts).toEqual(counts);
       expect(result.current.pastProducts).toEqual(products);
     });
+  });
+
+  it('refetches fresh landing data when invalidateOrdersLandingDataCache is called', async () => {
+    const counts = createCounts();
+    const products = [createPastProduct()];
+
+    mockGetOrderTabCounts.mockResolvedValueOnce({ data: counts, error: null });
+    mockGetPastPurchasedProducts.mockResolvedValueOnce({ data: products, error: null });
+
+    const { result } = renderHook(() => useOrdersLandingData('user-1'));
+
+    act(() => {
+      mockLatestFocusCallback?.();
+    });
+
+    await waitFor(() => {
+      expect(result.current.counts).toEqual(counts);
+    });
+
+    const updatedCounts = { ...counts, unpaid: 0, packing: 2 };
+    mockGetOrderTabCounts.mockResolvedValueOnce({ data: updatedCounts, error: null });
+    mockGetPastPurchasedProducts.mockResolvedValueOnce({ data: products, error: null });
+
+    act(() => {
+      invalidateOrdersLandingDataCache('user-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.counts).toEqual(updatedCounts);
+    });
+
+    expect(mockGetOrderTabCounts).toHaveBeenCalledTimes(2);
   });
 });

@@ -44,8 +44,28 @@ interface OrdersLandingFetchResult {
 
 const landingCache = new Map<string, OrdersLandingCacheEntry>();
 
+type LandingInvalidationListener = (targetUserId?: string) => void;
+const landingInvalidationListeners = new Set<LandingInvalidationListener>();
+
+export function subscribeOrdersLandingDataInvalidation(listener: LandingInvalidationListener): () => void {
+  landingInvalidationListeners.add(listener);
+  return () => {
+    landingInvalidationListeners.delete(listener);
+  };
+}
+
 export function clearOrdersLandingDataCache(): void {
   landingCache.clear();
+  landingInvalidationListeners.forEach(listener => listener());
+}
+
+export function invalidateOrdersLandingDataCache(userId?: string): void {
+  if (userId) {
+    landingCache.delete(userId);
+  } else {
+    landingCache.clear();
+  }
+  landingInvalidationListeners.forEach(listener => listener(userId));
 }
 
 function isFresh(entry: OrdersLandingCacheEntry | undefined): boolean {
@@ -213,6 +233,18 @@ export function useOrdersLandingData(userId?: string): UseOrdersLandingDataRetur
     },
     [userId],
   );
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    return subscribeOrdersLandingDataInvalidation(targetUserId => {
+      if (!targetUserId || targetUserId === userId) {
+        void loadLandingData('manual');
+      }
+    });
+  }, [userId, loadLandingData]);
 
   useFocusEffect(
     useCallback(() => {

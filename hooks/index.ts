@@ -6,8 +6,16 @@ export { useAddressSuggestions } from './useAddressSuggestions';
 export { useHomeData } from './useHomeData';
 export { useAllProductsPaginated } from './useAllProductsPaginated';
 export { useOrdersPaginated } from './useOrdersPaginated';
-export { useOrdersLandingData } from './useOrdersLandingData';
-export { useOrderTabCounts, invalidateOrderTabCountsCache } from './useOrderTabCounts';
+export {
+  useOrdersLandingData,
+  invalidateOrdersLandingDataCache,
+  clearOrdersLandingDataCache,
+} from './useOrdersLandingData';
+export {
+  useOrderTabCounts,
+  invalidateOrderTabCountsCache,
+  clearOrderTabCountsCache,
+} from './useOrderTabCounts';
 export { useUnpaidOrdersPaginated } from './useUnpaidOrdersPaginated';
 export { useOrderDetail } from './useOrderDetail';
 export { useOrderTracking } from './useOrderTracking';

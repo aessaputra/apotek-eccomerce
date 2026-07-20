@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { getOrderTabCounts, ORDERS_CACHE_TTL_MS, type OrderTabCounts } from '@/services';
 import { runDedupedRequest } from '@/utils/requestDeduplication';
+import { invalidateOrdersLandingDataCache } from './useOrdersLandingData';
 
 const EMPTY_COUNTS: OrderTabCounts = {
   unpaid: 0,
@@ -28,12 +29,30 @@ export interface UseOrderTabCountsReturn extends OrderTabCountsState {
 
 const countsCache = new Map<string, OrderTabCountsCacheEntry>();
 
-export function clearOrderTabCountsCache(): void {
-  countsCache.clear();
+type InvalidationListener = (targetUserId?: string) => void;
+const invalidationListeners = new Set<InvalidationListener>();
+
+export function subscribeOrderTabCountsInvalidation(listener: InvalidationListener): () => void {
+  invalidationListeners.add(listener);
+  return () => {
+    invalidationListeners.delete(listener);
+  };
 }
 
-export function invalidateOrderTabCountsCache(userId: string): void {
-  countsCache.delete(userId);
+export function clearOrderTabCountsCache(): void {
+  countsCache.clear();
+  invalidateOrdersLandingDataCache();
+  invalidationListeners.forEach(listener => listener());
+}
+
+export function invalidateOrderTabCountsCache(userId?: string): void {
+  if (userId) {
+    countsCache.delete(userId);
+  } else {
+    countsCache.clear();
+  }
+  invalidateOrdersLandingDataCache(userId);
+  invalidationListeners.forEach(listener => listener(userId));
 }
 
 function isFresh(entry: OrderTabCountsCacheEntry | undefined): boolean {
@@ -173,6 +192,18 @@ export function useOrderTabCounts(userId?: string): UseOrderTabCountsReturn {
     },
     [userId],
   );
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    return subscribeOrderTabCountsInvalidation(targetUserId => {
+      if (!targetUserId || targetUserId === userId) {
+        void loadCounts('manual');
+      }
+    });
+  }, [userId, loadCounts]);
 
   useFocusEffect(
     useCallback(() => {

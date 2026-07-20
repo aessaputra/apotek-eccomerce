@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { DataPersistKeys, useDataPersist } from '@/hooks/useDataPersist';
+import { invalidateOrderTabCountsCache } from '@/hooks/useOrderTabCounts';
 import { createCheckoutOrder } from '@/services/checkout.service';
 import {
   buildCheckoutFingerprint,
@@ -351,6 +352,7 @@ export function useCartCheckout({
         orderIdForPayment = orderData.order_id;
         setCheckoutIdempotencyKey(orderData.checkout_idempotency_key);
         setActiveOrderId(orderData.order_id);
+        invalidateOrderTabCountsCache(userId);
         await persistCheckoutSession(orderData.checkout_idempotency_key, orderData.order_id);
       }
 
