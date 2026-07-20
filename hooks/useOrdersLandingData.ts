@@ -47,7 +47,9 @@ const landingCache = new Map<string, OrdersLandingCacheEntry>();
 type LandingInvalidationListener = (targetUserId?: string) => void;
 const landingInvalidationListeners = new Set<LandingInvalidationListener>();
 
-export function subscribeOrdersLandingDataInvalidation(listener: LandingInvalidationListener): () => void {
+export function subscribeOrdersLandingDataInvalidation(
+  listener: LandingInvalidationListener,
+): () => void {
   landingInvalidationListeners.add(listener);
   return () => {
     landingInvalidationListeners.delete(listener);
