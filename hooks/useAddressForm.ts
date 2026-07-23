@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import type { TextInput as RNTextInput } from 'react-native';
 import type { Address } from '@/types/address';
 import { parseCoordinate } from '@/utils/coordinates';
+import { cleanStreetAddress } from '@/utils/address';
 import {
   type AddressFormValues,
   type AddressFormErrors,
@@ -117,14 +118,25 @@ export function useAddressForm(): UseAddressFormReturn {
    */
   const setArea = useCallback(
     (area: { id: string; name: string; city: string; province: string; postalCode: string }) => {
-      setValues(prev => ({
-        ...prev,
-        areaId: area.id,
-        areaName: area.name,
-        city: area.city,
-        province: area.province,
-        postalCode: area.postalCode,
-      }));
+      const districtName = area.name ? area.name.split(',')[0].trim() : undefined;
+      setValues(prev => {
+        const cleanedStreet = cleanStreetAddress(
+          prev.streetAddress,
+          area.city,
+          area.province,
+          area.postalCode,
+          districtName,
+        );
+        return {
+          ...prev,
+          areaId: area.id,
+          areaName: area.name,
+          city: area.city,
+          province: area.province,
+          postalCode: area.postalCode,
+          streetAddress: cleanedStreet,
+        };
+      });
       // Clear errors for all auto-populated fields
       clearFieldError('areaId');
       clearFieldError('city');

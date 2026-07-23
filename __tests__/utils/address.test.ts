@@ -34,6 +34,49 @@ describe('address utilities', () => {
       const cleaned = cleanStreetAddress(street, 'Surabaya', 'Jawa Timur', '60272', 'Genteng');
       expect(cleaned).toBe('Grand City Mall');
     });
+
+    test('handles suffix-only address with city at end and no district', () => {
+      const street = 'Jl. Pemuda No. 10, Surabaya';
+      const cleaned = cleanStreetAddress(street, 'Surabaya', 'Jawa Timur', '60271');
+      expect(cleaned).toBe('Jl. Pemuda No. 10');
+    });
+
+    test('handles multi-line address using newline as separator', () => {
+      const street = 'Jl. Jendral Sudirman No. 5\nSurabaya\nJawa Timur\n60271';
+      const cleaned = cleanStreetAddress(street, 'Surabaya', 'Jawa Timur', '60271', 'Genteng');
+      expect(cleaned).toBe('Jl. Jendral Sudirman No. 5');
+    });
+
+    test('handles various kecamatan prefix variations (Kec., KEC., kecamatan)', () => {
+      expect(
+        cleanStreetAddress('Jl. Mawar, Kec. Serang', 'Serang', 'Banten', '42111', 'Serang'),
+      ).toBe('Jl. Mawar');
+      expect(
+        cleanStreetAddress('Jl. Mawar, KEC. SERANG', 'Serang', 'Banten', '42111', 'Serang'),
+      ).toBe('Jl. Mawar');
+      expect(
+        cleanStreetAddress('Jl. Mawar, kecamatan serang', 'Serang', 'Banten', '42111', 'serang'),
+      ).toBe('Jl. Mawar');
+    });
+
+    test('returns clean address unchanged if no trailing location info exists', () => {
+      const street = 'Jl. Diponegoro No. 123 Blok B';
+      const cleaned = cleanStreetAddress(street, 'Bandung', 'Jawa Barat', '40115', 'Coblong');
+      expect(cleaned).toBe('Jl. Diponegoro No. 123 Blok B');
+    });
+
+    test('handles empty or null fields gracefully without crashing', () => {
+      expect(cleanStreetAddress('Jl. Merdeka No. 1', '', '', '')).toBe('Jl. Merdeka No. 1');
+      expect(cleanStreetAddress('', '', '', '')).toBe('');
+      expect(
+        cleanStreetAddress(
+          null as unknown as string,
+          undefined as unknown as string,
+          null as unknown as string,
+          undefined as unknown as string,
+        ),
+      ).toBe('');
+    });
   });
 
   describe('formatAddress', () => {

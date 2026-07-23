@@ -10,9 +10,9 @@ export function cleanStreetAddress(
 ): string {
   let cleaned = (street ?? '').trim();
 
-  cleaned = cleaned.replace(/,\s*(indonesia|id)$/i, '');
+  cleaned = cleaned.replace(/[\n,]\s*(indonesia|id)$/i, '');
 
-  const removeTrailingToken = (token: string) => {
+  const removeTrailingToken = (token?: string) => {
     if (!token) return;
     const normToken = token
       .replace(/^(kota|kabupaten|kab\.|kecamatan|kec\.|provinsi|prov\.)\s+/i, '')
@@ -20,8 +20,12 @@ export function cleanStreetAddress(
     if (!normToken) return;
 
     const escaped = normToken.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const regex = new RegExp(`,?\\s*(kota|kabupaten|kab\\.|kecamatan|kec\\.)?\\s*${escaped}$`, 'i');
+    const regex = new RegExp(
+      `[\\n,]?\\s*(kota|kabupaten|kab\\.|kecamatan|kec\\.)?\\s*${escaped}$`,
+      'i',
+    );
     cleaned = cleaned.replace(regex, '').trim();
+    cleaned = cleaned.replace(/[\n,]+$/, '').trim();
   };
 
   removeTrailingToken(postal);
@@ -31,10 +35,10 @@ export function cleanStreetAddress(
     removeTrailingToken(district);
   }
 
-  return cleaned;
+  return cleaned.replace(/[\n,]+$/, '').trim();
 }
 
-export function formatAddress(address: Address): string {
+export function formatAddress(address: Partial<Address>): string {
   const street = address.street_address || '';
   const city = address.city || '';
   const province = address.province || '';

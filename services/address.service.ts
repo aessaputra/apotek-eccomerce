@@ -1,5 +1,6 @@
 import { supabase } from '@/utils/supabase';
 import { parseCoordinate } from '@/utils/coordinates';
+import { cleanStreetAddress } from '@/utils/address';
 import type { Address, AddressInsert, AddressUpdate } from '@/types/address';
 
 export interface ByteshipShippingAddress {
@@ -171,8 +172,19 @@ export async function createAddress(
   payload: AddressInsert,
 ): Promise<{ data: Address | null; error: Error | null }> {
   try {
+    const cleanedPayload: AddressInsert = {
+      ...payload,
+      street_address: cleanStreetAddress(
+        payload.street_address ?? '',
+        payload.city ?? '',
+        payload.province ?? '',
+        payload.postal_code ?? '',
+        payload.area_name?.split(',')[0]?.trim(),
+      ),
+    };
+
     // If setting as default, unset other default addresses first
-    if (payload.is_default) {
+    if (cleanedPayload.is_default) {
       await supabase
         .from('addresses')
         .update({ is_default: false })
@@ -183,7 +195,7 @@ export async function createAddress(
     const { data, error } = await supabase
       .from('addresses')
       .insert({
-        ...payload,
+        ...cleanedPayload,
         profile_id: profileId,
       })
       .select()
@@ -207,8 +219,20 @@ export async function updateAddress(
   signal?: AbortSignal,
 ): Promise<{ data: Address | null; error: Error | null }> {
   try {
+    const cleanedPayload: AddressUpdate = { ...payload };
+
+    if (cleanedPayload.street_address !== undefined) {
+      cleanedPayload.street_address = cleanStreetAddress(
+        cleanedPayload.street_address ?? '',
+        cleanedPayload.city ?? '',
+        cleanedPayload.province ?? '',
+        cleanedPayload.postal_code ?? '',
+        cleanedPayload.area_name?.split(',')[0]?.trim(),
+      );
+    }
+
     // If setting as default, unset other default addresses first
-    if (payload.is_default) {
+    if (cleanedPayload.is_default) {
       let unsetDefaultQuery = supabase
         .from('addresses')
         .update({ is_default: false })
@@ -223,7 +247,7 @@ export async function updateAddress(
 
     let updateQuery = supabase
       .from('addresses')
-      .update(payload)
+      .update(cleanedPayload)
       .eq('id', addressId)
       .eq('profile_id', profileId)
       .select()
